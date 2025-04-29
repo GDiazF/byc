@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'main_home',
     'gen_settings',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -129,10 +130,10 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-#STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') 
-#STATICFILES_DIRS = [
-#    BASE_DIR / "static",  # Si tienes una carpeta "static" en tu proyecto
-#]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') 
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # Si tienes una carpeta "static" en tu proyecto
+]
 
 # Directorio raíz donde se almacenarán todos los archivos subidos
 #MEDIA_ROOT = os.path.join(BASE_DIR, 'Documentos')

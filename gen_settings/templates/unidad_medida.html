@@ -1,0 +1,127 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Unidades de Medida{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<div class="container mt-4">
+    <h2>Gestión de Unidades de Medida</h2><br>
+        
+    <div class="d-flex mb-3">
+        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#crearModal">Crear Unidad de Medida</button>
+    </div>
+
+    <table id="unidadMedidaTable" class="display table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Código</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for unidad in unidades_medida %}
+            <tr>
+                <td>{{ unidad.id }}</td>
+                <td>{{ unidad.codigo }}</td>
+                <td>{{ unidad.descripcion }}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm edit-btn" 
+                            data-id="{{ unidad.id }}" 
+                            data-codigo="{{ unidad.codigo }}"
+                            data-descripcion="{{ unidad.descripcion }}"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#editModal">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm delete-btn" 
+                            data-id="{{ unidad.id }}" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#deleteModal">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal para Crear Unidad de Medida -->
+<div class="modal fade" id="crearModal" tabindex="-1" aria-labelledby="crearModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="crearModalLabel">Crear Unidad de Medida</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-add">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Editar -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Editar Unidad de Medida</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="edit-message" style="display: none; padding: 10px; margin-bottom: 10px; border-radius: 5px;"></div>
+                <form id="form-edit">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit-id">
+                    <div class="mb-3">
+                        <label for="edit-codigo" class="form-label">Código</label>
+                        <input type="text" class="form-control" id="edit-codigo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-descripcion" class="form-label">Descripción</label>
+                        <input type="text" class="form-control" id="edit-descripcion" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Confirmar Eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Eliminar Unidad de Medida</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar esta unidad de medida?</p>
+                <input type="hidden" id="delete-id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/unidad_medida.js' %}"></script>
+<script src="{% static 'js/textoFormateador.js' %}"></script>
+{% endblock %} 
