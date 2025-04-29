@@ -1,0 +1,17 @@
+[33mcommit 17ede8698fc97734aad93e9eb2e5b9e905f7594c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Kevin <kevinriosga@outlook.com>
+Date:   Mon Apr 28 23:55:36 2025 -0400
+
+    Migraciones y super usuario creado
+
+[33mcommit 17664bf617e7d1950fe00fcffaa07168308597fd[m
+Author: Kevin <kevinriosga@outlook.com>
+Date:   Mon Apr 28 23:49:32 2025 -0400
+
+    Archivo settings configurado, db declarada
+
+[33mcommit c101fbce8454f22979c07626398318fb32ed1f33[m
+Author: Kevin <kevinriosga@outlook.com>
+Date:   Mon Apr 28 23:17:44 2025 -0400
+
+    Primer commit, inicio de proyecto
