@@ -4,15 +4,14 @@
 {% block title %}Comunas{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
 <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
 <div class="container mt-4">
-    <h2>Gestión de Comunas</h2><br>
+    <h2>Gestión de comunas</h2><br>
         
     <div class="d-flex mb-3">
-        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#crearModal">Crear Comuna</button>
+        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#crearModal">Crear comuna</button>
     </div>
 
     <table id="comunaTable" class="display table table-striped">
@@ -57,7 +56,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="crearModalLabel">Crear Comuna</h5>
+                <h5 class="modal-title" id="crearModalLabel">Crear comuna</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
@@ -76,7 +75,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="editModalLabel">Editar Comuna</h5>
+                <h5 class="modal-title" id="editModalLabel">Editar comuna</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
@@ -96,7 +95,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
                 </form>
             </div>
         </div>
@@ -125,7 +124,7 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{% static 'js/comuna.js' %}"></script>
 <script src="{% static 'js/textoFormateador.js' %}"></script>
+
 {% endblock %} 

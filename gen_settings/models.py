@@ -30,7 +30,7 @@ class Empresa(models.Model):
     nomFantasia = models.CharField(max_length=100)
     giro = models.CharField(max_length=100, null=False, blank=False)
     direccion = models.CharField(max_length=100, null=False, blank=False)
-    telefono = models.CharField(max_length=11, null=False, blank=False)
+    telefono = models.CharField(max_length=12, null=False, blank=False)
     email = models.EmailField(max_length=100, null=False, blank=False)
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
     comuna = models.ForeignKey(Comuna, on_delete=models.CASCADE)
@@ -38,3 +38,4 @@ class Empresa(models.Model):
 class UnidadMedida(models.Model):
     codigo = models.CharField(max_length=3, unique=True, null=False, blank=False)
     descripcion = models.CharField(max_length=100, null=False, blank=False)
+

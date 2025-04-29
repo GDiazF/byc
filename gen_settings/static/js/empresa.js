@@ -3,56 +3,8 @@ $(document).ready(function() {
     const table = $('#empresaTable').DataTable({
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
-        }
+        },
     });
-
-    // Función para manejar el prefijo del teléfono
-    function manejarPrefijoTelefono(input) {
-        const prefijo = '+56';
-        
-        // Al obtener el foco
-        input.on('focus', function() {
-            if (!this.value.startsWith(prefijo)) {
-                this.value = prefijo + this.value.replace(prefijo, '');
-            }
-        });
-
-        // Al perder el foco
-        input.on('blur', function() {
-            if (!this.value.startsWith(prefijo)) {
-                this.value = prefijo + this.value.replace(prefijo, '');
-            }
-        });
-
-        // Mientras se escribe
-        input.on('input', function() {
-            let valor = this.value;
-            
-            // Si se borró todo el contenido, mantener el prefijo
-            if (valor === '') {
-                this.value = prefijo;
-                return;
-            }
-
-            // Si no empieza con el prefijo, agregarlo
-            if (!valor.startsWith(prefijo)) {
-                valor = prefijo + valor.replace(prefijo, '');
-            }
-
-            // Limitar a solo números después del prefijo
-            const numeroLimpio = valor.substring(prefijo.length).replace(/[^\d]/g, '');
-            this.value = prefijo + numeroLimpio;
-        });
-
-        // Establecer el prefijo inicialmente si no lo tiene
-        if (!input.val().startsWith(prefijo)) {
-            input.val(prefijo + input.val().replace(prefijo, ''));
-        }
-    }
-
-    // Aplicar el manejo del prefijo a los campos de teléfono
-    manejarPrefijoTelefono($('#id_telefono'));
-    manejarPrefijoTelefono($('#edit-telefono'));
 
     // Función para cargar comunas
     function cargarComunas(regionId, comunaId = null, isEdit = false) {
