@@ -5,23 +5,21 @@
 
 {% block content %}
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.0/css/dataTables.dataTables.css">
 <link rel="stylesheet" href="{% static 'css/region.css' %}">
 
 <div class="card">
     <div class="card-header bg-dark text-white">
-        <h5 class="card-title">Gestión de regiones</h5>
+        Gestión de regiones
     </div>
-    <div class="container mt-3">
-        <div class="d-flex mb-3">
-            <button class="btn btn-success btn-sm" 
-                data-bs-toggle="modal" 
-                data-bs-target="#crearModal">
-                <i class="bi bi-plus-square me-1"></i>
-                Crear región
-            </button>
-        </div>
-        <table id="regionTable" class="display table-striped compact hover nowrap">
+    <div class="card-body p-4">
+        <button class="btn btn-success btn-sm mb-2" 
+            data-bs-toggle="modal" 
+            data-bs-target="#crearModal">
+            <i class="bi bi-plus-square me-1"></i>
+            Crear región
+        </button>
+        <table id="regionTable" class="display table-striped compact hover">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -115,8 +113,8 @@
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
 <script src="{% static 'js/region.js' %}"></script>
 <script src="{% static 'js/textoFormateador.js' %}"></script>
 
