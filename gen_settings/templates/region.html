@@ -6,39 +6,47 @@
 {% block content %}
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="{% static 'css/region.css' %}">
 
-<div class="container mt-4">
-    <h2>Gestión de regiones</h2><br>
-        
-    <div class="d-flex mb-3">
-        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#crearModal">Crear Región</button>
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="card-title">Gestión de regiones</h5>
     </div>
-
-    <table id="regionTable" class="display table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for region in regiones %}
-            <tr>
-                <td>{{ region.id }}</td>
-                <td>{{ region.nombre }}</td>
-                <td>
-                    <button class="btn btn-primary btn-sm edit-btn" data-id="{{ region.id }}" data-nombre="{{ region.nombre }}" data-bs-toggle="modal" data-bs-target="#editModal">
-                        <i class="bi bi-pencil-square"></i>
-                    </button>
-                    <button class="btn btn-danger btn-sm delete-btn" data-id="{{ region.id }}" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                        <i class="bi bi-trash3"></i>
-                    </button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="container mt-3">
+        <div class="d-flex mb-3">
+            <button class="btn btn-success btn-sm" 
+                data-bs-toggle="modal" 
+                data-bs-target="#crearModal">
+                <i class="bi bi-plus-square me-1"></i>
+                Crear región
+            </button>
+        </div>
+        <table id="regionTable" class="display table-striped compact hover nowrap">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for region in regiones %}
+                <tr>
+                    <td>{{ region.id }}</td>
+                    <td>{{ region.nombre }}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm edit-btn" data-id="{{ region.id }}" data-nombre="{{ region.nombre }}" data-bs-toggle="modal" data-bs-target="#editModal">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm delete-btn" data-id="{{ region.id }}" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- Modal para Crear Región -->

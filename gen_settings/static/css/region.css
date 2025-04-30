@@ -1,0 +1,17 @@
+ /* Reducir tamaño de fuente del DataTable */
+ #regionTable, 
+ #regionTable td,
+ .dataTables_info,
+ .dataTables_length,
+ .dataTables_filter,
+ .dataTables_paginate {
+     font-size: 0.9rem !important;
+ }
+ #regionTable th{
+     font-size: 1rem !important;
+ }
+ /* Ajustar tamaño de los inputs y selects */
+ .dataTables_length select,
+ .dataTables_filter input {
+     font-size: 0.90rem !important;
+  }
