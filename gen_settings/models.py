@@ -35,6 +35,13 @@ class Empresa(models.Model):
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
     comuna = models.ForeignKey(Comuna, on_delete=models.CASCADE)
 
+    def __str__(self):
+        return self.nomFantasia
+
+    class Meta:
+        verbose_name = 'Empresa'
+        verbose_name_plural = 'Empresas'
+
 class UnidadMedida(models.Model):
     codigo = models.CharField(max_length=3, unique=True, null=False, blank=False)
     descripcion = models.CharField(max_length=100, null=False, blank=False)

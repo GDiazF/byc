@@ -32,7 +32,10 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'main_login',
+    'rrhh_personal',
     'main_home',
+    'maq_fichatecnica',
     'gen_settings',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -121,7 +124,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/home/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
@@ -130,9 +133,11 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Directorios adicionales donde Django buscará archivos estáticos
 STATICFILES_DIRS = [
-    BASE_DIR / "static",  # Si tienes una carpeta "static" en tu proyecto
+    os.path.join(BASE_DIR, 'static'),
 ]
 
 # Directorio raíz donde se almacenarán todos los archivos subidos

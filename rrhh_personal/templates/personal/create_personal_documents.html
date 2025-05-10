@@ -1,0 +1,143 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Documentación Personal{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Documentación Personal</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_curriculum" class="form-label">{{ form.curriculum.label }}</label>
+                        {{ form.curriculum }}
+                        <div class="form-text">Formatos aceptados: PDF, DOC, DOCX</div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_certificado_antecedentes" class="form-label">{{ form.certificado_antecedentes.label }}</label>
+                        {{ form.certificado_antecedentes }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_hoja_vida_conductor" class="form-label">{{ form.hoja_vida_conductor.label }}</label>
+                        {{ form.hoja_vida_conductor }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_foto_carnet" class="form-label">{{ form.foto_carnet.label }}</label>
+                        {{ form.foto_carnet }}
+                        <div class="form-text">Formatos aceptados: JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_certificado_afp" class="form-label">{{ form.certificado_afp.label }}</label>
+                        {{ form.certificado_afp }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_certificado_salud" class="form-label">{{ form.certificado_salud.label }}</label>
+                        {{ form.certificado_salud }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_certificado_estudios" class="form-label">{{ form.certificado_estudios.label }}</label>
+                        {{ form.certificado_estudios }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_certificado_residencia" class="form-label">{{ form.certificado_residencia.label }}</label>
+                        {{ form.certificado_residencia }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_fotocopia_carnet" class="form-label">{{ form.fotocopia_carnet.label }}</label>
+                        {{ form.fotocopia_carnet }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_fotocopia_finiquito" class="form-label">{{ form.fotocopia_finiquito.label }}</label>
+                        {{ form.fotocopia_finiquito }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="document-section">
+                        <label for="id_comprobante_banco" class="form-label">{{ form.comprobante_banco.label }}</label>
+                        {{ form.comprobante_banco }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <a href="{% url 'personal_create' %}" class="btn btn-secondary me-2">
+                        <i class="bi bi-arrow-left me-1"></i>Anterior
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-arrow-right me-1"></i>Siguiente
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Validación del formulario
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
+{% endblock %} 

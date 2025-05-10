@@ -1,0 +1,95 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Información Laboral{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Información Laboral</h5>
+    </div>
+    <div class="card-body p-4">
+        <form method="post" class="needs-validation" novalidate>
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label for="id_empresa_id" class="form-label">Empresa</label>
+                    {{ form.empresa_id }}
+                    <div class="invalid-feedback">
+                        Por favor seleccione una empresa.
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_depto_id" class="form-label">Departamento</label>
+                    {{ form.depto_id }}
+                    <div class="invalid-feedback">
+                        Por favor seleccione un departamento.
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="id_cargo_id" class="form-label">Cargo</label>
+                    {{ form.cargo_id }}
+                    <div class="invalid-feedback">
+                        Por favor seleccione un cargo.
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_fechacontrata" class="form-label">Fecha de Contratación</label>
+                    {{ form.fechacontrata }}
+                    <div class="invalid-feedback">
+                        Por favor ingrese la fecha de contratación.
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <a href="{% url 'personal_document_create' %}" class="btn btn-secondary me-2">
+                        <i class="bi bi-arrow-left me-1"></i>Anterior
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script>
+    // Script para actualizar los cargos cuando cambia el departamento
+    $(document).ready(function() {
+        $('#id_depto_id').change(function() {
+            var deptoId = $(this).val();
+            if (deptoId) {
+                $.ajax({
+                    url: '{% url "get_cargos" %}',
+                    data: {
+                        'depto_id': deptoId
+                    },
+                    success: function(data) {
+                        var cargoSelect = $('#id_cargo_id');
+                        cargoSelect.empty();
+                        cargoSelect.append($('<option>').text('elija una opción').attr('value', ''));
+                        $.each(data, function(id, nombre) {
+                            cargoSelect.append($('<option>').text(nombre).attr('value', id));
+                        });
+                    }
+                });
+            } else {
+                $('#id_cargo_id').empty().append($('<option>').text('elija una opción').attr('value', ''));
+            }
+        });
+    });
+</script>
+{% endblock %} 

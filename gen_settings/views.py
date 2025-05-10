@@ -179,7 +179,7 @@ class UnidadMedidaDeleteView(DeleteView):
 def load_comunas(request):
     region_id = request.GET.get('region_id')
     comunas = Comuna.objects.filter(region_id=region_id).order_by('nombre')
-    return JsonResponse(list(comunas.values('id', 'nombre')), safe=False)
+    return JsonResponse({'comunas': list(comunas.values('id', 'nombre'))}, safe=False)
 
 class EmpresaListView(ListView):
     model = Empresa

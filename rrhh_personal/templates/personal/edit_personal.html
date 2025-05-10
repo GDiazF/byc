@@ -1,0 +1,384 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Editar Personal{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Editar Personal</h5>
+    </div>
+    <div class="card-body p-4">
+        <ul class="nav nav-tabs mb-4" id="personalTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
+                    <i class="bi bi-person-fill me-2"></i>Información Personal
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab" aria-controls="documents" aria-selected="false">
+                    <i class="bi bi-file-earmark-text me-2"></i>Documentación
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="labor-tab" data-bs-toggle="tab" data-bs-target="#labor" type="button" role="tab" aria-controls="labor" aria-selected="false">
+                    <i class="bi bi-briefcase-fill me-2"></i>Información Laboral
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="personalTabsContent">
+            <!-- Tab Información Personal -->
+            <div class="tab-pane fade show active" id="personal" role="tabpanel" aria-labelledby="personal-tab">
+                <form method="post" id="personal-form" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="personal">
+                    <div class="row">
+                        <div class="col-md-2 mb-3">
+                            <label for="id_rut" class="form-label">RUT</label>
+                            {{ form.rut }}
+                            <div class="invalid-feedback">
+                                Por favor ingrese un RUT válido.
+                            </div>
+                        </div>
+                        <div class="col-md-1 mb-3">
+                            <label for="id_dvrut" class="form-label">DV</label>
+                            {{ form.dvrut }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="id_nombre" class="form-label">Nombre</label>
+                            {{ form.nombre }}
+                            <div class="invalid-feedback">
+                                Por favor ingrese un nombre.
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="id_apepat" class="form-label">Apellido Paterno</label>
+                            {{ form.apepat }}
+                            <div class="invalid-feedback">
+                                Por favor ingrese el apellido paterno.
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="id_apemat" class="form-label">Apellido Materno</label>
+                            {{ form.apemat }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="id_sexo_id" class="form-label">Sexo</label>
+                            {{ form.sexo_id }}
+                            <div class="invalid-feedback">
+                                Por favor seleccione el sexo.
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="id_fechanac" class="form-label">Fecha Nacimiento</label>
+                            {{ form.fechanac }}
+                            <div class="invalid-feedback">
+                                Por favor ingrese la fecha de nacimiento.
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_estcivil_id" class="form-label">Estado Civil</label>
+                            {{ form.estcivil_id }}
+                            <div class="invalid-feedback">
+                                Por favor seleccione el estado civil.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="id_correo" class="form-label">Correo</label>
+                            {{ form.correo }}
+                            <div class="invalid-feedback">
+                                Por favor ingrese un correo válido.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="id_direccion" class="form-label">Dirección</label>
+                            {{ form.direccion }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_region" class="form-label">Región</label>
+                            {{ form.region_id }}
+                            <div class="invalid-feedback">
+                                Por favor seleccione la región.
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_comuna" class="form-label">Comuna</label>
+                            {{ form.comuna_id }}
+                            <div class="invalid-feedback">
+                                Por favor seleccione la comuna.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <a href="{% url 'table_personal' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Volver
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>Actualizar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tab Documentación -->
+            <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
+                <form method="post" id="documents-form" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="documents">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_curriculum" class="form-label">{{ form.curriculum.label }}</label>
+                                {{ form.curriculum }}
+                                <div class="form-text">Formatos aceptados: PDF, DOC, DOCX</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_certificado_antecedentes" class="form-label">{{ form.certificado_antecedentes.label }}</label>
+                                {{ form.certificado_antecedentes }}
+                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_hoja_vida_conductor" class="form-label">{{ form.hoja_vida_conductor.label }}</label>
+                                {{ form.hoja_vida_conductor }}
+                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_foto_carnet" class="form-label">{{ form.foto_carnet.label }}</label>
+                                {{ form.foto_carnet }}
+                                <div class="form-text">Formatos aceptados: JPG, JPEG, PNG</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_certificado_afp" class="form-label">{{ form.certificado_afp.label }}</label>
+                                {{ form.certificado_afp }}
+                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_certificado_salud" class="form-label">{{ form.certificado_salud.label }}</label>
+                                {{ form.certificado_salud }}
+                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_certificado_estudios" class="form-label">{{ form.certificado_estudios.label }}</label>
+                                {{ form.certificado_estudios }}
+                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_certificado_residencia" class="form-label">{{ form.certificado_residencia.label }}</label>
+                                {{ form.certificado_residencia }}
+                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_fotocopia_carnet" class="form-label">{{ form.fotocopia_carnet.label }}</label>
+                                {{ form.fotocopia_carnet }}
+                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="document-section">
+                                <label for="id_fotocopia_finiquito" class="form-label">{{ form.fotocopia_finiquito.label }}</label>
+                                {{ form.fotocopia_finiquito }}
+                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <a href="{% url 'table_personal' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Volver
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>Actualizar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tab Información Laboral -->
+            <div class="tab-pane fade" id="labor" role="tabpanel" aria-labelledby="labor-tab">
+                <form method="post" id="labor-form" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="labor">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="id_empresa_id" class="form-label">Empresa</label>
+                            {{ labor_form.empresa_id }}
+                            <div class="invalid-feedback">
+                                Por favor seleccione una empresa.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_depto_id" class="form-label">Departamento</label>
+                            {{ labor_form.depto_id }}
+                            <div class="invalid-feedback">
+                                Por favor seleccione un departamento.
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_cargo_id" class="form-label">Cargo</label>
+                            {{ labor_form.cargo_id }}
+                            <div class="invalid-feedback">
+                                Por favor seleccione un cargo.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_fechacontrata" class="form-label">Fecha de Contratación</label>
+                            {{ labor_form.fechacontrata }}
+                            <div class="invalid-feedback">
+                                Por favor ingrese la fecha de contratación.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <a href="{% url 'table_personal' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Volver
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>Actualizar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="{% static 'js/utils/validarRut.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validación de formularios
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+
+    // Mantener la pestaña activa después de enviar el formulario
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+    if (activeTab) {
+        const tab = new bootstrap.Tab(document.querySelector(`#${activeTab}-tab`));
+        tab.show();
+    }
+
+    // Actualizar la URL cuando se cambia de pestaña
+    const triggerTabList = document.querySelectorAll('#personalTabs button');
+    triggerTabList.forEach(triggerEl => {
+        triggerEl.addEventListener('shown.bs.tab', function(event) {
+            const tabId = event.target.id.replace('-tab', '');
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('tab', tabId);
+            window.history.pushState({}, '', newUrl);
+        });
+    });
+});
+</script>
+
+<style>
+.nav-tabs {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.nav-tabs .nav-link {
+    margin-bottom: -2px;
+    border: none;
+    color: #6c757d;
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    border: none;
+    color: #495057;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    border: none;
+    border-bottom: 2px solid #0d6efd;
+    background-color: transparent;
+}
+
+.tab-content {
+    padding-top: 2rem;
+}
+
+.document-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.document-section:hover {
+    background-color: #e9ecef;
+}
+</style>
+{% endblock %} 

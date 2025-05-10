@@ -1,0 +1,143 @@
+/* Estilos para controles de formulario */
+.form-control, .form-select {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 6px 12px;
+    height: 35px;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    background-color: #eceef0;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #6c757d;
+    box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.15);
+    background-color: #f8f9fa;
+}
+
+.form-control::placeholder {
+    color: #98a6ad;
+}
+
+.form-control:hover, .form-select:hover {
+    border-color: #adb5bd;
+    background-color: #f8f9fa;
+}
+
+/* Estilos para etiquetas */
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+    color: #495057;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-text {
+    color: #6c757d;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+}
+
+/* Estilos para botones */
+.btn {
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border: none;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.15);
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border: none;
+    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.15);
+}
+
+.btn-secondary:hover {
+    background-color: #5c636a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(108, 117, 125, 0.2);
+}
+
+/* Estilos para la tarjeta */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+    background-color: #212529;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 0.75rem 1.25rem;
+}
+
+.card-header h5 {
+    font-weight: 400;
+    font-size: 1rem;
+    letter-spacing: normal;
+    margin: 0;
+}
+
+.card-body {
+    background-color: #fff;
+    border-radius: 0 0 12px 12px;
+    padding: 1.5rem;
+}
+
+/* Estilos para validación */
+.invalid-feedback {
+    font-size: 0.85rem;
+    color: #dc3545;
+    margin-top: 0.25rem;
+}
+
+.was-validated .form-control:invalid,
+.was-validated .form-select:invalid {
+    border-color: #dc3545;
+    background-image: none;
+}
+
+.was-validated .form-control:valid,
+.was-validated .form-select:valid {
+    border-color: #198754;
+    background-image: none;
+}
+
+/* Estilos para íconos */
+.bi {
+    font-size: 1.1rem;
+    vertical-align: -0.125em;
+}
+
+/* Estilos para secciones de documentos */
+.document-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.document-section:hover {
+    background-color: #e9ecef;
+    transition: background-color 0.3s ease;
+}
+
+/* Estilos para filas */
+.row {
+    margin-bottom: 1rem;
+} 
