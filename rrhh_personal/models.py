@@ -5,37 +5,63 @@ from django.core.files.storage import FileSystemStorage
 from gen_settings.models import Region, Comuna, Empresa
 
 #MODELO PARA RUTAS DE LOS DOCUMENTOS---------------------------------------------------------
-def obtener_ruta_documento(instance, filename):
-    extension = os.path.splitext(filename)[1]
-    if isinstance(instance, LicenciaPorPersonal):
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        nombre_archivo = f"LIC_{instance.personal_id.rut}_{timestamp}{extension}"
-        return os.path.join('Licencias', nombre_archivo)
-    elif isinstance(instance, Certificacion):
-        nombre_archivo = f"CERT_{instance.personal_id.rut}_{instance.tipoCertificacion_id.tipoCertificacion}_{extension}"
-        return os.path.join('Certificaciones', nombre_archivo)
-    elif isinstance(instance, Examen):
-        nombre_archivo = f"EXAM_{instance.personal_id.rut}_{instance.tipoEx_id.tipoExamen}_{extension}"
-        return os.path.join('Examenes', nombre_archivo)
-    else:
-        # Si no es ninguno de los casos anteriores, lo guardamos en la raíz
-        return os.path.join('Otros', filename)
-
 def obtener_ruta_documento_personal(instance, filename):
-    # Obtener la extensión del archivo
+    """
+    DEPRECATED: Esta función se mantiene solo para compatibilidad con migraciones antiguas.
+    Use obtener_ruta_documento en su lugar.
+    """
+    return obtener_ruta_documento(instance, filename)
+
+def obtener_ruta_documento(instance, filename):
+    """
+    Función unificada para determinar la ruta donde se guardarán todos los documentos.
+    La estructura será: Documentacion_Personal/RUT/TIPO_DOCUMENTO/archivo
+    """
     extension = os.path.splitext(filename)[1]
-    # Obtener el tipo de documento basado en el campo que se está llenando
-    campo = filename.split('_')[0]  # El nombre del campo estará al inicio del filename
-    # Crear el nombre del archivo
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    nombre_archivo = f"{campo}_{instance.rut}_{timestamp}{extension}"
-    # Retornar la ruta
-    return os.path.join('Personal', 'Documentos', instance.rut, nombre_archivo)
+    
+    # Obtener el RUT y determinar el tipo de documento basado en la instancia
+    if isinstance(instance, Personal):
+        rut = instance.rut
+        # Determinar el campo específico que se está guardando
+        for field in instance._meta.fields:
+            if isinstance(field, (models.FileField, models.ImageField)):
+                value = getattr(instance, field.name)
+                if value and value.name == filename:
+                    carpeta = 'Documentos_Personales'
+                    nombre_archivo = f"{field.name}_{timestamp}{extension}"
+                    break
+        else:
+            carpeta = 'Otros'
+            nombre_archivo = filename
+    
+    elif isinstance(instance, LicenciaPorPersonal):
+        rut = instance.personal_id.rut
+        carpeta = 'Licencias'
+        nombre_archivo = f"licencia_{timestamp}{extension}"
+    
+    elif isinstance(instance, Certificacion):
+        rut = instance.personal_id.rut
+        carpeta = 'Certificaciones'
+        nombre_archivo = f"certificacion_{instance.tipoCertificacion_id.tipoCertificacion}_{timestamp}{extension}"
+    
+    elif isinstance(instance, Examen):
+        rut = instance.personal_id.rut
+        carpeta = 'Examenes'
+        nombre_archivo = f"examen_{instance.tipoEx_id.tipoExamen}_{timestamp}{extension}"
+    
+    else:
+        rut = 'sin_rut'
+        carpeta = 'Otros'
+        nombre_archivo = filename
+    
+    # Retornar la ruta completa
+    return os.path.join('Documentacion_Personal', str(rut), carpeta, nombre_archivo)
 
 #RUTA PARA SOBREESCRIBIR ARCHIVO
 class OverwriteStorage(FileSystemStorage):
     def get_available_name(self, name, max_length=None):
-        # Elimina el archivo si ya existe
+        # Si el archivo existe, lo elimina
         if self.exists(name):
             os.remove(os.path.join(self.location, name))
         return name
@@ -75,62 +101,74 @@ class Personal(models.Model):
     fechanac = models.DateField(null=True, blank=True)
     correo = models.CharField(max_length=100, null=False, blank=False, unique=True)
     direccion = models.CharField(max_length=150, null=True, blank=True)
+    activo = models.BooleanField(default=True, verbose_name='Estado')
     
-    # Nuevos campos para documentos
+    # Campos de documentos
     curriculum = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Curriculum Vitae'
     )
     certificado_antecedentes = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Certificado de Antecedentes'
     )
     hoja_vida_conductor = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Hoja de Vida del Conductor'
     )
     foto_carnet = models.ImageField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Foto tipo Carnet'
     )
     certificado_afp = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Certificado de Afiliación AFP'
     )
     certificado_salud = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Certificado de Afiliación de Salud'
     )
     certificado_estudios = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Certificado de Estudios'
     )
     certificado_residencia = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Certificado de Residencia'
     )
     fotocopia_carnet = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Fotocopia de Carnet'
     )
     fotocopia_finiquito = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Fotocopia de Último Finiquito'
     )
     comprobante_banco = models.FileField(
-        upload_to=obtener_ruta_documento_personal,
+        upload_to=obtener_ruta_documento,
+        storage=OverwriteStorage(),
         null=True, blank=True,
-        verbose_name='Comprobante de Cuenta Bancaria'
+        verbose_name='Formulario de Depósito Bancario'
     )
 
     def __str__(self):
@@ -148,6 +186,35 @@ class Personal(models.Model):
         self.correo = self.correo.upper()
         self.direccion = self.direccion.upper() if self.direccion else None
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Lista de campos de archivo
+        file_fields = [
+            'curriculum', 'certificado_antecedentes', 'hoja_vida_conductor',
+            'foto_carnet', 'certificado_afp', 'certificado_salud',
+            'certificado_estudios', 'certificado_residencia', 'fotocopia_carnet',
+            'fotocopia_finiquito', 'comprobante_banco'
+        ]
+        
+        # Eliminar cada archivo
+        for field_name in file_fields:
+            file = getattr(self, field_name)
+            if file:
+                try:
+                    if os.path.isfile(file.path):
+                        os.remove(file.path)
+                except Exception as e:
+                    print(f"Error al eliminar {field_name}: {e}")
+                
+        # Eliminar la carpeta del personal si está vacía
+        rut_folder = os.path.join('media', 'Documentacion_Personal', self.rut)
+        try:
+            if os.path.exists(rut_folder) and not os.listdir(rut_folder):
+                os.rmdir(rut_folder)
+        except Exception as e:
+            print(f"Error al eliminar carpeta: {e}")
+            
+        super().delete(*args, **kwargs)
 
 
 
@@ -266,6 +333,19 @@ class Examen(models.Model):
     def __str__(self):
         return f"{self.personal_id} - {self.tipoEx_id}"
     
+    def delete(self, *args, **kwargs):
+        if self.rutaDoc:
+            file_path = self.rutaDoc.path
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            
+            # Intentar eliminar la carpeta Examenes si está vacía
+            exam_folder = os.path.dirname(file_path)
+            if os.path.exists(exam_folder) and not os.listdir(exam_folder):
+                os.rmdir(exam_folder)
+                
+        super().delete(*args, **kwargs)
+
 
 
 #---------------------------------------------------------------------------------------------
@@ -292,6 +372,19 @@ class Certificacion(models.Model):
     def __str__(self):
         return f"{self.personal_id} - {self.tipoCertificacion_id}"
 
+    def delete(self, *args, **kwargs):
+        if self.rutaDoc:
+            file_path = self.rutaDoc.path
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            
+            # Intentar eliminar la carpeta Certificaciones si está vacía
+            cert_folder = os.path.dirname(file_path)
+            if os.path.exists(cert_folder) and not os.listdir(cert_folder):
+                os.rmdir(cert_folder)
+                
+        super().delete(*args, **kwargs)
+
 
 #---------------------------------------------------------------------------------------------
 #LICENCIAS-------------------------------------------------------------------------------------
@@ -302,30 +395,33 @@ class TipoLicencia(models.Model):
 
     def __str__(self):
         return self.tipoLicencia
-    
-
-class ClaseLicencia(models.Model):
-    claseLicencia_id = models.AutoField(primary_key=True, null=False, blank=False)
-    tipoLicencia_id = models.ForeignKey(TipoLicencia, on_delete=models.CASCADE, db_column='tipoLicencia_id', null=False, blank=False)
-    claseLicencia = models.CharField(max_length=100, null=False, blank=False)
-
-    def __str__(self):
-        return self.claseLicencia
-    
 
 class LicenciaPorPersonal(models.Model):
     licenciaPorPersonal_id = models.AutoField(primary_key=True, null=False, blank=False)
     personal_id = models.ForeignKey(Personal, on_delete=models.CASCADE, db_column='personal_id', null=False, blank=False)
-    clases = models.ManyToManyField(ClaseLicencia, related_name='licencias_personales')
+    tipos = models.ManyToManyField(TipoLicencia, related_name='licencias_personales')
     fechaEmision = models.DateField(null=False, blank=False)
     fechaVencimiento = models.DateField(null=False, blank=False)
-    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=OverwriteStorage ,null=False, blank=False)
+    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=OverwriteStorage, null=False, blank=False)
     observacion = models.TextField(max_length=250, null=True, blank=True)
 
     def __str__(self):
-        # Mostrar clases en lugar de tipo
-        clases_str = ", ".join([c.claseLicencia for c in self.clases.all()])
-        return f"Licencia de {self.personal_id} (Clases: {clases_str or 'Ninguna'})"
-    
+        tipos_str = ", ".join([t.tipoLicencia for t in self.tipos.all()])
+        return f"Licencia de {self.personal_id} (Tipos: {tipos_str or 'Ninguno'})"
+
+    def delete(self, *args, **kwargs):
+        # Guardar la ruta del archivo antes de eliminar el registro
+        if self.rutaDoc:
+            file_path = self.rutaDoc.path
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            
+            # Intentar eliminar la carpeta Licencias si está vacía
+            license_folder = os.path.dirname(file_path)
+            if os.path.exists(license_folder) and not os.listdir(license_folder):
+                os.rmdir(license_folder)
+                
+        super().delete(*args, **kwargs)
+
 
 

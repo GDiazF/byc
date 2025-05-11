@@ -44,8 +44,13 @@ body {
 /* Color de texto para links */
 .sidebar .nav-link {
     color: #adb5bd !important;
-    padding-top: 0.25rem !important; /* Reduce padding superior */
-    padding-bottom: 0.25rem !important; /* Reduce padding inferior */
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+}
+
+/* Añadir padding al primer elemento del menú */
+.sidebar .nav-item:first-child {
+    margin-top: 1rem;
 }
 
 /* Efecto hover para links */

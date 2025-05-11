@@ -6,114 +6,96 @@
 {% block content %}
 
 <link rel="stylesheet" href="https://cdn.datatables.net/2.3.0/css/dataTables.dataTables.css">
-<style>
-    .dataTables_wrapper {
-        font-size: 14px;
-    }
+<link rel="stylesheet" href="{% static 'css/datatables.css' %}">
 
-    .dataTables_wrapper .dataTables_filter input,
-    .dataTables_wrapper .dataTables_length select {
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        padding: 3px 8px;
-    }
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="confirmModalLabel">Confirmar cambio de estado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                ¿Está seguro que desea cambiar el estado de este personal?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmButton">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    .dataTables_wrapper .dataTables_length select {
-        padding-right: 24px;
-    }
-
-    .dataTables_wrapper .dataTables_paginate .paginate_button {
-        padding: 3px 8px;
-        margin: 0 4px;
-        border-radius: 4px;
-    }
-
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: #0d6efd;
-        border-color: #0d6efd;
-        color: white !important;
-    }
-
-    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-        background: #0b5ed7;
-        border-color: #0b5ed7;
-        color: white !important;
-    }
-
-    table.dataTable tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-
-    .btn-sm {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.875rem;
-        line-height: 1.5;
-        border-radius: 0.2rem;
-    }
-
-    .btn-primary.btn-sm:hover,
-    .btn-danger.btn-sm:hover {
-        opacity: 0.9;
-        transform: translateY(-1px);
-    }
-
-    .bi {
-        font-size: 1rem;
-    }
-
-    .card {
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .card-header {
-        background-color: #212529;
-        border-radius: 12px 12px 0 0 !important;
-        padding: 0.75rem 1.25rem;
-    }
-
-    .card-body {
-        padding: 1.25rem;
-    }
-
-    .table-striped tbody tr:nth-of-type(odd) {
-        background-color: rgba(0, 0, 0, 0.02);
-    }
-
-    .table > :not(caption) > * > * {
-        padding: 0.75rem;
-    }
-</style>
+<!-- Modal de Éxito -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="successModalLabel">Operación Exitosa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="successModalBody">
+                El estado ha sido actualizado exitosamente.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="card">
     <div class="card-header bg-dark text-white">
         Gestión de Personal
     </div>
     <div class="card-body p-4">
-        <a href="{% url 'personal_create' %}" class="btn btn-success btn-sm mb-3">
-            <i class="bi bi-plus-square me-1"></i>
-            Crear Personal
-        </a>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <a href="{% url 'personal_create' %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-plus-square me-1"></i>
+                    Crear Personal
+                </a>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="input-group" style="width: auto; float: right;">
+                    <label class="input-group-text" for="filtroEmpresa">Empresa:</label>
+                    <select class="form-select form-select-sm" id="filtroEmpresa">
+                        <option value="">Todas las empresas</option>
+                        {% for empresa in empresas %}
+                        <option value="{{ empresa.nomFantasia }}">{{ empresa.nomFantasia }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
         <table id="personalTable" class="display table-striped compact hover">
             <thead>
                 <tr>
                     <th>RUT</th>
-                    <th>Nombre</th>
-                    <th>Apellidos</th>
-                    <th>Correo</th>
-                    <th>Dirección</th>
+                    <th>Nombre Completo</th>
+                    <th>Cargo</th>
+                    <th>Departamento</th>
+                    <th>Empresa</th>
+                    <th>Documentacion</th>
                     <th>Acciones</th>
+                    <th>Estado</th>
                 </tr>
             </thead>
             <tbody>
                 {% for persona in personal %}
+                {% with info_laboral=persona.infolaboral_set.first %}
                 <tr>
                     <td>{{ persona.rut }}-{{ persona.dvrut }}</td>
-                    <td>{{ persona.nombre }}</td>
-                    <td>{{ persona.apepat }} {{ persona.apemat }}</td>
-                    <td>{{ persona.correo }}</td>
-                    <td>{{ persona.direccion }}</td>
+                    <td>{{ persona.nombre }} {{ persona.apepat }} {{ persona.apemat }}</td>
+                    <td>{{ info_laboral.cargo_id.cargo|default:'No disponible' }}</td>
+                    <td>{{ info_laboral.depto_id.depto|default:'No disponible' }}</td>
+                    <td>{{ info_laboral.empresa_id.nomFantasia|default:'No disponible' }}</td>
+                    <td>
+                        <a href="{% url 'documentation' persona.personal_id %}" class="btn btn-warning btn-sm">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </a>
+                    </td>
                     <td>
                         <a href="{% url 'personal_update' persona.personal_id %}" class="btn btn-primary btn-sm">
                             <i class="bi bi-pencil-square"></i>
@@ -125,7 +107,16 @@
                             </button>
                         </form>
                     </td>
+                    <td>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input toggle-status" type="checkbox" 
+                                   data-id="{{ persona.personal_id }}"
+                                   {% if persona.activo %}checked{% endif %}
+                                   style="cursor: pointer;">
+                        </div>
+                    </td>
                 </tr>
+                {% endwith %}
                 {% endfor %}
             </tbody>
         </table>
@@ -134,25 +125,6 @@
 
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 <script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
-<script>
-$(document).ready(function() {
-    $('#personalTable').DataTable({
-        language: {
-            url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
-        },
-        pageLength: 10,
-        order: [[1, 'asc']],
-        columnDefs: [
-            {
-                targets: -1,
-                orderable: false,
-                searchable: false
-            }
-        ],
-        dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
-        lengthMenu: [[5, 10, 25, 50], [5, 10, 25, 50]],
-    });
-});
-</script>
+<script src="{% static 'js/personal_table.js' %}"></script>
 
 {% endblock %}

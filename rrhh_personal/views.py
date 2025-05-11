@@ -16,6 +16,10 @@ from django.http import JsonResponse
 from django.core.files.base import ContentFile
 import base64
 import json
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+import os
+from django.db import models
 
 # Create your views here.
 
@@ -25,6 +29,40 @@ class PersonalListView(ListView, LoginRequiredMixin):
     template_name = 'personal/table_personal.html'
     context_object_name = 'personal'
     paginate_by = 10
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from gen_settings.models import Empresa
+        context['empresas'] = Empresa.objects.all()
+        
+        # Obtener y procesar empresa_id
+        empresa_id = self.request.GET.get('empresa')
+        if empresa_id and empresa_id.strip():
+            try:
+                context['empresa_seleccionada'] = int(empresa_id)
+            except (ValueError, TypeError):
+                context['empresa_seleccionada'] = None
+        else:
+            context['empresa_seleccionada'] = None
+        
+        return context
+
+    def get_queryset(self):
+        queryset = Personal.objects.prefetch_related(
+            'infolaboral_set__cargo_id',
+            'infolaboral_set__depto_id',
+            'infolaboral_set__empresa_id'
+        )
+        
+        empresa_id = self.request.GET.get('empresa')
+        if empresa_id and empresa_id.strip():
+            try:
+                empresa_id = int(empresa_id)
+                queryset = queryset.filter(infolaboral_set__empresa_id=empresa_id)
+            except (ValueError, TypeError):
+                pass
+        
+        return queryset.distinct()
 
 class PersonalCreateView(LoginRequiredMixin, CreateView):
     model = Personal
@@ -178,6 +216,7 @@ class PersonalLaborCreateView(LoginRequiredMixin, CreateView):
         messages.error(self.request, 'Error en el formulario laboral. Por favor revise los datos ingresados.')
         return super().form_invalid(form)
 
+@login_required
 def get_cargos(request):
     depto_id = request.GET.get('depto_id')
     cargos = Cargo.objects.filter(depto_id=depto_id).values_list('cargo_id', 'cargo')
@@ -192,9 +231,24 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if 'labor_form' not in context:
-            # Get or create InfoLaboral instance
             info_laboral, created = InfoLaboral.objects.get_or_create(personal_id=self.object)
             context['labor_form'] = InfoLaboralPersonalForm(instance=info_laboral)
+        
+        # Agregar documentos del personal al contexto
+        personal_docs = {
+            'curriculum': self.object.curriculum if self.object.curriculum else None,
+            'certificado_antecedentes': self.object.certificado_antecedentes if self.object.certificado_antecedentes else None,
+            'hoja_vida_conductor': self.object.hoja_vida_conductor if self.object.hoja_vida_conductor else None,
+            'foto_carnet': self.object.foto_carnet if self.object.foto_carnet else None,
+            'certificado_afp': self.object.certificado_afp if self.object.certificado_afp else None,
+            'certificado_salud': self.object.certificado_salud if self.object.certificado_salud else None,
+            'certificado_estudios': self.object.certificado_estudios if self.object.certificado_estudios else None,
+            'certificado_residencia': self.object.certificado_residencia if self.object.certificado_residencia else None,
+            'fotocopia_carnet': self.object.fotocopia_carnet if self.object.fotocopia_carnet else None,
+            'fotocopia_finiquito': self.object.fotocopia_finiquito if self.object.fotocopia_finiquito else None,
+            'comprobante_banco': self.object.comprobante_banco if self.object.comprobante_banco else None,
+        }
+        context['personal_docs'] = personal_docs
         return context
 
     def post(self, request, *args, **kwargs):
@@ -204,29 +258,79 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
         if form_type == 'personal':
             form = self.get_form()
             if form.is_valid():
-                return self.form_valid(form)
+                response = self.form_valid(form)
+                messages.success(request, 'Información personal actualizada exitosamente.')
+                return redirect(f"{request.path}?tab=personal")
             else:
                 return self.form_invalid(form)
         
         elif form_type == 'documents':
-            form = self.get_form()
-            if form.is_valid():
-                # Only save document fields
-                personal = form.save(commit=False)
+            try:
+                personal = self.object
                 document_fields = [
                     'curriculum', 'certificado_antecedentes', 'hoja_vida_conductor',
                     'foto_carnet', 'certificado_afp', 'certificado_salud',
                     'certificado_estudios', 'certificado_residencia', 'fotocopia_carnet',
                     'fotocopia_finiquito', 'comprobante_banco'
                 ]
+                
+                # Guardar cada archivo subido
                 for field in document_fields:
                     if field in request.FILES:
-                        setattr(personal, field, request.FILES[field])
+                        # Eliminar archivo anterior si existe
+                        old_file = getattr(personal, field)
+                        if old_file:
+                            try:
+                                if os.path.isfile(old_file.path):
+                                    os.remove(old_file.path)
+                            except Exception as e:
+                                print(f"Error al eliminar archivo anterior: {e}")
+
+                        # Guardar nuevo archivo
+                        file_obj = request.FILES[field]
+                        setattr(personal, field, file_obj)
+                
                 personal.save()
                 messages.success(request, 'Documentación actualizada exitosamente.')
-                return redirect(f"{self.success_url}?tab=documents")
-            else:
-                return self.form_invalid(form)
+                return redirect(f"{request.path}?tab=documents")
+            except Exception as e:
+                messages.error(request, f'Error al guardar documentos: {str(e)}')
+                return self.render_to_response(self.get_context_data(form=self.get_form()))
+
+        elif form_type == 'delete_document':
+            try:
+                personal = self.object
+                field = request.POST.get('field')
+                
+                if field in [f.name for f in personal._meta.fields if isinstance(f, (models.FileField, models.ImageField))]:
+                    # Obtener el archivo actual
+                    current_file = getattr(personal, field)
+                    if current_file:
+                        # Eliminar el archivo físico
+                        try:
+                            if os.path.isfile(current_file.path):
+                                os.remove(current_file.path)
+                        except Exception as e:
+                            print(f"Error al eliminar archivo físico: {e}")
+                        
+                        # Limpiar el campo en la base de datos
+                        setattr(personal, field, None)
+                        personal.save()
+                        
+                        return JsonResponse({
+                            'status': 'success',
+                            'message': 'Documento eliminado exitosamente'
+                        })
+                    
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'No se encontró el documento'
+                })
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': str(e)
+                })
         
         elif form_type == 'labor':
             info_laboral = InfoLaboral.objects.get(personal_id=self.object)
@@ -234,16 +338,15 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
             if labor_form.is_valid():
                 labor_form.save()
                 messages.success(request, 'Información laboral actualizada exitosamente.')
-                return redirect(f"{self.success_url}?tab=labor")
+                return redirect(f"{request.path}?tab=labor")
             else:
                 return self.form_invalid(labor_form)
 
     def form_valid(self, form):
-        messages.success(self.request, 'Información personal actualizada exitosamente.')
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        return response
 
     def form_invalid(self, form):
-        messages.error(self.request, 'Error al actualizar. Por favor revise los datos ingresados.')
         return self.render_to_response(self.get_context_data(form=form))
 
 class PersonalDeleteView(LoginRequiredMixin, View):
@@ -255,5 +358,206 @@ class PersonalDeleteView(LoginRequiredMixin, View):
         except Exception as e:
             messages.error(request, f'Error al eliminar el personal: {str(e)}')
         return redirect('table_personal')
+
+@login_required
+@require_POST
+def toggle_personal_status(request, pk):
+    try:
+        personal = get_object_or_404(Personal, pk=pk)
+        personal.activo = request.POST.get('activo') == 'true'
+        personal.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def personal_documentation(request, personal_id):
+    personal = get_object_or_404(Personal, personal_id=personal_id)
+    licencias = LicenciaPorPersonal.objects.filter(personal_id=personal)
+    examenes = Examen.objects.filter(personal_id=personal)
+    
+    license_form = LicenciasPersonal()
+    exam_form = ExamenPersonal()
+    
+    context = {
+        'personal': personal,
+        'licencias': licencias,
+        'examenes': examenes,
+        'license_form': license_form,
+        'exam_form': exam_form,
+    }
+    
+    return render(request, 'personal/documentation.html', context)
+
+@login_required
+def add_license(request, personal_id):
+    if request.method == 'POST':
+        try:
+            personal = get_object_or_404(Personal, personal_id=personal_id)
+            form = LicenciasPersonal(request.POST, request.FILES)
+            print("Form data:", request.POST)  # Debug print
+            print("Files:", request.FILES)     # Debug print
+            
+            if form.is_valid():
+                print("Form is valid")         # Debug print
+                print("Cleaned data:", form.cleaned_data)  # Debug print
+                
+                licencia = form.save(commit=False)
+                licencia.personal_id = personal
+                licencia.save()
+                form.save_m2m()  # Importante: guardar las relaciones many-to-many
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Licencia guardada exitosamente'
+                })
+            else:
+                print("Form errors:", form.errors)  # Debug print
+                return JsonResponse({
+                    'status': 'error',
+                    'errors': form.errors
+                }, status=400)
+                
+        except Exception as e:
+            print("Exception:", str(e))  # Debug print
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al procesar la solicitud: {str(e)}'
+            }, status=500)
+            
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+
+@login_required
+def add_exam(request, personal_id):
+    if request.method == 'POST':
+        try:
+            personal = get_object_or_404(Personal, personal_id=personal_id)
+            form = ExamenPersonal(request.POST, request.FILES)
+            print("Form data:", request.POST)  # Debug print
+            print("Files:", request.FILES)     # Debug print
+            
+            if form.is_valid():
+                print("Form is valid")         # Debug print
+                print("Cleaned data:", form.cleaned_data)  # Debug print
+                
+                examen = form.save(commit=False)
+                examen.personal_id = personal
+                examen.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Examen guardado exitosamente'
+                })
+            else:
+                print("Form errors:", form.errors)  # Debug print
+                return JsonResponse({
+                    'status': 'error',
+                    'errors': form.errors
+                }, status=400)
+                
+        except Exception as e:
+            print("Exception:", str(e))  # Debug print
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al procesar la solicitud: {str(e)}'
+            }, status=500)
+            
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+
+@login_required
+def delete_exam(request, exam_id):
+    if request.method == 'DELETE':
+        try:
+            exam = get_object_or_404(Examen, examen_id=exam_id)
+            exam.delete()
+            return JsonResponse({'status': 'success', 'message': 'Examen eliminado exitosamente'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+@login_required
+def delete_license(request, license_id):
+    if request.method == 'DELETE':
+        try:
+            license = get_object_or_404(LicenciaPorPersonal, licenciaPorPersonal_id=license_id)
+            license.delete()
+            return JsonResponse({'status': 'success', 'message': 'Licencia eliminada exitosamente'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+@login_required
+def documentation_view(request, pk):
+    personal = get_object_or_404(Personal, personal_id=pk)
+    license_form = LicenciasPersonal()
+    exam_form = ExamenPersonal()
+    certification_form = CertificacionPersonal()
+    
+    licencias = LicenciaPorPersonal.objects.filter(personal_id=personal)
+    examenes = Examen.objects.filter(personal_id=personal)
+    certificaciones = Certificacion.objects.filter(personal_id=personal)
+    
+    context = {
+        'personal': personal,
+        'license_form': license_form,
+        'exam_form': exam_form,
+        'certification_form': certification_form,
+        'licencias': licencias,
+        'examenes': examenes,
+        'certificaciones': certificaciones,
+    }
+    
+    return render(request, 'personal/documentation.html', context)
+
+@login_required
+@require_POST
+def save_certification(request, pk):
+    try:
+        personal = get_object_or_404(Personal, personal_id=pk)
+        form = CertificacionPersonal(request.POST, request.FILES)
+        
+        if form.is_valid():
+            certification = form.save(commit=False)
+            certification.personal_id = personal
+            certification.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Certificación guardada exitosamente'
+            })
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Error en el formulario',
+                'errors': form.errors
+            })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
+
+@login_required
+@require_POST
+def delete_certification(request, pk, certification_id):
+    try:
+        certification = get_object_or_404(Certificacion, certif_id=certification_id, personal_id__personal_id=pk)
+        certification.delete()
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Certificación eliminada exitosamente'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
 
 

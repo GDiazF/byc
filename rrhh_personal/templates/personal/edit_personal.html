@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load personal_tags %}
 
 {% block title %}Editar Personal{% endblock %}
 
@@ -129,12 +130,12 @@
                     </div>
 
                     <div class="row mt-4">
-                        <div class="col-12 d-flex justify-content-between align-items-center">
-                            <a href="{% url 'table_personal' %}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-1"></i>Volver
+                        <div class="col-12">
+                            <a href="{% url 'table_personal' %}" class="btn btn-secondary me-2">
+                                <i class="bi bi-arrow-left me-1"></i>Cancelar
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-1"></i>Actualizar
+                                <i class="bi bi-save"></i> Actualizar
                             </button>
                         </div>
                     </div>
@@ -143,105 +144,92 @@
 
             <!-- Tab Documentación -->
             <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
-                <form method="post" id="documents-form" enctype="multipart/form-data" class="needs-validation" novalidate>
+                <form method="post" id="documents-form" enctype="multipart/form-data">
                     {% csrf_token %}
                     <input type="hidden" name="form_type" value="documents">
+                    
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_curriculum" class="form-label">{{ form.curriculum.label }}</label>
-                                {{ form.curriculum }}
-                                <div class="form-text">Formatos aceptados: PDF, DOC, DOCX</div>
+                        {% for doc_name, doc in personal_docs.items %}
+                            <div class="col-md-6 mb-3">
+                                <div class="document-section">
+                                    <label for="id_{{ doc_name }}" class="form-label">{{ form|get_field_label:doc_name }}</label>
+                                    <input type="file" 
+                                           name="{{ doc_name }}" 
+                                           id="id_{{ doc_name }}" 
+                                           class="form-control"
+                                           accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+                                    <div class="form-text">
+                                        <small>
+                                            <i class="bi bi-info-circle"></i>
+                                            Formatos aceptados: PDF, Word, PNG, JPG
+                                        </small>
+                                    </div>
+                                    {% if doc %}
+                                        <div class="mt-2">
+                                            <small class="text-success d-flex align-items-center justify-content-between">
+                                                <span>
+                                                    <i class="bi bi-check-circle-fill"></i> 
+                                                    <a href="{{ doc.url }}" target="_blank" class="text-decoration-none ms-1">Ver documento</a>
+                                                </span>
+                                                <button type="button" class="btn btn-link text-danger p-0 delete-doc" data-field="{{ doc_name }}" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                            </small>
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_certificado_antecedentes" class="form-label">{{ form.certificado_antecedentes.label }}</label>
-                                {{ form.certificado_antecedentes }}
-                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_hoja_vida_conductor" class="form-label">{{ form.hoja_vida_conductor.label }}</label>
-                                {{ form.hoja_vida_conductor }}
-                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_foto_carnet" class="form-label">{{ form.foto_carnet.label }}</label>
-                                {{ form.foto_carnet }}
-                                <div class="form-text">Formatos aceptados: JPG, JPEG, PNG</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_certificado_afp" class="form-label">{{ form.certificado_afp.label }}</label>
-                                {{ form.certificado_afp }}
-                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_certificado_salud" class="form-label">{{ form.certificado_salud.label }}</label>
-                                {{ form.certificado_salud }}
-                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_certificado_estudios" class="form-label">{{ form.certificado_estudios.label }}</label>
-                                {{ form.certificado_estudios }}
-                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_certificado_residencia" class="form-label">{{ form.certificado_residencia.label }}</label>
-                                {{ form.certificado_residencia }}
-                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_fotocopia_carnet" class="form-label">{{ form.fotocopia_carnet.label }}</label>
-                                {{ form.fotocopia_carnet }}
-                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="document-section">
-                                <label for="id_fotocopia_finiquito" class="form-label">{{ form.fotocopia_finiquito.label }}</label>
-                                {{ form.fotocopia_finiquito }}
-                                <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
-                            </div>
-                        </div>
+                        {% endfor %}
                     </div>
 
                     <div class="row mt-4">
-                        <div class="col-12 d-flex justify-content-between align-items-center">
-                            <a href="{% url 'table_personal' %}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-1"></i>Volver
+                        <div class="col-12">
+                            <a href="{% url 'table_personal' %}" class="btn btn-secondary me-2">
+                                <i class="bi bi-arrow-left me-1"></i>Cancelar
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-1"></i>Actualizar
+                                <i class="bi bi-save"></i> Guardar Documentos
                             </button>
                         </div>
                     </div>
                 </form>
+            </div>
+
+            <!-- Modal de Confirmación de Eliminación -->
+            <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-dark text-white">
+                            <h5 class="modal-title" id="deleteConfirmModalLabel">Confirmar Eliminación</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            ¿Está seguro de que desea eliminar este documento?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-danger" id="confirmDelete">Eliminar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal de Éxito -->
+            <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-success text-white">
+                            <h5 class="modal-title" id="successModalLabel">Éxito</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            El documento ha sido eliminado exitosamente.
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Tab Información Laboral -->
@@ -287,12 +275,12 @@
                     </div>
 
                     <div class="row mt-4">
-                        <div class="col-12 d-flex justify-content-between align-items-center">
-                            <a href="{% url 'table_personal' %}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-1"></i>Volver
+                        <div class="col-12">
+                            <a href="{% url 'table_personal' %}" class="btn btn-secondary me-2">
+                                <i class="bi bi-arrow-left me-1"></i>Cancelar
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-1"></i>Actualizar
+                                <i class="bi bi-save"></i> Actualizar
                             </button>
                         </div>
                     </div>
@@ -334,6 +322,89 @@ document.addEventListener('DOMContentLoaded', function() {
             const newUrl = new URL(window.location.href);
             newUrl.searchParams.set('tab', tabId);
             window.history.pushState({}, '', newUrl);
+        });
+    });
+
+    let fieldToDelete = null;
+    let docSectionToUpdate = null;
+
+    // Manejar clic en botón de eliminar
+    document.querySelectorAll('.delete-doc').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            fieldToDelete = this.dataset.field;
+            docSectionToUpdate = this.closest('.document-section');
+        });
+    });
+
+    // Manejar confirmación de eliminación
+    document.getElementById('confirmDelete').addEventListener('click', function() {
+        if (!fieldToDelete) return;
+
+        const form = new FormData();
+        form.append('field', fieldToDelete);
+        form.append('form_type', 'delete_document');
+        form.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body: form
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Cerrar modal de confirmación
+                const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+                deleteModal.hide();
+
+                // Actualizar la interfaz
+                if (docSectionToUpdate) {
+                    const docInfo = docSectionToUpdate.querySelector('.mt-2');
+                    if (docInfo) {
+                        docInfo.remove();
+                    }
+                }
+
+                // Mostrar modal de éxito
+                const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+
+                // Limpiar el input file
+                if (docSectionToUpdate) {
+                    docSectionToUpdate.querySelector('input[type="file"]').value = '';
+                }
+            } else {
+                alert('Error al eliminar el documento: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al eliminar el documento');
+        })
+        .finally(() => {
+            fieldToDelete = null;
+            docSectionToUpdate = null;
+        });
+    });
+
+    // Validación de tipos de archivo
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', function(e) {
+            const file = this.files[0];
+            if (file) {
+                const allowedTypes = [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'image/png',
+                    'image/jpeg'
+                ];
+                
+                if (!allowedTypes.includes(file.type)) {
+                    alert('Tipo de archivo no permitido. Por favor, suba un archivo PDF, Word, PNG o JPG.');
+                    this.value = '';
+                }
+            }
         });
     });
 });
@@ -379,6 +450,62 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .document-section:hover {
     background-color: #e9ecef;
+}
+
+.document-section small a {
+    color: #198754;  /* Color verde de Bootstrap */
+}
+
+.document-section small a:hover {
+    text-decoration: underline !important;
+}
+
+.delete-doc {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.delete-doc:hover {
+    opacity: 1;
+}
+
+.modal-content {
+    border-radius: 8px;
+    border: none;
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-header.bg-dark {
+    background-color: #212529 !important;
+}
+
+.modal-header.bg-success {
+    background-color: #198754 !important;
+}
+
+.modal-footer {
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+    padding: 1rem;
+}
+
+.btn-close-white {
+    filter: brightness(0) invert(1);
+}
+
+.form-text {
+    color: #6c757d;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+}
+
+.form-text i {
+    margin-right: 0.25rem;
 }
 </style>
 {% endblock %} 

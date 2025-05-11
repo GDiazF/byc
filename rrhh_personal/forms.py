@@ -160,32 +160,40 @@ class InfoLaboralPersonalForm(forms.ModelForm):
 
 #formularios de licencias --------------------------------------------------------------
 class LicenciasPersonal(forms.ModelForm):
-    # Clases: Mostrar todas, requerido
-    clases = forms.ModelMultipleChoiceField(
-        queryset=ClaseLicencia.objects.all(),
-        widget=forms.CheckboxSelectMultiple(),
+    tipos = forms.ModelMultipleChoiceField(
+        queryset=TipoLicencia.objects.all().order_by('tipoLicencia'),
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'list-unstyled'
+        }),
         required=True,
-        label='Clases Autorizadas'
+        label='Tipos de Licencia'
     )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Agrupar las clases por tipo de licencia
-        self.fields['clases'].queryset = ClaseLicencia.objects.select_related('tipoLicencia_id').order_by('tipoLicencia_id', 'claseLicencia')
 
     class Meta:
         model = LicenciaPorPersonal
-        fields = ['clases', 'fechaEmision', 'fechaVencimiento', 'rutaDoc','observacion']
+        fields = ['tipos', 'fechaEmision', 'fechaVencimiento', 'rutaDoc', 'observacion']
         widgets = {
-            'fechaEmision': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'fechaVencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'rutaDoc': forms.FileInput(attrs={'class': 'form-control'}),
-            'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
+            'fechaEmision': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'fechaVencimiento': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'rutaDoc': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
+            'observacion': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3
+            })
         }
         labels = {
-            'fechaEmision': 'Fecha de Emisión', 
-            'fechaVencimiento': 'Fecha de Vencimiento', 
-            'rutaDoc': 'Documento', 
+            'fechaEmision': 'Fecha de Emisión',
+            'fechaVencimiento': 'Fecha de Vencimiento',
+            'rutaDoc': 'Documento',
             'observacion': 'Observación'
         }
 
@@ -195,12 +203,14 @@ class CertificacionPersonal(forms.ModelForm):
     proveedor_id = forms.ModelChoiceField(
         queryset=Proveedor.objects.all(), 
         empty_label='-----------',
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Proveedor'
     )
     tipoCertificacion_id = forms.ModelChoiceField(
         queryset=TipoCertificacion.objects.all(), 
         empty_label='-----------',
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Tipo de certificación'
     )
 
     class Meta:
@@ -212,7 +222,12 @@ class CertificacionPersonal(forms.ModelForm):
             'rutaDoc': forms.FileInput(attrs={'accept': 'application/pdf, image/jpg, image/png', 'class': 'form-control'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
         }
-        labels = {'proveedor_id': 'Proveedor', 'tipoCertificacion_id': 'Tipo de certificación', 'fechaEmision': 'Fecha de emisión', 'fechaVencimiento': 'Fecha de vencimiento', 'rutaDoc': 'Documento', 'observacion': 'Observación'}
+        labels = {
+            'fechaEmision': 'Fecha de emisión',
+            'fechaVencimiento': 'Fecha de vencimiento',
+            'rutaDoc': 'Documento',
+            'observacion': 'Observación'
+        }
 
 
 #formulario para examenes
@@ -220,17 +235,20 @@ class ExamenPersonal(forms.ModelForm):
     tipoEx_id = forms.ModelChoiceField(
         queryset=TipoExamen.objects.all(), 
         empty_label='-----------',
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Tipo de examen'
     )
     resultadoEx_id = forms.ModelChoiceField(
         queryset=ResultadoExamen.objects.all(), 
         empty_label='-----------',
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Resultado'
     )
     proveedor_id = forms.ModelChoiceField(
         queryset=Proveedor.objects.all(), 
         empty_label='-----------',
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Proveedor'
     )
     
     class Meta:
@@ -242,6 +260,11 @@ class ExamenPersonal(forms.ModelForm):
             'rutaDoc' : forms.FileInput(attrs={'accept': 'application/pdf, image/jpg, image/png', 'class': 'form-control'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
         }
-        labels = {'tipoEx_id': 'Tipo de examen', 'resultadoEx_id': 'Resultado', 'proveedor_id': 'Proveedor', 'fechaEmision': 'Fecha de emisión', 'fechaVencimiento': 'Fecha de vencimiento', 'rutaDoc': 'Documento', 'observacion': 'Observación'}
+        labels = {
+            'fechaEmision': 'Fecha de emisión',
+            'fechaVencimiento': 'Fecha de vencimiento',
+            'rutaDoc': 'Documento',
+            'observacion': 'Observación'
+        }
 
         
