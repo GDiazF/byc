@@ -1,0 +1,199 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Licencias Médicas - {{ personal.nombre }} {{ personal.apepat }}{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.0/css/dataTables.dataTables.css">
+<link rel="stylesheet" href="{% static 'css/datatables.css' %}">
+
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="confirmModalLabel">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                ¿Está seguro de que desea eliminar esta licencia médica?
+                <br><br>
+                <small class="text-muted">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    Esta acción eliminará permanentemente la licencia médica y su documento asociado.
+                </small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmButton">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Éxito -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="successModalLabel">Operación Exitosa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="successModalBody">
+                La licencia médica ha sido eliminada exitosamente.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Licencias Médicas - {{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }}</h5>
+    </div>
+    <div class="card-body p-4">
+        <!-- Mensajes de Django -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>RUT:</strong> {{ personal.rut }}-{{ personal.dvrut }}
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="{% url 'add_licencia_medica' personal.personal_id %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-plus-circle"></i> Nueva Licencia
+                </a>
+            </div>
+        </div>
+        
+        {% if licencias_medicas %}
+        <table id="licenciasMedicasTable" class="display table-striped compact hover">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>N° Folio</th>
+                    <th>Fecha Emisión</th>
+                    <th>Días</th>
+                    <th>Fecha Fin</th>
+                    <th>Documento</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for licencia in licencias_medicas %}
+                <tr>
+                    <td>{{ licencia.tipoLicenciaMedica_id.tipoLicenciaMedica }}</td>
+                    <td>{{ licencia.numero_folio|default:"-" }}</td>
+                    <td>{{ licencia.fechaEmision|date:"d/m/Y" }}</td>
+                    <td>{{ licencia.dias_licencia }}</td>
+                    <td>{{ licencia.fecha_fin_licencia|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if licencia.rutaDoc %}
+                        <a href="{{ licencia.rutaDoc.url }}" target="_blank" class="btn btn-info btn-sm">
+                            <i class="bi bi-file-earmark-text"></i> Ver
+                        </a>
+                        {% else %}
+                        <span class="text-muted">Sin documento</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'edit_licencia_medica' licencia.licenciaMedicaPorPersonal_id %}" class="btn btn-warning btn-sm">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                        <button class="btn btn-danger btn-sm ms-1 delete-licencia" data-id="{{ licencia.licenciaMedicaPorPersonal_id }}">
+                            <i class="bi bi-trash"></i> Eliminar
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-info-circle"></i> No se encontraron licencias médicas para este personal.
+            <br><br>
+            <a href="{% url 'add_licencia_medica' personal.personal_id %}" class="btn btn-success">
+                <i class="bi bi-plus-circle"></i> Agregar Primera Licencia
+            </a>
+        </div>
+        {% endif %}
+        
+        <div class="mt-3">
+            <a href="{% url 'buscar_personal_licencia_medica' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Volver a Búsqueda
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
+<script src="{% static 'js/licencias_medicas.js' %}"></script>
+<script>
+    $(document).ready(function() {
+        $('#licenciasMedicasTable').DataTable({
+            paging: false,
+            searching: false,
+            info: false,
+            order: [[2, 'desc']] // Ordenar por fecha de emisión descendente
+        });
+
+        // Variables para el manejo de eliminación
+        let licenciaToDelete = null;
+
+        // Manejar clic en botón de eliminar
+        $('.delete-licencia').on('click', function(e) {
+            e.preventDefault();
+            licenciaToDelete = $(this).data('id');
+            
+            // Mostrar modal de confirmación
+            $('#confirmModal').modal('show');
+        });
+
+        // Manejar confirmación de eliminación
+        $('#confirmButton').on('click', function() {
+            if (licenciaToDelete) {
+                // Llamada AJAX para eliminar la licencia
+                $.ajax({
+                    url: `/users/licencia_medica/${licenciaToDelete}/delete/`,
+                    type: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': $('input[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // Cerrar el modal de confirmación
+                            $('#confirmModal').modal('hide');
+                            
+                            // Mostrar mensaje de éxito
+                            $('#successModalBody').text(response.message);
+                            $('#successModal').modal('show');
+                            
+                            // Recargar la página después de un breve delay
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            $('#confirmModal').modal('hide');
+                            alert('Error al eliminar la licencia médica: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        $('#confirmModal').modal('hide');
+                        alert('Error al eliminar la licencia médica');
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %} 

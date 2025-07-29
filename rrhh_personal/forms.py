@@ -268,3 +268,39 @@ class ExamenPersonal(forms.ModelForm):
         }
 
         
+# Formulario para ingresar licencias médicas
+class LicenciaMedicaPorPersonalForm(forms.ModelForm):
+    tipoLicenciaMedica_id = forms.ModelChoiceField(
+        queryset=TipoLicenciaMedica.objects.all().order_by('tipoLicenciaMedica'),
+        empty_label='Seleccione un tipo',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Tipo de Licencia Médica',
+        required=True
+    )
+    numero_folio = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='N° Folio'
+    )
+    fecha_fin_licencia = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'readonly': 'readonly'})
+    )
+
+    class Meta:
+        model = LicenciaMedicaPorPersonal
+        exclude = []
+        widgets = {
+            'fechaEmision': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'dias_licencia': forms.NumberInput(attrs={'class': 'form-control'}),
+            'rutaDoc': forms.FileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'}),
+            'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+        labels = {
+            'fechaEmision': 'Fecha de Emisión',
+            'dias_licencia': 'Días de Licencia',
+            'rutaDoc': 'Documento',
+            'observacion': 'Observación'
+        }
+
+        

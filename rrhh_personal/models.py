@@ -7,7 +7,7 @@ from gen_settings.models import Region, Comuna, Empresa
 #MODELO PARA RUTAS DE LOS DOCUMENTOS---------------------------------------------------------
 def obtener_ruta_documento_personal(instance, filename):
     """
-    DEPRECATED: Esta función se mantiene solo para compatibilidad con migraciones antiguas.
+    Esta función se mantiene solo para compatibilidad con migraciones antiguas.
     Use obtener_ruta_documento en su lugar.
     """
     return obtener_ruta_documento(instance, filename)
@@ -40,6 +40,12 @@ def obtener_ruta_documento(instance, filename):
         carpeta = 'Licencias'
         nombre_archivo = f"licencia_{timestamp}{extension}"
     
+    elif isinstance(instance, LicenciaMedicaPorPersonal):
+        rut = instance.personal_id.rut
+        carpeta = 'Licencias_Medicas'
+        # Usar ID de la licencia para evitar conflictos entre registros
+        nombre_archivo = f"licenciaMedica_{instance.licenciaMedicaPorPersonal_id or 'new'}{extension}"
+    
     elif isinstance(instance, Certificacion):
         rut = instance.personal_id.rut
         carpeta = 'Certificaciones'
@@ -63,7 +69,13 @@ class OverwriteStorage(FileSystemStorage):
     def get_available_name(self, name, max_length=None):
         # Si el archivo existe, lo elimina
         if self.exists(name):
-            os.remove(os.path.join(self.location, name))
+            try:
+                file_path = os.path.join(self.location, name)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    print(f"Archivo sobrescrito: {file_path}")
+            except Exception as e:
+                print(f"Error al sobrescribir archivo {name}: {e}")
         return name
 
 class Sexo(models.Model):
@@ -423,5 +435,59 @@ class LicenciaPorPersonal(models.Model):
                 
         super().delete(*args, **kwargs)
 
+
+
+
+#---------------------------------------------------------------------------------------------
+#LICENCIAS MEDICAS-------------------------------------------------------------------------------------
+
+class TipoLicenciaMedica(models.Model):
+    tipoLicenciaMedica_id = models.AutoField(primary_key=True, null=False, blank=False)
+    tipoLicenciaMedica = models.CharField(max_length=100, null=False, blank=False)
+
+    def __str__(self):
+        return self.tipoLicenciaMedica
+
+class LicenciaMedicaPorPersonal(models.Model):
+    licenciaMedicaPorPersonal_id = models.AutoField(primary_key=True, null=False, blank=False)
+    personal_id = models.ForeignKey(Personal, on_delete=models.CASCADE, db_column='personal_id', null=False, blank=False)
+    tipoLicenciaMedica_id = models.ForeignKey(TipoLicenciaMedica, on_delete=models.CASCADE, db_column='tipoLicenciaMedica_id', null=False, blank=False)
+    numero_folio = models.CharField(max_length=50, null=True, blank=True, verbose_name='N° Folio', default='0')
+    fechaEmision = models.DateField(null=False, blank=False)
+    dias_licencia = models.IntegerField(null=False, blank=False)
+    fecha_fin_licencia = models.DateField(null=False, blank=False, editable=False, default=datetime.now)
+    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=OverwriteStorage, null=False, blank=False)
+    observacion = models.TextField(max_length=250, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        from datetime import timedelta
+        if self.fechaEmision and self.dias_licencia:
+            self.fecha_fin_licencia = self.fechaEmision + timedelta(days=self.dias_licencia - 1)
+        super().save(*args, **kwargs)
+
+
+
+    def __str__(self):
+        return f"Licencia Médica de {self.personal_id} - {self.tipoLicenciaMedica_id}"
+
+    def delete(self, *args, **kwargs):
+        # Guardar la ruta del archivo antes de eliminar el registro
+        if self.rutaDoc:
+            try:
+                file_path = self.rutaDoc.path
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    print(f"Archivo eliminado: {file_path}")
+                
+                # Intentar eliminar la carpeta Licencias_Medicas si está vacía
+                license_folder = os.path.dirname(file_path)
+                if os.path.exists(license_folder) and not os.listdir(license_folder):
+                    os.rmdir(license_folder)
+                    print(f"Carpeta vacía eliminada: {license_folder}")
+                    
+            except Exception as e:
+                print(f"Error al eliminar archivo de licencia médica: {e}")
+                
+        super().delete(*args, **kwargs)
 
 

@@ -2,9 +2,9 @@ from django.shortcuts import render
 
 # Create your views here.
 from django.shortcuts import render, get_object_or_404, redirect
-from .forms import PersonalCreationForm, InfoLaboralPersonalForm, LicenciasPersonal, CertificacionPersonal, ExamenPersonal
+from .forms import PersonalCreationForm, InfoLaboralPersonalForm, LicenciasPersonal, CertificacionPersonal, ExamenPersonal, LicenciaMedicaPorPersonalForm
 from django.shortcuts import redirect
-from .models import Personal, InfoLaboral, Ausentismo, TipoAusentismo, LicenciaPorPersonal, Certificacion, Examen, Comuna, Cargo
+from .models import Personal, InfoLaboral, Ausentismo, TipoAusentismo, LicenciaPorPersonal, Certificacion, Examen, Comuna, Cargo, LicenciaMedicaPorPersonal
 from django.db import transaction
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
@@ -20,6 +20,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 import os
 from django.db import models
+from django.db.models import Q
 
 # Create your views here.
 
@@ -559,5 +560,168 @@ def delete_certification(request, pk, certification_id):
             'status': 'error',
             'message': str(e)
         })
+
+# Vista para crear una licencia médica por personal
+class LicenciaMedicaPorPersonalCreateView(LoginRequiredMixin, CreateView):
+    model = LicenciaMedicaPorPersonal
+    form_class = LicenciaMedicaPorPersonalForm
+    template_name = 'personal/create_licencia_medica.html'
+
+    def get_success_url(self):
+        return reverse_lazy('listar_licencias_medicas_personal', kwargs={'personal_id': self.object.personal_id.personal_id})
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Quitar el campo personal_id del formulario
+        if 'personal_id' in form.fields:
+            del form.fields['personal_id']
+        return form
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Pasar el objeto personal al contexto
+        personal_id = self.kwargs.get('personal_id')
+        context['personal'] = Personal.objects.get(pk=personal_id)
+        return context
+
+    def form_valid(self, form):
+        personal_id = self.kwargs.get('personal_id')
+        form.instance.personal_id = Personal.objects.get(pk=personal_id)
+        messages.success(self.request, 'Licencia médica registrada correctamente.')
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error en el formulario. Por favor revise los datos ingresados.')
+        return super().form_invalid(form)
+
+# Vista para listar y editar licencias médicas de un personal
+@login_required
+def listar_licencias_medicas_personal(request, personal_id):
+    personal = get_object_or_404(Personal, personal_id=personal_id)
+    licencias_medicas = LicenciaMedicaPorPersonal.objects.filter(personal_id=personal).order_by('-fechaEmision')
+    
+    context = {
+        'personal': personal,
+        'licencias_medicas': licencias_medicas,
+    }
+    return render(request, 'personal/listar_licencias_medicas.html', context)
+
+# Vista para editar una licencia médica específica
+class LicenciaMedicaPorPersonalUpdateView(LoginRequiredMixin, UpdateView):
+    model = LicenciaMedicaPorPersonal
+    form_class = LicenciaMedicaPorPersonalForm
+    template_name = 'personal/edit_licencia_medica.html'
+
+    def get_success_url(self):
+        return reverse_lazy('listar_licencias_medicas_personal', kwargs={'personal_id': self.object.personal_id.personal_id})
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Quitar el campo personal_id del formulario
+        if 'personal_id' in form.fields:
+            del form.fields['personal_id']
+        return form
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Pasar el objeto personal al contexto
+        context['personal'] = self.object.personal_id
+        return context
+
+    def form_valid(self, form):
+        # Solo procesar el archivo si se subió uno nuevo
+        if 'rutaDoc' in form.files:
+            response = super().form_valid(form)
+            messages.success(self.request, 'Licencia médica actualizada correctamente.')
+        else:
+            # Si no se subió archivo, solo guardar los otros campos
+            self.object.save()
+            messages.success(self.request, 'Licencia médica actualizada correctamente.')
+            response = redirect(self.get_success_url())
+        
+        return response
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error en el formulario. Por favor revise los datos ingresados.')
+        return super().form_invalid(form)
+
+@login_required
+def delete_licencia_medica(request, licencia_id):
+    if request.method == 'DELETE':
+        try:
+            licencia = get_object_or_404(LicenciaMedicaPorPersonal, licenciaMedicaPorPersonal_id=licencia_id)
+            licencia.delete()
+            return JsonResponse({'status': 'success', 'message': 'Licencia médica eliminada exitosamente'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+@login_required
+def delete_archivo_licencia_medica(request, licencia_id):
+    print(f"DEBUG: delete_archivo_licencia_medica llamado con licencia_id: {licencia_id}")
+    print(f"DEBUG: Método de la petición: {request.method}")
+    
+    if request.method == 'DELETE':
+        try:
+            licencia = get_object_or_404(LicenciaMedicaPorPersonal, licenciaMedicaPorPersonal_id=licencia_id)
+            print(f"DEBUG: Licencia encontrada: {licencia}")
+            
+            if licencia.rutaDoc:
+                print(f"DEBUG: Archivo encontrado: {licencia.rutaDoc.path}")
+                # Eliminar el archivo físico
+                try:
+                    if os.path.isfile(licencia.rutaDoc.path):
+                        os.remove(licencia.rutaDoc.path)
+                        print(f"DEBUG: Archivo eliminado físicamente: {licencia.rutaDoc.path}")
+                    else:
+                        print(f"DEBUG: Archivo no existe físicamente: {licencia.rutaDoc.path}")
+                except Exception as e:
+                    print(f"DEBUG: Error al eliminar archivo físico: {e}")
+                
+                # Limpiar el campo en la base de datos
+                licencia.rutaDoc = None
+                licencia.save()
+                print(f"DEBUG: Campo rutaDoc limpiado en la base de datos")
+                
+                response_data = {
+                    'status': 'success', 
+                    'message': 'Archivo eliminado exitosamente. Ahora puede subir un nuevo documento.'
+                }
+                print(f"DEBUG: Enviando respuesta exitosa: {response_data}")
+                return JsonResponse(response_data)
+            else:
+                print(f"DEBUG: No hay archivo para eliminar")
+                return JsonResponse({
+                    'status': 'error', 
+                    'message': 'No hay archivo para eliminar'
+                }, status=400)
+                
+        except Exception as e:
+            print(f"DEBUG: Excepción capturada: {e}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    else:
+        print(f"DEBUG: Método no permitido: {request.method}")
+        return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+def buscar_personal_licencia_medica(request):
+    query = request.GET.get('q', '')
+    personal_list = []
+    if query:
+        personal_list = Personal.objects.filter(
+            Q(rut__icontains=query) |
+            Q(nombre__icontains=query) |
+            Q(apepat__icontains=query) |
+            Q(apemat__icontains=query)
+        )
+    
+    # Para cada personal, verificar si tiene licencias médicas
+    for personal in personal_list:
+        personal.tiene_licencias_medicas = LicenciaMedicaPorPersonal.objects.filter(personal_id=personal).exists()
+    
+    context = {
+        'personal_list': personal_list,
+        'query': query,
+    }
+    return render(request, 'personal/buscar_personal_licencia_medica.html', context)
 
 

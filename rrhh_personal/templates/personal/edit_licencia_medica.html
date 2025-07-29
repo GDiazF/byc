@@ -1,0 +1,281 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Editar Licencia Médica{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+
+<!-- Modal de Confirmación de Actualización -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="confirmModalLabel">Confirmar Actualización</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                ¿Está seguro de que desea actualizar esta licencia médica?
+                <br><br>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> 
+                    Se actualizarán los datos de la licencia médica.
+                </small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmButton">Actualizar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación de Eliminación de Archivo -->
+<div class="modal fade" id="deleteFileModal" tabindex="-1" aria-labelledby="deleteFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteFileModalLabel">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                ¿Está seguro de que desea eliminar el documento actual?
+                <br><br>
+                <small class="text-muted">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    Esta acción no se puede deshacer.
+                </small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteFile">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Éxito -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="successModalLabel">Operación Exitosa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="successModalBody">
+                La licencia médica ha sido actualizada exitosamente.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Editar Licencia Médica</h5>
+    </div>
+    <div class="card-body p-4">
+        <!-- Mensajes de Django -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="licenciaForm">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Personal</label>
+                    <input type="text" class="form-control" value="{{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }} ({{ personal.rut }}-{{ personal.dvrut }})" readonly>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_tipoLicenciaMedica_id" class="form-label">Tipo de Licencia Médica</label>
+                    {{ form.tipoLicenciaMedica_id }}
+                    <div class="invalid-feedback">Por favor seleccione al menos un tipo.</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="id_numero_folio" class="form-label">N° Folio</label>
+                    {{ form.numero_folio }}
+                    <div class="invalid-feedback">Por favor ingrese el número de folio.</div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="id_fechaEmision" class="form-label">Fecha de Emisión</label>
+                    {{ form.fechaEmision }}
+                    <div class="invalid-feedback">Por favor ingrese la fecha de emisión.</div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="id_dias_licencia" class="form-label">Días de Licencia</label>
+                    {{ form.dias_licencia }}
+                    <div class="invalid-feedback">Por favor ingrese la cantidad de días.</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Fecha Fin Licencia</label>
+                    <input type="text" id="fecha_fin_licencia" class="form-control" readonly value="{{ object.fecha_fin_licencia|date:'d-m-Y' }}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_rutaDoc" class="form-label">Documento</label>
+                    {% if object.rutaDoc %}
+                    <div class="mb-3 p-3 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Documento actual:</strong>
+                            </div>
+                            <div class="btn-group" role="group">
+                                <a href="{{ object.rutaDoc.url }}" target="_blank" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                    <i class="bi bi-eye"></i> Ver
+                                </a>
+                                <button type="button" class="btn btn-danger btn-sm" id="deleteFileBtn" data-licencia-id="{{ object.licenciaMedicaPorPersonal_id }}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                    <i class="bi bi-trash"></i> Eliminar
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="bi bi-info-circle"></i> 
+                            Debe eliminar el documento actual antes de poder subir uno nuevo.
+                        </small>
+                    </div>
+                    <div id="fileUploadSection" style="display: none;">
+                        {{ form.rutaDoc }}
+                        <div class="form-text">
+                            Formatos aceptados: PDF, JPG, JPEG, PNG.
+                        </div>
+                        <div class="invalid-feedback">Por favor adjunte el documento.</div>
+                    </div>
+                    {% else %}
+                    <div id="fileUploadSection">
+                        {{ form.rutaDoc }}
+                        <div class="form-text">
+                            Formatos aceptados: PDF, JPG, JPEG, PNG.
+                        </div>
+                        <div class="invalid-feedback">Por favor adjunte el documento.</div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="id_observacion" class="form-label">Observación</label>
+                    {{ form.observacion }}
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <a href="{% url 'listar_licencias_medicas_personal' personal.personal_id %}" class="btn btn-secondary me-2">
+                        <i class="bi bi-arrow-left me-1"></i>Cancelar
+                    </a>
+                    <button type="button" class="btn btn-primary" id="submitButton">
+                        <i class="bi bi-save me-1"></i>Actualizar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="{% static 'js/licencias_medicas.js' %}"></script>
+<script>
+    $(document).ready(function() {
+        // Variable para almacenar el ID de la licencia
+        let currentLicenciaId = null;
+        
+        // Manejar clic en botón de eliminar archivo
+        $('#deleteFileBtn').on('click', function() {
+            currentLicenciaId = $(this).data('licencia-id');
+            // Mostrar modal de confirmación
+            $('#deleteFileModal').modal('show');
+        });
+
+        // Manejar confirmación de eliminación de archivo
+        $('#confirmDeleteFile').on('click', function() {
+            if (currentLicenciaId) {
+                const url = `/users/licencia_medica/${currentLicenciaId}/delete_archivo/`;
+                console.log('DEBUG: Enviando petición DELETE a:', url);
+                console.log('DEBUG: Licencia ID:', currentLicenciaId);
+                
+                $.ajax({
+                    url: url,
+                    type: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(response) {
+                        console.log('DEBUG: Respuesta exitosa:', response);
+                        if (response.status === 'success') {
+                            // Cerrar el modal
+                            $('#deleteFileModal').modal('hide');
+                            // Ocultar la sección del documento actual
+                            $('.mb-3.p-3.border.rounded.bg-light').hide();
+                            // Mostrar la sección de subida de archivo
+                            $('#fileUploadSection').show();
+                            // Mostrar mensaje de éxito
+                            $('#successModalBody').text('Documento eliminado exitosamente. Ahora puede subir un nuevo documento.');
+                            $('#successModal').modal('show');
+                        } else {
+                            console.error('DEBUG: Respuesta con error:', response);
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('DEBUG: Error en AJAX:', {xhr, status, error});
+                        console.error('DEBUG: Status code:', xhr.status);
+                        console.error('DEBUG: Response text:', xhr.responseText);
+                        
+                        let errorMessage = 'Error desconocido';
+                        try {
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMessage = xhr.responseJSON.message;
+                            } else if (xhr.responseText) {
+                                errorMessage = xhr.responseText;
+                            } else if (xhr.status === 404) {
+                                errorMessage = 'No se encontró la licencia médica';
+                            } else if (xhr.status === 403) {
+                                errorMessage = 'No tiene permisos para realizar esta acción';
+                            } else if (xhr.status === 500) {
+                                errorMessage = 'Error interno del servidor';
+                            }
+                        } catch (e) {
+                            console.error('Error parsing response:', e);
+                        }
+                        alert('Error al eliminar el documento: ' + errorMessage);
+                    }
+                });
+            } else {
+                console.error('DEBUG: currentLicenciaId es null o undefined');
+                alert('Error: No se pudo identificar la licencia médica');
+            }
+        });
+
+        // Manejar clic en botón de actualizar
+        $('#submitButton').on('click', function(e) {
+            e.preventDefault();
+            
+            // Validar formulario
+            const form = document.getElementById('licenciaForm');
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+            
+            // Mostrar modal de confirmación
+            $('#confirmModal').modal('show');
+        });
+
+        // Manejar confirmación de actualización
+        $('#confirmButton').on('click', function() {
+            // Enviar el formulario
+            $('#licenciaForm').submit();
+        });
+    });
+</script>
+{% endblock %} 

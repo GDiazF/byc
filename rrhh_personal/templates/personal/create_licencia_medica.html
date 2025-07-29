@@ -1,0 +1,149 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Agregar Licencia Médica{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="confirmModalLabel">Confirmar Guardado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                ¿Está seguro de que desea guardar esta licencia médica?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmButton">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Éxito -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="successModalLabel">Operación Exitosa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="successModalBody">
+                La licencia médica ha sido guardada exitosamente.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Agregar Licencia Médica</h5>
+    </div>
+    <div class="card-body p-4">
+        <!-- Mensajes de Django -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="licenciaForm">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Personal seleccionado</label>
+                    <input type="text" class="form-control" value="{{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }} ({{ personal.rut }}-{{ personal.dvrut }})" readonly>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_tipoLicenciaMedica_id" class="form-label">Tipo de Licencia Médica</label>
+                    {{ form.tipoLicenciaMedica_id }}
+                    <div class="invalid-feedback">Por favor seleccione al menos un tipo.</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="id_numero_folio" class="form-label">N° Folio</label>
+                    {{ form.numero_folio }}
+                    <div class="invalid-feedback">Por favor ingrese el número de folio.</div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="id_fechaEmision" class="form-label">Fecha de Emisión</label>
+                    {{ form.fechaEmision }}
+                    <div class="invalid-feedback">Por favor ingrese la fecha de emisión.</div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="id_dias_licencia" class="form-label">Días de Licencia</label>
+                    {{ form.dias_licencia }}
+                    <div class="invalid-feedback">Por favor ingrese la cantidad de días.</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Fecha Fin Licencia</label>
+                    <input type="text" id="fecha_fin_licencia" class="form-control" readonly>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_rutaDoc" class="form-label">Documento</label>
+                    {{ form.rutaDoc }}
+                    <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                    <div class="invalid-feedback">Por favor adjunte el documento.</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="id_observacion" class="form-label">Observación</label>
+                    {{ form.observacion }}
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <a href="{% url 'listar_licencias_medicas_personal' personal.personal_id %}" class="btn btn-secondary me-2">
+                        <i class="bi bi-arrow-left me-1"></i>Cancelar
+                    </a>
+                    <button type="button" class="btn btn-primary" id="submitButton">
+                        <i class="bi bi-save me-1"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="{% static 'js/licencias_medicas.js' %}"></script>
+<script>
+    $(document).ready(function() {
+        // Manejar clic en botón de guardar
+        $('#submitButton').on('click', function(e) {
+            e.preventDefault();
+            
+            // Validar formulario
+            const form = document.getElementById('licenciaForm');
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+            
+            // Mostrar modal de confirmación
+            $('#confirmModal').modal('show');
+        });
+
+        // Manejar confirmación de guardado
+        $('#confirmButton').on('click', function() {
+            // Enviar el formulario
+            $('#licenciaForm').submit();
+        });
+    });
+</script>
+{% endblock %} 

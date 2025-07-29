@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Personal, Sexo, EstadoCivil, InfoLaboral, Cargo, DeptoEmpresa, Ausentismo, TipoAusentismo, Proveedor, TipoClasificacion, ClasificacionProveedor, TipoExamen, ResultadoExamen, Examen, TipoCertificacion, Certificacion, TipoLicencia, LicenciaPorPersonal
+from .models import Personal, Sexo, EstadoCivil, InfoLaboral, Cargo, DeptoEmpresa, Ausentismo, TipoAusentismo, Proveedor, TipoClasificacion, ClasificacionProveedor, TipoExamen, ResultadoExamen, Examen, TipoCertificacion, Certificacion, TipoLicencia, LicenciaPorPersonal, TipoLicenciaMedica, LicenciaMedicaPorPersonal
 
 
 # Register your models here.
@@ -23,6 +23,8 @@ admin.site.register(TipoCertificacion)
 admin.site.register(Certificacion)
 admin.site.register(TipoLicencia)
 admin.site.register(LicenciaPorPersonal)
+admin.site.register(TipoLicenciaMedica)
+admin.site.register(LicenciaMedicaPorPersonal)
 
 
 
