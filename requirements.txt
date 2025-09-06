@@ -1,0 +1,19 @@
+# Django Framework
+Django==5.2.*
+
+# Database
+psycopg2-binary==2.9.*
+
+# Image processing (for ImageField)
+Pillow==10.0.*
+
+# Additional utilities (commonly used with Django projects)
+python-decouple==3.8
+python-dotenv==1.0.*
+
+# For deployment and production
+gunicorn==21.2.*
+whitenoise==6.5.*
+
+# Development tools (optional)
+django-debug-toolbar==4.2.*
