@@ -81,10 +81,10 @@ WSGI_APPLICATION = 'bycCore.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "bycCoreDB",
+        "NAME": "prototipo_byc",
         "USER": "postgres",
-        "PASSWORD": "123456",
-        "HOST": "127.0.0.1",
+        "PASSWORD": "Administrador_prototipo",
+        "HOST": "db-prototipo-byc.c5wkeuesen30.us-east-1.rds.amazonaws.com",
         "PORT": "5432",
     }
 }
