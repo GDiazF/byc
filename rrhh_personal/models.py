@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 from django.core.files.storage import FileSystemStorage
 from gen_settings.models import Region, Comuna, Empresa
+from .storage import MediaS3Storage
 
 #MODELO PARA RUTAS DE LOS DOCUMENTOS---------------------------------------------------------
 def obtener_ruta_documento_personal(instance, filename):
@@ -65,17 +66,12 @@ def obtener_ruta_documento(instance, filename):
     return os.path.join('Documentacion_Personal', str(rut), carpeta, nombre_archivo)
 
 #RUTA PARA SOBREESCRIBIR ARCHIVO
-class OverwriteStorage(FileSystemStorage):
+class OverwriteStorage(MediaS3Storage):
+    """
+    Storage class that uses S3 and overwrites existing files
+    """
     def get_available_name(self, name, max_length=None):
-        # Si el archivo existe, lo elimina
-        if self.exists(name):
-            try:
-                file_path = os.path.join(self.location, name)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-                    print(f"Archivo sobrescrito: {file_path}")
-            except Exception as e:
-                print(f"Error al sobrescribir archivo {name}: {e}")
+        # S3 naturally overwrites files with the same key
         return name
 
 class Sexo(models.Model):
