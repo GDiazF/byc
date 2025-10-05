@@ -1,0 +1,97 @@
+body {
+    padding-top: 56px; /* Altura del navbar superior */
+    overflow-x: hidden; /* Evita scroll horizontal */
+    font-family: "Barlow Semi Condensed", sans-serif;
+}
+
+.sidebar {
+    width: 250px;
+    min-height: calc(100vh - 56px);
+    position: fixed;
+    top: 56px;
+    left: 0;
+    transition: all 0.3s;
+    z-index: 100;
+    background-color: #212529 !important;
+}
+
+.sidebar.collapsed {
+    transform: translateX(-250px);
+}
+
+.main-content {
+    margin-left: 250px;
+    transition: all 0.3s;
+    min-height: calc(100vh - 56px);
+    background-color: #ced3d8;
+}
+
+.main-content.expanded {
+    margin-left: 0;
+}
+
+.nav-link[data-bs-toggle="collapse"]:after {
+    content: '\F282';
+    font-family: 'bootstrap-icons';
+    float: right;
+    transition: all 0.3s;
+}
+
+.nav-link[data-bs-toggle="collapse"].collapsed:after {
+    transform: rotate(-90deg);
+}
+
+/* Color de texto para links */
+.sidebar .nav-link {
+    color: #adb5bd !important;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+}
+
+/* Añadir padding al primer elemento del menú */
+.sidebar .nav-item:first-child {
+    margin-top: 1rem;
+}
+
+/* Efecto hover para links */
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white !important;
+}
+
+/* Color de texto para submenús */
+.sidebar .collapse .nav-link {
+    color: #adb5bd !important;
+    padding-top: 0.15rem !important; /* Aún más reducido para submenús */
+    padding-bottom: 0.15rem !important; /* Aún más reducido para submenús */
+}
+
+.sidebar .collapse .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white !important;
+}
+
+/* Reduce espacio entre grupos de elementos del menú */
+.sidebar .nav-item {
+    margin-bottom: 0.15rem;
+}
+
+/* Reduce espacio para los submenús */
+.sidebar .collapse {
+    padding-top: 0.1rem;
+    padding-bottom: 0.1rem;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-250px);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+}

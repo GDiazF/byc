@@ -1,0 +1,61 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Buscar Personal para Licencia Médica{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.0/css/dataTables.dataTables.css">
+<link rel="stylesheet" href="{% static 'css/datatables.css' %}">
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Buscar Personal para Licencia Médica</h5>
+    </div>
+    <div class="card-body p-4">
+        <form method="get" class="mb-4">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" placeholder="Buscar por RUT, nombre o apellido" value="{{ query }}">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Buscar</button>
+            </div>
+        </form>
+        <table id="personalLicenciaTable" class="display table-striped compact hover">
+            <thead>
+                <tr>
+                    <th>RUT</th>
+                    <th>Nombre Completo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for persona in personal_list %}
+                <tr>
+                    <td>{{ persona.rut }}-{{ persona.dvrut }}</td>
+                    <td>{{ persona.nombre }} {{ persona.apepat }} {{ persona.apemat }}</td>
+                    <td>
+                        <a href="{% url 'listar_licencias_medicas_personal' persona.personal_id %}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-clipboard-pulse"></i> Licencias Médicas
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center">No se encontraron resultados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% if personal_list %}
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#personalLicenciaTable').DataTable({
+            paging: false,
+            searching: false,
+            info: false
+        });
+    });
+</script>
+{% endif %}
+{% endblock %} 
