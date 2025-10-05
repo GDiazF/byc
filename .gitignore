@@ -172,7 +172,7 @@ Thumbs.db
 Documentacion_Personal/
 # Archivos estáticos recolectados
 collectedstatic/
-# Logs del proyecto
+# Logs del proyece
 logs/
 *.log
 
