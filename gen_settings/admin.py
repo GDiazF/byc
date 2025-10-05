@@ -9,7 +9,7 @@ admin.site.register(Comuna)
 
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
-    # Definir los campos que se mostrarán en el formulario
+    # Definir los campos que se mostrarán en el formulario en el admin
     fields = ('region', 'comuna', 'rut', 'dv', 'razonSocial', 'nomFantasia', 'giro', 'direccion', 'telefono', 'email')
     list_display = ('razonSocial', 'rut', 'telefono', 'email')
     search_fields = ('razonSocial', 'rut', 'nomFantasia', 'direccion')
