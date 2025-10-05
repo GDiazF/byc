@@ -181,5 +181,5 @@ start_gunicorn.sh
 gunicorn.service.backup
 
 # Archivos temporales del script de configuración
-setup_s3.sh
-CONFIGURACION_S3.md
+# setup_s3.sh - Comentado para permitir subida inicial
+# CONFIGURACION_S3.md - Comentado para permitir subida inicial
