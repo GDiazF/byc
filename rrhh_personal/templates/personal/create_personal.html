@@ -1,0 +1,150 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Crear Personal{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Crear Personal</h5>
+    </div>
+    <div class="card-body p-4">
+        <form method="post" class="needs-validation" novalidate>
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-2 mb-3">
+                    <label for="id_rut" class="form-label">RUT</label>
+                    {{ form.rut }}
+                    <div class="invalid-feedback">
+                        Por favor ingrese un RUT válido.
+                    </div>
+                </div>
+                <div class="col-md-1 mb-3">
+                    <label for="id_dvrut" class="form-label">DV</label>
+                    {{ form.dvrut }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="id_nombre" class="form-label">Nombre</label>
+                    {{ form.nombre }}
+                    <div class="invalid-feedback">
+                        Por favor ingrese un nombre.
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="id_apepat" class="form-label">Apellido Paterno</label>
+                    {{ form.apepat }}
+                    <div class="invalid-feedback">
+                        Por favor ingrese el apellido paterno.
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="id_apemat" class="form-label">Apellido Materno</label>
+                    {{ form.apemat }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="id_sexo_id" class="form-label">Sexo</label>
+                    {{ form.sexo_id }}
+                    <div class="invalid-feedback">
+                        Por favor seleccione el sexo.
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="id_fechanac" class="form-label">Fecha Nacimiento</label>
+                    {{ form.fechanac }}
+                    <div class="invalid-feedback">
+                        Por favor ingrese la fecha de nacimiento.
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="id_estcivil_id" class="form-label">Estado Civil</label>
+                    {{ form.estcivil_id }}
+                    <div class="invalid-feedback">
+                        Por favor seleccione el estado civil.
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label for="id_correo" class="form-label">Correo</label>
+                    {{ form.correo }}
+                    <div class="invalid-feedback">
+                        Por favor ingrese un correo válido.
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label for="id_direccion" class="form-label">Dirección</label>
+                    {{ form.direccion }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_region" class="form-label">Región</label>
+                    {{ form.region_id }}
+                    <div class="invalid-feedback">
+                        Por favor seleccione la región.
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="id_comuna" class="form-label">Comuna</label>
+                    {{ form.comuna_id }}
+                    <div class="invalid-feedback">
+                        Por favor seleccione la comuna.
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <a href="{% url 'table_personal' %}" class="btn btn-secondary me-2">
+                        <i class="bi bi-arrow-left me-1"></i>Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-arrow-right me-1"></i>Siguiente
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="{% static 'js/utils/validarRut.js' %}"></script>
+<script src="{% static 'js/textoFormateador.js' %}"></script>
+<script src="{% static 'js/utils/location.js' %}"></script>
+<script>
+$(document).ready(function() {
+    // Inicializar el manejador de región/comuna
+    setupRegionComunaHandlers();
+
+    // Validación del formulario
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+});
+</script>
+{% endblock %} 

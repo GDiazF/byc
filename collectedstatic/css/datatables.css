@@ -1,0 +1,19 @@
+/* Estilos comunes para DataTables */
+#empresaTable, #personalTable, #comunaTable, #regionTable, #unidadMedidaTable,  
+#empresaTable td, #personalTable td, #comunaTable td, #regionTable td, #unidadMedidaTable td,
+.dataTables_info,
+.dataTables_length,
+.dataTables_filter,
+.dataTables_paginate {
+    font-size: 0.9rem !important;
+}
+
+#empresaTable th, #personalTable th, #comunaTable th, #regionTable th, #unidadMedidaTable th {
+    font-size: 1rem !important;
+}
+
+/* Ajustar tamaño de los inputs y selects */
+.dataTables_length select,
+.dataTables_filter input {
+    font-size: 0.9rem !important;
+} 

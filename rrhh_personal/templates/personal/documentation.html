@@ -1,0 +1,837 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Documentación de Personal{% endblock %}
+
+{% block extrajs %}
+<script>
+// Función para mostrar notificaciones
+function showNotification(title, message, type = 'success') {
+    const modal = document.getElementById('notificationModal');
+    const modalTitle = document.getElementById('notificationTitle');
+    const modalMessage = document.getElementById('notificationMessage');
+    const modalHeader = modal.querySelector('.modal-header');
+    
+    // Configurar el estilo según el tipo
+    modalHeader.className = 'modal-header';
+    if (type === 'success') {
+        modalHeader.classList.add('bg-success', 'text-white');
+    } else if (type === 'error') {
+        modalHeader.classList.add('bg-danger', 'text-white');
+    }
+    
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+    
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    // Si es éxito, recargar después de cerrar
+    if (type === 'success') {
+        modal.addEventListener('hidden.bs.modal', function handler() {
+            window.location.reload();
+            modal.removeEventListener('hidden.bs.modal', handler);
+        });
+    }
+}
+
+// Get CSRF token from cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Variables para almacenar IDs
+let licenseToDelete = null;
+let examToDelete = null;
+
+// Wait for both DOM and Bootstrap to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap tabs
+    var triggerTabList = [].slice.call(document.querySelectorAll('#docTabs button'));
+    triggerTabList.forEach(function(triggerEl) {
+        new bootstrap.Tab(triggerEl);
+    });
+
+    // Mantener la pestaña activa después de enviar el formulario
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+    if (activeTab) {
+        const tab = new bootstrap.Tab(document.querySelector(`#${activeTab}-tab`));
+        tab.show();
+    }
+
+    // Actualizar la URL cuando se cambia de pestaña
+    triggerTabList.forEach(triggerEl => {
+        triggerEl.addEventListener('shown.bs.tab', function(event) {
+            const tabId = event.target.id.replace('-tab', '');
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('tab', tabId);
+            window.history.pushState({}, '', newUrl);
+        });
+    });
+
+    // Initialize forms
+    const addLicenseModal = document.getElementById('addLicenseModal');
+    if (addLicenseModal) {
+        addLicenseModal.addEventListener('shown.bs.modal', function() {
+            initializeLicenseForm();
+        });
+    }
+
+    const addExamModal = document.getElementById('addExamModal');
+    if (addExamModal) {
+        addExamModal.addEventListener('shown.bs.modal', function() {
+            initializeExamForm();
+        });
+    }
+
+    const addCertificationModal = document.getElementById('addCertificationModal');
+    if (addCertificationModal) {
+        addCertificationModal.addEventListener('shown.bs.modal', function() {
+            initializeCertificationForm();
+        });
+    }
+
+    // Initialize delete buttons
+    document.querySelectorAll('.delete-license').forEach(button => {
+        button.addEventListener('click', function() {
+            const licenseId = this.dataset.id;
+            showDeleteConfirmation('license', licenseId);
+        });
+    });
+
+    document.querySelectorAll('.delete-exam').forEach(button => {
+        button.addEventListener('click', function() {
+            const examId = this.dataset.id;
+            showDeleteConfirmation('exam', examId);
+        });
+    });
+
+    document.querySelectorAll('.delete-certification').forEach(button => {
+        button.addEventListener('click', function() {
+            const certificationId = this.dataset.id;
+            showDeleteConfirmation('certification', certificationId);
+        });
+    });
+});
+
+// Initialize form handlers
+function initializeLicenseForm() {
+    const form = document.getElementById('licenseForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitForm(this, 'license');
+        });
+    }
+}
+
+function initializeExamForm() {
+    const form = document.getElementById('examForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitForm(this, 'exam');
+        });
+    }
+}
+
+function initializeCertificationForm() {
+    const form = document.getElementById('certificationForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitForm(this, 'certification');
+        });
+    }
+}
+
+// Generic form submission function
+async function submitForm(form, type) {
+    const formData = new FormData(form);
+    let url;
+    
+    switch(type) {
+        case 'license':
+            url = '{% url "add_license" personal.personal_id %}';
+            break;
+        case 'exam':
+            url = '{% url "add_exam" personal.personal_id %}';
+            break;
+        case 'certification':
+            url = '{% url "save_certification" personal.personal_id %}';
+            break;
+    }
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        // Cerrar el modal correspondiente
+        const modalId = `add${type.charAt(0).toUpperCase() + type.slice(1)}Modal`;
+        const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+        modal.hide();
+        
+        if (data.status === 'success') {
+            showNotification('Éxito', data.message, 'success');
+        } else {
+            if (data.errors) {
+                handleFormErrors(form, data.errors);
+            }
+            showNotification('Error', data.message || 'Error al guardar', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error', `Error al procesar la solicitud: ${error.message}`, 'error');
+    }
+}
+
+// Function to handle form errors
+function handleFormErrors(form, errors) {
+    // Clear previous error messages
+    form.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    
+    // Display new error messages
+    Object.entries(errors).forEach(([field, errors]) => {
+        const fieldElement = form.querySelector(`[name="${field}"]`);
+        if (fieldElement) {
+            fieldElement.classList.add('is-invalid');
+            const errorDiv = fieldElement.nextElementSibling;
+            if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
+                errorDiv.textContent = Array.isArray(errors) ? errors.join(', ') : errors;
+            }
+        }
+    });
+}
+
+// Function to show delete confirmation
+function showDeleteConfirmation(type, id) {
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+    const modalTitle = document.querySelector('#confirmDeleteModal .modal-title');
+    const modalBody = document.querySelector('#confirmDeleteModal .modal-body p');
+    
+    // Set appropriate text based on type
+    let documentType;
+    switch(type) {
+        case 'license':
+            documentType = 'licencia';
+            break;
+        case 'exam':
+            documentType = 'examen';
+            break;
+        case 'certification':
+            documentType = 'certificación';
+            break;
+    }
+    
+    modalTitle.textContent = `Confirmar Eliminación de ${documentType.charAt(0).toUpperCase() + documentType.slice(1)}`;
+    modalBody.textContent = `¿Está seguro que desea eliminar esta ${documentType}? Esta acción no se puede deshacer.`;
+    
+    document.getElementById('confirmDeleteBtn').onclick = async function() {
+        let url;
+        switch(type) {
+            case 'license':
+                url = `{% url "delete_license" 0 %}`.replace('0', id);
+                break;
+            case 'exam':
+                url = `{% url "delete_exam" 0 %}`.replace('0', id);
+                break;
+            case 'certification':
+                url = `{% url "delete_certification" personal.personal_id 0 %}`.replace('0', id);
+                break;
+        }
+        
+        try {
+            const response = await fetch(url, {
+                method: type === 'certification' ? 'POST' : 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            const data = await response.json();
+            confirmModal.hide();
+            
+            if (data.status === 'success') {
+                showNotification('Éxito', data.message, 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showNotification('Error', data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('Error', 'Error al procesar la solicitud', 'error');
+        }
+    };
+    
+    confirmModal.show();
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Documentación de {{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }}</h5>
+        <small>RUT: {{ personal.rut }}-{{ personal.dvrut }}</small>
+    </div>
+    <div class="card-body p-4">
+        <ul class="nav nav-tabs mb-4" id="docTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="licenses-tab" data-bs-toggle="tab" data-bs-target="#licenses" type="button" role="tab" aria-controls="licenses" aria-selected="true">
+                    <i class="bi bi-card-text me-2"></i>Licencias de Conducir
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="certifications-tab" data-bs-toggle="tab" data-bs-target="#certifications" type="button" role="tab" aria-controls="certifications" aria-selected="false">
+                    <i class="bi bi-patch-check me-2"></i>Certificaciones
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="exams-tab" data-bs-toggle="tab" data-bs-target="#exams" type="button" role="tab" aria-controls="exams" aria-selected="false">
+                    <i class="bi bi-clipboard2-pulse me-2"></i>Exámenes
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="docTabsContent">
+            <!-- Licencias Tab -->
+            <div class="tab-pane fade show active" id="licenses" role="tabpanel" aria-labelledby="licenses-tab">
+                <div class="mb-3">
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addLicenseModal">
+                        <i class="bi bi-plus-square me-1"></i>
+                        Agregar Licencia
+                    </button>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Clases</th>
+                                <th>Fecha Emisión</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for licencia in licencias %}
+                            <tr>
+                                <td>
+                                    {% for tipo in licencia.tipos.all %}
+                                        {{ tipo.tipoLicencia }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td>{{ licencia.fechaEmision }}</td>
+                                <td>{{ licencia.fechaVencimiento }}</td>
+                                <td>
+                                    {% if licencia.rutaDoc %}
+                                    <a href="{{ licencia.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-file-earmark-text"></i> Ver documento
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">Sin documento</span>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-danger delete-license" data-id="{{ licencia.licenciaPorPersonal_id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No hay licencias registradas</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Certificaciones Tab -->
+            <div class="tab-pane fade" id="certifications" role="tabpanel" aria-labelledby="certifications-tab">
+                <div class="mb-3">
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addCertificationModal">
+                        <i class="bi bi-plus-square me-1"></i>
+                        Agregar Certificación
+                    </button>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Proveedor</th>
+                                <th>Fecha Emisión</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for certificacion in certificaciones %}
+                            <tr>
+                                <td>{{ certificacion.tipoCertificacion_id }}</td>
+                                <td>{{ certificacion.proveedor_id }}</td>
+                                <td>{{ certificacion.fechaEmision }}</td>
+                                <td>{{ certificacion.fechaVencimiento }}</td>
+                                <td>
+                                    {% if certificacion.rutaDoc %}
+                                    <a href="{{ certificacion.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-file-earmark-text"></i> Ver documento
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">Sin documento</span>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-danger delete-certification" data-id="{{ certificacion.certif_id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No hay certificaciones registradas</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Exámenes Tab -->
+            <div class="tab-pane fade" id="exams" role="tabpanel" aria-labelledby="exams-tab">
+                <div class="mb-3">
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addExamModal">
+                        <i class="bi bi-plus-square me-1"></i>
+                        Agregar Examen
+                    </button>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Resultado</th>
+                                <th>Proveedor</th>
+                                <th>Fecha Emisión</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Documento</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for examen in examenes %}
+                            <tr>
+                                <td>{{ examen.tipoEx_id }}</td>
+                                <td>{{ examen.resultadoEx_id }}</td>
+                                <td>{{ examen.proveedor_id }}</td>
+                                <td>{{ examen.fechaEmision }}</td>
+                                <td>{{ examen.fechaVencimiento }}</td>
+                                <td>
+                                    {% if examen.rutaDoc %}
+                                    <a href="{{ examen.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-file-earmark-text"></i> Ver documento
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">Sin documento</span>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-danger delete-exam" data-id="{{ examen.examen_id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center">No hay exámenes registrados</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer bg-white border-0 pt-0">
+        <div class="d-flex justify-content-start mt-3">
+            <a href="{% url 'table_personal' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar/Editar Licencia -->
+<div class="modal fade" id="addLicenseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Agregar Licencia</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="licenseForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <!-- Tipos de Licencia -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ license_form.tipos.label }}</label>
+                        <div class="tipos-container border rounded p-3">
+                            {{ license_form.tipos }}
+                        </div>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Fecha de Emisión -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ license_form.fechaEmision.label }}</label>
+                        {{ license_form.fechaEmision }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Fecha de Vencimiento -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ license_form.fechaVencimiento.label }}</label>
+                        {{ license_form.fechaVencimiento }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Documento -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ license_form.rutaDoc.label }}</label>
+                        {{ license_form.rutaDoc }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Observación -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ license_form.observacion.label }}</label>
+                        {{ license_form.observacion }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar Examen -->
+<div class="modal fade" id="addExamModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Agregar Examen</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="examForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">{{ exam_form.tipoEx_id.label }}</label>
+                        {{ exam_form.tipoEx_id }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ exam_form.resultadoEx_id.label }}</label>
+                        {{ exam_form.resultadoEx_id }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ exam_form.proveedor_id.label }}</label>
+                        {{ exam_form.proveedor_id }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ exam_form.fechaEmision.label }}</label>
+                        {{ exam_form.fechaEmision }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ exam_form.fechaVencimiento.label }}</label>
+                        {{ exam_form.fechaVencimiento }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ exam_form.rutaDoc.label }}</label>
+                        {{ exam_form.rutaDoc }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ exam_form.observacion.label }}</label>
+                        {{ exam_form.observacion }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación para Eliminar -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar esta licencia? Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Notificación -->
+<div class="modal fade" id="notificationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notificationTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="notificationMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar Certificación -->
+<div class="modal fade" id="addCertificationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Agregar Certificación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="certificationForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_tipoCertificacion_id" class="form-label">{{ certification_form.tipoCertificacion_id.label }}</label>
+                        {{ certification_form.tipoCertificacion_id }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_proveedor_id" class="form-label">{{ certification_form.proveedor_id.label }}</label>
+                        {{ certification_form.proveedor_id }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_fechaEmision" class="form-label">{{ certification_form.fechaEmision.label }}</label>
+                        {{ certification_form.fechaEmision }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_fechaVencimiento" class="form-label">{{ certification_form.fechaVencimiento.label }}</label>
+                        {{ certification_form.fechaVencimiento }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_rutaDoc" class="form-label">{{ certification_form.rutaDoc.label }}</label>
+                        {{ certification_form.rutaDoc }}
+                        <div class="form-text">Formatos aceptados: PDF, JPG, JPEG, PNG</div>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_observacion" class="form-label">{{ certification_form.observacion.label }}</label>
+                        {{ certification_form.observacion }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.nav-tabs {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.nav-tabs .nav-link {
+    margin-bottom: -2px;
+    border: none;
+    color: #6c757d;
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    border: none;
+    color: #495057;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    border: none;
+    border-bottom: 2px solid #0d6efd;
+    background-color: transparent;
+}
+
+.tab-content {
+    padding-top: 2rem;
+}
+
+.document-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.document-section:hover {
+    background-color: #e9ecef;
+}
+
+/* Estilos específicos para los botones */
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem !important;
+    line-height: 1.5;
+}
+
+.btn-success.btn-sm {
+    height: 31px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-success.btn-sm i {
+    font-size: 0.9rem;
+}
+
+/* Estilos para los checkboxes de licencias */
+.modal-body .list-unstyled {
+    margin: 0;
+    padding: 0;
+}
+
+.modal-body .list-unstyled li {
+    margin-bottom: 0.5rem;
+}
+
+.modal-body .list-unstyled input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+/* Agrupar por tipo de licencia */
+.license-group {
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.license-group-title {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+/* Estilo para el contenedor de checkboxes */
+#id_clases {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Estilo para cada checkbox */
+#id_clases label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+}
+
+#id_clases input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+/* Estilos para el formulario de licencias */
+.tipos-container {
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #fff;
+}
+
+.tipos-container ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    columns: 2;
+    column-gap: 2rem;
+}
+
+.tipos-container li {
+    break-inside: avoid;
+    padding: 0.25rem 0;
+}
+
+.tipos-container input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #495057;
+}
+
+.modal-body .form-control {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.modal-body textarea.form-control {
+    min-height: 100px;
+}
+
+.invalid-feedback {
+    display: block;
+}
+</style>
+{% endblock %} 
