@@ -1,0 +1,373 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Ausentismos - {{ personal.nombre }} {{ personal.apepat }}{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-x me-2"></i>Ausentismos
+                </h5>
+                <small>{{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }} - RUT: {{ personal.rut }}-{{ personal.dvrut }}</small>
+            </div>
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addAusentismoModal">
+                <i class="bi bi-plus-circle me-1"></i>Nuevo Ausentismo
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-body p-3">
+        {% if ausentismos %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm table-bordered" id="ausentismosTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Fecha Inicio</th>
+                        <th>Fecha Fin</th>
+                        <th class="text-center">Días</th>
+                        <th>Observaciones</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ausentismo in ausentismos %}
+                    <tr>
+                        <td>
+                            <i class="bi bi-calendar-event me-1"></i>
+                            {{ ausentismo.tipoausen_id.tipo }}
+                        </td>
+                        <td>{{ ausentismo.fechaini|date:"d-m-Y" }}</td>
+                        <td>{{ ausentismo.fechafin|date:"d-m-Y" }}</td>
+                        <td class="text-center">
+                            {% with dias=ausentismo.fechafin|timeuntil:ausentismo.fechaini %}
+                                <span class="badge bg-warning text-dark">
+                                    {{ ausentismo.fechafin|timesince:ausentismo.fechaini|cut:" días"|cut:" día" }} días
+                                </span>
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% if ausentismo.observacion %}
+                                <small>{{ ausentismo.observacion|truncatewords:10 }}</small>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-warning edit-ausentismo" 
+                                        data-id="{{ ausentismo.ausentismo_id }}"
+                                        data-tipo="{{ ausentismo.tipoausen_id.tipoausen_id }}"
+                                        data-fechaini="{{ ausentismo.fechaini|date:'Y-m-d' }}"
+                                        data-fechafin="{{ ausentismo.fechafin|date:'Y-m-d' }}"
+                                        data-observacion="{{ ausentismo.observacion }}"
+                                        title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-danger delete-ausentismo" 
+                                        data-id="{{ ausentismo.ausentismo_id }}" 
+                                        title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center py-4">
+            <i class="bi bi-info-circle fs-1 d-block mb-3"></i>
+            <h6>No hay ausentismos registrados</h6>
+            <p class="text-muted mb-3">Este trabajador no tiene ausentismos o permisos registrados.</p>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addAusentismoModal">
+                <i class="bi bi-plus-circle me-1"></i>Registrar Primer Ausentismo
+            </button>
+        </div>
+        {% endif %}
+        
+        <div class="mt-3 d-flex justify-content-between">
+            <a href="{% url 'buscar_personal_ausentismo' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+            {% if ausentismos %}
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addAusentismoModal">
+                <i class="bi bi-plus-circle me-1"></i>Nuevo Ausentismo
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar/Editar Ausentismo -->
+<div class="modal fade" id="addAusentismoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="ausentismoModalTitle">Nuevo Ausentismo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="ausentismoForm">
+                <input type="hidden" id="ausentismoId" name="ausentismo_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Personal</label>
+                        <p class="text-muted">{{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="tipoAusentismo" class="form-label">Tipo de Ausentismo *</label>
+                        <select class="form-select" id="tipoAusentismo" name="tipo_ausentismo" required>
+                            <option value="">Seleccionar tipo...</option>
+                            {% for tipo in tipos_ausentismo %}
+                            <option value="{{ tipo.tipoausen_id }}">{{ tipo.tipo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="fechaInicio" class="form-label">Fecha Inicio *</label>
+                            <input type="date" class="form-control" id="fechaInicio" name="fecha_inicio" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="fechaFin" class="form-label">Fecha Fin *</label>
+                            <input type="date" class="form-control" id="fechaFin" name="fecha_fin" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones" name="observaciones" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="btnEliminar" style="display: none;">Eliminar</button>
+                    <button type="submit" class="btn btn-success">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación de Eliminación -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar este ausentismo?</p>
+                <div class="alert alert-warning mb-0">
+                    <small>
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Esta acción no se puede deshacer.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Mensaje -->
+<div class="modal fade" id="messageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" id="messageModalHeader">
+                <h5 class="modal-title text-white" id="messageModalTitle">Mensaje</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="messageModalBody">
+                Mensaje
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extrajs %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let ausentismoToDelete = null;
+
+    // Búsqueda en tiempo real
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const searchValue = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#personalTable tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(searchValue)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // Limpiar búsqueda
+    window.clearSearch = function() {
+        document.getElementById('searchInput').value = '';
+        const rows = document.querySelectorAll('#personalTable tbody tr');
+        rows.forEach(row => row.style.display = '');
+    };
+
+    // Manejar envío del formulario de ausentismo
+    document.getElementById('ausentismoForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const ausentismoId = formData.get('ausentismo_id');
+        const url = ausentismoId ? 
+            `/users/personal/{{ personal.personal_id }}/ausentismos/${ausentismoId}/update/` :
+            `/users/personal/{{ personal.personal_id }}/ausentismos/create/`;
+        
+        const data = {
+            tipo_ausentismo_id: formData.get('tipo_ausentismo'),
+            fecha_inicio: formData.get('fecha_inicio'),
+            fecha_fin: formData.get('fecha_fin'),
+            observaciones: formData.get('observaciones')
+        };
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            // Cerrar modal del formulario
+            const formModal = bootstrap.Modal.getInstance(document.getElementById('addAusentismoModal'));
+            formModal.hide();
+            
+            if (result.status === 'success') {
+                showMessage('Éxito', result.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showMessage('Error', result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Error', 'Error al guardar el ausentismo', 'error');
+        }
+    });
+
+    // Editar ausentismo
+    document.querySelectorAll('.edit-ausentismo').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('ausentismoModalTitle').textContent = 'Editar Ausentismo';
+            document.getElementById('ausentismoId').value = this.dataset.id;
+            document.getElementById('tipoAusentismo').value = this.dataset.tipo;
+            document.getElementById('fechaInicio').value = this.dataset.fechaini;
+            document.getElementById('fechaFin').value = this.dataset.fechafin;
+            document.getElementById('observaciones').value = this.dataset.observacion || '';
+            document.getElementById('btnEliminar').style.display = 'inline-block';
+            
+            const modal = new bootstrap.Modal(document.getElementById('addAusentismoModal'));
+            modal.show();
+        });
+    });
+
+    // Eliminar desde modal de edición
+    document.getElementById('btnEliminar').addEventListener('click', function() {
+        const ausentismoId = document.getElementById('ausentismoId').value;
+        if (ausentismoId) {
+            const formModal = bootstrap.Modal.getInstance(document.getElementById('addAusentismoModal'));
+            formModal.hide();
+            
+            ausentismoToDelete = ausentismoId;
+            const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            confirmModal.show();
+        }
+    });
+
+    // Eliminar desde botón de tabla
+    document.querySelectorAll('.delete-ausentismo').forEach(btn => {
+        btn.addEventListener('click', function() {
+            ausentismoToDelete = this.dataset.id;
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
+        });
+    });
+
+    // Confirmar eliminación
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+        if (!ausentismoToDelete) return;
+        
+        try {
+            const response = await fetch(`/users/personal/ausentismos/${ausentismoToDelete}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+            
+            const data = await response.json();
+            
+            const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+            confirmModal.hide();
+            
+            if (data.status === 'success') {
+                showMessage('Éxito', data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showMessage('Error', data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Error', 'Error al eliminar el ausentismo', 'error');
+        }
+    });
+
+    // Al abrir modal para nuevo, limpiar formulario
+    document.getElementById('addAusentismoModal').addEventListener('show.bs.modal', function(e) {
+        if (!e.relatedTarget || !e.relatedTarget.classList.contains('edit-ausentismo')) {
+            document.getElementById('ausentismoModalTitle').textContent = 'Nuevo Ausentismo';
+            document.getElementById('ausentismoForm').reset();
+            document.getElementById('ausentismoId').value = '';
+            document.getElementById('btnEliminar').style.display = 'none';
+        }
+    });
+});
+
+function showMessage(title, message, type) {
+    const modal = new bootstrap.Modal(document.getElementById('messageModal'));
+    const header = document.getElementById('messageModalHeader');
+    const titleEl = document.getElementById('messageModalTitle');
+    const body = document.getElementById('messageModalBody');
+    
+    if (type === 'success') {
+        header.className = 'modal-header bg-success text-white';
+    } else {
+        header.className = 'modal-header bg-danger text-white';
+    }
+    
+    titleEl.textContent = title;
+    body.textContent = message;
+    modal.show();
+}
+</script>
+{% endblock %}
+

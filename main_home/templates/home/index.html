@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/index.css' %}">
+    {% block extrastyles %}{% endblock %}
 </head>
 <body>
     <!-- Navbar superior -->
@@ -72,13 +73,19 @@
                 <div class="collapse" id="collapseProducts">
                     <ul class="nav flex-column ps-4">
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'table_personal' %}">Lista de personal</a>
+                            <a class="nav-link" href="{% url 'table_personal' %}">
+                                <i class="bi bi-person-lines-fill me-2"></i>Lista de personal
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'buscar_personal_licencia_medica' %}">Licencias médicas</a>
+                            <a class="nav-link" href="{% url 'buscar_personal_licencia_medica' %}">
+                                <i class="bi bi-clipboard-pulse me-2"></i>Licencias médicas
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">Categorías</a>
+                            <a class="nav-link" href="{% url 'buscar_personal_ausentismo' %}">
+                                <i class="bi bi-calendar-x me-2"></i>Ausentismos
+                            </a>
                         </li>
                     </ul>
                 </div>
@@ -127,6 +134,22 @@
                                 </li>
                             </ul>
                         </div>
+                    </ul>
+                </div>
+            </li>
+            
+            <!-- Menú de Planificación -->
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="collapse" href="#collapsePlanificacion" role="button" aria-expanded="false" aria-controls="collapsePlanificacion">
+                    <i class="bi bi-calendar-check me-2"></i> Planificación
+                </a>
+                <div class="collapse" id="collapsePlanificacion">
+                    <ul class="nav flex-column ps-4">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'calendario:calendario_mensual' %}">
+                                <i class="bi bi-calendar3 me-2"></i>Calendario Mensual
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </li>

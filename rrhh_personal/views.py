@@ -102,8 +102,8 @@ class PersonalCreateView(LoginRequiredMixin, CreateView):
             'direccion': personal_data['direccion'],
         }
         
-        messages.success(self.request, 'Información personal validada. Por favor complete la documentación.')
-        return redirect('personal_document_create')
+        messages.success(self.request, 'Información personal validada. Por favor complete la información laboral.')
+        return redirect('personal_labor_create')
 
     def form_invalid(self, form):
         messages.error(self.request, 'Error en el formulario personal. Por favor revise los datos ingresados.')
@@ -161,19 +161,18 @@ class PersonalLaborCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy('table_personal')
 
     def dispatch(self, request, *args, **kwargs):
-        if 'personal_data' not in request.session or 'document_data' not in request.session:
-            messages.error(request, 'Por favor complete primero la información personal y documentación.')
+        if 'personal_data' not in request.session:
+            messages.error(request, 'Por favor complete primero la información personal.')
             return redirect('personal_create')
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         try:
             with transaction.atomic():
-                # Recuperar los datos personales y de documentos de la sesión
+                # Recuperar los datos personales de la sesión
                 personal_data = self.request.session['personal_data']
-                files_data = self.request.session['document_data']
                 
-                # Crear el objeto Personal
+                # Crear el objeto Personal (sin documentos por ahora)
                 personal = Personal(
                     rut=personal_data['rut'],
                     dvrut=personal_data['dvrut'],
@@ -190,22 +189,15 @@ class PersonalLaborCreateView(LoginRequiredMixin, CreateView):
                 )
                 personal.save()
 
-                # Procesar y guardar los archivos
-                for field_name, file_data in files_data.items():
-                    if file_data:
-                        file_content = base64.b64decode(file_data['content'])
-                        content_file = ContentFile(file_content, name=file_data['name'])
-                        setattr(personal, field_name, content_file)
-                
-                personal.save()
-
                 # Asignar el personal al formulario laboral y guardar
                 form.instance.personal_id = personal
                 self.object = form.save()
 
                 # Limpiar los datos de la sesión
-                del self.request.session['personal_data']
-                del self.request.session['document_data']
+                if 'personal_data' in self.request.session:
+                    del self.request.session['personal_data']
+                if 'document_data' in self.request.session:
+                    del self.request.session['document_data']
                 
                 messages.success(self.request, 'Personal creado exitosamente con toda su información.')
                 return super().form_valid(form)
@@ -494,23 +486,249 @@ def delete_license(request, license_id):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
+
+# ============================================================================
+# VISTAS PARA LICENCIAS INTERNAS DE CONDUCIR
+# ============================================================================
+
+@login_required
+def add_internal_license(request, personal_id):
+    """Vista para agregar licencia interna de conducir"""
+    if request.method == 'POST':
+        try:
+            personal = get_object_or_404(Personal, personal_id=personal_id)
+            from .forms import LicenciasInternasPersonal
+            form = LicenciasInternasPersonal(request.POST, request.FILES)
+            
+            if form.is_valid():
+                licencia = form.save(commit=False)
+                licencia.personal_id = personal
+                licencia.save()
+                form.save_m2m()  # Guardar las relaciones many-to-many
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Licencia interna guardada exitosamente'
+                })
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'errors': form.errors
+                }, status=400)
+                
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al procesar la solicitud: {str(e)}'
+            }, status=500)
+            
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+
+
+@login_required
+def delete_internal_license(request, license_id):
+    """Vista para eliminar licencia interna de conducir"""
+    if request.method == 'DELETE':
+        try:
+            from .models import LicenciaInternaPorPersonal
+            license = get_object_or_404(LicenciaInternaPorPersonal, licenciaInterna_id=license_id)
+            license.delete()
+            return JsonResponse({'status': 'success', 'message': 'Licencia interna eliminada exitosamente'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+
+# ============================================================================
+# VISTAS PARA DOCUMENTOS PERSONALES
+# ============================================================================
+
+@login_required
+def upload_personal_document(request, personal_id):
+    """Vista para subir/actualizar un documento personal individual"""
+    if request.method == 'POST':
+        try:
+            personal = get_object_or_404(Personal, personal_id=personal_id)
+            document_field = request.POST.get('document_field')
+            document_file = request.FILES.get('document_file')
+            
+            if not document_field or not document_file:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Faltan datos requeridos'
+                }, status=400)
+            
+            # Validar que el campo exista en el modelo
+            valid_fields = [
+                'curriculum', 'certificado_antecedentes', 'hoja_vida_conductor',
+                'foto_carnet', 'certificado_afp', 'certificado_salud',
+                'certificado_estudios', 'certificado_residencia', 'fotocopia_carnet',
+                'fotocopia_finiquito', 'comprobante_banco'
+            ]
+            
+            if document_field not in valid_fields:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Campo de documento inválido'
+                }, status=400)
+            
+            # Guardar el documento
+            setattr(personal, document_field, document_file)
+            personal.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Documento subido exitosamente'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al subir el documento: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+
+
+@login_required
+def upload_carnet_document(request, personal_id):
+    """Vista específica para subir carnet con fecha de vencimiento"""
+    if request.method == 'POST':
+        try:
+            personal = get_object_or_404(Personal, personal_id=personal_id)
+            carnet_file = request.FILES.get('carnet_file')
+            fecha_vencimiento = request.POST.get('fecha_vencimiento')
+            
+            if not carnet_file:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Debe seleccionar un archivo'
+                }, status=400)
+            
+            # Guardar el archivo del carnet
+            personal.fotocopia_carnet = carnet_file
+            
+            # Guardar la fecha de vencimiento si se proporcionó
+            if fecha_vencimiento:
+                from datetime import datetime
+                try:
+                    personal.fecha_vencimiento_carnet = datetime.strptime(fecha_vencimiento, '%Y-%m-%d').date()
+                except ValueError:
+                    pass  # Si la fecha es inválida, no la guardamos
+            
+            personal.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Carnet subido exitosamente'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al subir el carnet: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+
+
+@login_required
+def delete_personal_document(request, personal_id):
+    """Vista para eliminar un documento personal individual"""
+    if request.method == 'POST':
+        try:
+            import json
+            personal = get_object_or_404(Personal, personal_id=personal_id)
+            data = json.loads(request.body)
+            document_field = data.get('document_field')
+            
+            if not document_field:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Falta especificar el documento a eliminar'
+                }, status=400)
+            
+            # Validar que el campo exista
+            valid_fields = [
+                'curriculum', 'certificado_antecedentes', 'hoja_vida_conductor',
+                'foto_carnet', 'certificado_afp', 'certificado_salud',
+                'certificado_estudios', 'certificado_residencia', 'fotocopia_carnet',
+                'fotocopia_finiquito', 'comprobante_banco'
+            ]
+            
+            if document_field not in valid_fields:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Campo de documento inválido'
+                }, status=400)
+            
+            # Eliminar el archivo físico y limpiar el campo
+            field = getattr(personal, document_field)
+            if field:
+                field.delete(save=False)
+                setattr(personal, document_field, None)
+                
+                # Si es el carnet, también limpiar la fecha de vencimiento
+                if document_field == 'fotocopia_carnet':
+                    personal.fecha_vencimiento_carnet = None
+                
+                personal.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Documento eliminado exitosamente'
+                })
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'El documento no existe'
+                }, status=404)
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al eliminar el documento: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+
+
 @login_required
 def documentation_view(request, pk):
     personal = get_object_or_404(Personal, personal_id=pk)
+    from .forms import LicenciasInternasPersonal
+    from .models import LicenciaInternaPorPersonal
+    
     license_form = LicenciasPersonal()
+    internal_license_form = LicenciasInternasPersonal()
     exam_form = ExamenPersonal()
     certification_form = CertificacionPersonal()
     
     licencias = LicenciaPorPersonal.objects.filter(personal_id=personal)
+    licencias_internas = LicenciaInternaPorPersonal.objects.filter(personal_id=personal)
     examenes = Examen.objects.filter(personal_id=personal)
     certificaciones = Certificacion.objects.filter(personal_id=personal)
     
     context = {
         'personal': personal,
         'license_form': license_form,
+        'internal_license_form': internal_license_form,
         'exam_form': exam_form,
         'certification_form': certification_form,
         'licencias': licencias,
+        'licencias_internas': licencias_internas,
         'examenes': examenes,
         'certificaciones': certificaciones,
     }
@@ -597,14 +815,17 @@ class LicenciaMedicaPorPersonalCreateView(LoginRequiredMixin, CreateView):
 # Vista para listar y editar licencias médicas de un personal
 @login_required
 def listar_licencias_medicas_personal(request, personal_id):
+    """Vista mejorada para listar licencias médicas de un personal"""
     personal = get_object_or_404(Personal, personal_id=personal_id)
-    licencias_medicas = LicenciaMedicaPorPersonal.objects.filter(personal_id=personal).order_by('-fechaEmision')
+    licencias_medicas = LicenciaMedicaPorPersonal.objects.filter(
+        personal_id=personal
+    ).select_related('tipoLicenciaMedica_id').order_by('-fechaEmision')
     
     context = {
         'personal': personal,
         'licencias_medicas': licencias_medicas,
     }
-    return render(request, 'personal/listar_licencias_medicas.html', context)
+    return render(request, 'personal/listar_licencias_medicas_new.html', context)
 
 # Vista para editar una licencia médica específica
 class LicenciaMedicaPorPersonalUpdateView(LoginRequiredMixin, UpdateView):
@@ -703,25 +924,170 @@ def delete_archivo_licencia_medica(request, licencia_id):
         print(f"DEBUG: Método no permitido: {request.method}")
         return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
-def buscar_personal_licencia_medica(request):
-    query = request.GET.get('q', '')
-    personal_list = []
-    if query:
-        personal_list = Personal.objects.filter(
-            Q(rut__icontains=query) |
-            Q(nombre__icontains=query) |
-            Q(apepat__icontains=query) |
-            Q(apemat__icontains=query)
-        )
-    
-    # Para cada personal, verificar si tiene licencias médicas
-    for personal in personal_list:
-        personal.tiene_licencias_medicas = LicenciaMedicaPorPersonal.objects.filter(personal_id=personal).exists()
+
+# ============================================================================
+# VISTAS PARA AUSENTISMOS Y PERMISOS
+# ============================================================================
+
+@login_required
+def buscar_personal_ausentismo(request):
+    """Vista para buscar personal para gestionar ausentismos"""
+    personal_list = Personal.objects.filter(activo=True).prefetch_related(
+        'infolaboral_set__cargo_id',
+        'ausentismo_set'
+    ).order_by('apepat', 'apemat', 'nombre')
     
     context = {
         'personal_list': personal_list,
-        'query': query,
     }
-    return render(request, 'personal/buscar_personal_licencia_medica.html', context)
+    
+    return render(request, 'personal/buscar_personal_ausentismo.html', context)
+
+
+@login_required
+def listar_ausentismos_personal(request, personal_id):
+    """Vista para listar ausentismos de un personal"""
+    personal = get_object_or_404(Personal, personal_id=personal_id)
+    ausentismos = Ausentismo.objects.filter(
+        personal_id=personal
+    ).select_related('tipoausen_id').order_by('-fechaini')
+    tipos_ausentismo = TipoAusentismo.objects.all().order_by('tipo')
+    
+    context = {
+        'personal': personal,
+        'ausentismos': ausentismos,
+        'tipos_ausentismo': tipos_ausentismo,
+    }
+    
+    return render(request, 'personal/listar_ausentismos.html', context)
+
+
+@login_required
+def crear_ausentismo(request, personal_id):
+    """Vista para crear un ausentismo"""
+    if request.method == 'POST':
+        try:
+            import json
+            personal = get_object_or_404(Personal, personal_id=personal_id)
+            data = json.loads(request.body)
+            
+            tipo_id = data.get('tipo_ausentismo_id')
+            fecha_inicio = data.get('fecha_inicio')
+            fecha_fin = data.get('fecha_fin')
+            observaciones = data.get('observaciones', '')
+            
+            if not all([tipo_id, fecha_inicio, fecha_fin]):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Faltan datos requeridos'
+                }, status=400)
+            
+            tipo_ausentismo = get_object_or_404(TipoAusentismo, tipoausen_id=tipo_id)
+            
+            ausentismo = Ausentismo.objects.create(
+                personal_id=personal,
+                tipoausen_id=tipo_ausentismo,
+                fechaini=fecha_inicio,
+                fechafin=fecha_fin,
+                observacion=observaciones
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Ausentismo registrado exitosamente'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+
+
+@login_required
+def actualizar_ausentismo(request, personal_id, ausentismo_id):
+    """Vista para actualizar un ausentismo"""
+    if request.method == 'POST':
+        try:
+            import json
+            ausentismo = get_object_or_404(Ausentismo, ausentismo_id=ausentismo_id)
+            data = json.loads(request.body)
+            
+            tipo_id = data.get('tipo_ausentismo_id')
+            fecha_inicio = data.get('fecha_inicio')
+            fecha_fin = data.get('fecha_fin')
+            observaciones = data.get('observaciones', '')
+            
+            if tipo_id:
+                tipo_ausentismo = get_object_or_404(TipoAusentismo, tipoausen_id=tipo_id)
+                ausentismo.tipoausen_id = tipo_ausentismo
+            
+            if fecha_inicio:
+                ausentismo.fechaini = fecha_inicio
+            if fecha_fin:
+                ausentismo.fechafin = fecha_fin
+            
+            ausentismo.observacion = observaciones
+            ausentismo.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Ausentismo actualizado exitosamente'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+
+
+@login_required
+def eliminar_ausentismo(request, ausentismo_id):
+    """Vista para eliminar un ausentismo"""
+    if request.method == 'DELETE':
+        try:
+            ausentismo = get_object_or_404(Ausentismo, ausentismo_id=ausentismo_id)
+            ausentismo.delete()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Ausentismo eliminado exitosamente'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+
+
+def buscar_personal_licencia_medica(request):
+    """Vista mejorada para buscar personal para licencias médicas"""
+    personal_list = Personal.objects.filter(activo=True).prefetch_related(
+        'infolaboral_set__cargo_id',
+        'licenciamedicaporpersonal_set'
+    ).order_by('apepat', 'apemat', 'nombre')
+    
+    context = {
+        'personal_list': personal_list,
+    }
+    
+    return render(request, 'personal/buscar_personal_licencia_medica_new.html', context)
 
 

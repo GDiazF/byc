@@ -89,6 +89,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    const addInternalLicenseModal = document.getElementById('addInternalLicenseModal');
+    if (addInternalLicenseModal) {
+        addInternalLicenseModal.addEventListener('shown.bs.modal', function() {
+            initializeInternalLicenseForm();
+        });
+    }
+
     const addExamModal = document.getElementById('addExamModal');
     if (addExamModal) {
         addExamModal.addEventListener('shown.bs.modal', function() {
@@ -108,6 +115,13 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function() {
             const licenseId = this.dataset.id;
             showDeleteConfirmation('license', licenseId);
+        });
+    });
+
+    document.querySelectorAll('.delete-internal-license').forEach(button => {
+        button.addEventListener('click', function() {
+            const licenseId = this.dataset.id;
+            showDeleteConfirmation('internal-license', licenseId);
         });
     });
 
@@ -133,6 +147,16 @@ function initializeLicenseForm() {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             submitForm(this, 'license');
+        });
+    }
+}
+
+function initializeInternalLicenseForm() {
+    const form = document.getElementById('internalLicenseForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitForm(this, 'internal-license');
         });
     }
 }
@@ -165,6 +189,9 @@ async function submitForm(form, type) {
     switch(type) {
         case 'license':
             url = '{% url "add_license" personal.personal_id %}';
+            break;
+        case 'internal-license':
+            url = '{% url "add_internal_license" personal.personal_id %}';
             break;
         case 'exam':
             url = '{% url "add_exam" personal.personal_id %}';
@@ -235,6 +262,9 @@ function showDeleteConfirmation(type, id) {
         case 'license':
             documentType = 'licencia';
             break;
+        case 'internal-license':
+            documentType = 'licencia interna';
+            break;
         case 'exam':
             documentType = 'examen';
             break;
@@ -251,6 +281,9 @@ function showDeleteConfirmation(type, id) {
         switch(type) {
             case 'license':
                 url = `{% url "delete_license" 0 %}`.replace('0', id);
+                break;
+            case 'internal-license':
+                url = `{% url "delete_internal_license" 0 %}`.replace('0', id);
                 break;
             case 'exam':
                 url = `{% url "delete_exam" 0 %}`.replace('0', id);
@@ -285,6 +318,142 @@ function showDeleteConfirmation(type, id) {
     
     confirmModal.show();
 }
+
+// ============================================================================
+// FUNCIONES PARA DOCUMENTOS PERSONALES
+// ============================================================================
+
+// Mostrar modal para subir/actualizar documento
+function showUploadModal(fieldName, documentTitle) {
+    document.getElementById('uploadDocumentTitle').textContent = `Subir ${documentTitle}`;
+    document.getElementById('documentField').value = fieldName;
+    document.getElementById('documentFile').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('uploadDocumentModal'));
+    modal.show();
+}
+
+// Mostrar modal específico para carnet (con fecha de vencimiento)
+function showUploadCarnetModal() {
+    const modal = new bootstrap.Modal(document.getElementById('uploadCarnetModal'));
+    modal.show();
+}
+
+// Inicializar formulario de subida de carnet (con fecha)
+document.getElementById('uploadCarnetForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('{% url "upload_carnet_document" personal.personal_id %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('uploadCarnetModal'));
+        modal.hide();
+        
+        if (data.status === 'success') {
+            showNotification('Éxito', data.message, 'success');
+        } else {
+            showNotification('Error', data.message || 'Error al subir el carnet', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error', 'Error al procesar la solicitud', 'error');
+    }
+});
+
+// Inicializar formulario de subida de documentos
+document.getElementById('uploadDocumentForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const documentField = formData.get('document_field');
+    
+    try {
+        const response = await fetch('{% url "upload_personal_document" personal.personal_id %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('uploadDocumentModal'));
+        modal.hide();
+        
+        if (data.status === 'success') {
+            showNotification('Éxito', data.message, 'success');
+        } else {
+            showNotification('Error', data.message || 'Error al subir el documento', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error', 'Error al procesar la solicitud', 'error');
+    }
+});
+
+// Eliminar documento personal
+async function deleteDocument(fieldName) {
+    const documentNames = {
+        'curriculum': 'Curriculum Vitae',
+        'certificado_antecedentes': 'Certificado de Antecedentes',
+        'hoja_vida_conductor': 'Hoja de Vida del Conductor',
+        'foto_carnet': 'Foto Carnet',
+        'certificado_afp': 'Certificado AFP',
+        'certificado_salud': 'Certificado de Salud',
+        'certificado_estudios': 'Certificado de Estudios',
+        'certificado_residencia': 'Certificado de Residencia',
+        'fotocopia_carnet': 'Fotocopia Carnet',
+        'fotocopia_finiquito': 'Fotocopia Finiquito',
+        'comprobante_banco': 'Comprobante Banco'
+    };
+    
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+    const modalTitle = document.querySelector('#confirmDeleteModal .modal-title');
+    const modalBody = document.querySelector('#confirmDeleteModal .modal-body p');
+    
+    modalTitle.textContent = `Eliminar ${documentNames[fieldName]}`;
+    modalBody.textContent = `¿Está seguro que desea eliminar ${documentNames[fieldName]}? Esta acción no se puede deshacer.`;
+    
+    document.getElementById('confirmDeleteBtn').onclick = async function() {
+        try {
+            const response = await fetch('{% url "delete_personal_document" personal.personal_id %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ document_field: fieldName })
+            });
+            
+            const data = await response.json();
+            confirmModal.hide();
+            
+            if (data.status === 'success') {
+                showNotification('Éxito', data.message, 'success');
+            } else {
+                showNotification('Error', data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('Error', 'Error al procesar la solicitud', 'error');
+        }
+    };
+    
+    confirmModal.show();
+}
 </script>
 {% endblock %}
 
@@ -299,8 +468,18 @@ function showDeleteConfirmation(type, id) {
     <div class="card-body p-4">
         <ul class="nav nav-tabs mb-4" id="docTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="licenses-tab" data-bs-toggle="tab" data-bs-target="#licenses" type="button" role="tab" aria-controls="licenses" aria-selected="true">
+                <button class="nav-link active" id="personal-docs-tab" data-bs-toggle="tab" data-bs-target="#personal-docs" type="button" role="tab" aria-controls="personal-docs" aria-selected="true">
+                    <i class="bi bi-file-earmark-person me-2"></i>Documentos Personales
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="licenses-tab" data-bs-toggle="tab" data-bs-target="#licenses" type="button" role="tab" aria-controls="licenses" aria-selected="false">
                     <i class="bi bi-card-text me-2"></i>Licencias de Conducir
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="internal-licenses-tab" data-bs-toggle="tab" data-bs-target="#internal-licenses" type="button" role="tab" aria-controls="internal-licenses" aria-selected="false">
+                    <i class="bi bi-award me-2"></i>Licencias Internas
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -316,8 +495,352 @@ function showDeleteConfirmation(type, id) {
         </ul>
 
         <div class="tab-content" id="docTabsContent">
+            <!-- Documentos Personales Tab -->
+            <div class="tab-pane fade show active" id="personal-docs" role="tabpanel" aria-labelledby="personal-docs-tab">
+                <div class="alert alert-info mb-3 py-2">
+                    <small><i class="bi bi-info-circle me-1"></i>Gestiona los documentos personales del trabajador individualmente.</small>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 30%;">Documento</th>
+                                <th style="width: 15%;" class="text-center">Estado</th>
+                                <th style="width: 55%;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Curriculum -->
+                            <tr>
+                                <td><i class="bi bi-file-text me-2"></i>Curriculum Vitae</td>
+                                <td class="text-center">
+                                    {% if personal.curriculum %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.curriculum %}
+                                        <a href="{{ personal.curriculum.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('curriculum', 'Curriculum Vitae')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('curriculum')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('curriculum', 'Curriculum Vitae')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Certificado de Antecedentes -->
+                            <tr>
+                                <td><i class="bi bi-file-check me-2"></i>Certificado de Antecedentes</td>
+                                <td class="text-center">
+                                    {% if personal.certificado_antecedentes %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.certificado_antecedentes %}
+                                        <a href="{{ personal.certificado_antecedentes.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_antecedentes', 'Certificado de Antecedentes')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_antecedentes')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_antecedentes', 'Certificado de Antecedentes')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Hoja de Vida del Conductor -->
+                            <tr>
+                                <td><i class="bi bi-car-front me-2"></i>Hoja de Vida del Conductor</td>
+                                <td class="text-center">
+                                    {% if personal.hoja_vida_conductor %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.hoja_vida_conductor %}
+                                        <a href="{{ personal.hoja_vida_conductor.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('hoja_vida_conductor', 'Hoja de Vida del Conductor')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('hoja_vida_conductor')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('hoja_vida_conductor', 'Hoja de Vida del Conductor')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Foto Carnet -->
+                            <tr>
+                                <td><i class="bi bi-person-badge me-2"></i>Foto Carnet</td>
+                                <td class="text-center">
+                                    {% if personal.foto_carnet %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.foto_carnet %}
+                                        <a href="{{ personal.foto_carnet.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('foto_carnet', 'Foto Carnet')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('foto_carnet')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('foto_carnet', 'Foto Carnet')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Certificado AFP -->
+                            <tr>
+                                <td><i class="bi bi-bank me-2"></i>Certificado AFP</td>
+                                <td class="text-center">
+                                    {% if personal.certificado_afp %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.certificado_afp %}
+                                        <a href="{{ personal.certificado_afp.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_afp', 'Certificado AFP')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_afp')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_afp', 'Certificado AFP')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Certificado de Salud -->
+                            <tr>
+                                <td><i class="bi bi-heart-pulse me-2"></i>Certificado de Salud</td>
+                                <td class="text-center">
+                                    {% if personal.certificado_salud %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.certificado_salud %}
+                                        <a href="{{ personal.certificado_salud.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_salud', 'Certificado de Salud')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_salud')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_salud', 'Certificado de Salud')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Certificado de Estudios -->
+                            <tr>
+                                <td><i class="bi bi-mortarboard me-2"></i>Certificado de Estudios</td>
+                                <td class="text-center">
+                                    {% if personal.certificado_estudios %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.certificado_estudios %}
+                                        <a href="{{ personal.certificado_estudios.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_estudios', 'Certificado de Estudios')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_estudios')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_estudios', 'Certificado de Estudios')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Certificado de Residencia -->
+                            <tr>
+                                <td><i class="bi bi-house me-2"></i>Certificado de Residencia</td>
+                                <td class="text-center">
+                                    {% if personal.certificado_residencia %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.certificado_residencia %}
+                                        <a href="{{ personal.certificado_residencia.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_residencia', 'Certificado de Residencia')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_residencia')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_residencia', 'Certificado de Residencia')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Fotocopia Carnet -->
+                            <tr>
+                                <td>
+                                    <i class="bi bi-card-image me-2"></i>Fotocopia Carnet
+                                    {% if personal.fecha_vencimiento_carnet %}
+                                        <br><small class="text-muted">Vence: {{ personal.fecha_vencimiento_carnet }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if personal.fotocopia_carnet %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.fotocopia_carnet %}
+                                        <a href="{{ personal.fotocopia_carnet.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadCarnetModal()">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('fotocopia_carnet')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadCarnetModal()">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Fotocopia Finiquito -->
+                            <tr>
+                                <td><i class="bi bi-file-earmark-x me-2"></i>Fotocopia Finiquito</td>
+                                <td class="text-center">
+                                    {% if personal.fotocopia_finiquito %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.fotocopia_finiquito %}
+                                        <a href="{{ personal.fotocopia_finiquito.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('fotocopia_finiquito', 'Fotocopia Finiquito')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('fotocopia_finiquito')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('fotocopia_finiquito', 'Fotocopia Finiquito')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- Comprobante Banco -->
+                            <tr>
+                                <td><i class="bi bi-bank2 me-2"></i>Comprobante Banco</td>
+                                <td class="text-center">
+                                    {% if personal.comprobante_banco %}
+                                        <span class="badge bg-success">✓ Cargado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin archivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if personal.comprobante_banco %}
+                                        <a href="{{ personal.comprobante_banco.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('comprobante_banco', 'Comprobante Banco')">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('comprobante_banco')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-success" onclick="showUploadModal('comprobante_banco', 'Comprobante Banco')">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Licencias Tab -->
-            <div class="tab-pane fade show active" id="licenses" role="tabpanel" aria-labelledby="licenses-tab">
+            <div class="tab-pane fade" id="licenses" role="tabpanel" aria-labelledby="licenses-tab">
                 <div class="mb-3">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addLicenseModal">
                         <i class="bi bi-plus-square me-1"></i>
@@ -361,6 +884,70 @@ function showDeleteConfirmation(type, id) {
                             {% empty %}
                             <tr>
                                 <td colspan="5" class="text-center">No hay licencias registradas</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Licencias Internas Tab -->
+            <div class="tab-pane fade" id="internal-licenses" role="tabpanel" aria-labelledby="internal-licenses-tab">
+                <div class="mb-3">
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addInternalLicenseModal">
+                        <i class="bi bi-plus-square me-1"></i>
+                        Agregar Licencia Interna
+                    </button>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tipos</th>
+                                <th>N° Licencia</th>
+                                <th>Empresa/Faena</th>
+                                <th>Fecha Emisión</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for licencia in licencias_internas %}
+                            <tr>
+                                <td>
+                                    {% for tipo in licencia.tipos.all %}
+                                        <span class="badge bg-primary">{{ tipo.tipoLicenciaInterna }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ licencia.numero_licencia|default:"-" }}</td>
+                                <td>{{ licencia.empresa_emisora|default:"-" }}</td>
+                                <td>{{ licencia.fechaEmision }}</td>
+                                <td>{{ licencia.fechaVencimiento }}</td>
+                                <td>
+                                    {% if licencia.activo %}
+                                        <span class="badge bg-success">Activa</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactiva</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if licencia.rutaDoc %}
+                                    <a href="{{ licencia.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-file-earmark-text"></i> Ver documento
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">Sin documento</span>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-danger delete-internal-license" data-id="{{ licencia.licenciaInterna_id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center">No hay licencias internas registradas</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -538,6 +1125,87 @@ function showDeleteConfirmation(type, id) {
     </div>
 </div>
 
+<!-- Modal para Agregar Licencia Interna -->
+<div class="modal fade" id="addInternalLicenseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Agregar Licencia Interna</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="internalLicenseForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <!-- Tipos de Licencia Interna -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ internal_license_form.tipos.label }}</label>
+                        <div class="tipos-container border rounded p-3">
+                            {{ internal_license_form.tipos }}
+                        </div>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Número de Licencia -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ internal_license_form.numero_licencia.label }}</label>
+                        {{ internal_license_form.numero_licencia }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Empresa/Faena Emisora -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ internal_license_form.empresa_emisora.label }}</label>
+                        {{ internal_license_form.empresa_emisora }}
+                        <small class="form-text text-muted">{{ internal_license_form.empresa_emisora.help_text }}</small>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Fecha de Emisión -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ internal_license_form.fechaEmision.label }}</label>
+                        {{ internal_license_form.fechaEmision }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Fecha de Vencimiento -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ internal_license_form.fechaVencimiento.label }}</label>
+                        {{ internal_license_form.fechaVencimiento }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Documento -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ internal_license_form.rutaDoc.label }}</label>
+                        {{ internal_license_form.rutaDoc }}
+                        <small class="form-text text-muted">Formatos aceptados: PDF, JPG, JPEG, PNG</small>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Observación -->
+                    <div class="mb-3">
+                        <label class="form-label">{{ internal_license_form.observacion.label }}</label>
+                        {{ internal_license_form.observacion }}
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    
+                    <!-- Estado Activo -->
+                    <div class="form-check mb-3">
+                        {{ internal_license_form.activo }}
+                        <label class="form-check-label" for="id_activo">
+                            {{ internal_license_form.activo.label }}
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal para Agregar Examen -->
 <div class="modal fade" id="addExamModal" tabindex="-1">
     <div class="modal-dialog">
@@ -672,6 +1340,64 @@ function showDeleteConfirmation(type, id) {
                         <label for="id_observacion" class="form-label">{{ certification_form.observacion.label }}</label>
                         {{ certification_form.observacion }}
                         <div class="invalid-feedback"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Subir/Actualizar Documento Personal -->
+<div class="modal fade" id="uploadDocumentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="uploadDocumentTitle">Subir Documento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="uploadDocumentForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" id="documentField" name="document_field">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="documentFile" class="form-label">Seleccionar archivo</label>
+                        <input type="file" class="form-control" id="documentFile" name="document_file" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                        <small class="form-text text-muted">Formatos aceptados: PDF, JPG, JPEG, PNG, DOC, DOCX</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Subir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Subir/Actualizar Carnet (con fecha de vencimiento) -->
+<div class="modal fade" id="uploadCarnetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Subir Fotocopia de Carnet</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="uploadCarnetForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="carnetFile" class="form-label">Fotocopia del Carnet *</label>
+                        <input type="file" class="form-control" id="carnetFile" name="carnet_file" required accept=".pdf,.jpg,.jpeg,.png">
+                        <small class="form-text text-muted">Formatos aceptados: PDF, JPG, JPEG, PNG</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fechaVencimientoCarnet" class="form-label">Fecha de Vencimiento del Carnet</label>
+                        <input type="date" class="form-control" id="fechaVencimientoCarnet" name="fecha_vencimiento" value="{{ personal.fecha_vencimiento_carnet|date:'Y-m-d' }}">
+                        <small class="form-text text-muted">Fecha en que vence el carnet de identidad</small>
                     </div>
                 </div>
                 <div class="modal-footer">

@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 from django.core.files.storage import FileSystemStorage
 from gen_settings.models import Region, Comuna, Empresa
-from .storage import MediaS3Storage
+# from .storage import MediaS3Storage  # Solo para producción con S3
 
 #MODELO PARA RUTAS DE LOS DOCUMENTOS---------------------------------------------------------
 def obtener_ruta_documento_personal(instance, filename):
@@ -66,13 +66,29 @@ def obtener_ruta_documento(instance, filename):
     return os.path.join('Documentacion_Personal', str(rut), carpeta, nombre_archivo)
 
 #RUTA PARA SOBREESCRIBIR ARCHIVO
-class OverwriteStorage(MediaS3Storage):
+# ============================================================================
+# CONFIGURACIÓN PARA DESARROLLO LOCAL
+# ============================================================================
+class OverwriteStorage(FileSystemStorage):
     """
-    Storage class that uses S3 and overwrites existing files
+    Storage class para desarrollo local que sobrescribe archivos existentes
     """
     def get_available_name(self, name, max_length=None):
-        # S3 naturally overwrites files with the same key
+        # Eliminar archivo existente si existe
+        if self.exists(name):
+            self.delete(name)
         return name
+
+# ============================================================================
+# CONFIGURACIÓN PARA PRODUCCIÓN EN NUBE (COMENTADO)
+# ============================================================================
+# class OverwriteStorage(MediaS3Storage):
+#     """
+#     Storage class that uses S3 and overwrites existing files
+#     """
+#     def get_available_name(self, name, max_length=None):
+#         # S3 naturally overwrites files with the same key
+#         return name
 
 class Sexo(models.Model):
     sexo_id = models.AutoField(primary_key=True, null=False, blank=False)
@@ -165,6 +181,12 @@ class Personal(models.Model):
         storage=OverwriteStorage(),
         null=True, blank=True,
         verbose_name='Fotocopia de Carnet'
+    )
+    fecha_vencimiento_carnet = models.DateField(
+        null=True, 
+        blank=True,
+        verbose_name='Fecha de Vencimiento del Carnet',
+        help_text='Fecha en que vence el carnet de identidad'
     )
     fotocopia_finiquito = models.FileField(
         upload_to=obtener_ruta_documento,
@@ -410,7 +432,7 @@ class LicenciaPorPersonal(models.Model):
     tipos = models.ManyToManyField(TipoLicencia, related_name='licencias_personales')
     fechaEmision = models.DateField(null=False, blank=False)
     fechaVencimiento = models.DateField(null=False, blank=False)
-    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=OverwriteStorage, null=False, blank=False)
+    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=OverwriteStorage(), null=False, blank=False)
     observacion = models.TextField(max_length=250, null=True, blank=True)
 
     def __str__(self):
@@ -452,7 +474,7 @@ class LicenciaMedicaPorPersonal(models.Model):
     fechaEmision = models.DateField(null=False, blank=False)
     dias_licencia = models.IntegerField(null=False, blank=False)
     fecha_fin_licencia = models.DateField(null=False, blank=False, editable=False, default=datetime.now)
-    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=OverwriteStorage, null=False, blank=False)
+    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=OverwriteStorage(), null=False, blank=False)
     observacion = models.TextField(max_length=250, null=True, blank=True)
 
     def save(self, *args, **kwargs):
@@ -487,3 +509,92 @@ class LicenciaMedicaPorPersonal(models.Model):
         super().delete(*args, **kwargs)
 
 
+#---------------------------------------------------------------------------------------------
+#LICENCIAS INTERNAS DE CONDUCIR------------------------------------------------------------
+
+class TipoLicenciaInterna(models.Model):
+    """Tipos de licencias internas de conducir (A, B, C, D, E, etc.)"""
+    tipoLicenciaInterna_id = models.AutoField(primary_key=True, null=False, blank=False)
+    tipoLicenciaInterna = models.CharField(max_length=100, null=False, blank=False, verbose_name='Tipo de Licencia Interna')
+    descripcion = models.TextField(max_length=250, null=True, blank=True, verbose_name='Descripción')
+    
+    class Meta:
+        db_table = 'tipo_licencia_interna'
+        verbose_name = 'Tipo de Licencia Interna'
+        verbose_name_plural = 'Tipos de Licencias Internas'
+        ordering = ['tipoLicenciaInterna']
+    
+    def __str__(self):
+        return self.tipoLicenciaInterna
+
+
+class LicenciaInternaPorPersonal(models.Model):
+    """Licencias internas de conducir emitidas por la empresa/faena"""
+    licenciaInterna_id = models.AutoField(primary_key=True, null=False, blank=False)
+    personal_id = models.ForeignKey(
+        Personal, 
+        on_delete=models.CASCADE, 
+        db_column='personal_id', 
+        null=False, 
+        blank=False,
+        related_name='licencias_internas'
+    )
+    tipos = models.ManyToManyField(
+        TipoLicenciaInterna, 
+        related_name='licencias_internas_personales',
+        verbose_name='Tipos de Licencia Interna'
+    )
+    numero_licencia = models.CharField(
+        max_length=50, 
+        null=True, 
+        blank=True, 
+        verbose_name='N° de Licencia Interna'
+    )
+    fechaEmision = models.DateField(null=False, blank=False, verbose_name='Fecha de Emisión')
+    fechaVencimiento = models.DateField(null=False, blank=False, verbose_name='Fecha de Vencimiento')
+    empresa_emisora = models.CharField(
+        max_length=100, 
+        null=True, 
+        blank=True, 
+        verbose_name='Empresa/Faena Emisora',
+        help_text='Empresa o faena que emitió la licencia interna'
+    )
+    rutaDoc = models.FileField(
+        upload_to=obtener_ruta_documento, 
+        storage=OverwriteStorage(), 
+        null=True, 
+        blank=True,
+        verbose_name='Documento'
+    )
+    observacion = models.TextField(max_length=250, null=True, blank=True, verbose_name='Observaciones')
+    activo = models.BooleanField(default=True, verbose_name='Activo')
+    
+    class Meta:
+        db_table = 'licencia_interna_por_personal'
+        verbose_name = 'Licencia Interna de Conducir'
+        verbose_name_plural = 'Licencias Internas de Conducir'
+        ordering = ['-fechaEmision']
+
+    def __str__(self):
+        tipos_str = ", ".join([t.tipoLicenciaInterna for t in self.tipos.all()])
+        return f"Licencia Interna de {self.personal_id} - Tipos: {tipos_str or 'Ninguno'}"
+    
+    def delete(self, *args, **kwargs):
+        # Guardar la ruta del archivo antes de eliminar el registro
+        if self.rutaDoc:
+            try:
+                file_path = self.rutaDoc.path
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    print(f"Archivo eliminado: {file_path}")
+                
+                # Intentar eliminar la carpeta si está vacía
+                license_folder = os.path.dirname(file_path)
+                if os.path.exists(license_folder) and not os.listdir(license_folder):
+                    os.rmdir(license_folder)
+                    print(f"Carpeta vacía eliminada: {license_folder}")
+                    
+            except Exception as e:
+                print(f"Error al eliminar archivo de licencia interna: {e}")
+                
+        super().delete(*args, **kwargs)

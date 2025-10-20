@@ -1,0 +1,96 @@
+================================================================================
+RESUMEN RÁPIDO DE CAMBIOS: LOCAL ↔ NUBE
+================================================================================
+
+📋 ARCHIVOS MODIFICADOS:
+========================
+1. bycCore/settings.py
+2. rrhh_personal/models.py
+
+📝 CAMBIOS REALIZADOS PARA DESARROLLO LOCAL:
+============================================
+
+1️⃣ bycCore/settings.py
+   ✅ DEBUG = True (era False)
+   ✅ DATABASES cambiado a PostgreSQL localhost (era PostgreSQL RDS)
+   ✅ STATIC_ROOT cambiado a './staticfiles' (era '/home/ubuntu/byc/collectedstatic/')
+   ✅ 'storages' comentado en INSTALLED_APPS
+   ✅ MEDIA_ROOT = 'Documentacion_Personal' (habilitado)
+   ✅ MEDIA_URL = '/media/' (habilitado)
+   ✅ DEFAULT_FILE_STORAGE = 'FileSystemStorage' (habilitado)
+   ✅ Toda la configuración de AWS S3 comentada
+
+2️⃣ rrhh_personal/models.py
+   ✅ Import de MediaS3Storage comentado
+   ✅ OverwriteStorage ahora hereda de FileSystemStorage (era MediaS3Storage)
+   ✅ Agregada lógica para eliminar archivos existentes antes de sobrescribir
+   ✅ Cambiado storage=OverwriteStorage a storage=OverwriteStorage() en campos rutaDoc
+
+🔄 PARA VOLVER A CONFIGURACIÓN EN NUBE:
+=======================================
+
+1️⃣ bycCore/settings.py
+   - DEBUG = False
+   - Descomentar configuración PostgreSQL RDS y comentar PostgreSQL local
+   - STATIC_ROOT = '/home/ubuntu/byc/collectedstatic/'
+   - Descomentar 'storages' en INSTALLED_APPS
+   - Comentar MEDIA_ROOT y MEDIA_URL locales
+   - Descomentar toda la configuración de AWS S3
+
+2️⃣ rrhh_personal/models.py
+   - Descomentar: from .storage import MediaS3Storage
+   - Comentar la clase OverwriteStorage(FileSystemStorage)
+   - Descomentar la clase OverwriteStorage(MediaS3Storage)
+   - Mantener storage=OverwriteStorage() con paréntesis
+
+⚡ COMANDOS PARA INICIAR DESARROLLO LOCAL:
+=========================================
+
+# 1. Aplicar migraciones a la base de datos local
+python manage.py migrate
+
+# 2. Crear superusuario (opcional, si es necesario)
+python manage.py createsuperuser
+
+# 3. Iniciar servidor de desarrollo
+python manage.py runserver
+
+# La aplicación estará disponible en: http://127.0.0.1:8000/
+
+📁 ESTRUCTURA DE ARCHIVOS:
+==========================
+
+LOCAL:
+  ./Documentacion_Personal/
+    └── [RUT]/
+        ├── Documentos_Personales/
+        ├── Licencias/
+        ├── Licencias_Medicas/
+        ├── Certificaciones/
+        └── Examenes/
+
+NUBE (S3):
+  s3://byc-documentos-bucket/
+    └── media/
+        └── Documentacion_Personal/
+            └── [RUT]/
+                ├── Documentos_Personales/
+                ├── Licencias/
+                ├── Licencias_Medicas/
+                ├── Certificaciones/
+                └── Examenes/
+
+⚠️ NOTAS IMPORTANTES:
+====================
+
+✓ La carpeta Documentacion_Personal/ ya existe con archivos de prueba
+✓ El archivo .gitignore debe incluir db.sqlite3 y staticfiles/
+✓ NO commitear credenciales de AWS al repositorio
+✓ Al cambiar entre local y nube, recordar aplicar migraciones si es necesario
+
+📚 DOCUMENTACIÓN COMPLETA:
+==========================
+Ver archivo: CAMBIOS_LOCAL_A_NUBE.txt
+
+================================================================================
+

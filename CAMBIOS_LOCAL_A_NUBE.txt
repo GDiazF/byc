@@ -1,0 +1,275 @@
+================================================================================
+GUÍA DE CAMBIOS: DESARROLLO LOCAL ↔ NUBE (AWS)
+================================================================================
+
+Este documento detalla TODOS los cambios necesarios para alternar entre 
+desarrollo local y producción en la nube (AWS).
+
+================================================================================
+ARCHIVO: bycCore/settings.py
+================================================================================
+
+CAMBIO 1: DEBUG
+---------------
+LOCAL:    DEBUG = True
+NUBE:     DEBUG = False
+
+CAMBIO 2: ALLOWED_HOSTS
+-----------------------
+LOCAL:    ALLOWED_HOSTS = ["*"]
+NUBE:     ALLOWED_HOSTS = ["*"]
+(Puede mantenerse igual, pero en producción se recomienda especificar dominios)
+
+CAMBIO 3: DATABASES
+-------------------
+LOCAL (PostgreSQL en localhost):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "prototipo_byc",
+            "USER": "postgres",
+            "PASSWORD": "postgres",  # Ajusta según tu configuración
+            "HOST": "localhost",
+            "PORT": "5432",
+        }
+    }
+
+NUBE (PostgreSQL RDS):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "prototipo_byc",
+            "USER": "postgres",
+            "PASSWORD": "Administrador_prototipo",
+            "HOST": "db-prototipo-byc.c5wkeuesen30.us-east-1.rds.amazonaws.com",
+            "PORT": "5432",
+        }
+    }
+
+CAMBIO 4: STATIC_ROOT
+---------------------
+LOCAL:    STATIC_ROOT = BASE_DIR / 'staticfiles'
+NUBE:     STATIC_ROOT = '/home/ubuntu/byc/collectedstatic/'
+
+CAMBIO 5: MEDIA FILES (Almacenamiento de archivos subidos)
+----------------------------------------------------------
+LOCAL (Sistema de archivos local):
+    # Comentar o eliminar toda la configuración de AWS S3:
+    # AWS_ACCESS_KEY_ID = ...
+    # AWS_SECRET_ACCESS_KEY = ...
+    # etc.
+    
+    # Habilitar estas líneas:
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'Documentacion_Personal')
+    MEDIA_URL = '/media/'
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+
+NUBE (AWS S3):
+    # Configuración de AWS S3
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'byc-documentos-bucket')
+    AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+    AWS_DEFAULT_ACL = None
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
+    
+    # Media files configuration for S3
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    
+    # Comentar estas líneas:
+    # MEDIA_ROOT = os.path.join(BASE_DIR, 'Documentacion_Personal')
+    # MEDIA_URL = '/media/'
+
+CAMBIO 6: INSTALLED_APPS (App 'storages')
+------------------------------------------
+LOCAL:    # 'storages' puede estar comentada o eliminada de INSTALLED_APPS
+NUBE:     'storages' debe estar en INSTALLED_APPS
+
+LOCAL:
+    INSTALLED_APPS = [
+        'main_login',
+        'rrhh_personal',
+        'main_home',
+        'maq_fichatecnica',
+        'gen_settings',
+        # 'storages',  # Solo para producción en nube
+        'django.contrib.admin',
+        ...
+    ]
+
+NUBE:
+    INSTALLED_APPS = [
+        'main_login',
+        'rrhh_personal',
+        'main_home',
+        'maq_fichatecnica',
+        'gen_settings',
+        'storages',  # Necesario para S3
+        'django.contrib.admin',
+        ...
+    ]
+
+================================================================================
+ARCHIVO: bycCore/urls.py (Servidor de archivos media en desarrollo)
+================================================================================
+
+LOCAL: Debe incluir configuración para servir archivos media
+
+    from django.conf import settings
+    from django.conf.urls.static import static
+    
+    urlpatterns = [
+        # ... tus urls existentes
+    ]
+    
+    # Solo en desarrollo local
+    if settings.DEBUG:
+        urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+NUBE: No es necesario, S3 maneja los archivos media
+
+================================================================================
+ARCHIVO: rrhh_personal/models.py
+================================================================================
+
+En los campos FileField que usan storage personalizado:
+
+LOCAL: Usar FileSystemStorage o comentar el parámetro storage
+
+    from django.core.files.storage import FileSystemStorage
+    
+    # Opción 1: Usar FileSystemStorage
+    documento = models.FileField(
+        upload_to=ruta_archivo,
+        storage=FileSystemStorage(),
+        ...
+    )
+    
+    # Opción 2: Eliminar el parámetro storage (usará DEFAULT_FILE_STORAGE)
+    documento = models.FileField(
+        upload_to=ruta_archivo,
+        ...
+    )
+
+NUBE: Usar OverwriteStorage (que hereda de MediaS3Storage)
+
+    from .storage import OverwriteStorage
+    
+    documento = models.FileField(
+        upload_to=ruta_archivo,
+        storage=OverwriteStorage(),
+        ...
+    )
+
+================================================================================
+PASOS PARA CAMBIAR DE LOCAL A NUBE
+================================================================================
+
+1. CÓDIGO:
+   - Aplicar todos los cambios mencionados arriba en settings.py
+   - Verificar que 'storages' esté en INSTALLED_APPS
+   - Actualizar modelos para usar OverwriteStorage()
+   - Remover configuración de media en urls.py si la agregaste
+
+2. BASE DE DATOS:
+   - Hacer backup de tu base de datos local si es necesario
+   - Asegurarse de que las migraciones estén aplicadas en RDS
+   - Verificar conectividad con la base de datos RDS
+
+3. VARIABLES DE ENTORNO:
+   - Configurar las variables de entorno de AWS en el servidor:
+     * AWS_ACCESS_KEY_ID
+     * AWS_SECRET_ACCESS_KEY
+     * AWS_STORAGE_BUCKET_NAME
+     * AWS_S3_REGION_NAME
+
+4. ARCHIVOS:
+   - Si tienes archivos nuevos en local, sincronizarlos a S3:
+     aws s3 sync ./Documentacion_Personal/ s3://byc-documentos-bucket/media/Documentacion_Personal/ --recursive
+
+5. DEPENDENCIAS:
+   - Verificar que boto3 y django-storages estén instalados en el servidor
+
+6. SERVICIOS:
+   - Hacer collectstatic: python manage.py collectstatic
+   - Reiniciar Gunicorn: sudo systemctl restart gunicorn
+   - Reiniciar Nginx: sudo systemctl restart nginx
+
+================================================================================
+PASOS PARA CAMBIAR DE NUBE A LOCAL
+================================================================================
+
+1. CÓDIGO:
+   - Aplicar todos los cambios mencionados arriba para LOCAL
+   - Comentar 'storages' en INSTALLED_APPS o dejarlo (no afecta en local)
+   - Actualizar modelos para NO usar OverwriteStorage()
+   - Agregar configuración de media en urls.py para desarrollo
+
+2. BASE DE DATOS:
+   - Cambiar a SQLite en settings.py
+   - Aplicar migraciones: python manage.py migrate
+   - Crear superusuario si es necesario: python manage.py createsuperuser
+
+3. ARCHIVOS:
+   - Los archivos en Documentacion_Personal/ ya deberían estar en tu repo
+   - Si necesitas descargar archivos de S3:
+     aws s3 sync s3://byc-documentos-bucket/media/Documentacion_Personal/ ./Documentacion_Personal/ --recursive
+
+4. SERVIDOR DE DESARROLLO:
+   - No necesitas Gunicorn ni Nginx
+   - Ejecutar: python manage.py runserver
+   - Los archivos media se servirán automáticamente en desarrollo
+
+================================================================================
+CHECKLIST DE VERIFICACIÓN
+================================================================================
+
+PARA LOCAL:
+[ ] DEBUG = True en settings.py
+[ ] DATABASES apunta a SQLite
+[ ] MEDIA_ROOT y MEDIA_URL están configurados
+[ ] DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+[ ] Configuración de media en urls.py está presente
+[ ] Carpeta Documentacion_Personal/ existe
+[ ] Migraciones aplicadas en SQLite
+[ ] Servidor de desarrollo funciona: python manage.py runserver
+
+PARA NUBE:
+[ ] DEBUG = False en settings.py
+[ ] DATABASES apunta a RDS PostgreSQL
+[ ] Configuración de AWS S3 está descomentada y completa
+[ ] DEFAULT_FILE_STORAGE apunta a S3Boto3Storage
+[ ] 'storages' está en INSTALLED_APPS
+[ ] Variables de entorno de AWS configuradas en el servidor
+[ ] Migraciones aplicadas en RDS
+[ ] Gunicorn y Nginx reiniciados
+[ ] Archivos en S3 accesibles
+
+================================================================================
+NOTAS IMPORTANTES
+================================================================================
+
+1. NUNCA commitear credenciales de AWS al repositorio
+2. Siempre hacer backup de la base de datos antes de cambios importantes
+3. En producción, considerar usar variables de entorno para todas las credenciales
+4. El archivo .gitignore debe incluir:
+   - db.sqlite3
+   - *.pyc
+   - __pycache__/
+   - staticfiles/
+   - /Documentacion_Personal/ (si no quieres subir archivos locales)
+   - .env
+
+5. Para un flujo más profesional, considera usar:
+   - Archivo settings_local.py para desarrollo
+   - Archivo settings_production.py para producción
+   - Importar el apropiado según una variable de entorno
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================
+

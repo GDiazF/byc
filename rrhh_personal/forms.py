@@ -198,6 +198,66 @@ class LicenciasPersonal(forms.ModelForm):
         }
 
 
+#formularios de licencias internas ------------------------------------------------------
+class LicenciasInternasPersonal(forms.ModelForm):
+    tipos = forms.ModelMultipleChoiceField(
+        queryset=None,  # Se establecerá en __init__
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'list-unstyled'
+        }),
+        required=True,
+        label='Tipos de Licencia Interna'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import TipoLicenciaInterna
+        self.fields['tipos'].queryset = TipoLicenciaInterna.objects.all().order_by('tipoLicenciaInterna')
+
+    class Meta:
+        from .models import LicenciaInternaPorPersonal
+        model = LicenciaInternaPorPersonal
+        fields = ['tipos', 'numero_licencia', 'empresa_emisora', 'fechaEmision', 'fechaVencimiento', 'rutaDoc', 'observacion', 'activo']
+        widgets = {
+            'numero_licencia': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ej: LI-2024-001'
+            }),
+            'empresa_emisora': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ej: Faena Los Bronces'
+            }),
+            'fechaEmision': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'fechaVencimiento': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'rutaDoc': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
+            'observacion': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3
+            }),
+            'activo': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            })
+        }
+        labels = {
+            'numero_licencia': 'N° de Licencia Interna',
+            'empresa_emisora': 'Empresa/Faena Emisora',
+            'fechaEmision': 'Fecha de Emisión',
+            'fechaVencimiento': 'Fecha de Vencimiento',
+            'rutaDoc': 'Documento',
+            'observacion': 'Observaciones',
+            'activo': 'Licencia Activa'
+        }
+
+
 #formulario para certificacion------------------------------------------------------------  
 class CertificacionPersonal(forms.ModelForm):
     proveedor_id = forms.ModelChoiceField(
