@@ -80,25 +80,17 @@ WSGI_APPLICATION = 'bycCore.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Base de datos SQLite para desarrollo local (portable)
+# Base de datos PostgreSQL local para desarrollo
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "bycCoreDB",
+        "USER": "postgres",
+        "PASSWORD": "123456",  # Ajusta según tu configuración local
+        "HOST": "localhost",
+        "PORT": "5432",
     }
 }
-
-# Base de datos PostgreSQL local para desarrollo (BACKUP)
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": "bycCoreDB",
-#         "USER": "postgres",
-#         "PASSWORD": "123456",  # Ajusta según tu configuración local
-#         "HOST": "localhost",
-#         "PORT": "5432",
-#     }
-# }
 
 # Base de datos PostgreSQL en AWS RDS (para producción)
 # DATABASES = {

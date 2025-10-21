@@ -57,18 +57,46 @@ def crear_personal_ficticio(apps, schema_editor):
     ]
     
     # Obtener datos necesarios
-    sexo_masculino = Sexo.objects.get(sexo_id=5)  # MASCULINO
-    sexo_femenino = Sexo.objects.get(sexo_id=4)   # FEMENINO
+    try:
+        sexo_masculino = Sexo.objects.get(sexo__iexact='MASCULINO')
+    except Sexo.DoesNotExist:
+        sexo_masculino = Sexo.objects.create(sexo='MASCULINO')
+    
+    try:
+        sexo_femenino = Sexo.objects.get(sexo__iexact='FEMENINO')
+    except Sexo.DoesNotExist:
+        sexo_femenino = Sexo.objects.create(sexo='FEMENINO')
     
     estados_civiles = list(EstadoCivil.objects.all())
+    if not estados_civiles:
+        print("No hay estados civiles en la base de datos. Creando uno por defecto...")
+        estado_civil_default = EstadoCivil.objects.create(estadocivil='SOLTERO')
+        estados_civiles = [estado_civil_default]
+    
     regiones = list(Region.objects.all()[:5])  # Primeras 5 regiones
+    if not regiones:
+        print("No hay regiones en la base de datos. No se puede continuar.")
+        return
+    
     empresas = list(Empresa.objects.all())
+    if not empresas:
+        print("No hay empresas en la base de datos. No se puede continuar.")
+        return
     
     # Departamentos y cargos
-    depto_operaciones = DeptoEmpresa.objects.get(depto_id=2)
-    depto_maquinarias = DeptoEmpresa.objects.get(depto_id=1)
+    departamentos = list(DeptoEmpresa.objects.all())
+    if not departamentos:
+        print("No hay departamentos en la base de datos. Creando departamentos por defecto...")
+        depto_operaciones = DeptoEmpresa.objects.create(depto='OPERACIONES')
+        depto_maquinarias = DeptoEmpresa.objects.create(depto='MAQUINARIAS')
+        departamentos = [depto_operaciones, depto_maquinarias]
     
     cargos = list(Cargo.objects.all())
+    if not cargos:
+        print("No hay cargos en la base de datos. Creando cargos por defecto...")
+        for depto in departamentos:
+            Cargo.objects.create(depto_id=depto, cargo=f'OPERARIO {depto.depto}')
+        cargos = list(Cargo.objects.all())
     
     # Generar 100 trabajadores
     trabajadores_creados = 0
@@ -146,13 +174,14 @@ def crear_personal_ficticio(apps, schema_editor):
             dias_antiguedad = random.randint(180, 1825)
             fecha_contrato = datetime.now().date() - timedelta(days=dias_antiguedad)
             
-            InfoLaboral.objects.create(
-                personal_id=personal,
-                empresa_id=empresa,
-                depto_id=cargo.depto_id,
-                cargo_id=cargo,
-                fechacontrata=fecha_contrato
-            )
+            if cargo and cargo.depto_id:
+                InfoLaboral.objects.create(
+                    personal_id=personal,
+                    empresa_id=empresa,
+                    depto_id=cargo.depto_id,
+                    cargo_id=cargo,
+                    fechacontrata=fecha_contrato
+                )
             
             trabajadores_creados += 1
             

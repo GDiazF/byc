@@ -31,6 +31,22 @@ function getCookie(name) {
     return cookieValue;
 }
 
+// Formatear fecha a formato chileno (DD-MM-YYYY)
+function formatearFechaChilena(fecha) {
+    if (!fecha) return '';
+    
+    try {
+        const date = new Date(fecha + 'T00:00:00'); // Agregar hora para evitar problemas de timezone
+        const dia = String(date.getDate()).padStart(2, '0');
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        const anio = date.getFullYear();
+        return `${dia}-${mes}-${anio}`;
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return fecha;
+    }
+}
+
 // Renderizar tabla de personal
 function renderizarTablaPersonal() {
     const tbody = document.getElementById('personalTableBody');
@@ -85,7 +101,7 @@ function renderizarTablaPersonal() {
         const estadoClass = p.tiene_asignacion ? 'bg-warning' : 'bg-success';
         const estadoText = p.tiene_asignacion ? 'Asignado' : 'Disponible';
         const fechaAsignacion = p.asignacion_actual ? 
-            `${p.asignacion_actual.fecha_inicio || ''} ${p.asignacion_actual.fecha_fin ? '→ ' + p.asignacion_actual.fecha_fin : '→ Indefinido'}` : 
+            `${formatearFechaChilena(p.asignacion_actual.fecha_inicio) || ''} ${p.asignacion_actual.fecha_fin ? '→ ' + formatearFechaChilena(p.asignacion_actual.fecha_fin) : '→ Indefinido'}` : 
             '-';
         
         return `
@@ -370,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <strong>Duración de la Faena:</strong> 
                     <span class="badge bg-dark">
                         <i class="bi bi-calendar-range me-1"></i>
-                        {{ faena_fecha_inicio|default:"Sin inicio" }} → {{ faena_fecha_fin|default:"Sin fin" }}
+                        {% if faena_fecha_inicio %}{{ faena_fecha_inicio|date:"d-m-Y" }}{% else %}Sin inicio{% endif %} → {% if faena_fecha_fin %}{{ faena_fecha_fin|date:"d-m-Y" }}{% else %}Sin fin{% endif %}
                     </span>
                     {% if faena_duracion_dias %}
                     <small class="text-muted">({{ faena_duracion_dias }} días)</small>

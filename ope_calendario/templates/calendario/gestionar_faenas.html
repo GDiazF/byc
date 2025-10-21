@@ -28,6 +28,22 @@ function getCookie(name) {
     return cookieValue;
 }
 
+// Formatear fecha a formato chileno (DD-MM-YYYY)
+function formatearFechaChilena(fecha) {
+    if (!fecha) return '';
+    
+    try {
+        const date = new Date(fecha + 'T00:00:00'); // Agregar hora para evitar problemas de timezone
+        const dia = String(date.getDate()).padStart(2, '0');
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        const anio = date.getFullYear();
+        return `${dia}-${mes}-${anio}`;
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return fecha;
+    }
+}
+
 // Renderizar faenas
 function renderizarFaenas() {
     const container = document.getElementById('faenasContainer');
@@ -69,7 +85,7 @@ function renderizarFaenas() {
                     ${faena.fecha_inicio || faena.fecha_fin ? `
                         <p class="small mb-2">
                             <i class="bi bi-calendar-range me-1"></i>
-                            <strong>${faena.fecha_inicio || 'Sin inicio'}</strong> → <strong>${faena.fecha_fin || 'Sin fin'}</strong>
+                            <strong>${formatearFechaChilena(faena.fecha_inicio) || 'Sin inicio'}</strong> → <strong>${formatearFechaChilena(faena.fecha_fin) || 'Sin fin'}</strong>
                         </p>
                     ` : ''}
                     <div class="mb-3">
@@ -154,14 +170,24 @@ async function guardarFaena(event) {
         
         const result = await response.json();
         
-        if (result.success) {
+        if (response.ok && result.success) {
+            // Cerrar modal correctamente
+            const modalElement = document.getElementById('faenaModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+            
+            // Mostrar mensaje y recargar
             mostrarAlerta(result.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('faenaModal')).hide();
-            location.reload();
+            setTimeout(() => {
+                location.reload();
+            }, 500);
         } else {
             mostrarAlerta(result.error || 'Error al guardar la faena', 'error');
         }
     } catch (error) {
+        console.error('Error al guardar faena:', error);
         mostrarAlerta('Error de conexión: ' + error.message, 'error');
     }
 }
@@ -233,8 +259,8 @@ function verDetallesFaena(faenaId) {
                 <td>${asig.personal.rut}</td>
                 <td>${asig.personal.cargo}</td>
                 <td>${asig.turno.nombre}</td>
-                <td>${new Date(asig.fecha_inicio).toLocaleDateString('es-CL')}</td>
-                <td>${asig.fecha_fin ? new Date(asig.fecha_fin).toLocaleDateString('es-CL') : '<span class="badge bg-success">Activo</span>'}</td>
+                <td>${formatearFechaChilena(asig.fecha_inicio)}</td>
+                <td>${asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : '<span class="badge bg-success">Activo</span>'}</td>
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-sm btn-outline-primary" onclick="editarAsignacion(${faena.id}, ${asig.id})" title="Editar">

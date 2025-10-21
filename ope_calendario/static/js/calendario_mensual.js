@@ -41,6 +41,44 @@ const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
  const dayNames = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 
+/**
+ * Formatea una fecha al formato chileno (DD-MM-YYYY)
+ * @param {Date|string} fecha - Fecha a formatear
+ * @returns {string} Fecha formateada
+ */
+function formatearFechaChilena(fecha) {
+    if (!fecha) return '';
+    
+    try {
+        const date = fecha instanceof Date ? fecha : new Date(fecha + 'T00:00:00');
+        const dia = String(date.getDate()).padStart(2, '0');
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        const anio = date.getFullYear();
+        return `${dia}-${mes}-${anio}`;
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return fecha;
+    }
+}
+
+/**
+ * Formatea una fecha al formato chileno con día de la semana completo
+ * @param {Date} fecha - Fecha a formatear
+ * @returns {string} Fecha formateada con día de semana
+ */
+function formatearFechaChilenaLarga(fecha) {
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    
+    const diaSemana = diasSemana[fecha.getDay()];
+    const dia = fecha.getDate();
+    const mes = meses[fecha.getMonth()];
+    const anio = fecha.getFullYear();
+    
+    return `${diaSemana}, ${dia} de ${mes} de ${anio}`;
+}
+
 // Variables globales
 let currentDate = new Date(currentYear, currentMonth - 1, 1);
 let filteredPersonal = [];
@@ -340,9 +378,7 @@ function showEstadoInfo(personalId, day) {
     
     // Llenar modal
     document.getElementById('modalPersonal').textContent = nombreCompleto;
-    document.getElementById('modalFecha').textContent = fecha.toLocaleDateString('es-ES', { 
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-    });
+    document.getElementById('modalFecha').textContent = formatearFechaChilenaLarga(fecha);
     document.getElementById('modalEstado').textContent = estado ? estado.nombre : 'Sin estado';
     document.getElementById('modalFaena').textContent = faenaActual;
     document.getElementById('modalCargo').textContent = cargo;
