@@ -504,7 +504,6 @@ def add_internal_license(request, personal_id):
                 licencia = form.save(commit=False)
                 licencia.personal_id = personal
                 licencia.save()
-                form.save_m2m()  # Guardar las relaciones many-to-many
                 
                 return JsonResponse({
                     'status': 'success',

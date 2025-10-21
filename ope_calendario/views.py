@@ -1,11 +1,13 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.core.cache import cache
 from datetime import datetime, date, timedelta
 from calendar import monthrange
 import json
+import hashlib
 from .models import (
     Estado, EstadoFuente, Turno, TurnoBloque, 
     Faena, AsignacionFaena, EstadoManual
@@ -16,15 +18,19 @@ from rrhh_personal.models import Personal
 # Create your views here.
 
 def calendario_mensual(request):
-    """Vista para mostrar el calendario mensual con datos reales"""
+    """Vista para mostrar el calendario mensual con datos reales y paginación"""
     
     # Obtener parámetros de la URL o usar fecha actual
     try:
         year = int(request.GET.get('year', datetime.now().year))
         month = int(request.GET.get('month', datetime.now().month))
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 25))
     except (ValueError, TypeError):
         year = datetime.now().year
         month = datetime.now().month
+        page = 1
+        page_size = 25
     
     # Validar rango de fechas
     if month < 1 or month > 12:
@@ -32,13 +38,24 @@ def calendario_mensual(request):
     if year < 1900 or year > 2100:
         year = datetime.now().year
     
+    # Validar paginación
+    if page < 1:
+        page = 1
+    if page_size not in [25, 50, 100]:
+        page_size = 25
+    
     # Obtener filtros
     faena_filter = request.GET.get('faena', '')
     cargo_filter = request.GET.get('cargo', '')
     search_query = request.GET.get('search', '')
     
-    # Obtener datos del calendario
-    calendario_data = obtener_calendario_mensual(year, month, faena_filter, cargo_filter, search_query)
+    # Debug: imprimir filtros recibidos
+    print(f"[FILTROS] Faena: '{faena_filter}', Cargo: '{cargo_filter}', Búsqueda: '{search_query}'")
+    
+    # Obtener datos del calendario con paginación
+    calendario_data = obtener_calendario_mensual(
+        year, month, faena_filter, cargo_filter, search_query, page, page_size
+    )
     
     # Obtener rango de fechas del mes para filtrar asignaciones
     _, ultimo_dia = monthrange(year, month)
@@ -63,7 +80,7 @@ def calendario_mensual(request):
     from django.core.serializers.json import DjangoJSONEncoder
     import json
     
-    # Preparar datos del calendario para JSON
+    # Preparar datos del calendario para JSON - NUEVO FORMATO LIGERO
     calendario_json = {
         'personal': [
             {
@@ -73,106 +90,50 @@ def calendario_mensual(request):
                 'apemat': p.apemat,
                 'rut': p.rut,
                 'dvrut': p.dvrut,
-                'fecha_nac': p.fechanac.isoformat() if p.fechanac else None,
-                'correo': p.correo,
-                'direccion': p.direccion,
-                'activo': p.activo,
-                'infolaboral_set': [
-                    {
-                        'cargo_id': {
-                            'cargo': il.cargo_id.cargo
-                        }
-                    } for il in p.infolaboral_set.all()
-                ],
-                'asignaciones_faena': [
-                    {
-                        'id': af.id,
-                        'faena': {
-                            'id': af.faena.id,
-                            'nombre': af.faena.nombre
-                        },
-                        'turno_id': af.turno.id,
-                        'fecha_inicio': af.fecha_inicio.isoformat() if af.fecha_inicio else None,
-                        'fecha_fin': af.fecha_fin.isoformat() if af.fecha_fin else None,
-                        'bloque_inicio_id': af.bloque_inicio.id if af.bloque_inicio else None,
-                        'observaciones': af.observaciones,
-                        'activo': af.activo
-                    } for af in p.asignaciones_faena.filter(activo=True)
-                ]
+                'cargo': p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo',
             } for p in calendario_data['personal']
         ],
-        'estados': {},
+        'asignaciones': [
+            {
+                'id': asig.id,
+                'personal_id': asig.personal.personal_id,
+                'faena': {
+                    'id': asig.faena.id,
+                    'nombre': asig.faena.nombre
+                },
+                'turno_id': asig.turno.id,
+                'fecha_inicio': asig.fecha_inicio.isoformat(),
+                'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None,
+                'bloque_inicio_orden': asig.bloque_inicio.orden if asig.bloque_inicio else 1,
+                'activo': asig.activo
+            } for asig in calendario_data['asignaciones']
+        ],
+        'estados_manuales': [
+            {
+                'personal_id': em.personal.personal_id,
+                'estado_id': em.estado.id,
+                'fecha_inicio': em.fecha_inicio.isoformat(),
+                'fecha_fin': em.fecha_fin.isoformat(),
+            } for em in calendario_data['estados_manuales']
+        ],
         'dias_mes': calendario_data['dias_mes']
     }
     
-    # Convertir estados a diccionarios serializables
-    for personal_id, estados_persona in calendario_data['estados'].items():
-        calendario_json['estados'][personal_id] = {}
-        for dia, estados in estados_persona.items():
-            # Asegurar que estados sea siempre una lista
-            if estados:
-                if hasattr(estados, '__iter__') and not isinstance(estados, str):
-                    # Es una lista o iterable
-                    if len(estados) == 1:
-                        estado_info = estados[0]
-                        # Extraer el estado del diccionario si es necesario
-                        estado = estado_info['estado'] if isinstance(estado_info, dict) else estado_info
-                        detalle_fuente = estado_info.get('detalle_fuente') if isinstance(estado_info, dict) else None
-                        
-                        calendario_json['estados'][personal_id][dia] = {
-                            'nombre': estado.nombre,
-                            'nombre_corto': estado.nombre_corto or estado.nombre,
-                            'color': estado.color,
-                            'background_color': estado.background_color,
-                            'prioridad': estado.prioridad,
-                            'es_bloqueante': estado.es_bloqueante,
-                            'multiple': False,
-                            'detalle_fuente': detalle_fuente
-                        }
-                    elif len(estados) > 1:
-                        # Múltiples estados con la misma prioridad
-                        estados_procesados = []
-                        detalles_fuentes = []
-                        
-                        for estado_info in estados:
-                            estado = estado_info['estado'] if isinstance(estado_info, dict) else estado_info
-                            detalle_fuente = estado_info.get('detalle_fuente') if isinstance(estado_info, dict) else None
-                            
-                            estados_procesados.append({
-                                'nombre': estado.nombre,
-                                'nombre_corto': estado.nombre_corto or estado.nombre,
-                                'color': estado.color,
-                                'background_color': estado.background_color,
-                                'prioridad': estado.prioridad,
-                                'es_bloqueante': estado.es_bloqueante
-                            })
-                            
-                            if detalle_fuente:
-                                detalles_fuentes.append(detalle_fuente)
-                        
-                        calendario_json['estados'][personal_id][dia] = {
-                            'estados': estados_procesados,
-                            'multiple': True,
-                            'detalles_fuentes': detalles_fuentes
-                        }
-                    else:
-                        calendario_json['estados'][personal_id][dia] = None
-                else:
-                    # Es un objeto Estado individual
-                    estado = estados
-                    calendario_json['estados'][personal_id][dia] = {
-                        'nombre': estado.nombre,
-                        'nombre_corto': estado.nombre_corto or estado.nombre,
-                        'color': estado.color,
-                        'background_color': estado.background_color,
-                        'prioridad': estado.prioridad,
-                        'es_bloqueante': estado.es_bloqueante,
-                        'multiple': False
-                    }
-            else:
-                calendario_json['estados'][personal_id][dia] = None
+    # Obtener estado predeterminado
+    estado_predeterminado = Estado.objects.filter(es_predeterminado=True, activo=True).first()
+    if estado_predeterminado:
+        calendario_json['estado_predeterminado'] = {
+            'id': estado_predeterminado.id,
+            'nombre': estado_predeterminado.nombre,
+            'nombre_corto': estado_predeterminado.nombre_corto or estado_predeterminado.nombre,
+            'color': estado_predeterminado.color,
+            'background_color': estado_predeterminado.background_color
+        }
     
-
+    
+    # Calcular información de paginación
+    total_personal = calendario_data.get('total_personal', 0)
+    total_pages = (total_personal + page_size - 1) // page_size if total_personal > 0 else 1
     
     context = {
         'calendario': json.dumps(calendario_json, cls=DjangoJSONEncoder),
@@ -193,7 +154,15 @@ def calendario_mensual(request):
         'mes_siguiente': json.dumps({
             'year': year if month < 12 else year + 1,
             'month': month + 1 if month < 12 else 1
-        })
+        }),
+        # Información de paginación
+        'current_page': page,
+        'page_size': page_size,
+        'total_personal': total_personal,
+        'total_pages': total_pages,
+        'has_previous': page > 1,
+        'has_next': page < total_pages,
+        'page_range': range(max(1, page - 2), min(total_pages + 1, page + 3)),
     }
     
     # Agregar todos los estados disponibles al calendario JSON
@@ -231,8 +200,11 @@ def calendario_mensual(request):
                     'estado': {
                         'id': bloque.estado.id,
                         'nombre': bloque.estado.nombre,
+                        'nombre_corto': bloque.estado.nombre_corto or bloque.estado.nombre,
                         'color': bloque.estado.color,
                         'background_color': bloque.estado.background_color,
+                        'prioridad': bloque.estado.prioridad,
+                        'es_bloqueante': bloque.estado.es_bloqueante
                     }
                 }
                 for bloque in turno.bloques.all().order_by('orden')
@@ -253,66 +225,105 @@ def calendario_mensual(request):
     
     return render(request, 'calendario/calendario_mensual.html', context)
 
-def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', search_query=''):
+def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', search_query='', page=1, page_size=25):
     """
-    Obtiene el calendario completo para un mes específico con filtros.
-    OPTIMIZADO: Reduce las consultas de ~620-930 a menos de 10.
+    Obtiene datos para el calendario con paginación.
+    NUEVA ARQUITECTURA: Envía asignaciones al frontend, estados se calculan en JavaScript
+    ESCALABLE: O(1) - El tiempo no aumenta con más trabajadores
     """
     # Obtener rango de fechas del mes
     _, ultimo_dia = monthrange(year, month)
     fecha_inicio = date(year, month, 1)
     fecha_fin = date(year, month, ultimo_dia)
     
-    # Construir filtros para el personal con prefetch optimizado
-    personal_query = Personal.objects.filter(activo=True).prefetch_related(
-        'estados_manuales__estado',
-        'asignaciones_faena__turno__bloques__estado',
-        'asignaciones_faena__faena',
-        'asignaciones_faena__bloque_inicio__estado',
-        'ausentismo_set',
-        'licenciamedicaporpersonal_set'
+    # Construir filtros para el personal
+    personal_query = Personal.objects.filter(activo=True).select_related(
+        'sexo_id', 'estcivil_id'
+    ).prefetch_related(
+        'infolaboral_set__cargo_id',
+        'infolaboral_set__empresa_id'
     )
     
-    # COMENTADO: Ahora el filtrado se hace solo en el frontend
-    # if faena_filter:
-    #     personal_query = personal_query.filter(
-    #         asignaciones_faena__faena__nombre__icontains=faena_filter,
-    #         asignaciones_faena__activo=True
-    #     ).distinct()
-    # 
-    # if cargo_filter:
-    #     personal_query = personal_query.filter(
-    #         infolaboral__cargo_id__cargo__icontains=cargo_filter
-    #     ).distinct()
-    # 
-    # if search_query:
-    #     personal_query = personal_query.filter(
-    #         Q(nombre__icontains=search_query) |
-    #         Q(apepat__icontains=search_query) |
-    #         Q(apemat__icontains=search_query) |
-    #         Q(rut__icontains=search_query)
-    #     )
+    # FILTROS EN EL BACKEND
+    filtros_aplicados = []
     
-    personal = personal_query.order_by('nombre', 'apepat')
+    if faena_filter and faena_filter.strip():
+        personal_query = personal_query.filter(
+            asignaciones_faena__faena__nombre__icontains=faena_filter,
+            asignaciones_faena__activo=True
+        ).distinct()
+        filtros_aplicados.append(f"faena={faena_filter}")
     
-    # Inicializar estructura de resultados
+    if cargo_filter and cargo_filter.strip():
+        personal_query = personal_query.filter(
+            infolaboral__cargo_id__cargo__icontains=cargo_filter
+        ).distinct()
+        filtros_aplicados.append(f"cargo={cargo_filter}")
+    
+    if search_query and search_query.strip():
+        personal_query = personal_query.filter(
+            Q(nombre__icontains=search_query) |
+            Q(apepat__icontains=search_query) |
+            Q(apemat__icontains=search_query) |
+            Q(rut__icontains=search_query)
+        )
+        filtros_aplicados.append(f"búsqueda={search_query}")
+    
+    # Contar total antes de paginar
+    total_personal = personal_query.count()
+    print(f"[QUERY] Filtros aplicados: {filtros_aplicados if filtros_aplicados else 'Ninguno'}")
+    print(f"[QUERY] Total personal encontrado: {total_personal}")
+    
+    # Aplicar paginación
+    offset = (page - 1) * page_size
+    personal_list = list(personal_query.order_by('apepat', 'nombre')[offset:offset + page_size])
+    
+    # Obtener IDs del personal paginado
+    personal_ids = [p.personal_id for p in personal_list]
+    
+    # Obtener SOLO las asignaciones activas de este personal en este mes
+    # Esto es mucho más eficiente que calcular estados
+    asignaciones = AsignacionFaena.objects.filter(
+        personal_id__in=personal_ids,
+        activo=True,
+        fecha_inicio__lte=fecha_fin
+    ).filter(
+        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio)
+    ).select_related(
+        'personal', 'faena', 'turno', 'bloque_inicio__estado'
+    ).prefetch_related(
+        'turno__bloques__estado'
+    )
+    
+    # Obtener estados manuales de este personal en este mes
+    estados_manuales = EstadoManual.objects.filter(
+        personal_id__in=personal_ids,
+        activo=True,
+        fecha_inicio__lte=fecha_fin,
+        fecha_fin__gte=fecha_inicio
+    ).select_related('personal', 'estado')
+    
+    # Obtener ausentismos del personal en este rango de fechas
+    from rrhh_personal.models import Ausentismo
+    ausentismos = Ausentismo.objects.filter(
+        personal_id__in=personal_ids,
+        fechaini__lte=fecha_fin,
+        fechafin__gte=fecha_inicio
+    ).select_related('personal_id', 'tipoausen_id') if personal_ids else []
+    
+    # Estructura simplificada - NO calculamos estados aquí
     calendario = {
-        'personal': list(personal),
-        'estados': {},
-        'fechas': [fecha_inicio + timedelta(days=i) for i in range(ultimo_dia)],
-        'dias_mes': ultimo_dia
+        'personal': personal_list,
+        'asignaciones': list(asignaciones),
+        'estados_manuales': list(estados_manuales),
+        'dias_mes': ultimo_dia,
+        'total_personal': total_personal,
+        'page': page,
+        'page_size': page_size,
+        'has_more': offset + page_size < total_personal,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin
     }
-    
-    # Pre-cargar EstadoFuente una sola vez
-    estados_fuente_cache = list(EstadoFuente.objects.select_related('estado', 'content_type').filter(estado__activo=True))
-    
-    # Calcular estado para cada persona en cada día (optimizado)
-    for persona in personal:
-        calendario['estados'][persona.personal_id] = {}
-        
-        for fecha in calendario['fechas']:
-            estado = obtener_estado_final_personal_fecha_optimizado(persona, fecha, estados_fuente_cache)
-            calendario['estados'][persona.personal_id][fecha.day] = estado
     
     return calendario
 
@@ -597,35 +608,93 @@ def obtener_estado_final_personal_fecha(personal, fecha):
     return estados_misma_prioridad
 
 def api_calendario_mensual(request):
-    """API para obtener datos del calendario en formato JSON"""
+    """API para obtener datos del calendario en formato JSON con paginación"""
     try:
         year = int(request.GET.get('year', datetime.now().year))
         month = int(request.GET.get('month', datetime.now().month))
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 25))
         faena_filter = request.GET.get('faena', '')
         cargo_filter = request.GET.get('cargo', '')
         search_query = request.GET.get('search', '')
         
-        calendario_data = obtener_calendario_mensual(year, month, faena_filter, cargo_filter, search_query)
+        # Obtener datos del calendario paginados
+        calendario_data = obtener_calendario_mensual(
+            year, month, faena_filter, cargo_filter, search_query, page, page_size
+        )
+        
+        # Convertir estados a formato serializable
+        estados_serializados = {}
+        for personal_id, estados_persona in calendario_data['estados'].items():
+            estados_serializados[personal_id] = {}
+            for dia, estados in estados_persona.items():
+                if estados:
+                    if isinstance(estados, list) and len(estados) > 0:
+                        estado_obj = estados[0]['estado'] if isinstance(estados[0], dict) else estados[0]
+                        estados_serializados[personal_id][dia] = {
+                            'nombre': estado_obj.nombre,
+                            'nombre_corto': estado_obj.nombre_corto or estado_obj.nombre,
+                            'color': estado_obj.color,
+                            'background_color': estado_obj.background_color,
+                            'prioridad': estado_obj.prioridad,
+                            'es_bloqueante': estado_obj.es_bloqueante
+                        }
+                    else:
+                        estados_serializados[personal_id][dia] = None
+                else:
+                    estados_serializados[personal_id][dia] = None
         
         # Convertir a formato JSON serializable
         json_data = {
             'personal': [
                 {
-                    'id': p.personal_id,
-                    'nombre': f"{p.nombre} {p.apepat} {p.apemat}".strip(),
+                    'personal_id': p.personal_id,
+                    'nombre': p.nombre,
+                    'apepat': p.apepat,
+                    'apemat': p.apemat,
+                    'rut': p.rut,
+                    'dvrut': p.dvrut,
                     'cargo': p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo',
                     'faena': p.asignaciones_faena.filter(activo=True).first().faena.nombre if p.asignaciones_faena.filter(activo=True).exists() else 'Sin asignar'
                 }
                 for p in calendario_data['personal']
             ],
-            'estados': calendario_data['estados'],
-            'dias_mes': calendario_data['dias_mes']
+            'estados': estados_serializados,
+            'dias_mes': calendario_data['dias_mes'],
+            'total_personal': calendario_data['total_personal'],
+            'page': calendario_data['page'],
+            'page_size': calendario_data['page_size'],
+            'has_more': calendario_data['has_more'],
+            'total_pages': (calendario_data['total_personal'] + page_size - 1) // page_size
         }
         
         return JsonResponse(json_data)
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
+
+
+def invalidar_cache_calendario():
+    """Invalida todo el caché del calendario incrementando la versión"""
+    # Incrementar versión del caché para invalidar todos los calendarios
+    current_version = cache.get('calendario_version', 0)
+    new_version = current_version + 1
+    cache.set('calendario_version', new_version, None)  # Sin expiración
+    print(f"[CACHE] Versión del calendario incrementada: {current_version} -> {new_version}")
+
+
+def limpiar_cache_calendario(request):
+    """Vista administrativa para limpiar el caché del calendario manualmente"""
+    from django.contrib import messages
+    
+    current_version = cache.get('calendario_version', 0)
+    cache.clear()  # Limpiar todo el caché
+    cache.set('calendario_version', 0)  # Resetear versión
+    
+    messages.success(request, f'Caché del calendario limpiado exitosamente. Versión reseteada de {current_version} a 0.')
+    return redirect('calendario:calendario_mensual')
 
 
 @csrf_exempt
@@ -703,6 +772,9 @@ def crear_asignacion(request):
             observaciones=observaciones,
             activo=activo
         )
+        
+        # Invalidar caché del calendario
+        invalidar_cache_calendario()
         
         return JsonResponse({
             'success': True,
@@ -788,6 +860,9 @@ def actualizar_asignacion(request):
         asignacion.activo = activo
         asignacion.save()
         
+        # Invalidar caché del calendario
+        invalidar_cache_calendario()
+        
         return JsonResponse({
             'success': True,
             'message': 'Asignación actualizada correctamente'
@@ -813,6 +888,9 @@ def eliminar_asignacion(request):
         try:
             asignacion = AsignacionFaena.objects.get(id=asignacion_id)
             asignacion.delete()
+            
+            # Invalidar caché del calendario
+            invalidar_cache_calendario()
         except AsignacionFaena.DoesNotExist:
             return JsonResponse({'error': 'Asignación no encontrada'}, status=404)
         
@@ -826,3 +904,508 @@ def eliminar_asignacion(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
+# ============================================================================
+# GESTIÓN DE FAENAS - VISTA PRINCIPAL
+# ============================================================================
+
+def asignar_personal_faena(request, faena_id):
+    """Vista para asignar personal a una faena específica - PÁGINA COMPLETA"""
+    from django.core.serializers.json import DjangoJSONEncoder
+    
+    # Obtener la faena
+    try:
+        faena = Faena.objects.get(id=faena_id, activo=True)
+    except Faena.DoesNotExist:
+        from django.contrib import messages
+        messages.error(request, 'Faena no encontrada')
+        return redirect('calendario:gestionar_faenas')
+    
+    # Obtener personal activo con sus asignaciones
+    personal_list = Personal.objects.filter(activo=True).select_related(
+        'sexo_id', 'estcivil_id'
+    ).prefetch_related(
+        'infolaboral_set__cargo_id',
+        'infolaboral_set__empresa_id',
+        'asignaciones_faena__faena',
+        'asignaciones_faena__turno'
+    ).order_by('apepat', 'apemat', 'nombre')
+    
+    # Obtener turnos disponibles
+    turnos = Turno.objects.filter(activo=True).prefetch_related(
+        'bloques__estado'
+    ).order_by('nombre')
+    
+    # Obtener otras faenas para filtro
+    otras_faenas = Faena.objects.filter(activo=True).exclude(id=faena_id).order_by('nombre')
+    
+    # Preparar datos del personal
+    personal_data = []
+    cargos_set = set()
+    
+    for p in personal_list:
+        # Verificar asignación activa
+        asignacion_activa = p.asignaciones_faena.filter(
+            activo=True
+        ).filter(
+            Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=date.today())
+        ).select_related('faena', 'turno').first()
+        
+        cargo = p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo'
+        cargos_set.add(cargo)
+        
+        personal_data.append({
+            'id': p.personal_id,
+            'nombre_completo': f"{p.nombre} {p.apepat} {p.apemat}",
+            'rut': f"{p.rut}-{p.dvrut}",
+            'cargo': cargo,
+            'tiene_asignacion': asignacion_activa is not None,
+            'asignacion_actual': {
+                'faena': asignacion_activa.faena.nombre,
+                'turno': asignacion_activa.turno.nombre,
+                'fecha_inicio': asignacion_activa.fecha_inicio.isoformat(),
+                'fecha_fin': asignacion_activa.fecha_fin.isoformat() if asignacion_activa.fecha_fin else None
+            } if asignacion_activa else None
+        })
+    
+    # Preparar datos de turnos
+    turnos_data = []
+    for turno in turnos:
+        bloques_data = []
+        for bloque in turno.bloques.all().order_by('orden'):
+            bloques_data.append({
+                'id': bloque.id,
+                'orden': bloque.orden,
+                'duracion_dias': bloque.duracion_dias,
+                'estado': {
+                    'id': bloque.estado.id,
+                    'nombre': bloque.estado.nombre,
+                    'nombre_corto': bloque.estado.nombre_corto or bloque.estado.nombre,
+                    'color': bloque.estado.color,
+                    'background_color': bloque.estado.background_color
+                }
+            })
+        
+        turnos_data.append({
+            'id': turno.id,
+            'nombre': turno.nombre,
+            'descripcion': turno.descripcion or '',
+            'bloques': bloques_data,
+            'longitud_ciclo': sum([b.duracion_dias for b in turno.bloques.all()])
+        })
+    
+    # Preparar datos de la faena
+    faena_data = {
+        'id': faena.id,
+        'nombre': faena.nombre,
+        'descripcion': faena.descripcion or '',
+    }
+    
+    # Contar asignados actuales
+    total_asignados = faena.asignaciones.filter(activo=True).count()
+    
+    # Calcular duración si tiene ambas fechas
+    duracion_dias = None
+    if faena.fecha_inicio and faena.fecha_fin:
+        duracion_dias = (faena.fecha_fin - faena.fecha_inicio).days + 1
+    
+    context = {
+        'faena_id': faena_id,
+        'faena_nombre': faena.nombre,
+        'faena_descripcion': faena.descripcion,
+        'faena_fecha_inicio': faena.fecha_inicio,
+        'faena_fecha_fin': faena.fecha_fin,
+        'faena_duracion_dias': duracion_dias,
+        'total_asignados': total_asignados,
+        'personal_json': json.dumps(personal_data, cls=DjangoJSONEncoder),
+        'turnos_json': json.dumps(turnos_data, cls=DjangoJSONEncoder),
+        'faena_json': json.dumps(faena_data, cls=DjangoJSONEncoder),
+        'cargos_unicos': sorted(cargos_set),
+        'otras_faenas': otras_faenas,
+    }
+    
+    return render(request, 'calendario/asignar_personal_faena.html', context)
+
+
+def gestionar_faenas(request):
+    """Vista principal para gestionar faenas y sus asignaciones"""
+    from django.core.serializers.json import DjangoJSONEncoder
+    
+    # Obtener todas las faenas activas
+    faenas = Faena.objects.filter(activo=True).prefetch_related(
+        'asignaciones__personal',
+        'asignaciones__turno__bloques__estado',
+        'asignaciones__bloque_inicio'
+    ).order_by('nombre')
+    
+    # Obtener todo el personal activo para asignar
+    personal = Personal.objects.filter(activo=True).select_related(
+        'sexo_id', 'estcivil_id'
+    ).prefetch_related(
+        'infolaboral_set__cargo_id',
+        'infolaboral_set__empresa_id',
+        'asignaciones_faena__faena'
+    ).order_by('apepat', 'apemat', 'nombre')
+    
+    # Obtener turnos disponibles
+    turnos = Turno.objects.filter(activo=True).prefetch_related(
+        'bloques__estado'
+    ).order_by('nombre')
+    
+    # Preparar datos para JSON
+    faenas_data = []
+    for faena in faenas:
+        asignaciones_activas = faena.asignaciones.filter(
+            activo=True
+        ).select_related('personal', 'turno', 'bloque_inicio')
+        
+        faenas_data.append({
+            'id': faena.id,
+            'nombre': faena.nombre,
+            'ubicacion': faena.ubicacion or '',
+            'descripcion': faena.descripcion or '',
+            'fecha_inicio': faena.fecha_inicio.isoformat() if faena.fecha_inicio else None,
+            'fecha_fin': faena.fecha_fin.isoformat() if faena.fecha_fin else None,
+            'activo': faena.activo,
+            'total_personal': asignaciones_activas.count(),
+            'asignaciones': [
+                {
+                    'id': asig.id,
+                    'personal': {
+                        'id': asig.personal.personal_id,
+                        'nombre': f"{asig.personal.nombre} {asig.personal.apepat} {asig.personal.apemat}",
+                        'rut': f"{asig.personal.rut}-{asig.personal.dvrut}",
+                        'cargo': asig.personal.infolaboral_set.first().cargo_id.cargo if asig.personal.infolaboral_set.exists() else 'Sin cargo'
+                    },
+                    'turno': {
+                        'id': asig.turno.id,
+                        'nombre': asig.turno.nombre
+                    },
+                    'fecha_inicio': asig.fecha_inicio.isoformat(),
+                    'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None,
+                    'bloque_inicio': {
+                        'id': asig.bloque_inicio.id,
+                        'orden': asig.bloque_inicio.orden,
+                        'estado_nombre': asig.bloque_inicio.estado.nombre
+                    } if asig.bloque_inicio else None,
+                    'observaciones': asig.observaciones or '',
+                    'activo': asig.activo
+                } for asig in asignaciones_activas
+            ]
+        })
+    
+    # Preparar personal para JSON
+    personal_data = []
+    for p in personal:
+        # Verificar si ya tiene asignaciones activas
+        tiene_asignacion = p.asignaciones_faena.filter(
+            activo=True,
+            fecha_fin__isnull=True
+        ).exists() or p.asignaciones_faena.filter(
+            activo=True,
+            fecha_fin__gte=date.today()
+        ).exists()
+        
+        personal_data.append({
+            'id': p.personal_id,
+            'nombre_completo': f"{p.nombre} {p.apepat} {p.apemat}",
+            'rut': f"{p.rut}-{p.dvrut}",
+            'cargo': p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo',
+            'empresa': p.infolaboral_set.first().empresa_id.razonSocial if p.infolaboral_set.exists() else 'Sin empresa',
+            'tiene_asignacion': tiene_asignacion,
+            'asignacion_actual': {
+                'faena': p.asignaciones_faena.filter(activo=True).first().faena.nombre if p.asignaciones_faena.filter(activo=True).exists() else None
+            } if tiene_asignacion else None
+        })
+    
+    # Preparar turnos para JSON
+    turnos_data = []
+    for turno in turnos:
+        bloques_data = []
+        for bloque in turno.bloques.all().order_by('orden'):
+            bloques_data.append({
+                'id': bloque.id,
+                'orden': bloque.orden,
+                'duracion_dias': bloque.duracion_dias,
+                'estado': {
+                    'id': bloque.estado.id,
+                    'nombre': bloque.estado.nombre,
+                    'nombre_corto': bloque.estado.nombre_corto or bloque.estado.nombre,
+                    'color': bloque.estado.color,
+                    'background_color': bloque.estado.background_color
+                }
+            })
+        
+        turnos_data.append({
+            'id': turno.id,
+            'nombre': turno.nombre,
+            'descripcion': turno.descripcion or '',
+            'bloques': bloques_data,
+            'longitud_ciclo': sum([b.duracion_dias for b in turno.bloques.all()])
+        })
+    
+    context = {
+        'faenas_json': json.dumps(faenas_data, cls=DjangoJSONEncoder),
+        'personal_json': json.dumps(personal_data, cls=DjangoJSONEncoder),
+        'turnos_json': json.dumps(turnos_data, cls=DjangoJSONEncoder),
+        'total_faenas': len(faenas_data),
+        'total_personal': len(personal_data),
+    }
+    
+    return render(request, 'calendario/gestionar_faenas.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def crear_faena(request):
+    """API para crear una nueva faena"""
+    try:
+        data = json.loads(request.body)
+        
+        nombre = data.get('nombre')
+        ubicacion = data.get('ubicacion', '')
+        descripcion = data.get('descripcion', '')
+        fecha_inicio = data.get('fecha_inicio')
+        fecha_fin = data.get('fecha_fin')
+        
+        if not nombre:
+            return JsonResponse({'error': 'El nombre de la faena es requerido'}, status=400)
+        
+        # Verificar si ya existe una faena con ese nombre
+        if Faena.objects.filter(nombre__iexact=nombre).exists():
+            return JsonResponse({'error': 'Ya existe una faena con ese nombre'}, status=400)
+        
+        # Validar fechas
+        if fecha_inicio and fecha_fin:
+            from datetime import datetime
+            fecha_inicio_date = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            fecha_fin_date = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            if fecha_fin_date < fecha_inicio_date:
+                return JsonResponse({'error': 'La fecha de fin debe ser posterior a la fecha de inicio'}, status=400)
+        
+        faena = Faena.objects.create(
+            nombre=nombre,
+            ubicacion=ubicacion,
+            descripcion=descripcion,
+            fecha_inicio=fecha_inicio if fecha_inicio else None,
+            fecha_fin=fecha_fin if fecha_fin else None,
+            activo=True
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Faena creada exitosamente',
+            'faena': {
+                'id': faena.id,
+                'nombre': faena.nombre,
+                'ubicacion': faena.ubicacion,
+                'descripcion': faena.descripcion,
+                'fecha_inicio': faena.fecha_inicio.isoformat() if faena.fecha_inicio else None,
+                'fecha_fin': faena.fecha_fin.isoformat() if faena.fecha_fin else None
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Datos JSON inválidos'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def actualizar_faena(request):
+    """API para actualizar una faena existente"""
+    try:
+        data = json.loads(request.body)
+        
+        faena_id = data.get('faena_id')
+        nombre = data.get('nombre')
+        ubicacion = data.get('ubicacion', '')
+        descripcion = data.get('descripcion', '')
+        fecha_inicio = data.get('fecha_inicio')
+        fecha_fin = data.get('fecha_fin')
+        activo = data.get('activo', True)
+        
+        if not faena_id or not nombre:
+            return JsonResponse({'error': 'Faltan datos requeridos'}, status=400)
+        
+        try:
+            faena = Faena.objects.get(id=faena_id)
+        except Faena.DoesNotExist:
+            return JsonResponse({'error': 'Faena no encontrada'}, status=404)
+        
+        # Verificar si el nuevo nombre ya está en uso por otra faena
+        if Faena.objects.filter(nombre__iexact=nombre).exclude(id=faena_id).exists():
+            return JsonResponse({'error': 'Ya existe otra faena con ese nombre'}, status=400)
+        
+        # Validar fechas
+        if fecha_inicio and fecha_fin:
+            from datetime import datetime
+            fecha_inicio_date = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            fecha_fin_date = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            if fecha_fin_date < fecha_inicio_date:
+                return JsonResponse({'error': 'La fecha de fin debe ser posterior a la fecha de inicio'}, status=400)
+        
+        faena.nombre = nombre
+        faena.ubicacion = ubicacion
+        faena.descripcion = descripcion
+        faena.fecha_inicio = fecha_inicio if fecha_inicio else None
+        faena.fecha_fin = fecha_fin if fecha_fin else None
+        faena.activo = activo
+        faena.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Faena actualizada exitosamente'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Datos JSON inválidos'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def eliminar_faena(request):
+    """API para eliminar/desactivar una faena"""
+    try:
+        data = json.loads(request.body)
+        faena_id = data.get('faena_id')
+        
+        if not faena_id:
+            return JsonResponse({'error': 'ID de faena requerido'}, status=400)
+        
+        try:
+            faena = Faena.objects.get(id=faena_id)
+            
+            # Verificar si tiene asignaciones activas
+            if faena.asignaciones.filter(activo=True).exists():
+                return JsonResponse({
+                    'error': 'No se puede eliminar una faena con personal asignado. Primero elimine las asignaciones.'
+                }, status=400)
+            
+            faena.delete()
+        except Faena.DoesNotExist:
+            return JsonResponse({'error': 'Faena no encontrada'}, status=404)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Faena eliminada correctamente'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Datos JSON inválidos'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def crear_asignacion_masiva(request):
+    """API para crear múltiples asignaciones a la vez (asignación masiva)"""
+    try:
+        data = json.loads(request.body)
+        
+        personal_ids = data.get('personal_ids', [])
+        faena_id = data.get('faena_id')
+        turno_id = data.get('turno_id')
+        fecha_inicio = data.get('fecha_inicio')
+        fecha_fin = data.get('fecha_fin', None)
+        bloque_inicio_id = data.get('bloque_inicio_id', None)
+        observaciones = data.get('observaciones', '')
+        activo = data.get('activo', True)
+        
+        # Validaciones
+        if not personal_ids or not isinstance(personal_ids, list):
+            return JsonResponse({'error': 'Debe seleccionar al menos un trabajador'}, status=400)
+        
+        if not all([faena_id, turno_id, fecha_inicio]):
+            return JsonResponse({'error': 'Faltan datos requeridos'}, status=400)
+        
+        try:
+            faena = Faena.objects.get(id=faena_id)
+            turno = Turno.objects.get(id=turno_id)
+            bloque_inicio = None
+            if bloque_inicio_id:
+                bloque_inicio = TurnoBloque.objects.get(id=bloque_inicio_id, turno=turno)
+        except (Faena.DoesNotExist, Turno.DoesNotExist, TurnoBloque.DoesNotExist):
+            return JsonResponse({'error': 'Datos inválidos (faena, turno o bloque)'}, status=400)
+        
+        # Convertir fechas
+        fecha_inicio_date = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        fecha_fin_date = None
+        if fecha_fin:
+            fecha_fin_date = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+        
+        # Validar cada trabajador y crear asignaciones
+        asignaciones_creadas = []
+        errores = []
+        
+        for personal_id in personal_ids:
+            try:
+                personal_obj = Personal.objects.get(personal_id=personal_id)
+                
+                # Verificar solapamiento para este trabajador
+                solapamiento_query = Q(personal=personal_obj, activo=True)
+                
+                if fecha_fin_date:
+                    solapamiento_query &= (
+                        Q(fecha_inicio__lte=fecha_fin_date) & 
+                        (Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date))
+                    )
+                else:
+                    solapamiento_query &= (
+                        Q(fecha_inicio__lte=fecha_inicio_date) & 
+                        (Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date))
+                    )
+                
+                if AsignacionFaena.objects.filter(solapamiento_query).exists():
+                    errores.append(f"{personal_obj.nombre} {personal_obj.apepat}: Ya tiene asignación en esas fechas")
+                    continue
+                
+                # Crear asignación
+                asignacion = AsignacionFaena.objects.create(
+                    personal=personal_obj,
+                    faena=faena,
+                    turno=turno,
+                    fecha_inicio=fecha_inicio_date,
+                    fecha_fin=fecha_fin_date,
+                    bloque_inicio=bloque_inicio,
+                    observaciones=observaciones,
+                    activo=activo
+                )
+                asignaciones_creadas.append(asignacion)
+                
+            except Personal.DoesNotExist:
+                errores.append(f"Trabajador ID {personal_id}: No encontrado")
+            except Exception as e:
+                errores.append(f"Trabajador ID {personal_id}: {str(e)}")
+        
+        # Invalidar caché del calendario si se crearon asignaciones
+        if asignaciones_creadas:
+            invalidar_cache_calendario()
+        
+        # Preparar respuesta
+        total_exitosos = len(asignaciones_creadas)
+        total_errores = len(errores)
+        
+        if total_exitosos > 0 and total_errores == 0:
+            return JsonResponse({
+                'success': True,
+                'message': f'✓ {total_exitosos} trabajador{"es" if total_exitosos > 1 else ""} asignado{"s" if total_exitosos > 1 else ""} correctamente'
+            })
+        elif total_exitosos > 0 and total_errores > 0:
+            return JsonResponse({
+                'success': True,
+                'message': f'✓ {total_exitosos} asignados. ⚠ {total_errores} con errores: {"; ".join(errores[:3])}'
+            })
+        else:
+            return JsonResponse({
+                'error': f'No se pudo asignar ningún trabajador. Errores: {"; ".join(errores[:5])}'
+            }, status=400)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Datos JSON inválidos'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

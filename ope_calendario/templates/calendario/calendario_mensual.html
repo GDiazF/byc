@@ -26,45 +26,79 @@
                 <button class="btn btn-sm btn-outline-light me-1" onclick="nextMonth()">
                     <i class="bi bi-chevron-right"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-light" onclick="nextYear()">
+                <button class="btn btn-sm btn-outline-light me-2" onclick="nextYear()">
                     <i class="bi bi-chevron-double-right"></i>
                 </button>
+                <a href="{% url 'calendario:limpiar_cache' %}" class="btn btn-sm btn-warning" title="Limpiar caché y recargar">
+                    <i class="bi bi-arrow-clockwise"></i> Limpiar Caché
+                </a>
             </div>
         </div>
                     </div>
                     
     <div class="card-body p-3">
+        <!-- Información de paginación y filtros -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="alert alert-light border mb-0 py-2">
+                    <small>
+                        <i class="bi bi-info-circle me-1"></i>
+                        Mostrando <strong>{{ calendario_data.personal|length }}</strong> de <strong>{{ total_personal }}</strong> trabajadores
+                        {% if total_pages > 1 %} - Página <strong>{{ current_page }}</strong> de <strong>{{ total_pages }}</strong>{% endif %}
+                    </small>
+                </div>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-sm {% if page_size == 25 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(25)">25</button>
+                    <button class="btn btn-sm {% if page_size == 50 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(50)">50</button>
+                    <button class="btn btn-sm {% if page_size == 100 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(100)">100</button>
+                </div>
+                <small class="text-muted ms-2">por página</small>
+            </div>
+        </div>
+        
         <!-- Filtros y búsqueda -->
         <div class="row mb-3">
             <div class="col-md-4">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar por nombre o RUT...">
+                    <input type="text" class="form-control" id="searchInput" 
+                           placeholder="Buscar por nombre o RUT..."
+                           value="{{ request.GET.search|default:'' }}">
                 </div>
             </div>
             <div class="col-md-3">
                 <select class="form-select form-select-sm" id="faenaFilter">
                     <option value="">Faena: Todas</option>
-                                {% for faena in faenas %}
-                                <option value="{{ faena.nombre }}">{{ faena.nombre }}</option>
-                                {% endfor %}
-                                <option value="Sin asignar">Sin asignar</option>
-                        </select>
-                                    </div>
+                    {% for faena in faenas %}
+                    <option value="{{ faena.nombre }}" {% if request.GET.faena == faena.nombre %}selected{% endif %}>
+                        {{ faena.nombre }}
+                    </option>
+                    {% endfor %}
+                    <option value="Sin asignar" {% if request.GET.faena == 'Sin asignar' %}selected{% endif %}>
+                        Sin asignar
+                    </option>
+                </select>
+            </div>
             <div class="col-md-3">
                 <select class="form-select form-select-sm" id="cargoFilter">
                     <option value="">Cargo: Todos</option>
-                                        {% for cargo in cargos %}
-                    <option value="{{ cargo }}">{{ cargo }}</option>
-                                        {% endfor %}
-                    <option value="Sin cargo">Sin cargo</option>
+                    {% for cargo in cargos %}
+                    <option value="{{ cargo }}" {% if request.GET.cargo == cargo %}selected{% endif %}>
+                        {{ cargo }}
+                    </option>
+                    {% endfor %}
+                    <option value="Sin cargo" {% if request.GET.cargo == 'Sin cargo' %}selected{% endif %}>
+                        Sin cargo
+                    </option>
                 </select>
-                                    </div>
+            </div>
             <div class="col-md-2 text-end">
-                <button class="btn btn-sm btn-primary" onclick="clearFilters()">
-                    <i class="bi bi-arrow-clockwise"></i> Limpiar
+                <button class="btn btn-sm btn-primary" onclick="clearFilters()" title="Limpiar filtros">
+                    <i class="bi bi-x-circle"></i> Limpiar
                 </button>
-                                </div>
+            </div>
                             </div>
                 
         <!-- Leyenda de estados -->
@@ -87,10 +121,42 @@
                 <tbody id="calendarBody">
                     <!-- Las filas se generarán aquí -->
                 </tbody>
-                </table>
-            </div>
+            </table>
         </div>
+        
+        <!-- Paginación -->
+        {% if total_pages > 1 %}
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+                <small class="text-muted">
+                    Mostrando {{ calendario_data.personal|length }} de {{ total_personal }} trabajadores
+                </small>
+            </div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {% if not has_previous %}disabled{% endif %}">
+                        <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ current_page|add:'-1' }}&page_size={{ page_size }}{% if request.GET.faena %}&faena={{ request.GET.faena }}{% endif %}{% if request.GET.cargo %}&cargo={{ request.GET.cargo }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% for num in page_range %}
+                    <li class="page-item {% if num == current_page %}active{% endif %}">
+                        <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ num }}&page_size={{ page_size }}{% if request.GET.faena %}&faena={{ request.GET.faena }}{% endif %}{% if request.GET.cargo %}&cargo={{ request.GET.cargo }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {% if not has_next %}disabled{% endif %}">
+                        <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ current_page|add:'1' }}&page_size={{ page_size }}{% if request.GET.faena %}&faena={{ request.GET.faena }}{% endif %}{% if request.GET.cargo %}&cargo={{ request.GET.cargo }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
     </div>
+</div>
 
 <!-- Modal Bootstrap para información de estado -->
 <div class="modal fade" id="estadoModal" tabindex="-1">

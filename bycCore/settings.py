@@ -104,6 +104,26 @@ DATABASES = {
 #     }
 # }
 
+# Cache configuration
+# Configuración de caché para optimizar rendimiento del calendario
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'byc-cache',
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,  # Máximo 1000 entradas en caché
+        }
+    }
+}
+
+# Para producción, se recomienda usar Memcached o Redis:
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+#         'LOCATION': 'redis://127.0.0.1:6379/1',
+#     }
+# }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

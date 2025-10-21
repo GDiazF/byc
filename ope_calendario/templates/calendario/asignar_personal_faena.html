@@ -1,0 +1,535 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Asignar Personal - {{ faena_nombre }}{% endblock %}
+
+{% block extrajs %}
+<script>
+// Datos globales
+let personal = {{ personal_json|safe }};
+let turnos = {{ turnos_json|safe }};
+let faena = {{ faena_json|safe }};
+let personalSeleccionados = [];
+
+// Fechas de la faena desde el backend
+const faenaFechaInicio = {% if faena_fecha_inicio %}'{{ faena_fecha_inicio|date:"Y-m-d" }}'{% else %}null{% endif %};
+const faenaFechaFin = {% if faena_fecha_fin %}'{{ faena_fecha_fin|date:"Y-m-d" }}'{% else %}null{% endif %};
+
+// Get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Renderizar tabla de personal
+function renderizarTablaPersonal() {
+    const tbody = document.getElementById('personalTableBody');
+    const busqueda = document.getElementById('searchInput').value.toLowerCase();
+    const filtroEstado = document.getElementById('filtroEstado').value;
+    const filtroCargo = document.getElementById('filtroCargo').value;
+    const filtroFaena = document.getElementById('filtroFaena').value;
+    
+    let personalFiltrado = personal.filter(p => {
+        // Búsqueda
+        const nombreCompleto = p.nombre_completo.toLowerCase();
+        const rut = p.rut.toLowerCase();
+        const matchBusqueda = !busqueda || nombreCompleto.includes(busqueda) || rut.includes(busqueda);
+        
+        // Filtro de estado
+        let matchEstado = true;
+        if (filtroEstado === 'disponible') {
+            matchEstado = !p.tiene_asignacion;
+        } else if (filtroEstado === 'asignado') {
+            matchEstado = p.tiene_asignacion;
+        }
+        
+        // Filtro de cargo
+        const matchCargo = !filtroCargo || p.cargo === filtroCargo;
+        
+        // Filtro de faena
+        let matchFaena = true;
+        if (filtroFaena && p.asignacion_actual) {
+            matchFaena = p.asignacion_actual.faena === filtroFaena;
+        } else if (filtroFaena === 'sin_asignar') {
+            matchFaena = !p.tiene_asignacion;
+        }
+        
+        return matchBusqueda && matchEstado && matchCargo && matchFaena;
+    });
+    
+    if (personalFiltrado.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <i class="bi bi-inbox fs-1 text-muted"></i>
+                    <p class="text-muted mt-2">No se encontraron trabajadores con los filtros aplicados</p>
+                </td>
+            </tr>
+        `;
+        actualizarContador();
+        return;
+    }
+    
+    tbody.innerHTML = personalFiltrado.map(p => {
+        const isChecked = personalSeleccionados.includes(p.id);
+        const estadoClass = p.tiene_asignacion ? 'bg-warning' : 'bg-success';
+        const estadoText = p.tiene_asignacion ? 'Asignado' : 'Disponible';
+        const fechaAsignacion = p.asignacion_actual ? 
+            `${p.asignacion_actual.fecha_inicio || ''} ${p.asignacion_actual.fecha_fin ? '→ ' + p.asignacion_actual.fecha_fin : '→ Indefinido'}` : 
+            '-';
+        
+        return `
+            <tr class="${isChecked ? 'table-primary' : ''}">
+                <td class="text-center">
+                    <input class="form-check-input personal-checkbox" type="checkbox" 
+                           value="${p.id}" ${isChecked ? 'checked' : ''}>
+                </td>
+                <td>${p.nombre_completo}</td>
+                <td>${p.rut}</td>
+                <td>${p.cargo}</td>
+                <td>
+                    <span class="badge ${estadoClass}">${estadoText}</span>
+                </td>
+                <td>${p.asignacion_actual ? p.asignacion_actual.faena : '-'}</td>
+                <td class="small">${fechaAsignacion}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    actualizarContador();
+}
+
+// Actualizar contador
+function actualizarContador() {
+    const total = document.querySelectorAll('.personal-checkbox').length;
+    const seleccionados = document.querySelectorAll('.personal-checkbox:checked').length;
+    
+    document.getElementById('totalPersonal').textContent = total;
+    document.getElementById('totalSeleccionados').textContent = seleccionados;
+    
+    const btnAsignar = document.getElementById('btnAsignarMasivo');
+    if (seleccionados > 0) {
+        btnAsignar.disabled = false;
+        btnAsignar.innerHTML = `<i class="bi bi-check-circle me-1"></i>Asignar ${seleccionados} Trabajador${seleccionados > 1 ? 'es' : ''}`;
+    } else {
+        btnAsignar.disabled = true;
+        btnAsignar.innerHTML = '<i class="bi bi-check-circle me-1"></i>Asignar Personal';
+    }
+}
+
+// Manejar checkbox
+function onCheckboxChange(checkbox) {
+    const id = parseInt(checkbox.value);
+    if (checkbox.checked) {
+        if (!personalSeleccionados.includes(id)) {
+            personalSeleccionados.push(id);
+        }
+    } else {
+        personalSeleccionados = personalSeleccionados.filter(pid => pid !== id);
+    }
+    renderizarTablaPersonal();
+}
+
+// Seleccionar/deseleccionar todos visibles
+function toggleSeleccionarTodos() {
+    const checkboxes = document.querySelectorAll('.personal-checkbox');
+    const todosSeleccionados = Array.from(checkboxes).every(cb => cb.checked);
+    
+    personalSeleccionados = [];
+    
+    if (!todosSeleccionados) {
+        checkboxes.forEach(cb => {
+            const id = parseInt(cb.value);
+            if (!personalSeleccionados.includes(id)) {
+                personalSeleccionados.push(id);
+            }
+        });
+    }
+    
+    renderizarTablaPersonal();
+}
+
+// Limpiar selección
+function limpiarSeleccion() {
+    personalSeleccionados = [];
+    renderizarTablaPersonal();
+}
+
+// Limpiar filtros
+function limpiarFiltros() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filtroEstado').value = '';
+    document.getElementById('filtroCargo').value = '';
+    document.getElementById('filtroFaena').value = '';
+    renderizarTablaPersonal();
+}
+
+// Renderizar selector de turnos
+function renderizarTurnos() {
+    const select = document.getElementById('turno_id');
+    select.innerHTML = '<option value="">Seleccione un turno...</option>' +
+        turnos.map(t => `
+            <option value="${t.id}">${t.nombre} (${t.longitud_ciclo} días ciclo)</option>
+        `).join('');
+}
+
+// Al seleccionar turno, mostrar bloques
+function onTurnoChange() {
+    const turnoId = parseInt(document.getElementById('turno_id').value);
+    const container = document.getElementById('bloqueContainer');
+    const select = document.getElementById('bloque_inicio_id');
+    
+    if (!turnoId) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    const turno = turnos.find(t => t.id === turnoId);
+    if (!turno || !turno.bloques || turno.bloques.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    // Mostrar descripción del turno
+    const descripcionDiv = document.getElementById('turnoDescripcion');
+    let descripcionHTML = '<div class="alert alert-info small py-2 mb-3"><strong>Ciclo del turno:</strong><br>';
+    turno.bloques.forEach(b => {
+        descripcionHTML += `Bloque ${b.orden}: ${b.estado.nombre} (${b.duracion_dias} días) → `;
+    });
+    descripcionHTML = descripcionHTML.slice(0, -4); // Quitar última flecha
+    descripcionHTML += `<br><strong>Total: ${turno.longitud_ciclo} días</strong></div>`;
+    descripcionDiv.innerHTML = descripcionHTML;
+    
+    container.style.display = 'block';
+    select.innerHTML = '<option value="">Desde el inicio del ciclo</option>' +
+        turno.bloques.map(b => `
+            <option value="${b.id}">
+                Iniciar en Bloque ${b.orden}: ${b.estado.nombre} (${b.duracion_dias} días)
+            </option>
+        `).join('');
+}
+
+// Asignar masivamente
+async function asignarMasivo() {
+    const turnoId = document.getElementById('turno_id').value;
+    const fechaInicio = document.getElementById('fecha_inicio').value;
+    const fechaFin = document.getElementById('fecha_fin').value;
+    const bloqueInicioId = document.getElementById('bloque_inicio_id').value;
+    const observaciones = document.getElementById('observaciones').value.trim();
+    
+    if (personalSeleccionados.length === 0) {
+        mostrarAlerta('Debe seleccionar al menos un trabajador', 'error');
+        return;
+    }
+    
+    if (!turnoId || !fechaInicio) {
+        mostrarAlerta('Debe seleccionar turno y fecha de inicio', 'error');
+        return;
+    }
+    
+    // Validar que las fechas estén dentro del rango de la faena (si está definido)
+    if (faenaFechaInicio && fechaInicio < faenaFechaInicio) {
+        const confirmar = confirm(`ADVERTENCIA: La fecha de inicio (${fechaInicio}) es anterior al inicio de la faena (${faenaFechaInicio}).\n\n¿Desea continuar de todas formas?`);
+        if (!confirmar) return;
+    }
+    
+    if (faenaFechaFin && fechaFin && fechaFin > faenaFechaFin) {
+        const confirmar = confirm(`ADVERTENCIA: La fecha de fin (${fechaFin}) es posterior al fin de la faena (${faenaFechaFin}).\n\n¿Desea continuar de todas formas?`);
+        if (!confirmar) return;
+    }
+    
+    // Confirmar
+    const confirmMsg = `¿Confirma asignar ${personalSeleccionados.length} trabajador${personalSeleccionados.length > 1 ? 'es' : ''} a la faena "${faena.nombre}"?\n\n` +
+        `Turno: ${turnos.find(t => t.id == turnoId).nombre}\n` +
+        `Fecha inicio: ${fechaInicio}\n` +
+        `Fecha fin: ${fechaFin || 'Indefinido'}`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    const data = {
+        personal_ids: personalSeleccionados,
+        faena_id: faena.id,
+        turno_id: parseInt(turnoId),
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin || null,
+        bloque_inicio_id: bloqueInicioId ? parseInt(bloqueInicioId) : null,
+        observaciones: observaciones
+    };
+    
+    try {
+        const response = await fetch('/calendario/api/crear-asignacion-masiva/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarAlerta(result.message, 'success');
+            setTimeout(() => {
+                window.location.href = '/calendario/faenas/';
+            }, 2000);
+        } else {
+            mostrarAlerta(result.error || 'Error al asignar personal', 'error');
+        }
+    } catch (error) {
+        mostrarAlerta('Error de conexión: ' + error.message, 'error');
+    }
+}
+
+// Mostrar alertas
+function mostrarAlerta(mensaje, tipo) {
+    const container = document.getElementById('alertContainer');
+    const alertClass = tipo === 'success' ? 'alert-success' : 'alert-danger';
+    const iconClass = tipo === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+    
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show`;
+    alert.innerHTML = `
+        <i class="bi ${iconClass} me-2"></i>${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    container.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    renderizarTablaPersonal();
+    renderizarTurnos();
+    
+    // Pre-llenar fechas de la faena si existen
+    if (faenaFechaInicio) {
+        document.getElementById('fecha_inicio').value = faenaFechaInicio;
+    }
+    if (faenaFechaFin) {
+        document.getElementById('fecha_fin').value = faenaFechaFin;
+    }
+    
+    // Event listeners
+    document.getElementById('searchInput').addEventListener('input', renderizarTablaPersonal);
+    document.getElementById('filtroEstado').addEventListener('change', renderizarTablaPersonal);
+    document.getElementById('filtroCargo').addEventListener('change', renderizarTablaPersonal);
+    document.getElementById('filtroFaena').addEventListener('change', renderizarTablaPersonal);
+    document.getElementById('turno_id').addEventListener('change', onTurnoChange);
+    
+    // Checkboxes
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('personal-checkbox')) {
+            onCheckboxChange(e.target);
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Card Principal -->
+<div class="card mb-3">
+    <div class="card-header bg-dark text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-person-plus-fill me-2"></i>Asignar Personal a: {{ faena_nombre }}
+            </h5>
+            <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Información de la faena -->
+        <div class="alert alert-info mb-3">
+            <div class="row">
+                <div class="col-md-7">
+                    <strong>Faena:</strong> {{ faena_nombre }}<br>
+                    {% if faena_descripcion %}
+                    <strong>Descripción:</strong> {{ faena_descripcion }}<br>
+                    {% endif %}
+                    {% if faena_fecha_inicio or faena_fecha_fin %}
+                    <strong>Duración de la Faena:</strong> 
+                    <span class="badge bg-dark">
+                        <i class="bi bi-calendar-range me-1"></i>
+                        {{ faena_fecha_inicio|default:"Sin inicio" }} → {{ faena_fecha_fin|default:"Sin fin" }}
+                    </span>
+                    {% if faena_duracion_dias %}
+                    <small class="text-muted">({{ faena_duracion_dias }} días)</small>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                <div class="col-md-5 text-end">
+                    <strong>Personal ya asignado:</strong> 
+                    <span class="badge bg-primary fs-6">{{ total_asignados }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filtros y búsqueda -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label class="form-label small">Buscar</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" 
+                           placeholder="Nombre o RUT...">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Estado</label>
+                <select class="form-select form-select-sm" id="filtroEstado">
+                    <option value="">Todos</option>
+                    <option value="disponible">Disponibles</option>
+                    <option value="asignado">Ya Asignados</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Cargo</label>
+                <select class="form-select form-select-sm" id="filtroCargo">
+                    <option value="">Todos los cargos</option>
+                    {% for cargo in cargos_unicos %}
+                    <option value="{{ cargo }}">{{ cargo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Faena Actual</label>
+                <select class="form-select form-select-sm" id="filtroFaena">
+                    <option value="">Todas</option>
+                    <option value="sin_asignar">Sin asignar</option>
+                    {% for f in otras_faenas %}
+                    <option value="{{ f.nombre }}">{{ f.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label small">&nbsp;</label>
+                <button class="btn btn-sm btn-secondary w-100" onclick="limpiarFiltros()" title="Limpiar filtros">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Acciones rápidas -->
+        <div class="mb-3">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleSeleccionarTodos()">
+                <i class="bi bi-check-square me-1"></i>Seleccionar Todos Visibles
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limpiarSeleccion()">
+                <i class="bi bi-x-square me-1"></i>Limpiar Selección
+            </button>
+            <span class="ms-3 text-muted">
+                <strong id="totalSeleccionados">0</strong> de <strong id="totalPersonal">0</strong> trabajadores seleccionados
+            </span>
+        </div>
+        
+        <!-- Tabla de personal -->
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 50px;" class="text-center">
+                            <i class="bi bi-check-square"></i>
+                        </th>
+                        <th>Nombre Completo</th>
+                        <th>RUT</th>
+                        <th>Cargo</th>
+                        <th>Estado</th>
+                        <th>Faena Actual</th>
+                        <th>Período Asignación</th>
+                    </tr>
+                </thead>
+                <tbody id="personalTableBody">
+                    <!-- Se llena con JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Card de Configuración de Asignación -->
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-sliders me-2"></i>Configuración de Asignación
+        </h5>
+    </div>
+    <div class="card-body">
+        <form id="formAsignacion" onsubmit="event.preventDefault(); asignarMasivo();">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="turno_id" class="form-label">Turno *</label>
+                        <select class="form-select" id="turno_id" required>
+                            <option value="">Seleccione un turno...</option>
+                        </select>
+                        <div id="turnoDescripcion"></div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6" id="bloqueContainer" style="display: none;">
+                    <div class="mb-3">
+                        <label for="bloque_inicio_id" class="form-label">Bloque de Inicio</label>
+                        <select class="form-select" id="bloque_inicio_id">
+                            <option value="">Desde el inicio del ciclo</option>
+                        </select>
+                        <small class="text-muted">Define desde qué bloque comienza el ciclo para estos trabajadores</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="fecha_inicio" class="form-label">Fecha de Inicio *</label>
+                        <input type="date" class="form-control" id="fecha_inicio" required>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="fecha_fin" class="form-label">Fecha de Fin</label>
+                        <input type="date" class="form-control" id="fecha_fin">
+                        <small class="text-muted">Dejar vacío para asignación indefinida</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="observaciones" class="form-label">Observaciones</label>
+                <textarea class="form-control" id="observaciones" rows="2"
+                          placeholder="Notas adicionales sobre esta asignación..."></textarea>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-success" id="btnAsignarMasivo" disabled>
+                    <i class="bi bi-check-circle me-1"></i>Asignar Personal
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

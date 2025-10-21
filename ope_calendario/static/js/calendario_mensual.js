@@ -9,6 +9,33 @@ const filtros = window.filtros;
 const mesAnterior = window.mesAnterior;
 const mesSiguiente = window.mesSiguiente;
 
+// Crear mapa de asignaciones por personal para acceso rápido
+const asignacionesPorPersonal = {};
+if (calendarioData.asignaciones) {
+    calendarioData.asignaciones.forEach(asig => {
+        if (!asignacionesPorPersonal[asig.personal_id]) {
+            asignacionesPorPersonal[asig.personal_id] = [];
+        }
+        asignacionesPorPersonal[asig.personal_id].push(asig);
+    });
+}
+
+// Crear mapa de turnos para acceso rápido
+const turnosMap = {};
+if (calendarioData.turnos) {
+    calendarioData.turnos.forEach(turno => {
+        turnosMap[turno.id] = turno;
+    });
+}
+
+// Crear mapa de estados para acceso rápido
+const estadosMap = {};
+if (calendarioData.todos_estados_disponibles) {
+    calendarioData.todos_estados_disponibles.forEach(estado => {
+        estadosMap[estado.nombre] = estado;
+    });
+}
+
 // Nombres de meses y días en español
 const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -17,6 +44,76 @@ const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
 // Variables globales
 let currentDate = new Date(currentYear, currentMonth - 1, 1);
 let filteredPersonal = [];
+
+/**
+ * Calcula el estado de un trabajador en una fecha específica
+ * CLIENTE-SIDE COMPUTATION: Super rápido, escala infinitamente
+ */
+function calcularEstadoPersonalFecha(personalId, fecha) {
+    // 1. Buscar estado manual
+    if (calendarioData.estados_manuales) {
+        const estadoManual = calendarioData.estados_manuales.find(em => {
+            if (em.personal_id !== personalId) return false;
+            const fechaIni = new Date(em.fecha_inicio);
+            const fechaFin = new Date(em.fecha_fin);
+            return fecha >= fechaIni && fecha <= fechaFin;
+        });
+        
+        if (estadoManual) {
+            // Buscar el estado en la lista de estados disponibles
+            const estado = calendarioData.todos_estados_disponibles.find(e => e.id === estadoManual.estado_id);
+            return estado || calendarioData.estado_predeterminado;
+        }
+    }
+    
+    // 2. Buscar asignación de faena activa
+    const asignaciones = asignacionesPorPersonal[personalId] || [];
+    const asignacionActiva = asignaciones.find(asig => {
+        if (!asig.activo) return false;
+        const fechaIni = new Date(asig.fecha_inicio);
+        const fechaFin = asig.fecha_fin ? new Date(asig.fecha_fin) : null;
+        return fecha >= fechaIni && (!fechaFin || fecha <= fechaFin);
+    });
+    
+    if (asignacionActiva) {
+        const turno = turnosMap[asignacionActiva.turno_id];
+        if (turno && turno.bloques && turno.bloques.length > 0) {
+            // Calcular estado basado en el ciclo del turno
+            const fechaInicio = new Date(asignacionActiva.fecha_inicio);
+            const diasTranscurridos = Math.floor((fecha - fechaInicio) / (1000 * 60 * 60 * 24));
+            
+            // Calcular longitud del ciclo
+            const longitudCiclo = turno.bloques.reduce((sum, b) => sum + b.duracion_dias, 0);
+            if (longitudCiclo === 0) return calendarioData.estado_predeterminado;
+            
+            // Calcular posición en el ciclo
+            let posicionCiclo = diasTranscurridos % longitudCiclo;
+            
+            // Ajustar por bloque de inicio si existe
+            if (asignacionActiva.bloque_inicio_orden && asignacionActiva.bloque_inicio_orden > 1) {
+                let offsetInicio = 0;
+                for (let i = 0; i < asignacionActiva.bloque_inicio_orden - 1; i++) {
+                    if (i < turno.bloques.length) {
+                        offsetInicio += turno.bloques[i].duracion_dias;
+                    }
+                }
+                posicionCiclo = (posicionCiclo + offsetInicio) % longitudCiclo;
+            }
+            
+            // Encontrar el bloque correspondiente
+            let diasAcumulados = 0;
+            for (const bloque of turno.bloques) {
+                if (posicionCiclo < diasAcumulados + bloque.duracion_dias) {
+                    return bloque.estado;
+                }
+                diasAcumulados += bloque.duracion_dias;
+            }
+        }
+    }
+    
+    // 3. Retornar estado predeterminado
+    return calendarioData.estado_predeterminado;
+}
 
 // Función para formatear fechas al formato chileno (DD-MM-YYYY)
 function formatFechaChilena(fechaISO) {
@@ -181,30 +278,29 @@ function generateCalendar() {
             </div>
         </td>`;
         
-        // Celdas de días
+        // Celdas de días - CÁLCULO EN CLIENTE
         for (let day = 1; day <= daysInMonth; day++) {
-            const estados = calendarioData.estados[persona.personal_id]?.[day];
+            const fecha = new Date(year, month, day);
+            const estado = calcularEstadoPersonalFecha(persona.personal_id, fecha);
             
-            if (estados) {
-                if (estados.multiple) {
-         // Múltiples estados
-                    const primerEstado = estados.estados[0];
+            if (estado) {
+                bodyHTML += `<td onclick="showEstadoInfo(${persona.personal_id}, ${day})" 
+                                style="background-color: ${estado.background_color}; color: ${estado.color};"
+                                title="${estado.nombre}">
+                    <div class="estado-cell">${estado.nombre_corto}</div>
+                </td>`;
+            } else {
+                // Sin estado - mostrar estado predeterminado
+                const estadoPred = calendarioData.estado_predeterminado;
+                if (estadoPred) {
                     bodyHTML += `<td onclick="showEstadoInfo(${persona.personal_id}, ${day})" 
-                                    style="background-color: ${primerEstado.background_color}; color: ${primerEstado.color};"
-                                    title="Múltiples estados">
-                        <div class="estado-cell">M</div>
+                                    style="background-color: ${estadoPred.background_color}; color: ${estadoPred.color};"
+                                    title="${estadoPred.nombre}">
+                        <div class="estado-cell">${estadoPred.nombre_corto}</div>
                     </td>`;
                 } else {
-         // Estado único
-                    bodyHTML += `<td onclick="showEstadoInfo(${persona.personal_id}, ${day})" 
-                                    style="background-color: ${estados.background_color}; color: ${estados.color};"
-                                    title="${estados.nombre}">
-                        <div class="estado-cell">${estados.nombre_corto}</div>
-                    </td>`;
-         }
-     } else {
-                // Sin estado
-                bodyHTML += `<td class="empty-cell" onclick="showEstadoInfo(${persona.personal_id}, ${day})"></td>`;
+                    bodyHTML += `<td class="empty-cell" onclick="showEstadoInfo(${persona.personal_id}, ${day})"></td>`;
+                }
             }
         }
         
@@ -220,15 +316,26 @@ function showEstadoInfo(personalId, day) {
     if (!persona) return;
     
     const nombreCompleto = `${persona.nombre} ${persona.apepat} ${persona.apemat}`.trim();
-    const cargo = persona.infolaboral_set?.[0]?.cargo_id?.cargo || 'Sin cargo';
+    const cargo = persona.cargo || 'Sin cargo';
     const fecha = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    const estados = calendarioData.estados[personalId]?.[day];
     
-    // Buscar faena activa
+    // Calcular estado en tiempo real
+    const estado = calcularEstadoPersonalFecha(personalId, fecha);
+    
+    // Buscar asignación activa
+    const asignaciones = asignacionesPorPersonal[personalId] || [];
+    const asignacionActiva = asignaciones.find(asig => {
+        const fechaIni = new Date(asig.fecha_inicio);
+        const fechaFin = asig.fecha_fin ? new Date(asig.fecha_fin) : null;
+        return fecha >= fechaIni && (!fechaFin || fecha <= fechaFin);
+    });
+    
     let faenaActual = 'Sin asignar';
-    if (persona.asignaciones_faena && persona.asignaciones_faena.length > 0) {
-        const asignacion = persona.asignaciones_faena[0];
-        faenaActual = asignacion.faena?.nombre || 'Sin asignar';
+    let turnoNombre = '-';
+    if (asignacionActiva) {
+        faenaActual = asignacionActiva.faena.nombre;
+        const turno = turnosMap[asignacionActiva.turno_id];
+        turnoNombre = turno ? turno.nombre : '-';
     }
     
     // Llenar modal
@@ -236,22 +343,11 @@ function showEstadoInfo(personalId, day) {
     document.getElementById('modalFecha').textContent = fecha.toLocaleDateString('es-ES', { 
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
     });
-    
-    if (estados) {
-        if (estados.multiple) {
-            const nombresEstados = estados.estados.map(e => e.nombre).join(', ');
-            document.getElementById('modalEstado').textContent = nombresEstados;
-                 } else {
-            document.getElementById('modalEstado').textContent = estados.nombre;
-             }
-         } else {
-        document.getElementById('modalEstado').textContent = 'Sin estado';
-    }
-    
+    document.getElementById('modalEstado').textContent = estado ? estado.nombre : 'Sin estado';
     document.getElementById('modalFaena').textContent = faenaActual;
-     document.getElementById('modalCargo').textContent = cargo;
+    document.getElementById('modalCargo').textContent = cargo;
      
-     // Mostrar modal
+    // Mostrar modal
     const modal = new bootstrap.Modal(document.getElementById('estadoModal'));
     modal.show();
 }
@@ -262,7 +358,7 @@ function showPersonalInfo(personalId) {
     if (!persona) return;
     
     const nombreCompleto = `${persona.nombre} ${persona.apepat} ${persona.apemat}`.trim();
-    const cargo = persona.infolaboral_set?.[0]?.cargo_id?.cargo || 'Sin cargo';
+    const cargo = persona.cargo || 'Sin cargo';
     const rut = `${persona.rut}-${persona.dvrut}`;
     
     let html = `
@@ -309,12 +405,51 @@ function setupFilters() {
     const faenaFilter = document.getElementById('faenaFilter');
     const cargoFilter = document.getElementById('cargoFilter');
     
-    searchInput.addEventListener('input', applyFilters);
-    faenaFilter.addEventListener('change', applyFilters);
-    cargoFilter.addEventListener('change', applyFilters);
+    // Usar debounce para búsqueda (esperar 500ms después de escribir)
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            applyFiltersWithReload();
+        }, 500);
+    });
+    
+    // Para selects, aplicar inmediatamente
+    faenaFilter.addEventListener('change', applyFiltersWithReload);
+    cargoFilter.addEventListener('change', applyFiltersWithReload);
 }
 
-// Aplicar filtros
+// Aplicar filtros recargando la página (para usar caché del backend)
+function applyFiltersWithReload() {
+    const searchValue = document.getElementById('searchInput').value.trim();
+    const faenaValue = document.getElementById('faenaFilter').value;
+    const cargoValue = document.getElementById('cargoFilter').value;
+    
+    // Construir URL con parámetros
+    const url = new URL(window.location.href);
+    
+    // Mantener year, month y page_size
+    const currentYear = url.searchParams.get('year') || new Date().getFullYear();
+    const currentMonth = url.searchParams.get('month') || (new Date().getMonth() + 1);
+    const pageSize = url.searchParams.get('page_size') || '25';
+    
+    // Limpiar y reconstruir todos los parámetros
+    url.search = '';
+    url.searchParams.set('year', currentYear);
+    url.searchParams.set('month', currentMonth);
+    url.searchParams.set('page', '1'); // Resetear a página 1
+    url.searchParams.set('page_size', pageSize);
+    
+    // Agregar nuevos parámetros de filtros solo si tienen valor
+    if (searchValue) url.searchParams.set('search', searchValue);
+    if (faenaValue) url.searchParams.set('faena', faenaValue);
+    if (cargoValue) url.searchParams.set('cargo', cargoValue);
+    
+    // Recargar página con nuevos parámetros
+    window.location.href = url.toString();
+}
+
+// Aplicar filtros en el frontend (LEGACY - mantener para compatibilidad)
 function applyFilters() {
     const searchValue = document.getElementById('searchInput').value.toLowerCase();
     const faenaValue = document.getElementById('faenaFilter').value;
@@ -325,11 +460,14 @@ function applyFilters() {
     calendarioData.personal.forEach((persona, index) => {
         const nombreCompleto = `${persona.nombre} ${persona.apepat} ${persona.apemat}`.toLowerCase();
         const rut = `${persona.rut}${persona.dvrut}`.toLowerCase();
-        const cargo = persona.infolaboral_set?.[0]?.cargo_id?.cargo || 'Sin cargo';
+        const cargo = persona.cargo || 'Sin cargo';
         
+        // Buscar asignación activa
+        const asignaciones = asignacionesPorPersonal[persona.personal_id] || [];
+        const asignacionActiva = asignaciones.find(asig => asig.activo);
         let faena = 'Sin asignar';
-        if (persona.asignaciones_faena && persona.asignaciones_faena.length > 0) {
-            faena = persona.asignaciones_faena[0].faena?.nombre || 'Sin asignar';
+        if (asignacionActiva) {
+            faena = asignacionActiva.faena.nombre;
         }
         
         // Filtrar por búsqueda
@@ -354,10 +492,31 @@ function applyFilters() {
 
 // Limpiar filtros
 function clearFilters() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('faenaFilter').value = '';
-    document.getElementById('cargoFilter').value = '';
-    applyFilters();
+    // Limpiar filtros manteniendo year, month y page_size
+    const url = new URL(window.location.href);
+    const currentYear = url.searchParams.get('year') || new Date().getFullYear();
+    const currentMonth = url.searchParams.get('month') || (new Date().getMonth() + 1);
+    const pageSize = url.searchParams.get('page_size') || '25';
+    
+    // Reconstruir URL solo con parámetros básicos
+    url.search = '';
+    url.searchParams.set('year', currentYear);
+    url.searchParams.set('month', currentMonth);
+    url.searchParams.set('page', '1');
+    url.searchParams.set('page_size', pageSize);
+    
+    window.location.href = url.toString();
+}
+
+// Cambiar tamaño de página
+function cambiarTamanioPagina(size) {
+    const url = new URL(window.location.href);
+    
+    // Mantener todos los parámetros existentes
+    url.searchParams.set('page_size', size);
+    url.searchParams.set('page', '1'); // Volver a página 1 al cambiar tamaño
+    
+    window.location.href = url.toString();
 }
 
 // Navegación del calendario
@@ -390,7 +549,14 @@ function goToToday() {
 function navigateToDate() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1;
-    window.location.href = `?year=${year}&month=${month}`;
+    
+    // Mantener parámetros actuales (filtros y paginación)
+    const url = new URL(window.location.href);
+    url.searchParams.set('year', year);
+    url.searchParams.set('month', month);
+    url.searchParams.set('page', '1'); // Resetear a página 1 al cambiar de mes
+    
+    window.location.href = url.toString();
 }
 
 // Llenar opciones de faenas
@@ -449,7 +615,7 @@ function showAsignaciones(personalId) {
     if (!persona) return;
     
     const nombreCompleto = `${persona.nombre} ${persona.apepat} ${persona.apemat}`.trim();
-    const todasAsignaciones = persona.asignaciones_faena || [];
+    const todasAsignaciones = asignacionesPorPersonal[personalId] || [];
     
     // Filtrar asignaciones que estén activas durante el mes actual
     const primerDiaMes = new Date(currentYear, currentMonth - 1, 1);

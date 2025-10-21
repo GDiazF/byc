@@ -213,9 +213,29 @@ async function submitForm(form, type) {
         const data = await response.json();
         
         // Cerrar el modal correspondiente
-        const modalId = `add${type.charAt(0).toUpperCase() + type.slice(1)}Modal`;
-        const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
-        modal.hide();
+        let modalId;
+        switch(type) {
+            case 'license':
+                modalId = 'addLicenseModal';
+                break;
+            case 'internal-license':
+                modalId = 'addInternalLicenseModal';
+                break;
+            case 'exam':
+                modalId = 'addExamModal';
+                break;
+            case 'certification':
+                modalId = 'addCertificationModal';
+                break;
+        }
+        
+        const modalElement = document.getElementById(modalId);
+        if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+        }
         
         if (data.status === 'success') {
             showNotification('Éxito', data.message, 'success');
@@ -904,7 +924,7 @@ async function deleteDocument(fieldName) {
                     <table class="table table-striped">
                         <thead>
                             <tr>
-                                <th>Tipos</th>
+                                <th>Tipo</th>
                                 <th>N° Licencia</th>
                                 <th>Empresa/Faena</th>
                                 <th>Fecha Emisión</th>
@@ -917,9 +937,7 @@ async function deleteDocument(fieldName) {
                             {% for licencia in licencias_internas %}
                             <tr>
                                 <td>
-                                    {% for tipo in licencia.tipos.all %}
-                                        <span class="badge bg-primary">{{ tipo.tipoLicenciaInterna }}</span>
-                                    {% endfor %}
+                                    <span class="badge bg-primary">{{ licencia.tipoLicenciaInterna_id.tipoLicenciaInterna }}</span>
                                 </td>
                                 <td>{{ licencia.numero_licencia|default:"-" }}</td>
                                 <td>{{ licencia.empresa_emisora|default:"-" }}</td>
@@ -1136,12 +1154,10 @@ async function deleteDocument(fieldName) {
             <form id="internalLicenseForm" method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <!-- Tipos de Licencia Interna -->
+                    <!-- Tipo de Licencia Interna -->
                     <div class="mb-3">
-                        <label class="form-label">{{ internal_license_form.tipos.label }}</label>
-                        <div class="tipos-container border rounded p-3">
-                            {{ internal_license_form.tipos }}
-                        </div>
+                        <label class="form-label">{{ internal_license_form.tipoLicenciaInterna_id.label }}</label>
+                        {{ internal_license_form.tipoLicenciaInterna_id }}
                         <div class="invalid-feedback"></div>
                     </div>
                     

@@ -169,15 +169,30 @@ class Faena(models.Model):
     nombre = models.CharField(max_length=150, unique=True)
     ubicacion = models.CharField(max_length=200, blank=True, null=True)
     descripcion = models.TextField(blank=True, null=True)
+    fecha_inicio = models.DateField(blank=True, null=True, verbose_name='Fecha de Inicio')
+    fecha_fin = models.DateField(blank=True, null=True, verbose_name='Fecha de Fin')
     activo = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["nombre"]
         verbose_name = "Faena"
         verbose_name_plural = "Faenas"
+        constraints = [
+            CheckConstraint(
+                check=Q(fecha_fin__gte=F("fecha_inicio")) | Q(fecha_fin__isnull=True) | Q(fecha_inicio__isnull=True),
+                name="faena_rango_valido",
+            )
+        ]
 
     def __str__(self):
         return self.nombre
+    
+    @property
+    def duracion_dias(self):
+        """Calcula la duración en días de la faena"""
+        if self.fecha_inicio and self.fecha_fin:
+            return (self.fecha_fin - self.fecha_inicio).days + 1
+        return None
 
 
 

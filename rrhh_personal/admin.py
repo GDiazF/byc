@@ -553,24 +553,24 @@ class TipoLicenciaInternaAdmin(admin.ModelAdmin):
 @admin.register(LicenciaInternaPorPersonal)
 class LicenciaInternaPorPersonalAdmin(admin.ModelAdmin):
     list_display = [
-        'personal_nombre', 'tipos_display', 'numero_licencia', 
+        'personal_nombre', 'tipoLicenciaInterna_id', 'numero_licencia', 
         'fechaEmision', 'fechaVencimiento', 'empresa_emisora', 
         'estado_badge', 'documento_badge'
     ]
-    list_filter = ['activo', 'fechaEmision', 'fechaVencimiento', 'empresa_emisora']
+    list_filter = ['activo', 'tipoLicenciaInterna_id', 'fechaEmision', 'fechaVencimiento', 'empresa_emisora']
     search_fields = [
         'personal_id__nombre', 'personal_id__apepat', 'personal_id__apemat',
-        'personal_id__rut', 'numero_licencia', 'empresa_emisora'
+        'personal_id__rut', 'numero_licencia', 'empresa_emisora',
+        'tipoLicenciaInterna_id__tipoLicenciaInterna'
     ]
     ordering = ['-fechaEmision']
-    filter_horizontal = ['tipos']
     
     fieldsets = (
         ('Información del Personal', {
             'fields': ('personal_id',)
         }),
         ('Detalles de la Licencia Interna', {
-            'fields': ('tipos', 'numero_licencia', 'empresa_emisora')
+            'fields': ('tipoLicenciaInterna_id', 'numero_licencia', 'empresa_emisora')
         }),
         ('Fechas', {
             'fields': ('fechaEmision', 'fechaVencimiento')
@@ -587,14 +587,6 @@ class LicenciaInternaPorPersonalAdmin(admin.ModelAdmin):
         return f"{obj.personal_id.nombre} {obj.personal_id.apepat} {obj.personal_id.apemat}"
     personal_nombre.short_description = "Personal"
     personal_nombre.admin_order_field = 'personal_id__apepat'
-    
-    def tipos_display(self, obj):
-        tipos = obj.tipos.all()
-        if tipos:
-            tipos_list = [t.tipoLicenciaInterna for t in tipos]
-            return ", ".join(tipos_list)
-        return "-"
-    tipos_display.short_description = "Tipos de Licencia"
     
     def estado_badge(self, obj):
         if obj.activo:
@@ -626,7 +618,7 @@ class LicenciaInternaPorPersonalAdmin(admin.ModelAdmin):
     documento_badge.short_description = "Documento"
     
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('personal_id').prefetch_related('tipos')
+        return super().get_queryset(request).select_related('personal_id', 'tipoLicenciaInterna_id')
 
 
 # ============================================================================

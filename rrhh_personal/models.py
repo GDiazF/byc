@@ -539,10 +539,13 @@ class LicenciaInternaPorPersonal(models.Model):
         blank=False,
         related_name='licencias_internas'
     )
-    tipos = models.ManyToManyField(
-        TipoLicenciaInterna, 
-        related_name='licencias_internas_personales',
-        verbose_name='Tipos de Licencia Interna'
+    tipoLicenciaInterna_id = models.ForeignKey(
+        TipoLicenciaInterna,
+        on_delete=models.CASCADE,
+        db_column='tipoLicenciaInterna_id',
+        null=False,
+        blank=False,
+        verbose_name='Tipo de Licencia Interna'
     )
     numero_licencia = models.CharField(
         max_length=50, 
@@ -576,8 +579,7 @@ class LicenciaInternaPorPersonal(models.Model):
         ordering = ['-fechaEmision']
 
     def __str__(self):
-        tipos_str = ", ".join([t.tipoLicenciaInterna for t in self.tipos.all()])
-        return f"Licencia Interna de {self.personal_id} - Tipos: {tipos_str or 'Ninguno'}"
+        return f"Licencia Interna de {self.personal_id} - {self.tipoLicenciaInterna_id.tipoLicenciaInterna}"
     
     def delete(self, *args, **kwargs):
         # Guardar la ruta del archivo antes de eliminar el registro

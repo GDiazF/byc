@@ -200,24 +200,25 @@ class LicenciasPersonal(forms.ModelForm):
 
 #formularios de licencias internas ------------------------------------------------------
 class LicenciasInternasPersonal(forms.ModelForm):
-    tipos = forms.ModelMultipleChoiceField(
+    tipoLicenciaInterna_id = forms.ModelChoiceField(
         queryset=None,  # Se establecerá en __init__
-        widget=forms.CheckboxSelectMultiple(attrs={
-            'class': 'list-unstyled'
+        empty_label='Seleccione un tipo de licencia',
+        widget=forms.Select(attrs={
+            'class': 'form-select'
         }),
         required=True,
-        label='Tipos de Licencia Interna'
+        label='Tipo de Licencia Interna'
     )
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from .models import TipoLicenciaInterna
-        self.fields['tipos'].queryset = TipoLicenciaInterna.objects.all().order_by('tipoLicenciaInterna')
+        self.fields['tipoLicenciaInterna_id'].queryset = TipoLicenciaInterna.objects.all().order_by('tipoLicenciaInterna')
 
     class Meta:
         from .models import LicenciaInternaPorPersonal
         model = LicenciaInternaPorPersonal
-        fields = ['tipos', 'numero_licencia', 'empresa_emisora', 'fechaEmision', 'fechaVencimiento', 'rutaDoc', 'observacion', 'activo']
+        fields = ['tipoLicenciaInterna_id', 'numero_licencia', 'empresa_emisora', 'fechaEmision', 'fechaVencimiento', 'rutaDoc', 'observacion', 'activo']
         widgets = {
             'numero_licencia': forms.TextInput(attrs={
                 'class': 'form-control',
