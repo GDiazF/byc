@@ -58,8 +58,8 @@ coverage.xml
 # Django stuff:
 *.log
 local_settings.py
-db.sqlite3
-db.sqlite3-journal
+# db.sqlite3
+# db.sqlite3-journal
 
 # Flask stuff:
 instance/
@@ -136,8 +136,8 @@ static/admin/
 static/rest_framework/
 
 # Database
-*.sqlite3
-*.db
+# *.sqlite3
+# *.db
 
 # Secret keys and sensitive configuration
 .env
