@@ -29,7 +29,7 @@ class PersonalListView(ListView, LoginRequiredMixin):
     model = Personal
     template_name = 'personal/table_personal.html'
     context_object_name = 'personal'
-    paginate_by = 10
+    # Removido paginate_by para permitir que DataTables maneje la paginación
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -83,6 +83,12 @@ class PersonalCreateView(LoginRequiredMixin, CreateView):
             if field in form.fields:
                 del form.fields[field]
         return form
+    
+    def get_context_data(self, **kwargs):
+        from django.utils import timezone
+        context = super().get_context_data(**kwargs)
+        context['now'] = timezone.now()
+        return context
     
     def form_valid(self, form):
         # Almacenar datos básicos en la sesión
@@ -222,26 +228,13 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
     success_url = reverse_lazy('table_personal')
 
     def get_context_data(self, **kwargs):
+        from django.utils import timezone
         context = super().get_context_data(**kwargs)
         if 'labor_form' not in context:
             info_laboral, created = InfoLaboral.objects.get_or_create(personal_id=self.object)
             context['labor_form'] = InfoLaboralPersonalForm(instance=info_laboral)
         
-        # Agregar documentos del personal al contexto
-        personal_docs = {
-            'curriculum': self.object.curriculum if self.object.curriculum else None,
-            'certificado_antecedentes': self.object.certificado_antecedentes if self.object.certificado_antecedentes else None,
-            'hoja_vida_conductor': self.object.hoja_vida_conductor if self.object.hoja_vida_conductor else None,
-            'foto_carnet': self.object.foto_carnet if self.object.foto_carnet else None,
-            'certificado_afp': self.object.certificado_afp if self.object.certificado_afp else None,
-            'certificado_salud': self.object.certificado_salud if self.object.certificado_salud else None,
-            'certificado_estudios': self.object.certificado_estudios if self.object.certificado_estudios else None,
-            'certificado_residencia': self.object.certificado_residencia if self.object.certificado_residencia else None,
-            'fotocopia_carnet': self.object.fotocopia_carnet if self.object.fotocopia_carnet else None,
-            'fotocopia_finiquito': self.object.fotocopia_finiquito if self.object.fotocopia_finiquito else None,
-            'comprobante_banco': self.object.comprobante_banco if self.object.comprobante_banco else None,
-        }
-        context['personal_docs'] = personal_docs
+        context['now'] = timezone.now()
         return context
 
     def post(self, request, *args, **kwargs):
@@ -257,73 +250,6 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
             else:
                 return self.form_invalid(form)
         
-        elif form_type == 'documents':
-            try:
-                personal = self.object
-                document_fields = [
-                    'curriculum', 'certificado_antecedentes', 'hoja_vida_conductor',
-                    'foto_carnet', 'certificado_afp', 'certificado_salud',
-                    'certificado_estudios', 'certificado_residencia', 'fotocopia_carnet',
-                    'fotocopia_finiquito', 'comprobante_banco'
-                ]
-                
-                # Guardar cada archivo subido
-                for field in document_fields:
-                    if field in request.FILES:
-                        # Eliminar archivo anterior si existe
-                        old_file = getattr(personal, field)
-                        if old_file:
-                            try:
-                                if os.path.isfile(old_file.path):
-                                    os.remove(old_file.path)
-                            except Exception as e:
-                                print(f"Error al eliminar archivo anterior: {e}")
-
-                        # Guardar nuevo archivo
-                        file_obj = request.FILES[field]
-                        setattr(personal, field, file_obj)
-                
-                personal.save()
-                messages.success(request, 'Documentación actualizada exitosamente.')
-                return redirect(f"{request.path}?tab=documents")
-            except Exception as e:
-                messages.error(request, f'Error al guardar documentos: {str(e)}')
-                return self.render_to_response(self.get_context_data(form=self.get_form()))
-
-        elif form_type == 'delete_document':
-            try:
-                personal = self.object
-                field = request.POST.get('field')
-                
-                if field in [f.name for f in personal._meta.fields if isinstance(f, (models.FileField, models.ImageField))]:
-                    # Obtener el archivo actual
-                    current_file = getattr(personal, field)
-                    if current_file:
-                        # Eliminar el archivo físico
-                        try:
-                            if os.path.isfile(current_file.path):
-                                os.remove(current_file.path)
-                        except Exception as e:
-                            print(f"Error al eliminar archivo físico: {e}")
-                        
-                        # Limpiar el campo en la base de datos
-                        setattr(personal, field, None)
-                        personal.save()
-                        
-                        return JsonResponse({
-                            'status': 'success',
-                            'message': 'Documento eliminado exitosamente'
-                        })
-                    
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'No se encontró el documento'
-                })
-            except Exception as e:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': str(e)
-                })
         
         elif form_type == 'labor':
             info_laboral = InfoLaboral.objects.get(personal_id=self.object)
@@ -336,10 +262,12 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
                 return self.form_invalid(labor_form)
 
     def form_valid(self, form):
+        messages.success(self.request, 'Personal actualizado exitosamente.')
         response = super().form_valid(form)
         return response
 
     def form_invalid(self, form):
+        messages.error(self.request, 'Error al actualizar el personal. Por favor revise los datos ingresados.')
         return self.render_to_response(self.get_context_data(form=form))
 
 class PersonalDeleteView(LoginRequiredMixin, View):
@@ -525,6 +453,100 @@ def add_internal_license(request, personal_id):
         'status': 'error',
         'message': 'Método no permitido'
     }, status=405)
+
+
+@login_required
+def edit_internal_license(request, license_id):
+    """Vista para editar licencia interna de conducir"""
+    if request.method == 'GET':
+        try:
+            from .models import LicenciaInternaPorPersonal
+            from .forms import LicenciasInternasPersonal
+            license = get_object_or_404(LicenciaInternaPorPersonal, licenciaInterna_id=license_id)
+            form = LicenciasInternasPersonal(instance=license)
+            
+            # Convertir el formulario a HTML
+            form_html = form.as_p()
+            
+            return JsonResponse({
+                'status': 'success',
+                'form_html': form_html,
+                'license_data': {
+                    'id': license.licenciaInterna_id,
+                    'tipo_id': license.tipoLicenciaInterna_id.tipoLicenciaInterna_id,
+                    'tipo_nombre': license.tipoLicenciaInterna_id.tipoLicenciaInterna,
+                    'numero': license.numero_licencia,
+                    'empresa': license.empresa_emisora,
+                    'fecha_emision': license.fechaEmision.strftime('%Y-%m-%d'),
+                    'fecha_vencimiento': license.fechaVencimiento.strftime('%Y-%m-%d'),
+                    'observacion': license.observacion,
+                    'activo': license.activo,
+                    'documento_url': license.rutaDoc.url if license.rutaDoc else None,
+                    'documento_nombre': license.rutaDoc.name if license.rutaDoc else None
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    elif request.method == 'POST':
+        try:
+            from .models import LicenciaInternaPorPersonal
+            from .forms import LicenciasInternasPersonal
+            license = get_object_or_404(LicenciaInternaPorPersonal, licenciaInterna_id=license_id)
+            
+            # Crear un formulario personalizado para la edición
+            form_data = request.POST.copy()
+            form_files = request.FILES
+            
+            # Si no se subió un nuevo archivo, mantener el existente
+            if 'rutaDoc' not in form_files or not form_files['rutaDoc']:
+                # Crear un formulario sin el campo de archivo para validar otros campos
+                form = LicenciasInternasPersonal(form_data, instance=license)
+                # Remover la validación del campo de archivo
+                form.fields['rutaDoc'].required = False
+                
+                if form.is_valid():
+                    # Guardar sin tocar el archivo existente
+                    license.tipoLicenciaInterna_id = form.cleaned_data['tipoLicenciaInterna_id']
+                    license.numero_licencia = form.cleaned_data['numero_licencia']
+                    license.empresa_emisora = form.cleaned_data['empresa_emisora']
+                    license.fechaEmision = form.cleaned_data['fechaEmision']
+                    license.fechaVencimiento = form.cleaned_data['fechaVencimiento']
+                    license.observacion = form.cleaned_data['observacion']
+                    license.activo = form.cleaned_data['activo']
+                    license.save()
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Licencia interna actualizada exitosamente'
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': form.errors
+                    }, status=400)
+            else:
+                # Si se subió un nuevo archivo, usar el formulario normal
+                form = LicenciasInternasPersonal(form_data, form_files, instance=license)
+                
+                if form.is_valid():
+                    form.save()
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Licencia interna actualizada exitosamente'
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': form.errors
+                    }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al actualizar la licencia: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 
 @login_required
@@ -1088,5 +1110,266 @@ def buscar_personal_licencia_medica(request):
     }
     
     return render(request, 'personal/buscar_personal_licencia_medica_new.html', context)
+
+
+@login_required
+def edit_license(request, license_id):
+    """Vista para editar licencia de conducir"""
+    if request.method == 'GET':
+        try:
+            from .models import LicenciaPorPersonal
+            from .forms import LicenciasPersonal
+            license = get_object_or_404(LicenciaPorPersonal, licenciaPorPersonal_id=license_id)
+            form = LicenciasPersonal(instance=license)
+            
+            # Convertir el formulario a HTML
+            form_html = form.as_p()
+            
+            return JsonResponse({
+                'status': 'success',
+                'form_html': form_html,
+                'license_data': {
+                    'id': license.licenciaPorPersonal_id,
+                    'tipos': [tipo.tipoLicencia_id for tipo in license.tipos.all()],
+                    'fecha_emision': license.fechaEmision.strftime('%Y-%m-%d'),
+                    'fecha_vencimiento': license.fechaVencimiento.strftime('%Y-%m-%d'),
+                    'documento_url': license.rutaDoc.url if license.rutaDoc else None,
+                    'documento_nombre': license.rutaDoc.name if license.rutaDoc else None
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    elif request.method == 'POST':
+        try:
+            from .models import LicenciaPorPersonal
+            from .forms import LicenciasPersonal
+            license = get_object_or_404(LicenciaPorPersonal, licenciaPorPersonal_id=license_id)
+            
+            # Crear un formulario personalizado para la edición
+            form_data = request.POST.copy()
+            form_files = request.FILES
+            
+            # Si no se subió un nuevo archivo, mantener el existente
+            if 'rutaDoc' not in form_files or not form_files['rutaDoc']:
+                # Crear un formulario sin el campo de archivo para validar otros campos
+                form = LicenciasPersonal(form_data, instance=license)
+                # Remover la validación del campo de archivo
+                form.fields['rutaDoc'].required = False
+                
+                if form.is_valid():
+                    # Guardar sin tocar el archivo existente
+                    license.fechaEmision = form.cleaned_data['fechaEmision']
+                    license.fechaVencimiento = form.cleaned_data['fechaVencimiento']
+                    license.tipos.set(form.cleaned_data['tipos'])
+                    license.save()
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Licencia actualizada exitosamente'
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': form.errors
+                    }, status=400)
+            else:
+                # Si se subió un nuevo archivo, usar el formulario normal
+                form = LicenciasPersonal(form_data, form_files, instance=license)
+                
+                if form.is_valid():
+                    form.save()
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Licencia actualizada exitosamente'
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': form.errors
+                    }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al actualizar la licencia: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+
+@login_required
+def edit_certification(request, cert_id):
+    """Vista para editar certificación"""
+    if request.method == 'GET':
+        try:
+            from .models import Certificacion
+            from .forms import CertificacionPersonal
+            cert = get_object_or_404(Certificacion, certif_id=cert_id)
+            form = CertificacionPersonal(instance=cert)
+            
+            # Convertir el formulario a HTML
+            form_html = form.as_p()
+            
+            return JsonResponse({
+                'status': 'success',
+                'form_html': form_html,
+                'cert_data': {
+                    'id': cert.certif_id,
+                    'tipo_id': cert.tipoCertificacion_id.tipoCertificacion_id,
+                    'proveedor_id': cert.proveedor_id.proveedor_id,
+                    'fecha_emision': cert.fechaEmision.strftime('%Y-%m-%d'),
+                    'fecha_vencimiento': cert.fechaVencimiento.strftime('%Y-%m-%d'),
+                    'documento_url': cert.rutaDoc.url if cert.rutaDoc else None,
+                    'documento_nombre': cert.rutaDoc.name if cert.rutaDoc else None
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    elif request.method == 'POST':
+        try:
+            from .models import Certificacion
+            from .forms import CertificacionPersonal
+            cert = get_object_or_404(Certificacion, certif_id=cert_id)
+            
+            # Crear un formulario personalizado para la edición
+            form_data = request.POST.copy()
+            form_files = request.FILES
+            
+            # Si no se subió un nuevo archivo, mantener el existente
+            if 'rutaDoc' not in form_files or not form_files['rutaDoc']:
+                # Crear un formulario sin el campo de archivo para validar otros campos
+                form = CertificacionPersonal(form_data, instance=cert)
+                # Remover la validación del campo de archivo
+                form.fields['rutaDoc'].required = False
+                
+                if form.is_valid():
+                    # Guardar sin tocar el archivo existente
+                    cert.tipoCertificacion_id = form.cleaned_data['tipoCertificacion_id']
+                    cert.proveedor_id = form.cleaned_data['proveedor_id']
+                    cert.fechaEmision = form.cleaned_data['fechaEmision']
+                    cert.fechaVencimiento = form.cleaned_data['fechaVencimiento']
+                    cert.save()
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Certificación actualizada exitosamente'
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': form.errors
+                    }, status=400)
+            else:
+                # Si se subió un nuevo archivo, usar el formulario normal
+                form = CertificacionPersonal(form_data, form_files, instance=cert)
+                
+                if form.is_valid():
+                    form.save()
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Certificación actualizada exitosamente'
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': form.errors
+                    }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al actualizar la certificación: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+
+@login_required
+def edit_exam(request, exam_id):
+    """Vista para editar examen"""
+    if request.method == 'GET':
+        try:
+            from .models import Examen
+            from .forms import ExamenPersonal
+            exam = get_object_or_404(Examen, examen_id=exam_id)
+            form = ExamenPersonal(instance=exam)
+            
+            # Convertir el formulario a HTML
+            form_html = form.as_p()
+            
+            return JsonResponse({
+                'status': 'success',
+                'form_html': form_html,
+                'exam_data': {
+                    'id': exam.examen_id,
+                    'tipo_id': exam.tipoEx_id.tipoEx_id,
+                    'resultado_id': exam.resultadoEx_id.resultadoEx_id,
+                    'proveedor_id': exam.proveedor_id.proveedor_id,
+                    'fecha_emision': exam.fechaEmision.strftime('%Y-%m-%d'),
+                    'fecha_vencimiento': exam.fechaVencimiento.strftime('%Y-%m-%d'),
+                    'documento_url': exam.rutaDoc.url if exam.rutaDoc else None,
+                    'documento_nombre': exam.rutaDoc.name if exam.rutaDoc else None
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    elif request.method == 'POST':
+        try:
+            from .models import Examen
+            from .forms import ExamenPersonal
+            exam = get_object_or_404(Examen, examen_id=exam_id)
+            
+            # Crear un formulario personalizado para la edición
+            form_data = request.POST.copy()
+            form_files = request.FILES
+            
+            # Si no se subió un nuevo archivo, mantener el existente
+            if 'rutaDoc' not in form_files or not form_files['rutaDoc']:
+                # Crear un formulario sin el campo de archivo para validar otros campos
+                form = ExamenPersonal(form_data, instance=exam)
+                # Remover la validación del campo de archivo
+                form.fields['rutaDoc'].required = False
+                
+                if form.is_valid():
+                    # Guardar sin tocar el archivo existente
+                    exam.tipoEx_id = form.cleaned_data['tipoEx_id']
+                    exam.resultadoEx_id = form.cleaned_data['resultadoEx_id']
+                    exam.proveedor_id = form.cleaned_data['proveedor_id']
+                    exam.fechaEmision = form.cleaned_data['fechaEmision']
+                    exam.fechaVencimiento = form.cleaned_data['fechaVencimiento']
+                    exam.save()
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Examen actualizado exitosamente'
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': form.errors
+                    }, status=400)
+            else:
+                # Si se subió un nuevo archivo, usar el formulario normal
+                form = ExamenPersonal(form_data, form_files, instance=exam)
+                
+                if form.is_valid():
+                    form.save()
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Examen actualizado exitosamente'
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': form.errors
+                    }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error al actualizar el examen: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 

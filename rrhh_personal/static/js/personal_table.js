@@ -1,10 +1,24 @@
 // Esperar a que el documento esté listo
 $(document).ready(function() {
+    console.log('Inicializando DataTable con opciones extendidas...');
+    
     // Inicializar DataTable
     const table = $('#personalTable').DataTable({
         language: {
-            url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
+            "lengthMenu": "Mostrar _MENU_ registros",
+            "zeroRecords": "No se encontraron registros",
+            "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+            "infoEmpty": "Mostrando 0 a 0 de 0 registros",
+            "infoFiltered": "(filtrado de _MAX_ registros totales)",
+            "search": "Buscar:",
+            "paginate": {
+                "first": "Primero",
+                "last": "Último",
+                "next": "Siguiente",
+                "previous": "Anterior"
+            }
         },
+        lengthMenu: [[5, 10, 25, 50, 100, 500, 1000, -1], ["5", "10", "25", "50", "100", "500", "1000", "Todos"]],
         pageLength: 10,
         order: [[1, 'asc']],
         columnDefs: [
@@ -15,8 +29,18 @@ $(document).ready(function() {
             }
         ],
         dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
-        lengthMenu: [[5, 10, 25, 50], [5, 10, 25, 50]]
+        lengthChange: true,
+        paging: true,
+        info: true,
+        initComplete: function() {
+            console.log('DataTable inicializado correctamente');
+        }
     });
+    
+    // Forzar el texto "Todos" en el dropdown
+    setTimeout(function() {
+        $('.dataTables_length select option[value="-1"]').text('Todos');
+    }, 100);
 
     // Manejar el filtro de empresa
     $('#filtroEmpresa').on('change', function() {

@@ -87,12 +87,66 @@ document.addEventListener('DOMContentLoaded', function() {
         addLicenseModal.addEventListener('shown.bs.modal', function() {
             initializeLicenseForm();
         });
+        
+        addLicenseModal.addEventListener('hidden.bs.modal', function() {
+            // Limpiar el formulario y resetear el título
+            const form = document.getElementById('licenseForm');
+            if (form) {
+                form.reset();
+                // Remover el campo oculto de license_id si existe
+                const hiddenId = form.querySelector('[name="license_id"]');
+                if (hiddenId) {
+                    hiddenId.remove();
+                }
+                
+                // Remover la información del documento existente
+                const existingDocInfo = form.querySelector('.existing-document-info');
+                if (existingDocInfo) {
+                    existingDocInfo.remove();
+                }
+                
+                // Restaurar el campo de archivo como requerido para nuevas licencias
+                const fileInput = form.querySelector('[name="rutaDoc"]');
+                if (fileInput) {
+                    fileInput.required = true;
+                }
+            }
+            // Resetear el título del modal
+            document.querySelector('#addLicenseModal .modal-title').textContent = 'Agregar Licencia de Conducir';
+        });
     }
 
     const addInternalLicenseModal = document.getElementById('addInternalLicenseModal');
     if (addInternalLicenseModal) {
         addInternalLicenseModal.addEventListener('shown.bs.modal', function() {
             initializeInternalLicenseForm();
+        });
+        
+        addInternalLicenseModal.addEventListener('hidden.bs.modal', function() {
+            // Limpiar el formulario y resetear el título
+            const form = document.getElementById('internalLicenseForm');
+            if (form) {
+                form.reset();
+                // Remover el campo oculto de license_id si existe
+                const hiddenId = form.querySelector('[name="license_id"]');
+                if (hiddenId) {
+                    hiddenId.remove();
+                }
+                
+                // Remover la información del documento existente
+                const existingDocInfo = form.querySelector('.existing-document-info');
+                if (existingDocInfo) {
+                    existingDocInfo.remove();
+                }
+                
+                // Restaurar el campo de archivo como requerido para nuevas licencias
+                const fileInput = form.querySelector('[name="rutaDoc"]');
+                if (fileInput) {
+                    fileInput.required = true;
+                }
+            }
+            // Resetear el título del modal
+            document.querySelector('#addInternalLicenseModal .modal-title').textContent = 'Agregar Licencia Interna';
         });
     }
 
@@ -101,12 +155,66 @@ document.addEventListener('DOMContentLoaded', function() {
         addExamModal.addEventListener('shown.bs.modal', function() {
             initializeExamForm();
         });
+        
+        addExamModal.addEventListener('hidden.bs.modal', function() {
+            // Limpiar el formulario y resetear el título
+            const form = document.getElementById('examForm');
+            if (form) {
+                form.reset();
+                // Remover el campo oculto de exam_id si existe
+                const hiddenId = form.querySelector('[name="exam_id"]');
+                if (hiddenId) {
+                    hiddenId.remove();
+                }
+                
+                // Remover la información del documento existente
+                const existingDocInfo = form.querySelector('.existing-document-info');
+                if (existingDocInfo) {
+                    existingDocInfo.remove();
+                }
+                
+                // Restaurar el campo de archivo como requerido para nuevos exámenes
+                const fileInput = form.querySelector('[name="rutaDoc"]');
+                if (fileInput) {
+                    fileInput.required = true;
+                }
+            }
+            // Resetear el título del modal
+            document.querySelector('#addExamModal .modal-title').textContent = 'Agregar Examen';
+        });
     }
 
     const addCertificationModal = document.getElementById('addCertificationModal');
     if (addCertificationModal) {
         addCertificationModal.addEventListener('shown.bs.modal', function() {
             initializeCertificationForm();
+        });
+        
+        addCertificationModal.addEventListener('hidden.bs.modal', function() {
+            // Limpiar el formulario y resetear el título
+            const form = document.getElementById('certificationForm');
+            if (form) {
+                form.reset();
+                // Remover el campo oculto de cert_id si existe
+                const hiddenId = form.querySelector('[name="cert_id"]');
+                if (hiddenId) {
+                    hiddenId.remove();
+                }
+                
+                // Remover la información del documento existente
+                const existingDocInfo = form.querySelector('.existing-document-info');
+                if (existingDocInfo) {
+                    existingDocInfo.remove();
+                }
+                
+                // Restaurar el campo de archivo como requerido para nuevas certificaciones
+                const fileInput = form.querySelector('[name="rutaDoc"]');
+                if (fileInput) {
+                    fileInput.required = true;
+                }
+            }
+            // Resetear el título del modal
+            document.querySelector('#addCertificationModal .modal-title').textContent = 'Agregar Certificación';
         });
     }
 
@@ -115,6 +223,34 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function() {
             const licenseId = this.dataset.id;
             showDeleteConfirmation('license', licenseId);
+        });
+    });
+
+    document.querySelectorAll('.edit-internal-license').forEach(button => {
+        button.addEventListener('click', function() {
+            const licenseId = this.dataset.id;
+            editInternalLicense(licenseId);
+        });
+    });
+
+    document.querySelectorAll('.edit-license').forEach(button => {
+        button.addEventListener('click', function() {
+            const licenseId = this.dataset.id;
+            editLicense(licenseId);
+        });
+    });
+
+    document.querySelectorAll('.edit-certification').forEach(button => {
+        button.addEventListener('click', function() {
+            const certId = this.dataset.id;
+            editCertification(certId);
+        });
+    });
+
+    document.querySelectorAll('.edit-exam').forEach(button => {
+        button.addEventListener('click', function() {
+            const examId = this.dataset.id;
+            editExam(examId);
         });
     });
 
@@ -154,11 +290,426 @@ function initializeLicenseForm() {
 function initializeInternalLicenseForm() {
     const form = document.getElementById('internalLicenseForm');
     if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitForm(this, 'internal-license');
-        });
+        // Remover listeners existentes para evitar duplicados
+        form.removeEventListener('submit', handleInternalLicenseSubmit);
+        form.addEventListener('submit', handleInternalLicenseSubmit);
     }
+}
+
+function handleInternalLicenseSubmit(e) {
+    e.preventDefault();
+    submitForm(this, 'internal-license');
+}
+
+function editInternalLicense(licenseId) {
+    fetch(`/users/personal/${licenseId}/edit_internal_license/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Llenar el formulario con los datos existentes
+            const form = document.getElementById('internalLicenseForm');
+            if (form) {
+                // Cambiar el título del modal
+                document.querySelector('#addInternalLicenseModal .modal-title').textContent = 'Editar Licencia Interna';
+                
+                // Llenar los campos del formulario
+                form.querySelector('[name="tipoLicenciaInterna_id"]').value = data.license_data.tipo_id;
+                form.querySelector('[name="numero_licencia"]').value = data.license_data.numero || '';
+                form.querySelector('[name="empresa_emisora"]').value = data.license_data.empresa || '';
+                form.querySelector('[name="fechaEmision"]').value = data.license_data.fecha_emision;
+                form.querySelector('[name="fechaVencimiento"]').value = data.license_data.fecha_vencimiento;
+                form.querySelector('[name="observacion"]').value = data.license_data.observacion || '';
+                form.querySelector('[name="activo"]').checked = data.license_data.activo;
+                
+                // Manejar el documento existente
+                const fileInput = form.querySelector('[name="rutaDoc"]');
+                if (fileInput) {
+                    // Hacer el campo de archivo opcional durante la edición
+                    fileInput.required = false;
+                    
+                    // Mostrar información del documento existente
+                    if (data.license_data.documento_url) {
+                        const fileContainer = fileInput.parentElement;
+                        let existingDocInfo = fileContainer.querySelector('.existing-document-info');
+                        
+                        if (!existingDocInfo) {
+                            existingDocInfo = document.createElement('div');
+                            existingDocInfo.className = 'existing-document-info mt-2';
+                            fileContainer.appendChild(existingDocInfo);
+                        }
+                        
+                        const fileName = data.license_data.documento_nombre ? 
+                            data.license_data.documento_nombre.split('/').pop() : 'Documento actual';
+                        
+                        // Acortar el nombre del archivo si es muy largo
+                        const shortFileName = fileName.length > 30 ? 
+                            fileName.substring(0, 27) + '...' : fileName;
+                        
+                        existingDocInfo.innerHTML = `
+                            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <i class="bi bi-file-earmark-text me-2"></i>
+                                    <strong>Documento actual:</strong> 
+                                    <a href="${data.license_data.documento_url}" target="_blank" class="text-decoration-none" title="${fileName}">
+                                        ${shortFileName}
+                                    </a>
+                                </div>
+                                <small class="text-muted ms-2">Opcional: subir nuevo documento</small>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // Agregar un campo oculto para el ID de la licencia
+                let hiddenId = form.querySelector('[name="license_id"]');
+                if (!hiddenId) {
+                    hiddenId = document.createElement('input');
+                    hiddenId.type = 'hidden';
+                    hiddenId.name = 'license_id';
+                    form.appendChild(hiddenId);
+                }
+                hiddenId.value = licenseId;
+                
+                // Mostrar el modal
+                const modal = new bootstrap.Modal(document.getElementById('addInternalLicenseModal'));
+                modal.show();
+            }
+        } else {
+            alert('Error al cargar los datos de la licencia: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al cargar los datos de la licencia');
+    });
+}
+
+// Función para editar licencia de conducir
+function editLicense(licenseId) {
+    console.log('Editando licencia ID:', licenseId);
+    
+    // Verificar que el formulario existe antes de hacer la petición
+    const form = document.getElementById('licenseForm');
+    if (!form) {
+        console.error('Formulario licenseForm no encontrado');
+        alert('Error: Formulario no encontrado');
+        return;
+    }
+    
+    fetch(`/users/personal/${licenseId}/edit_license/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        console.log('Respuesta HTTP:', response.status, response.statusText);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Respuesta recibida:', data);
+        if (data.status === 'success') {
+            // Llenar el formulario con los datos existentes
+            console.log('Formulario encontrado:', form);
+            if (form) {
+                // Cambiar el título del modal
+                document.querySelector('#addLicenseModal .modal-title').textContent = 'Editar Licencia de Conducir';
+                
+                // Llenar los campos del formulario
+                console.log('Llenando campos del formulario...');
+                
+                const fechaEmisionField = form.querySelector('[name="fechaEmision"]');
+                const fechaVencimientoField = form.querySelector('[name="fechaVencimiento"]');
+                
+                console.log('Campo fechaEmision:', fechaEmisionField);
+                console.log('Campo fechaVencimiento:', fechaVencimientoField);
+                console.log('Datos de licencia:', data.license_data);
+                
+                if (fechaEmisionField) {
+                    fechaEmisionField.value = data.license_data.fecha_emision;
+                    console.log('Fecha emisión establecida:', data.license_data.fecha_emision);
+                } else {
+                    console.error('Campo fechaEmision no encontrado');
+                }
+                
+                if (fechaVencimientoField) {
+                    fechaVencimientoField.value = data.license_data.fecha_vencimiento;
+                    console.log('Fecha vencimiento establecida:', data.license_data.fecha_vencimiento);
+                } else {
+                    console.error('Campo fechaVencimiento no encontrado');
+                }
+                
+                // Seleccionar los tipos de licencia (checkboxes)
+                const tiposCheckboxes = form.querySelectorAll('[name="tipos"]');
+                console.log('Checkboxes de tipos encontrados:', tiposCheckboxes.length);
+                if (tiposCheckboxes.length > 0) {
+                    console.log('Tipos a seleccionar:', data.license_data.tipos);
+                    tiposCheckboxes.forEach(checkbox => {
+                        const isSelected = data.license_data.tipos.includes(parseInt(checkbox.value));
+                        checkbox.checked = isSelected;
+                        if (isSelected) {
+                            console.log('Tipo seleccionado:', checkbox.value, checkbox.nextElementSibling?.textContent);
+                        }
+                    });
+                } else {
+                    console.error('Checkboxes de tipos no encontrados');
+                }
+                
+                // Manejar el documento existente
+                const fileInput = form.querySelector('[name="rutaDoc"]');
+                if (fileInput) {
+                    fileInput.required = false;
+                    
+                    if (data.license_data.documento_url) {
+                        const fileContainer = fileInput.parentElement;
+                        let existingDocInfo = fileContainer.querySelector('.existing-document-info');
+                        
+                        if (!existingDocInfo) {
+                            existingDocInfo = document.createElement('div');
+                            existingDocInfo.className = 'existing-document-info mt-2';
+                            fileContainer.appendChild(existingDocInfo);
+                        }
+                        
+                        const fileName = data.license_data.documento_nombre ? 
+                            data.license_data.documento_nombre.split('/').pop() : 'Documento actual';
+                        
+                        // Acortar el nombre del archivo si es muy largo
+                        const shortFileName = fileName.length > 30 ? 
+                            fileName.substring(0, 27) + '...' : fileName;
+                        
+                        existingDocInfo.innerHTML = `
+                            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <i class="bi bi-file-earmark-text me-2"></i>
+                                    <strong>Documento actual:</strong> 
+                                    <a href="${data.license_data.documento_url}" target="_blank" class="text-decoration-none" title="${fileName}">
+                                        ${shortFileName}
+                                    </a>
+                                </div>
+                                <small class="text-muted ms-2">Opcional: subir nuevo documento</small>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // Agregar un campo oculto para el ID de la licencia
+                let hiddenId = form.querySelector('[name="license_id"]');
+                if (!hiddenId) {
+                    hiddenId = document.createElement('input');
+                    hiddenId.type = 'hidden';
+                    hiddenId.name = 'license_id';
+                    form.appendChild(hiddenId);
+                }
+                hiddenId.value = licenseId;
+                
+                // Mostrar el modal
+                console.log('Mostrando modal...');
+                const modal = new bootstrap.Modal(document.getElementById('addLicenseModal'));
+                modal.show();
+                console.log('Modal mostrado exitosamente');
+            } else {
+                console.error('Formulario no encontrado después de verificación inicial');
+            }
+        } else {
+            console.error('Error en respuesta:', data.message);
+            alert('Error al cargar los datos de la licencia: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error en fetch:', error);
+        alert('Error al cargar los datos de la licencia: ' + error.message);
+    });
+}
+
+// Función para editar certificación
+function editCertification(certId) {
+    fetch(`/users/personal/${certId}/edit_certification/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            // Llenar el formulario con los datos existentes
+            const form = document.getElementById('certificationForm');
+            if (form) {
+                // Cambiar el título del modal
+                document.querySelector('#addCertificationModal .modal-title').textContent = 'Editar Certificación';
+                
+                // Llenar los campos del formulario
+                form.querySelector('[name="tipoCertificacion_id"]').value = data.cert_data.tipo_id;
+                form.querySelector('[name="proveedor_id"]').value = data.cert_data.proveedor_id;
+                form.querySelector('[name="fechaEmision"]').value = data.cert_data.fecha_emision;
+                form.querySelector('[name="fechaVencimiento"]').value = data.cert_data.fecha_vencimiento;
+                
+                // Manejar el documento existente
+                const fileInput = form.querySelector('[name="rutaDoc"]');
+                if (fileInput) {
+                    fileInput.required = false;
+                    
+                    if (data.cert_data.documento_url) {
+                        const fileContainer = fileInput.parentElement;
+                        let existingDocInfo = fileContainer.querySelector('.existing-document-info');
+                        
+                        if (!existingDocInfo) {
+                            existingDocInfo = document.createElement('div');
+                            existingDocInfo.className = 'existing-document-info mt-2';
+                            fileContainer.appendChild(existingDocInfo);
+                        }
+                        
+                        const fileName = data.cert_data.documento_nombre ? 
+                            data.cert_data.documento_nombre.split('/').pop() : 'Documento actual';
+                        
+                        // Acortar el nombre del archivo si es muy largo
+                        const shortFileName = fileName.length > 30 ? 
+                            fileName.substring(0, 27) + '...' : fileName;
+                        
+                        existingDocInfo.innerHTML = `
+                            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <i class="bi bi-file-earmark-text me-2"></i>
+                                    <strong>Documento actual:</strong> 
+                                    <a href="${data.cert_data.documento_url}" target="_blank" class="text-decoration-none" title="${fileName}">
+                                        ${shortFileName}
+                                    </a>
+                                </div>
+                                <small class="text-muted ms-2">Opcional: subir nuevo documento</small>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // Agregar un campo oculto para el ID de la certificación
+                let hiddenId = form.querySelector('[name="cert_id"]');
+                if (!hiddenId) {
+                    hiddenId = document.createElement('input');
+                    hiddenId.type = 'hidden';
+                    hiddenId.name = 'cert_id';
+                    form.appendChild(hiddenId);
+                }
+                hiddenId.value = certId;
+                
+                // Mostrar el modal
+                const modal = new bootstrap.Modal(document.getElementById('addCertificationModal'));
+                modal.show();
+            }
+        } else {
+            alert('Error al cargar los datos de la certificación: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al cargar los datos de la certificación');
+    });
+}
+
+// Función para editar examen
+function editExam(examId) {
+    fetch(`/users/personal/${examId}/edit_exam/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            // Llenar el formulario con los datos existentes
+            const form = document.getElementById('examForm');
+            if (form) {
+                // Cambiar el título del modal
+                document.querySelector('#addExamModal .modal-title').textContent = 'Editar Examen';
+                
+                // Llenar los campos del formulario
+                form.querySelector('[name="tipoEx_id"]').value = data.exam_data.tipo_id;
+                form.querySelector('[name="resultadoEx_id"]').value = data.exam_data.resultado_id;
+                form.querySelector('[name="proveedor_id"]').value = data.exam_data.proveedor_id;
+                form.querySelector('[name="fechaEmision"]').value = data.exam_data.fecha_emision;
+                form.querySelector('[name="fechaVencimiento"]').value = data.exam_data.fecha_vencimiento;
+                
+                // Manejar el documento existente
+                const fileInput = form.querySelector('[name="rutaDoc"]');
+                if (fileInput) {
+                    fileInput.required = false;
+                    
+                    if (data.exam_data.documento_url) {
+                        const fileContainer = fileInput.parentElement;
+                        let existingDocInfo = fileContainer.querySelector('.existing-document-info');
+                        
+                        if (!existingDocInfo) {
+                            existingDocInfo = document.createElement('div');
+                            existingDocInfo.className = 'existing-document-info mt-2';
+                            fileContainer.appendChild(existingDocInfo);
+                        }
+                        
+                        const fileName = data.exam_data.documento_nombre ? 
+                            data.exam_data.documento_nombre.split('/').pop() : 'Documento actual';
+                        
+                        // Acortar el nombre del archivo si es muy largo
+                        const shortFileName = fileName.length > 30 ? 
+                            fileName.substring(0, 27) + '...' : fileName;
+                        
+                        existingDocInfo.innerHTML = `
+                            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <i class="bi bi-file-earmark-text me-2"></i>
+                                    <strong>Documento actual:</strong> 
+                                    <a href="${data.exam_data.documento_url}" target="_blank" class="text-decoration-none" title="${fileName}">
+                                        ${shortFileName}
+                                    </a>
+                                </div>
+                                <small class="text-muted ms-2">Opcional: subir nuevo documento</small>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // Agregar un campo oculto para el ID del examen
+                let hiddenId = form.querySelector('[name="exam_id"]');
+                if (!hiddenId) {
+                    hiddenId = document.createElement('input');
+                    hiddenId.type = 'hidden';
+                    hiddenId.name = 'exam_id';
+                    form.appendChild(hiddenId);
+                }
+                hiddenId.value = examId;
+                
+                // Mostrar el modal
+                const modal = new bootstrap.Modal(document.getElementById('addExamModal'));
+                modal.show();
+            }
+        } else {
+            alert('Error al cargar los datos del examen: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al cargar los datos del examen');
+    });
 }
 
 function initializeExamForm() {
@@ -186,19 +737,34 @@ async function submitForm(form, type) {
     const formData = new FormData(form);
     let url;
     
-    switch(type) {
-        case 'license':
-            url = '{% url "add_license" personal.personal_id %}';
-            break;
-        case 'internal-license':
-            url = '{% url "add_internal_license" personal.personal_id %}';
-            break;
-        case 'exam':
-            url = '{% url "add_exam" personal.personal_id %}';
-            break;
-        case 'certification':
-            url = '{% url "save_certification" personal.personal_id %}';
-            break;
+    // Verificar si es edición
+    const licenseId = form.querySelector('[name="license_id"]');
+    const certId = form.querySelector('[name="cert_id"]');
+    const examId = form.querySelector('[name="exam_id"]');
+    
+    if (type === 'internal-license' && licenseId && licenseId.value) {
+        url = `/users/personal/${licenseId.value}/edit_internal_license/`;
+    } else if (type === 'license' && licenseId && licenseId.value) {
+        url = `/users/personal/${licenseId.value}/edit_license/`;
+    } else if (type === 'certification' && certId && certId.value) {
+        url = `/users/personal/${certId.value}/edit_certification/`;
+    } else if (type === 'exam' && examId && examId.value) {
+        url = `/users/personal/${examId.value}/edit_exam/`;
+    } else {
+        switch(type) {
+            case 'license':
+                url = '{% url "add_license" personal.personal_id %}';
+                break;
+            case 'internal-license':
+                url = '{% url "add_internal_license" personal.personal_id %}';
+                break;
+            case 'exam':
+                url = '{% url "add_exam" personal.personal_id %}';
+                break;
+            case 'certification':
+                url = '{% url "save_certification" personal.personal_id %}';
+                break;
+        }
     }
     
     try {
@@ -861,6 +1427,10 @@ async function deleteDocument(fieldName) {
 
             <!-- Licencias Tab -->
             <div class="tab-pane fade" id="licenses" role="tabpanel" aria-labelledby="licenses-tab">
+                <div class="alert alert-info mb-3 py-2">
+                    <small><i class="bi bi-info-circle me-1"></i>Gestiona las licencias de conducir del trabajador.</small>
+                </div>
+                
                 <div class="mb-3">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addLicenseModal">
                         <i class="bi bi-plus-square me-1"></i>
@@ -869,33 +1439,43 @@ async function deleteDocument(fieldName) {
                 </div>
                 
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-dark">
                             <tr>
-                                <th>Clases</th>
-                                <th>Fecha Emisión</th>
-                                <th>Fecha Vencimiento</th>
-                                <th>Acciones</th>
+                                <th style="width: 25%;">Clases</th>
+                                <th style="width: 15%;" class="text-center">Fecha Emisión</th>
+                                <th style="width: 15%;" class="text-center">Fecha Vencimiento</th>
+                                <th style="width: 15%;" class="text-center">Estado</th>
+                                <th style="width: 30%;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for licencia in licencias %}
                             <tr>
                                 <td>
+                                    <i class="bi bi-card-text me-2"></i>
                                     {% for tipo in licencia.tipos.all %}
-                                        {{ tipo.tipoLicencia }}{% if not forloop.last %}, {% endif %}
+                                        <span class="badge bg-primary me-1">{{ tipo.tipoLicencia }}</span>
                                     {% endfor %}
                                 </td>
-                                <td>{{ licencia.fechaEmision }}</td>
-                                <td>{{ licencia.fechaVencimiento }}</td>
+                                <td class="text-center">{{ licencia.fechaEmision }}</td>
+                                <td class="text-center">{{ licencia.fechaVencimiento }}</td>
+                                <td class="text-center">
+                                    {% if licencia.rutaDoc %}
+                                        <span class="badge bg-success">✓ Con documento</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Sin documento</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if licencia.rutaDoc %}
-                                    <a href="{{ licencia.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-file-earmark-text"></i> Ver documento
-                                    </a>
-                                    {% else %}
-                                    <span class="text-muted">Sin documento</span>
+                                        <a href="{{ licencia.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
                                     {% endif %}
+                                    <button class="btn btn-sm btn-warning me-1 edit-license" data-id="{{ licencia.licenciaPorPersonal_id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
                                     <button class="btn btn-sm btn-danger delete-license" data-id="{{ licencia.licenciaPorPersonal_id }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -903,7 +1483,9 @@ async function deleteDocument(fieldName) {
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="text-center">No hay licencias registradas</td>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox me-2"></i>No hay licencias registradas
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -913,6 +1495,10 @@ async function deleteDocument(fieldName) {
 
             <!-- Licencias Internas Tab -->
             <div class="tab-pane fade" id="internal-licenses" role="tabpanel" aria-labelledby="internal-licenses-tab">
+                <div class="alert alert-info mb-3 py-2">
+                    <small><i class="bi bi-info-circle me-1"></i>Gestiona las licencias internas de conducir del trabajador.</small>
+                </div>
+                
                 <div class="mb-3">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addInternalLicenseModal">
                         <i class="bi bi-plus-square me-1"></i>
@@ -921,29 +1507,29 @@ async function deleteDocument(fieldName) {
                 </div>
                 
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-dark">
                             <tr>
-                                <th>Tipo</th>
-                                <th>N° Licencia</th>
-                                <th>Empresa/Faena</th>
-                                <th>Fecha Emisión</th>
-                                <th>Fecha Vencimiento</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
+                                <th style="width: 20%;">Tipo</th>
+                                <th style="width: 15%;" class="text-center">N° Licencia</th>
+                                <th style="width: 20%;">Empresa/Faena</th>
+                                <th style="width: 12%;" class="text-center">Fecha Emisión</th>
+                                <th style="width: 12%;" class="text-center">Fecha Vencimiento</th>
+                                <th style="width: 10%;" class="text-center">Estado</th>
+                                <th style="width: 11%;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for licencia in licencias_internas %}
                             <tr>
                                 <td>
-                                    <span class="badge bg-primary">{{ licencia.tipoLicenciaInterna_id.tipoLicenciaInterna }}</span>
+                                    <i class="bi bi-award me-2"></i>{{ licencia.tipoLicenciaInterna_id.tipoLicenciaInterna }}
                                 </td>
-                                <td>{{ licencia.numero_licencia|default:"-" }}</td>
+                                <td class="text-center">{{ licencia.numero_licencia|default:"-" }}</td>
                                 <td>{{ licencia.empresa_emisora|default:"-" }}</td>
-                                <td>{{ licencia.fechaEmision }}</td>
-                                <td>{{ licencia.fechaVencimiento }}</td>
-                                <td>
+                                <td class="text-center">{{ licencia.fechaEmision }}</td>
+                                <td class="text-center">{{ licencia.fechaVencimiento }}</td>
+                                <td class="text-center">
                                     {% if licencia.activo %}
                                         <span class="badge bg-success">Activa</span>
                                     {% else %}
@@ -952,12 +1538,13 @@ async function deleteDocument(fieldName) {
                                 </td>
                                 <td>
                                     {% if licencia.rutaDoc %}
-                                    <a href="{{ licencia.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-file-earmark-text"></i> Ver documento
-                                    </a>
-                                    {% else %}
-                                    <span class="text-muted">Sin documento</span>
+                                        <a href="{{ licencia.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
                                     {% endif %}
+                                    <button class="btn btn-sm btn-warning me-1 edit-internal-license" data-id="{{ licencia.licenciaInterna_id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
                                     <button class="btn btn-sm btn-danger delete-internal-license" data-id="{{ licencia.licenciaInterna_id }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -965,7 +1552,9 @@ async function deleteDocument(fieldName) {
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="7" class="text-center">No hay licencias internas registradas</td>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox me-2"></i>No hay licencias internas registradas
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -975,6 +1564,10 @@ async function deleteDocument(fieldName) {
 
             <!-- Certificaciones Tab -->
             <div class="tab-pane fade" id="certifications" role="tabpanel" aria-labelledby="certifications-tab">
+                <div class="alert alert-info mb-3 py-2">
+                    <small><i class="bi bi-info-circle me-1"></i>Gestiona las certificaciones del trabajador.</small>
+                </div>
+                
                 <div class="mb-3">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addCertificationModal">
                         <i class="bi bi-plus-square me-1"></i>
@@ -983,31 +1576,34 @@ async function deleteDocument(fieldName) {
                 </div>
                 
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-dark">
                             <tr>
-                                <th>Tipo</th>
-                                <th>Proveedor</th>
-                                <th>Fecha Emisión</th>
-                                <th>Fecha Vencimiento</th>
-                                <th>Acciones</th>
+                                <th style="width: 25%;">Tipo</th>
+                                <th style="width: 25%;">Proveedor</th>
+                                <th style="width: 15%;" class="text-center">Fecha Emisión</th>
+                                <th style="width: 15%;" class="text-center">Fecha Vencimiento</th>
+                                <th style="width: 20%;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for certificacion in certificaciones %}
                             <tr>
-                                <td>{{ certificacion.tipoCertificacion_id }}</td>
+                                <td>
+                                    <i class="bi bi-patch-check me-2"></i>{{ certificacion.tipoCertificacion_id }}
+                                </td>
                                 <td>{{ certificacion.proveedor_id }}</td>
-                                <td>{{ certificacion.fechaEmision }}</td>
-                                <td>{{ certificacion.fechaVencimiento }}</td>
+                                <td class="text-center">{{ certificacion.fechaEmision }}</td>
+                                <td class="text-center">{{ certificacion.fechaVencimiento }}</td>
                                 <td>
                                     {% if certificacion.rutaDoc %}
-                                    <a href="{{ certificacion.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-file-earmark-text"></i> Ver documento
-                                    </a>
-                                    {% else %}
-                                    <span class="text-muted">Sin documento</span>
+                                        <a href="{{ certificacion.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
                                     {% endif %}
+                                    <button class="btn btn-sm btn-warning me-1 edit-certification" data-id="{{ certificacion.certif_id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
                                     <button class="btn btn-sm btn-danger delete-certification" data-id="{{ certificacion.certif_id }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -1015,7 +1611,9 @@ async function deleteDocument(fieldName) {
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="text-center">No hay certificaciones registradas</td>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox me-2"></i>No hay certificaciones registradas
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -1025,6 +1623,10 @@ async function deleteDocument(fieldName) {
 
             <!-- Exámenes Tab -->
             <div class="tab-pane fade" id="exams" role="tabpanel" aria-labelledby="exams-tab">
+                <div class="alert alert-info mb-3 py-2">
+                    <small><i class="bi bi-info-circle me-1"></i>Gestiona los exámenes del trabajador.</small>
+                </div>
+                
                 <div class="mb-3">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addExamModal">
                         <i class="bi bi-plus-square me-1"></i>
@@ -1033,34 +1635,44 @@ async function deleteDocument(fieldName) {
                 </div>
                 
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-dark">
                             <tr>
-                                <th>Tipo</th>
-                                <th>Resultado</th>
-                                <th>Proveedor</th>
-                                <th>Fecha Emisión</th>
-                                <th>Fecha Vencimiento</th>
-                                <th>Documento</th>
-                                <th>Acciones</th>
+                                <th style="width: 20%;">Tipo</th>
+                                <th style="width: 15%;" class="text-center">Resultado</th>
+                                <th style="width: 20%;">Proveedor</th>
+                                <th style="width: 12%;" class="text-center">Fecha Emisión</th>
+                                <th style="width: 12%;" class="text-center">Fecha Vencimiento</th>
+                                <th style="width: 21%;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for examen in examenes %}
                             <tr>
-                                <td>{{ examen.tipoEx_id }}</td>
-                                <td>{{ examen.resultadoEx_id }}</td>
+                                <td>
+                                    <i class="bi bi-clipboard2-pulse me-2"></i>{{ examen.tipoEx_id }}
+                                </td>
+                                <td class="text-center">
+                                    {% if examen.resultadoEx_id %}
+                                        <span class="badge bg-{% if 'aprobado' in examen.resultadoEx_id|lower %}success{% elif 'reprobado' in examen.resultadoEx_id|lower %}danger{% else %}primary{% endif %}">
+                                            {{ examen.resultadoEx_id }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                                 <td>{{ examen.proveedor_id }}</td>
-                                <td>{{ examen.fechaEmision }}</td>
-                                <td>{{ examen.fechaVencimiento }}</td>
+                                <td class="text-center">{{ examen.fechaEmision }}</td>
+                                <td class="text-center">{{ examen.fechaVencimiento }}</td>
                                 <td>
                                     {% if examen.rutaDoc %}
-                                    <a href="{{ examen.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-file-earmark-text"></i> Ver documento
-                                    </a>
-                                    {% else %}
-                                    <span class="text-muted">Sin documento</span>
+                                        <a href="{{ examen.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
                                     {% endif %}
+                                    <button class="btn btn-sm btn-warning me-1 edit-exam" data-id="{{ examen.examen_id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
                                     <button class="btn btn-sm btn-danger delete-exam" data-id="{{ examen.examen_id }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -1068,7 +1680,9 @@ async function deleteDocument(fieldName) {
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="7" class="text-center">No hay exámenes registrados</td>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox me-2"></i>No hay exámenes registrados
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>

@@ -565,8 +565,9 @@ class LicenciaInternaPorPersonal(models.Model):
     rutaDoc = models.FileField(
         upload_to=obtener_ruta_documento, 
         storage=OverwriteStorage(), 
-        null=True, 
-        blank=True,
+        null=False, 
+        blank=False,
+        default=None,
         verbose_name='Documento'
     )
     observacion = models.TextField(max_length=250, null=True, blank=True, verbose_name='Observaciones')

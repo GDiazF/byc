@@ -12,9 +12,47 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/index.css' %}">
+    <style>
+        /* Spinner solo para el contenido principal */
+        .main-content {
+            position: relative;
+        }
+        
+        .content-loading {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            z-index: 1000 !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        
+        /* Efecto de carga simple y elegante */
+        
+        /* Ocultar contenido hasta que esté listo */
+        body.loading .main-content .content-loading {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        
+        body.loaded .main-content .content-loading {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            transition: opacity 0.5s ease-out, visibility 0.5s ease-out !important;
+            pointer-events: none !important;
+        }
+    </style>
     {% block extrastyles %}{% endblock %}
 </head>
-<body>
+<body class="loading">
+    
     <!-- Navbar superior -->
     <nav class="navbar navbar-expand navbar-dark fixed-top" style="background-color: #212529;">
         <div class="container-fluid">
@@ -173,9 +211,26 @@
         </ul>
     </div>
     
-    <!-- Contenido principal -->
-    <div class="main-content p-4" id="mainContent">
-        {% block content %}
+           <!-- Contenido principal -->
+           <div class="main-content p-4" id="mainContent">
+               <!-- Efecto de carga simple -->
+               <div id="contentLoading" class="content-loading">
+               </div>
+               
+               <!-- Mensajes de Django -->
+               {% if messages %}
+               <div class="messages-container" style="position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;">
+                   {% for message in messages %}
+                   <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="margin-bottom: 10px;">
+                       <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'warning' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+                       {{ message }}
+                       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                   </div>
+                   {% endfor %}
+               </div>
+               {% endif %}
+               
+               {% block content %}
         <!-- El contenido específico de cada página irá aquí -->
         <div class="container-fluid">
             <h1 class="mt-4">Bienvenido al Panel de Control</h1>
@@ -200,10 +255,25 @@
         {% endblock %}
     </div>
     
-    <!-- Bootstrap JS Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
-    <!-- Custom JS -->
-    <script src="{% static 'js/index.js' %}"></script>
-    {% block extrajs %}{% endblock %}
+           <!-- Bootstrap JS Bundle with Popper -->
+           <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
+           <!-- Custom JS -->
+           <script src="{% static 'js/index.js' %}"></script>
+           
+           <!-- Auto-hide messages -->
+           <script>
+           document.addEventListener('DOMContentLoaded', function() {
+               // Auto-hide messages after 5 seconds
+               const alerts = document.querySelectorAll('.alert');
+               alerts.forEach(function(alert) {
+                   setTimeout(function() {
+                       const bsAlert = new bootstrap.Alert(alert);
+                       bsAlert.close();
+                   }, 5000);
+               });
+           });
+           </script>
+           
+           {% block extrajs %}{% endblock %}
 </body>
 </html>

@@ -15,8 +15,12 @@ from .views import (
     delete_license,
     delete_exam,
     add_internal_license,
+    edit_internal_license,
     delete_internal_license,
     upload_personal_document,
+    edit_license,
+    edit_certification,
+    edit_exam,
     upload_carnet_document,
     delete_personal_document,
     documentation_view,
@@ -55,6 +59,7 @@ urlpatterns = [
     # Licencias de conducir
     path('personal/<int:personal_id>/add_license/', add_license, name='add_license'),
     path('personal/<int:personal_id>/add_internal_license/', add_internal_license, name='add_internal_license'),
+    path('personal/<int:license_id>/edit_internal_license/', edit_internal_license, name='edit_internal_license'),
     path('personal/<int:license_id>/delete_license/', delete_license, name='delete_license'),
     path('personal/<int:license_id>/delete_internal_license/', delete_internal_license, name='delete_internal_license'),
     # Exámenes
@@ -63,6 +68,10 @@ urlpatterns = [
     # Certificaciones
     path('personal/<int:pk>/save_certification/', save_certification, name='save_certification'),
     path('personal/<int:pk>/delete_certification/<int:certification_id>/', delete_certification, name='delete_certification'),
+    # Edición de documentos
+    path('personal/<int:license_id>/edit_license/', edit_license, name='edit_license'),
+    path('personal/<int:cert_id>/edit_certification/', edit_certification, name='edit_certification'),
+    path('personal/<int:exam_id>/edit_exam/', edit_exam, name='edit_exam'),
     # Licencia médica
     path('personal/<int:personal_id>/add_licencia_medica/', LicenciaMedicaPorPersonalCreateView.as_view(), name='add_licencia_medica'),
     path('personal/<int:personal_id>/licencias_medicas/', listar_licencias_medicas_personal, name='listar_licencias_medicas_personal'),

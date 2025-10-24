@@ -17,25 +17,11 @@ function calcularDV(rut) {
     return dv.toString();
 }
 
-// Función para formatear el RUT
+// Función para formatear el RUT - DESHABILITADA
+// Esta función ya no se usa para evitar formateo con puntos
 function formatearRut(rut) {
-    // Eliminar puntos y guión
-    rut = rut.replace(/\./g, '').replace(/-/g, '');
-    
-    // Obtener el número base y el dígito verificador
-    const rutBase = rut.slice(0, -1);
-    const dv = rut.slice(-1).toUpperCase();
-    
-    // Formatear con puntos
-    let rutFormateado = '';
-    for (let i = rutBase.length - 1, j = 0; i >= 0; i--, j++) {
-        rutFormateado = rutBase.charAt(i) + rutFormateado;
-        if ((j + 1) % 3 === 0 && i !== 0) {
-            rutFormateado = '.' + rutFormateado;
-        }
-    }
-    
-    return rutFormateado + '-' + dv;
+    // Solo devolver el RUT limpio sin formateo
+    return rut.replace(/\./g, '').replace(/-/g, '');
 }
 
 // Función para validar el RUT
@@ -94,11 +80,13 @@ document.addEventListener('DOMContentLoaded', function() {
             let rut = this.value;
             if (rut) {
                 rut = limpiarRut(rut);
-                // Solo formatear y calcular DV si hay suficientes dígitos
+                // Solo calcular DV si hay suficientes dígitos
                 if (rut.length >= 7) {
                     const dv = calcularDV(rut);
                     dvInput.value = dv;
-                    this.value = formatearRut(rut + dv).split('-')[0];
+                    
+                    // Nunca formatear con puntos, mantener solo números
+                    this.value = rut;
                 }
             }
         });
@@ -110,16 +98,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Eliminar caracteres no numéricos
             valor = valor.replace(/[^\d]/g, '');
             
-            // Formatear con puntos
-            let valorFormateado = '';
-            for (let i = valor.length - 1, j = 0; i >= 0; i--, j++) {
-                valorFormateado = valor.charAt(i) + valorFormateado;
-                if ((j + 1) % 3 === 0 && i !== 0) {
-                    valorFormateado = '.' + valorFormateado;
-                }
-            }
-            
-            this.value = valorFormateado;
+            // Nunca formatear con puntos, mantener solo números
+            this.value = valor;
 
             // Actualizar DV solo si hay suficientes dígitos
             actualizarDV(valor);
