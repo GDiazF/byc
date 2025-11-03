@@ -3,6 +3,9 @@
 
 {% block title %}Calendario de Planificación{% endblock %}
 
+{% block extrastyles %}
+{% endblock %}
+
 {% block content %}
 
 <!-- Estilos del calendario -->
@@ -26,12 +29,9 @@
                 <button class="btn btn-sm btn-outline-light me-1" onclick="nextMonth()">
                     <i class="bi bi-chevron-right"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-light me-2" onclick="nextYear()">
+                <button class="btn btn-sm btn-outline-light" onclick="nextYear()">
                     <i class="bi bi-chevron-double-right"></i>
                 </button>
-                <a href="{% url 'calendario:limpiar_cache' %}" class="btn btn-sm btn-warning" title="Limpiar caché y recargar">
-                    <i class="bi bi-arrow-clockwise"></i> Limpiar Caché
-                </a>
             </div>
         </div>
                     </div>
@@ -102,10 +102,21 @@
                             </div>
                 
         <!-- Leyenda de estados -->
-        <div class="alert alert-light border mb-3 p-2">
+        <div class="alert alert-light border mb-3 p-2 alert-permanent">
             <div class="d-flex align-items-center flex-wrap" id="statusLegend">
                 <small class="me-2 fw-bold">Estados:</small>
-                <!-- Se llenará dinámicamente -->
+                {% if todos_estados %}
+                    {% for estado in todos_estados %}
+                    <div class="status-legend-item">
+                        <div class="status-legend-color" style="background-color: {{ estado.background_color }}; color: {{ estado.color }}; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600;">
+                            {{ estado.nombre_corto|default:estado.nombre|slice:":3" }}
+                        </div>
+                        <small>{{ estado.nombre }}</small>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <small class="text-muted ms-2">No hay estados configurados</small>
+                {% endif %}
                 </div>
                 </div>
                 

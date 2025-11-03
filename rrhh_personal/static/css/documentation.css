@@ -1,0 +1,251 @@
+/* ============================================================================
+   ESTILOS PARA DOCUMENTACIÓN DE PERSONAL
+   ============================================================================ */
+
+/* Tabs */
+.nav-tabs {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.nav-tabs .nav-link {
+    margin-bottom: -2px;
+    border: none;
+    color: #6c757d;
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    border: none;
+    color: #495057;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    border: none;
+    border-bottom: 2px solid #0d6efd;
+    background-color: transparent;
+}
+
+.tab-content {
+    padding-top: 2rem;
+}
+
+/* Secciones de documentos */
+.document-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.document-section:hover {
+    background-color: #e9ecef;
+}
+
+/* Botones pequeños */
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem !important;
+    line-height: 1.5;
+}
+
+.btn-success.btn-sm {
+    height: 31px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-success.btn-sm i {
+    font-size: 0.9rem;
+}
+
+/* Checkboxes de licencias */
+.modal-body .list-unstyled {
+    margin: 0;
+    padding: 0;
+}
+
+.modal-body .list-unstyled li {
+    margin-bottom: 0.5rem;
+}
+
+.modal-body .list-unstyled input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+/* Grupos de licencia */
+.license-group {
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.license-group-title {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+/* Contenedor de checkboxes */
+#id_clases {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+#id_clases label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+}
+
+#id_clases input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+/* Contenedor de tipos */
+.tipos-container {
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #fff;
+}
+
+.tipos-container ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    columns: 2;
+    column-gap: 2rem;
+}
+
+.tipos-container li {
+    break-inside: avoid;
+    padding: 0.25rem 0;
+}
+
+.tipos-container label {
+    display: block;
+    padding: 0.5rem;
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.tipos-container label:hover {
+    background-color: #f8f9fa;
+}
+
+.tipos-container input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+/* Información de documento existente */
+.existing-document-info .alert {
+    margin-bottom: 0;
+    padding: 0.5rem 1rem;
+}
+
+.existing-document-info a {
+    color: #0d6efd;
+}
+
+.existing-document-info a:hover {
+    color: #0a58ca;
+    text-decoration: underline;
+}
+
+/* Modal de carga de carnet */
+#uploadCarnetModal .modal-body,
+#uploadDocumentModal .modal-body {
+    padding: 1.5rem;
+}
+
+/* Botón de cierre blanco */
+.btn-close-white {
+    filter: brightness(0) invert(1);
+}
+
+/* Formularios en modales */
+.form-label {
+    font-weight: 500;
+    color: #495057;
+}
+
+.modal-body .form-control {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.modal-body textarea.form-control {
+    min-height: 100px;
+}
+
+.invalid-feedback {
+    display: block;
+}
+
+/* ============================================================================
+   ANCHOS DE COLUMNAS DE TABLAS
+   ============================================================================ */
+
+/* Tabla de Licencias de Conducir */
+#licenciasTable th:nth-child(1) { width: 30%; }
+#licenciasTable th:nth-child(2) { width: 15%; }
+#licenciasTable th:nth-child(3) { width: 55%; }
+
+/* Tabla de Certificaciones */
+#certificacionesTable th:nth-child(1) { width: 25%; }
+#certificacionesTable th:nth-child(2) { width: 15%; }
+#certificacionesTable th:nth-child(3) { width: 15%; }
+#certificacionesTable th:nth-child(4) { width: 15%; }
+#certificacionesTable th:nth-child(5) { width: 30%; }
+
+/* Tabla de Licencias Internas */
+#licenciasInternasTable th:nth-child(1) { width: 20%; }
+#licenciasInternasTable th:nth-child(2) { width: 15%; }
+#licenciasInternasTable th:nth-child(3) { width: 20%; }
+#licenciasInternasTable th:nth-child(4) { width: 12%; }
+#licenciasInternasTable th:nth-child(5) { width: 12%; }
+#licenciasInternasTable th:nth-child(6) { width: 10%; }
+#licenciasInternasTable th:nth-child(7) { width: 11%; }
+
+/* Tabla de Documentos Personales */
+#documentosPersonalesTable th:nth-child(1) { width: 25%; }
+#documentosPersonalesTable th:nth-child(2) { width: 25%; }
+#documentosPersonalesTable th:nth-child(3) { width: 15%; }
+#documentosPersonalesTable th:nth-child(4) { width: 15%; }
+#documentosPersonalesTable th:nth-child(5) { width: 20%; }
+
+/* Tabla de Exámenes */
+#examenesTable th:nth-child(1) { width: 20%; }
+#examenesTable th:nth-child(2) { width: 15%; }
+#examenesTable th:nth-child(3) { width: 20%; }
+#examenesTable th:nth-child(4) { width: 12%; }
+#examenesTable th:nth-child(5) { width: 12%; }
+#examenesTable th:nth-child(6) { width: 21%; }
+
+/* Alineación centrada para columnas específicas */
+#licenciasTable th:nth-child(2),
+#certificacionesTable th:nth-child(2),
+#certificacionesTable th:nth-child(3),
+#certificacionesTable th:nth-child(4),
+#licenciasInternasTable th:nth-child(2),
+#licenciasInternasTable th:nth-child(4),
+#licenciasInternasTable th:nth-child(5),
+#licenciasInternasTable th:nth-child(6),
+#documentosPersonalesTable th:nth-child(3),
+#documentosPersonalesTable th:nth-child(4),
+#examenesTable th:nth-child(2),
+#examenesTable th:nth-child(4),
+#examenesTable th:nth-child(5) {
+    text-align: center;
+}
+

@@ -1,0 +1,389 @@
+// ============================================================================
+// ASIGNAR PERSONAL A FAENA
+// ============================================================================
+
+// Variables globales (se inicializan desde el template con datos de Django)
+let personal = [];
+let turnos = [];
+let faena = {};
+let personalSeleccionados = [];
+let faenaFechaInicio = null;
+let faenaFechaFin = null;
+
+// ============================================================================
+// UTILIDADES
+// ============================================================================
+
+// Get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Formatear fecha a formato chileno (DD-MM-YYYY)
+function formatearFechaChilena(fecha) {
+    if (!fecha) return '';
+    
+    try {
+        const date = new Date(fecha + 'T00:00:00'); // Agregar hora para evitar problemas de timezone
+        const dia = String(date.getDate()).padStart(2, '0');
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        const anio = date.getFullYear();
+        return `${dia}-${mes}-${anio}`;
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return fecha;
+    }
+}
+
+// ============================================================================
+// RENDERIZADO DE TABLA
+// ============================================================================
+
+// Renderizar tabla de personal
+function renderizarTablaPersonal() {
+    const tbody = document.getElementById('personalTableBody');
+    const busqueda = document.getElementById('searchInput').value.toLowerCase();
+    const filtroEstado = document.getElementById('filtroEstado').value;
+    const filtroCargo = document.getElementById('filtroCargo').value;
+    const filtroFaena = document.getElementById('filtroFaena').value;
+    
+    let personalFiltrado = personal.filter(p => {
+        // Búsqueda
+        const nombreCompleto = p.nombre_completo.toLowerCase();
+        const rut = p.rut.toLowerCase();
+        const matchBusqueda = !busqueda || nombreCompleto.includes(busqueda) || rut.includes(busqueda);
+        
+        // Filtro de estado
+        let matchEstado = true;
+        if (filtroEstado === 'disponible') {
+            matchEstado = !p.tiene_asignacion;
+        } else if (filtroEstado === 'asignado') {
+            matchEstado = p.tiene_asignacion;
+        }
+        
+        // Filtro de cargo
+        const matchCargo = !filtroCargo || p.cargo === filtroCargo;
+        
+        // Filtro de faena
+        let matchFaena = true;
+        if (filtroFaena && p.asignacion_actual) {
+            matchFaena = p.asignacion_actual.faena === filtroFaena;
+        } else if (filtroFaena === 'sin_asignar') {
+            matchFaena = !p.tiene_asignacion;
+        }
+        
+        return matchBusqueda && matchEstado && matchCargo && matchFaena;
+    });
+    
+    if (personalFiltrado.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <i class="bi bi-inbox fs-1 text-muted"></i>
+                    <p class="text-muted mt-2">No se encontraron trabajadores con los filtros aplicados</p>
+                </td>
+            </tr>
+        `;
+        actualizarContador();
+        return;
+    }
+    
+    tbody.innerHTML = personalFiltrado.map(p => {
+        const isChecked = personalSeleccionados.includes(p.id);
+        const estadoClass = p.tiene_asignacion ? 'bg-warning' : 'bg-success';
+        const estadoText = p.tiene_asignacion ? 'Asignado' : 'Disponible';
+        const fechaAsignacion = p.asignacion_actual ? 
+            `${formatearFechaChilena(p.asignacion_actual.fecha_inicio) || ''} ${p.asignacion_actual.fecha_fin ? '→ ' + formatearFechaChilena(p.asignacion_actual.fecha_fin) : '→ Indefinido'}` : 
+            '-';
+        
+        return `
+            <tr class="${isChecked ? 'table-primary' : ''}">
+                <td class="text-center">
+                    <input class="form-check-input personal-checkbox" type="checkbox" 
+                           value="${p.id}" ${isChecked ? 'checked' : ''}>
+                </td>
+                <td>${p.nombre_completo}</td>
+                <td>${p.rut}</td>
+                <td>${p.cargo}</td>
+                <td>
+                    <span class="badge ${estadoClass}">${estadoText}</span>
+                </td>
+                <td>${p.asignacion_actual ? p.asignacion_actual.faena : '-'}</td>
+                <td class="small">${fechaAsignacion}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    actualizarContador();
+}
+
+// ============================================================================
+// GESTIÓN DE SELECCIÓN
+// ============================================================================
+
+// Actualizar contador
+function actualizarContador() {
+    const total = document.querySelectorAll('.personal-checkbox').length;
+    const seleccionados = document.querySelectorAll('.personal-checkbox:checked').length;
+    
+    document.getElementById('totalPersonal').textContent = total;
+    document.getElementById('totalSeleccionados').textContent = seleccionados;
+    
+    const btnAsignar = document.getElementById('btnAsignarMasivo');
+    if (seleccionados > 0) {
+        btnAsignar.disabled = false;
+        btnAsignar.innerHTML = `<i class="bi bi-check-circle me-1"></i>Asignar ${seleccionados} Trabajador${seleccionados > 1 ? 'es' : ''}`;
+    } else {
+        btnAsignar.disabled = true;
+        btnAsignar.innerHTML = '<i class="bi bi-check-circle me-1"></i>Asignar Personal';
+    }
+}
+
+// Manejar checkbox
+function onCheckboxChange(checkbox) {
+    const id = parseInt(checkbox.value);
+    if (checkbox.checked) {
+        if (!personalSeleccionados.includes(id)) {
+            personalSeleccionados.push(id);
+        }
+    } else {
+        personalSeleccionados = personalSeleccionados.filter(pid => pid !== id);
+    }
+    renderizarTablaPersonal();
+}
+
+// Seleccionar/deseleccionar todos visibles
+function toggleSeleccionarTodos() {
+    const checkboxes = document.querySelectorAll('.personal-checkbox');
+    const todosSeleccionados = Array.from(checkboxes).every(cb => cb.checked);
+    
+    personalSeleccionados = [];
+    
+    if (!todosSeleccionados) {
+        checkboxes.forEach(cb => {
+            const id = parseInt(cb.value);
+            if (!personalSeleccionados.includes(id)) {
+                personalSeleccionados.push(id);
+            }
+        });
+    }
+    
+    renderizarTablaPersonal();
+}
+
+// Limpiar selección
+function limpiarSeleccion() {
+    personalSeleccionados = [];
+    renderizarTablaPersonal();
+}
+
+// Limpiar filtros
+function limpiarFiltros() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filtroEstado').value = '';
+    document.getElementById('filtroCargo').value = '';
+    document.getElementById('filtroFaena').value = '';
+    renderizarTablaPersonal();
+}
+
+// ============================================================================
+// GESTIÓN DE TURNOS
+// ============================================================================
+
+// Renderizar selector de turnos
+function renderizarTurnos() {
+    const select = document.getElementById('turno_id');
+    select.innerHTML = '<option value="">Seleccione un turno...</option>' +
+        turnos.map(t => `
+            <option value="${t.id}">${t.nombre} (${t.longitud_ciclo} días ciclo)</option>
+        `).join('');
+}
+
+// Al seleccionar turno, mostrar bloques
+function onTurnoChange() {
+    const turnoId = parseInt(document.getElementById('turno_id').value);
+    const container = document.getElementById('bloqueContainer');
+    const select = document.getElementById('bloque_inicio_id');
+    
+    if (!turnoId) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    const turno = turnos.find(t => t.id === turnoId);
+    if (!turno || !turno.bloques || turno.bloques.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    // Mostrar descripción del turno
+    const descripcionDiv = document.getElementById('turnoDescripcion');
+    let descripcionHTML = '<div class="alert alert-info small py-2 mb-3"><strong>Ciclo del turno:</strong><br>';
+    turno.bloques.forEach(b => {
+        descripcionHTML += `Bloque ${b.orden}: ${b.estado.nombre} (${b.duracion_dias} días) → `;
+    });
+    descripcionHTML = descripcionHTML.slice(0, -4); // Quitar última flecha
+    descripcionHTML += `<br><strong>Total: ${turno.longitud_ciclo} días</strong></div>`;
+    descripcionDiv.innerHTML = descripcionHTML;
+    
+    container.style.display = 'block';
+    select.innerHTML = '<option value="">Desde el inicio del ciclo</option>' +
+        turno.bloques.map(b => `
+            <option value="${b.id}">
+                Iniciar en Bloque ${b.orden}: ${b.estado.nombre} (${b.duracion_dias} días)
+            </option>
+        `).join('');
+}
+
+// ============================================================================
+// ASIGNACIÓN MASIVA
+// ============================================================================
+
+// Asignar masivamente
+async function asignarMasivo() {
+    const turnoId = document.getElementById('turno_id').value;
+    const fechaInicio = document.getElementById('fecha_inicio').value;
+    const fechaFin = document.getElementById('fecha_fin').value;
+    const bloqueInicioId = document.getElementById('bloque_inicio_id').value;
+    const observaciones = document.getElementById('observaciones').value.trim();
+    
+    if (personalSeleccionados.length === 0) {
+        mostrarAlerta('Debe seleccionar al menos un trabajador', 'error');
+        return;
+    }
+    
+    if (!turnoId || !fechaInicio) {
+        mostrarAlerta('Debe seleccionar turno y fecha de inicio', 'error');
+        return;
+    }
+    
+    // Validar que las fechas estén dentro del rango de la faena (si está definido)
+    if (faenaFechaInicio && fechaInicio < faenaFechaInicio) {
+        const confirmar = confirm(`ADVERTENCIA: La fecha de inicio (${fechaInicio}) es anterior al inicio de la faena (${faenaFechaInicio}).\n\n¿Desea continuar de todas formas?`);
+        if (!confirmar) return;
+    }
+    
+    if (faenaFechaFin && fechaFin && fechaFin > faenaFechaFin) {
+        const confirmar = confirm(`ADVERTENCIA: La fecha de fin (${fechaFin}) es posterior al fin de la faena (${faenaFechaFin}).\n\n¿Desea continuar de todas formas?`);
+        if (!confirmar) return;
+    }
+    
+    // Confirmar
+    const confirmMsg = `¿Confirma asignar ${personalSeleccionados.length} trabajador${personalSeleccionados.length > 1 ? 'es' : ''} a la faena "${faena.nombre}"?\n\n` +
+        `Turno: ${turnos.find(t => t.id == turnoId).nombre}\n` +
+        `Fecha inicio: ${fechaInicio}\n` +
+        `Fecha fin: ${fechaFin || 'Indefinido'}`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    const data = {
+        personal_ids: personalSeleccionados,
+        faena_id: faena.id,
+        turno_id: parseInt(turnoId),
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin || null,
+        bloque_inicio_id: bloqueInicioId ? parseInt(bloqueInicioId) : null,
+        observaciones: observaciones
+    };
+    
+    try {
+        const response = await fetch('/calendario/api/crear-asignacion-masiva/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarAlerta(result.message, 'success');
+            setTimeout(() => {
+                window.location.href = '/calendario/faenas/';
+            }, 2000);
+        } else {
+            mostrarAlerta(result.error || 'Error al asignar personal', 'error');
+        }
+    } catch (error) {
+        mostrarAlerta('Error de conexión: ' + error.message, 'error');
+    }
+}
+
+// ============================================================================
+// NOTIFICACIONES
+// ============================================================================
+
+// Mostrar alertas
+function mostrarAlerta(mensaje, tipo) {
+    const container = document.getElementById('alertContainer');
+    const alertClass = tipo === 'success' ? 'alert-success' : 'alert-danger';
+    const iconClass = tipo === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+    
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show`;
+    alert.innerHTML = `
+        <i class="bi ${iconClass} me-2"></i>${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    container.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+// ============================================================================
+// INICIALIZACIÓN
+// ============================================================================
+
+// Inicializar variables desde el template (se llama desde el HTML)
+function initData(personalData, turnosData, faenaData, fechaInicio, fechaFin) {
+    personal = personalData;
+    turnos = turnosData;
+    faena = faenaData;
+    faenaFechaInicio = fechaInicio;
+    faenaFechaFin = fechaFin;
+}
+
+// Inicializar al cargar el DOM
+document.addEventListener('DOMContentLoaded', function() {
+    renderizarTablaPersonal();
+    renderizarTurnos();
+    
+    // Pre-llenar fechas de la faena si existen
+    if (faenaFechaInicio) {
+        document.getElementById('fecha_inicio').value = faenaFechaInicio;
+    }
+    if (faenaFechaFin) {
+        document.getElementById('fecha_fin').value = faenaFechaFin;
+    }
+    
+    // Event listeners
+    document.getElementById('searchInput').addEventListener('input', renderizarTablaPersonal);
+    document.getElementById('filtroEstado').addEventListener('change', renderizarTablaPersonal);
+    document.getElementById('filtroCargo').addEventListener('change', renderizarTablaPersonal);
+    document.getElementById('filtroFaena').addEventListener('change', renderizarTablaPersonal);
+    document.getElementById('turno_id').addEventListener('change', onTurnoChange);
+    
+    // Checkboxes
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('personal-checkbox')) {
+            onCheckboxChange(e.target);
+        }
+    });
+});
+

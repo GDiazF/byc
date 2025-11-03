@@ -49,7 +49,8 @@ class PersonalListView(ListView, LoginRequiredMixin):
         return context
 
     def get_queryset(self):
-        queryset = Personal.objects.prefetch_related(
+        # Solo mostrar personal ACTIVO
+        queryset = Personal.objects.filter(activo=True).prefetch_related(
             'infolaboral_set__cargo_id',
             'infolaboral_set__depto_id',
             'infolaboral_set__empresa_id'
@@ -1373,3 +1374,72 @@ def edit_exam(request, exam_id):
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 
+
+# ============================================================================
+# VISTA PARA PERSONAL DESACTIVADO
+# ============================================================================
+
+class PersonalDesactivadoListView(ListView, LoginRequiredMixin):
+    """Vista para listar personal desactivado"""
+    model = Personal
+    template_name = 'personal/personal_desactivado.html'
+    context_object_name = 'personal'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from gen_settings.models import Empresa
+        context['empresas'] = Empresa.objects.all()
+        
+        empresa_id = self.request.GET.get('empresa')
+        if empresa_id and empresa_id.strip():
+            try:
+                context['empresa_seleccionada'] = int(empresa_id)
+            except (ValueError, TypeError):
+                context['empresa_seleccionada'] = None
+        else:
+            context['empresa_seleccionada'] = None
+        
+        return context
+
+    def get_queryset(self):
+        queryset = Personal.objects.filter(activo=False).prefetch_related(
+            'infolaboral_set__cargo_id',
+            'infolaboral_set__depto_id',
+            'infolaboral_set__empresa_id'
+        )
+        
+        empresa_id = self.request.GET.get('empresa')
+        if empresa_id and empresa_id.strip():
+            try:
+                empresa_id = int(empresa_id)
+                queryset = queryset.filter(infolaboral_set__empresa_id=empresa_id)
+            except (ValueError, TypeError):
+                pass
+        
+        return queryset.distinct()
+
+
+@login_required
+@require_POST
+def toggle_personal_activo(request):
+    """Toggle estado activo/inactivo de personal"""
+    try:
+        data = json.loads(request.body)
+        personal_id = data.get('personal_id')
+        
+        personal = get_object_or_404(Personal, personal_id=personal_id)
+        personal.activo = not personal.activo
+        personal.save()
+        
+        estado_texto = "activado" if personal.activo else "desactivado"
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Personal {estado_texto} correctamente',
+            'activo': personal.activo
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)

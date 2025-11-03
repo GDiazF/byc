@@ -9,20 +9,38 @@
 <link rel="stylesheet" href="{% static 'css/datatables.css' %}">
 
 
-<!-- Modal de Confirmación -->
+<!-- Modal de Confirmación para DESACTIVAR -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title" id="confirmModalLabel">Confirmar cambio de estado</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="confirmModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Desactivación de Personal
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="confirmModalBody">
-                ¿Está seguro que desea cambiar el estado de este personal?
+                <div class="alert alert-danger mb-3">
+                    <i class="bi bi-exclamation-circle me-2"></i>
+                    <strong>¡ADVERTENCIA! ¿Está seguro que desea DESACTIVAR a este trabajador?</strong>
+                </div>
+                <p>Al desactivar este personal:</p>
+                <ul>
+                    <li>❌ <strong>NO aparecerá en la lista de personal activo</strong></li>
+                    <li>❌ No podrá ser asignado a nuevas faenas o proyectos</li>
+                    <li>❌ Se moverá a la lista de "Personal Desactivado"</li>
+                </ul>
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Nota:</strong> Solo usuarios con permisos necesarios podrán volver a activarlo 
+                    desde la sección "Personal Desactivado".
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="confirmButton">Confirmar</button>
+                <button type="button" class="btn btn-danger" id="confirmButton">
+                    <i class="bi bi-person-x me-1"></i>Sí, Desactivar Personal
+                </button>
             </div>
         </div>
     </div>
@@ -59,7 +77,7 @@
                 </a>
             </div>
             <div class="col-md-6 text-end">
-                <div class="input-group" style="width: auto; float: right;">
+                <div class="input-group filter-container">
                     <label class="input-group-text" for="filtroEmpresa">Empresa:</label>
                     <select class="form-select form-select-sm" id="filtroEmpresa">
                         <option value="">Todas las empresas</option>
@@ -113,8 +131,7 @@
                         <div class="form-check form-switch">
                             <input class="form-check-input toggle-status" type="checkbox" 
                                    data-id="{{ persona.personal_id }}"
-                                   {% if persona.activo %}checked{% endif %}
-                                   style="cursor: pointer;">
+                                   {% if persona.activo %}checked{% endif %}>
                         </div>
                     </td>
                 </tr>

@@ -125,45 +125,5 @@
 <script src="{% static 'js/utils/validarRut.js' %}"></script>
 <script src="{% static 'js/textoFormateador.js' %}"></script>
 <script src="{% static 'js/utils/location.js' %}"></script>
-<script>
-$(document).ready(function() {
-    // Inicializar el manejador de región/comuna
-    setupRegionComunaHandlers();
-    
-    // Asegurar que el RUT nunca se formatee con puntos
-    const rutInput = document.getElementById('id_rut');
-    if (rutInput) {
-        // Forzar limpieza del RUT en cada evento
-        rutInput.addEventListener('blur', function() {
-            let valor = this.value;
-            // Eliminar cualquier punto o guión
-            valor = valor.replace(/\./g, '').replace(/-/g, '');
-            this.value = valor;
-        });
-        
-        rutInput.addEventListener('input', function() {
-            let valor = this.value;
-            // Eliminar cualquier punto o guión mientras se escribe
-            valor = valor.replace(/\./g, '').replace(/-/g, '');
-            this.value = valor;
-        });
-    }
-
-    // Validación del formulario
-    (function () {
-        'use strict'
-        var forms = document.querySelectorAll('.needs-validation')
-        Array.prototype.slice.call(forms)
-            .forEach(function (form) {
-                form.addEventListener('submit', function (event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault()
-                        event.stopPropagation()
-                    }
-                    form.classList.add('was-validated')
-                }, false)
-            })
-    })()
-});
-</script>
+<script src="{% static 'js/personal_form.js' %}"></script>
 {% endblock %} 

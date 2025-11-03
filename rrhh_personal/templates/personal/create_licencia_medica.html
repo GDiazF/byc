@@ -122,28 +122,5 @@
 </div>
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 <script src="{% static 'js/licencias_medicas.js' %}"></script>
-<script>
-    $(document).ready(function() {
-        // Manejar clic en botón de guardar
-        $('#submitButton').on('click', function(e) {
-            e.preventDefault();
-            
-            // Validar formulario
-            const form = document.getElementById('licenciaForm');
-            if (!form.checkValidity()) {
-                form.classList.add('was-validated');
-                return;
-            }
-            
-            // Mostrar modal de confirmación
-            $('#confirmModal').modal('show');
-        });
-
-        // Manejar confirmación de guardado
-        $('#confirmButton').on('click', function() {
-            // Enviar el formulario
-            $('#licenciaForm').submit();
-        });
-    });
-</script>
+<script src="{% static 'js/licencias_medicas_form.js' %}"></script>
 {% endblock %} 

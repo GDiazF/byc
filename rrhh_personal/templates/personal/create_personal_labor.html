@@ -66,30 +66,5 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
-<script>
-    // Script para actualizar los cargos cuando cambia el departamento
-    $(document).ready(function() {
-        $('#id_depto_id').change(function() {
-            var deptoId = $(this).val();
-            if (deptoId) {
-                $.ajax({
-                    url: '{% url "get_cargos" %}',
-                    data: {
-                        'depto_id': deptoId
-                    },
-                    success: function(data) {
-                        var cargoSelect = $('#id_cargo_id');
-                        cargoSelect.empty();
-                        cargoSelect.append($('<option>').text('elija una opción').attr('value', ''));
-                        $.each(data, function(id, nombre) {
-                            cargoSelect.append($('<option>').text(nombre).attr('value', id));
-                        });
-                    }
-                });
-            } else {
-                $('#id_cargo_id').empty().append($('<option>').text('elija una opción').attr('value', ''));
-            }
-        });
-    });
-</script>
+<script src="{% static 'js/departamento_cargo.js' %}"></script>
 {% endblock %} 

@@ -1,3 +1,6 @@
+/* ============================================================================
+   LOGIN PAGE - LAYOUT GENERAL
+   ============================================================================ */
 body {
     background-color: #212529;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -22,6 +25,9 @@ body {
     margin-top: 40px;
 }
 
+/* ============================================================================
+   HEADER DEL LOGIN
+   ============================================================================ */
 .login-header {
     text-align: center;
     padding: 30px 20px 25px;
@@ -42,6 +48,9 @@ body {
     font-weight: 500;
 }
 
+/* ============================================================================
+   FORMULARIO DE LOGIN
+   ============================================================================ */
 .login-form-container {
     padding: 30px;
 }
@@ -58,6 +67,7 @@ body {
     font-weight: 500;
 }
 
+/* Input groups */
 .input-group {
     position: relative;
 }
@@ -94,6 +104,7 @@ body {
     border-radius: 4px;
 }
 
+/* Form controls */
 .form-control {
     width: 100%;
     padding: 10px 12px;
@@ -115,6 +126,9 @@ body {
     color: #adb5bd;
 }
 
+/* ============================================================================
+   BOTONES
+   ============================================================================ */
 .btn-primary {
     width: 100%;
     padding: 12px;
@@ -138,26 +152,16 @@ body {
     transform: translateY(0);
 }
 
-/* Sobrescribir el ancho del botón para el modal */
+/* Botones en modal */
 .modal .btn-primary {
     width: auto;
     margin-bottom: 0;
     padding: 8px 16px;
 }
 
-.alert {
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-    background-color: #fff3f3;
-    border: 1px solid #ffebeb;
-    color: #e35d6a;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
+/* ============================================================================
+   FOOTER DEL LOGIN
+   ============================================================================ */
 .login-footer {
     display: flex;
     justify-content: space-between;
@@ -188,26 +192,25 @@ body {
     text-decoration: underline;
 }
 
-@media (max-width: 768px) {
-    .login-container {
-        max-width: 100%;
-        padding: 1rem;
-    }
-    
-    .login-form-container {
-        padding: 2rem;
-    }
-    
-    .login-header {
-        padding: 2rem;
-    }
-    
-    .login-header img {
-        height: 50px;
-    }
+/* ============================================================================
+   ALERTAS
+   ============================================================================ */
+.alert {
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    background-color: #fff3f3;
+    border: 1px solid #ffebeb;
+    color: #e35d6a;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-/* Estilos para el modal de error */
+/* ============================================================================
+   MODAL DE ERROR
+   ============================================================================ */
 .modal-content {
     border: none;
     border-radius: 15px;
@@ -251,16 +254,24 @@ body {
     color: #495057;
 }
 
-/* Estilos para el botón de logout en el dropdown */
-.dropdown-item.btn-logout {
-    background: none;
-    border: none;
-    width: 100%;
-    text-align: left;
-    padding: 0.25rem 1rem;
+/* ============================================================================
+   RESPONSIVE (MÓVIL)
+   ============================================================================ */
+@media (max-width: 768px) {
+    .login-container {
+        max-width: 100%;
+        padding: 1rem;
+    }
+    
+    .login-form-container {
+        padding: 2rem;
+    }
+    
+    .login-header {
+        padding: 2rem;
+    }
+    
+    .login-header img {
+        height: 50px;
+    }
 }
-
-.dropdown-item.btn-logout:hover {
-    background-color: #f8f9fa;
-    cursor: pointer;
-} 

@@ -1,0 +1,166 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Personal Desactivado{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.0/css/dataTables.dataTables.css">
+<link rel="stylesheet" href="{% static 'css/datatables.css' %}">
+
+
+<!-- Modal de Confirmación para ACTIVAR -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="confirmModalLabel">
+                    <i class="bi bi-check-circle me-2"></i>Confirmar Activación de Personal
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                <div class="alert alert-success mb-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>¿Está seguro que desea ACTIVAR a este trabajador?</strong>
+                </div>
+                <p>Al activar este personal:</p>
+                <ul>
+                    <li>✓ Volverá a aparecer en la lista de personal activo</li>
+                    <li>✓ Podrá ser asignado a faenas y proyectos</li>
+                    <li>✓ Desaparecerá de esta lista de personal desactivado</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmButton">
+                    <i class="bi bi-check-circle me-1"></i>Sí, Activar Personal
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Éxito -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="successModalLabel">Operación Exitosa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="successModalBody">
+                El personal ha sido activado exitosamente.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-danger text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-person-x-fill me-2"></i>Personal Desactivado
+            </div>
+            <a href="{% url 'personal_list' %}" class="btn btn-light btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>
+                Volver a Personal Activo
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-4">
+        <div class="alert alert-info mb-3">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Información:</strong> Esta lista muestra todo el personal que ha sido desactivado. 
+            Para volver a activar un trabajador, use el botón de estado.
+        </div>
+
+        {% if personal %}
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="text-muted">
+                    <i class="bi bi-people-fill me-2"></i>
+                    Total de personal desactivado: <strong>{{ personal|length }}</strong>
+                </div>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="input-group filter-container">
+                    <label class="input-group-text" for="filtroEmpresa">Empresa:</label>
+                    <select class="form-select form-select-sm" id="filtroEmpresa">
+                        <option value="">Todas las empresas</option>
+                        {% for empresa in empresas %}
+                        <option value="{{ empresa.nomFantasia }}">{{ empresa.nomFantasia }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <table id="personalTable" class="display table-striped compact hover">
+            <thead>
+                <tr>
+                    <th>RUT</th>
+                    <th>Nombre Completo</th>
+                    <th>Cargo</th>
+                    <th>Departamento</th>
+                    <th>Empresa</th>
+                    <th>Documentacion</th>
+                    <th>Acciones</th>
+                    <th>Activar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for persona in personal %}
+                {% with info_laboral=persona.infolaboral_set.first %}
+                <tr>
+                    <td>{{ persona.rut }}-{{ persona.dvrut }}</td>
+                    <td>{{ persona.nombre }} {{ persona.apepat }} {{ persona.apemat }}</td>
+                    <td>{{ info_laboral.cargo_id.cargo|default:'No disponible' }}</td>
+                    <td>{{ info_laboral.depto_id.depto|default:'No disponible' }}</td>
+                    <td>{{ info_laboral.empresa_id.nomFantasia|default:'No disponible' }}</td>
+                    <td>
+                        <a href="{% url 'documentation' persona.personal_id %}" class="btn btn-warning btn-sm">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{% url 'personal_update' persona.personal_id %}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-pencil-square"></i>
+                        </a>
+                    </td>
+                    <td>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input toggle-status" type="checkbox" 
+                                   data-id="{{ persona.personal_id }}"
+                                   {% if persona.activo %}checked{% endif %}>
+                            <label class="form-check-label text-muted small">
+                                Activar
+                            </label>
+                        </div>
+                    </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <!-- Mensaje cuando no hay personal desactivado -->
+        <div class="text-center py-5">
+            <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+            <h5 class="mt-3 text-success">¡Excelente!</h5>
+            <p class="text-muted">No hay personal desactivado en este momento.</p>
+            <p class="text-muted small">Todo el personal se encuentra activo y disponible.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
+<script src="{% static 'js/personal_table.js' %}?v=11.0"></script>
+
+{% endblock %}
+

@@ -78,10 +78,7 @@
     <script src="{% static 'js/login.js' %}"></script>
     {% if form.errors %}
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-            errorModal.show();
-        });
+        window.showLoginError = true;
     </script>
     {% endif %}
 </body>

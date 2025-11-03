@@ -2,6 +2,12 @@
 $(document).ready(function() {
     console.log('Inicializando DataTable con opciones extendidas...');
     
+    // Verificar si la tabla existe (solo se renderiza si hay datos)
+    if ($('#personalTable').length === 0) {
+        console.log('No hay tabla para inicializar (lista vacía).');
+        return; // Salir si no hay tabla
+    }
+    
     // Inicializar DataTable
     const table = $('#personalTable').DataTable({
         language: {
@@ -60,9 +66,9 @@ $(document).ready(function() {
         originalState = !currentToggle.prop('checked');
         changeConfirmed = false;
         
-        // Actualizar texto del modal según el estado
-        const nuevoEstado = currentToggle.prop('checked') ? 'activar' : 'desactivar';
-        $('#confirmModalBody').text(`¿Está seguro que desea ${nuevoEstado} a este personal?`);
+        // NO modificar el contenido del modal - ya está definido correctamente en el HTML
+        // El modal de table_personal.html tiene la advertencia de DESACTIVAR
+        // El modal de personal_desactivado.html tiene la confirmación de ACTIVAR
         
         // Mostrar modal
         $('#confirmModal').modal('show');
@@ -77,37 +83,48 @@ $(document).ready(function() {
             const personalId = currentToggle.data('id');
             const nuevoEstado = !originalState;
 
-            // Llamada AJAX para actualizar el estado
+            // Llamada AJAX para actualizar el estado (nueva URL)
             $.ajax({
-                url: `/users/personal/${personalId}/toggle-status/`,
+                url: '/users/personal/toggle-activo/',
                 type: 'POST',
-                data: {
-                    activo: nuevoEstado,
-                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    personal_id: personalId
+                }),
+                headers: {
+                    'X-CSRFToken': $('input[name=csrfmiddlewaretoken]').val()
                 },
                 success: function(response) {
-                    if (response.success) {
+                    if (response.status === 'success') {
                         // Marcar que el cambio fue confirmado
                         changeConfirmed = true;
-                        // Actualizar el toggle al nuevo estado
-                        currentToggle.prop('checked', nuevoEstado);
                         
                         // Cerrar el modal de confirmación
                         $('#confirmModal').modal('hide');
                         
-                        // Mostrar mensaje de éxito en el modal
-                        const mensaje = nuevoEstado ? 'activado' : 'desactivado';
-                        $('#successModalBody').text(`El personal ha sido ${mensaje} exitosamente.`);
+                        // Mostrar mensaje de éxito
+                        const accion = response.activo ? 'activado' : 'desactivado';
+                        $('#successModalBody').html(`
+                            <i class="bi bi-check-circle me-2"></i>Personal ${accion} correctamente
+                        `);
                         $('#successModal').modal('show');
+                        
+                        // Redirigir después de mostrar el mensaje
+                        setTimeout(function() {
+                            window.location.replace(window.location.pathname + '?updated=' + Date.now());
+                        }, 1500);
                     } else {
                         $('#confirmModal').modal('hide');
-                        alert('Error al cambiar el estado del personal');
+                        alert('Error: ' + (response.message || 'Error al cambiar el estado del personal'));
                         currentToggle.prop('checked', originalState);
                     }
                 },
-                error: function() {
+                error: function(xhr) {
                     $('#confirmModal').modal('hide');
-                    alert('Error al cambiar el estado del personal');
+                    const errorMsg = xhr.responseJSON && xhr.responseJSON.message 
+                        ? xhr.responseJSON.message 
+                        : 'Error al cambiar el estado del personal';
+                    alert('Error: ' + errorMsg);
                     currentToggle.prop('checked', originalState);
                 }
             });

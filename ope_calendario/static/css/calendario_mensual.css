@@ -1,5 +1,10 @@
 /* Estilos para el calendario de planificación */
 
+/* Evitar que el spinner de la página padre oculte el calendario */
+body.loading .main-content .content-loading {
+    display: none !important;
+}
+
 /* Botones de navegación en el header */
 .calendar-nav-buttons {
     display: flex;

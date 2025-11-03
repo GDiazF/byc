@@ -4,71 +4,33 @@ function hideSpinner() {
     const contentLoading = document.getElementById('contentLoading');
     
     if (body && contentLoading) {
-        // Cambiar clase del body
         body.classList.remove('loading');
         body.classList.add('loaded');
         
-        // Ocultar spinner después de la transición
         setTimeout(function() {
             if (contentLoading) {
                 contentLoading.style.display = 'none';
-                contentLoading.style.pointerEvents = 'none'; // Asegurar que no bloquee clics
+                contentLoading.style.pointerEvents = 'none';
             }
-        }, 500);
+        }, 200);
     }
 }
 
-        // Función para verificar si los estilos están cargados
-        function checkStylesLoaded() {
-            // Verificar que Bootstrap CSS esté cargado
-            const testElement = document.createElement('div');
-            testElement.className = 'container-fluid';
-            testElement.style.display = 'none';
-            document.body.appendChild(testElement);
-            
-            const computedStyle = window.getComputedStyle(testElement);
-            const isBootstrapLoaded = computedStyle.paddingLeft !== '' || computedStyle.paddingRight !== '';
-            
-            document.body.removeChild(testElement);
-            
-            // Si estamos en la página de personal, verificar también DataTables
-            if (window.location.pathname.includes('/personal/')) {
-                const dataTable = document.querySelector('#personalTable');
-                if (dataTable) {
-                    const dataTableStyle = window.getComputedStyle(dataTable);
-                    const isDataTableStyled = dataTableStyle.display === 'table' || 
-                                            dataTable.classList.contains('dataTable') ||
-                                            dataTable.querySelector('.dataTables_wrapper');
-                    return isBootstrapLoaded && isDataTableStyled;
-                }
-            }
-            
-            return isBootstrapLoaded;
-        }
-
-        // Función para ocultar el spinner cuando los estilos estén listos
-        function waitForStyles() {
-            if (checkStylesLoaded()) {
-                hideSpinner();
-            } else {
-                // Reintentar cada 50ms hasta que los estilos estén listos
-                setTimeout(waitForStyles, 50);
-            }
-        }
-
-        // Esperar a que la página esté completamente cargada
-        window.addEventListener('load', function() {
-            // Esperar a que los estilos estén realmente cargados
-            waitForStyles();
-        });
-
-        // Fallback: si la página ya está cargada
-        if (document.readyState === 'complete') {
-            waitForStyles();
-        }
-
+// Inicialización cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
+    // 1. Ocultar spinner
+    hideSpinner();
     
+    // 2. Auto-hide messages after 5 seconds (excepto .alert-permanent)
+    const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+    alerts.forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+    
+    // 3. Configurar sidebar
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const mainContent = document.getElementById('mainContent');

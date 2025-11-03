@@ -85,7 +85,6 @@ let filteredPersonal = [];
 
 /**
  * Calcula el estado de un trabajador en una fecha específica
- * CLIENTE-SIDE COMPUTATION: Super rápido, escala infinitamente
  */
 function calcularEstadoPersonalFecha(personalId, fecha) {
     // 1. Buscar estado manual
@@ -98,7 +97,6 @@ function calcularEstadoPersonalFecha(personalId, fecha) {
         });
         
         if (estadoManual) {
-            // Buscar el estado en la lista de estados disponibles
             const estado = calendarioData.todos_estados_disponibles.find(e => e.id === estadoManual.estado_id);
             return estado || calendarioData.estado_predeterminado;
         }
@@ -116,18 +114,14 @@ function calcularEstadoPersonalFecha(personalId, fecha) {
     if (asignacionActiva) {
         const turno = turnosMap[asignacionActiva.turno_id];
         if (turno && turno.bloques && turno.bloques.length > 0) {
-            // Calcular estado basado en el ciclo del turno
             const fechaInicio = new Date(asignacionActiva.fecha_inicio);
             const diasTranscurridos = Math.floor((fecha - fechaInicio) / (1000 * 60 * 60 * 24));
             
-            // Calcular longitud del ciclo
             const longitudCiclo = turno.bloques.reduce((sum, b) => sum + b.duracion_dias, 0);
             if (longitudCiclo === 0) return calendarioData.estado_predeterminado;
             
-            // Calcular posición en el ciclo
             let posicionCiclo = diasTranscurridos % longitudCiclo;
             
-            // Ajustar por bloque de inicio si existe
             if (asignacionActiva.bloque_inicio_orden && asignacionActiva.bloque_inicio_orden > 1) {
                 let offsetInicio = 0;
                 for (let i = 0; i < asignacionActiva.bloque_inicio_orden - 1; i++) {
@@ -138,7 +132,6 @@ function calcularEstadoPersonalFecha(personalId, fecha) {
                 posicionCiclo = (posicionCiclo + offsetInicio) % longitudCiclo;
             }
             
-            // Encontrar el bloque correspondiente
             let diasAcumulados = 0;
             for (const bloque of turno.bloques) {
                 if (posicionCiclo < diasAcumulados + bloque.duracion_dias) {
@@ -154,7 +147,7 @@ function calcularEstadoPersonalFecha(personalId, fecha) {
 }
 
 // Función para formatear fechas al formato chileno (DD-MM-YYYY)
-function formatFechaChilena(fechaISO) {
+function formatearFechaChilena(fechaISO) {
     if (!fechaISO) return 'Sin fecha';
     const [year, month, day] = fechaISO.split('-');
     return `${day}-${month}-${year}`;
@@ -215,10 +208,8 @@ function showConfirm(message, title = 'Confirmar') {
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📅 Inicializando calendario...');
-    console.log('Datos recibidos:', calendarioData);
     
-    // Generar leyenda de estados
-    generateStatusLegend();
+    // NO tocar la leyenda de estados - dejar que el template HTML lo maneje
     
     // Generar calendario
     generateCalendar();
@@ -239,22 +230,45 @@ document.addEventListener('DOMContentLoaded', function() {
 // Generar leyenda de estados
 function generateStatusLegend() {
     const legendContainer = document.getElementById('statusLegend');
+    if (!legendContainer) {
+        console.error('Container statusLegend no encontrado');
+        return;
+    }
+    
     const estados = calendarioData.todos_estados_disponibles || [];
+    console.log('Generando leyenda con', estados.length, 'estados');
     
-    let html = '<small class="me-2 fw-bold">Estados:</small>';
+    // Verificar si ya tiene el texto base
+    const tieneTextoBase = legendContainer.innerHTML.includes('Estados:');
+    console.log('Contenedor tiene texto base:', tieneTextoBase);
     
-    estados.forEach(estado => {
-        html += `
-            <div class="status-legend-item">
-                <div class="status-legend-color" style="background-color: ${estado.background_color}; color: ${estado.color}; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600;">
-                    ${estado.nombre_corto}
-                 </div>
+    // Si no tiene el texto base, agregarlo
+    if (!tieneTextoBase) {
+        legendContainer.innerHTML = '<small class="me-2 fw-bold">Estados:</small>';
+    }
+    
+    // Si hay estados, agregarlos
+    if (estados.length > 0) {
+        estados.forEach(estado => {
+            if (!estado || !estado.nombre) return;
+            
+            const nombre_corto = estado.nombre_corto || estado.nombre.substring(0, 2).toUpperCase();
+            const background_color = estado.background_color || '#cccccc';
+            const color = estado.color || '#000000';
+            
+            const item = document.createElement('div');
+            item.className = 'status-legend-item';
+            item.innerHTML = `
+                <div class="status-legend-color" style="background-color: ${background_color}; color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600;">
+                    ${nombre_corto}
+                </div>
                 <small>${estado.nombre}</small>
-             </div>
-         `;
-    });
+            `;
+            legendContainer.appendChild(item);
+        });
+    }
     
-    legendContainer.innerHTML = html;
+    console.log('Leyenda generada. HTML final:', legendContainer.innerHTML.substring(0, 100));
 }
 
 // Generar calendario
@@ -297,7 +311,7 @@ function generateCalendar() {
         
         // Columna de nombre (sticky) con botones de acción
         const nombreCompleto = `${persona.nombre} ${persona.apepat} ${persona.apemat}`.trim();
-        const cargo = persona.infolaboral_set?.[0]?.cargo_id?.cargo || 'Sin cargo';
+        const cargo = persona.cargo || 'Sin cargo';
         
         bodyHTML += `<td class="sticky-col">
             <div class="personal-name-container">
@@ -408,8 +422,8 @@ function showPersonalInfo(personalId) {
     if (persona.asignaciones_faena && persona.asignaciones_faena.length > 0) {
         html += '<hr><h6>Asignaciones Activas:</h6>';
         persona.asignaciones_faena.forEach(asig => {
-            const fechaInicio = formatFechaChilena(asig.fecha_inicio);
-            const fechaFin = asig.fecha_fin ? formatFechaChilena(asig.fecha_fin) : 'Sin fecha fin';
+            const fechaInicio = formatearFechaChilena(asig.fecha_inicio);
+            const fechaFin = asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Sin fecha fin';
             html += `
                 <div class="alert alert-info mb-2 p-2">
                     <strong>${asig.faena.nombre}</strong><br>
@@ -692,8 +706,8 @@ function showAsignaciones(personalId) {
         html += '<div class="list-group mb-3">';
         
         asignaciones.forEach(asig => {
-            const fechaInicio = formatFechaChilena(asig.fecha_inicio);
-            const fechaFin = asig.fecha_fin ? formatFechaChilena(asig.fecha_fin) : 'Sin fecha fin';
+            const fechaInicio = formatearFechaChilena(asig.fecha_inicio);
+            const fechaFin = asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Sin fecha fin';
             const estadoClass = asig.activo ? 'success' : 'secondary';
             const estadoText = asig.activo ? 'Activa' : 'Inactiva';
             

@@ -133,6 +133,23 @@ CACHES = {
 # }
 
 
+# ============================================================================
+# PASSWORD HASHERS - OPTIMIZADO PARA DESARROLLO LOCAL
+# ============================================================================
+# En desarrollo usamos MD5 que es MUCHO más rápido (solo para desarrollo!)
+# Para producción, comentar esta sección y usar el PBKDF2 por defecto
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.MD5PasswordHasher',  # Rápido para desarrollo
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',  # Fallback para contraseñas existentes
+]
+
+# Para PRODUCCIÓN, usar esto en su lugar (comentar lo de arriba):
+# PASSWORD_HASHERS = [
+#     'django.contrib.auth.hashers.Argon2PasswordHasher',  # Más seguro que PBKDF2
+#     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+#     'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+# ]
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 

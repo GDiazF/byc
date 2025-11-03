@@ -91,6 +91,8 @@ def calendario_mensual(request):
                 'rut': p.rut,
                 'dvrut': p.dvrut,
                 'cargo': p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo',
+                'correo': p.correo if p.correo else 'No disponible',
+                'direccion': p.direccion if p.direccion else 'No disponible',
             } for p in calendario_data['personal']
         ],
         'asignaciones': [
@@ -137,11 +139,13 @@ def calendario_mensual(request):
     
     context = {
         'calendario': json.dumps(calendario_json, cls=DjangoJSONEncoder),
+        'calendario_data': calendario_data,  # Agregar datos para el template
         'current_year': year,
         'current_month': month,
         'current_month_name': month_names[month - 1],
         'faenas': faenas,  # Para loops de Django
         'cargos': cargos,  # Para loops de Django
+        'todos_estados': todos_estados,  # Para mostrar la leyenda en el template
         'filtros': json.dumps({
             'faena': faena_filter,
             'cargo': cargo_filter,
@@ -168,8 +172,9 @@ def calendario_mensual(request):
     # Agregar todos los estados disponibles al calendario JSON
     calendario_json['todos_estados_disponibles'] = [
         {
+            'id': estado.id,  # IMPORTANTE: agregar ID para búsquedas
             'nombre': estado.nombre,
-            'nombre_corto': estado.nombre_corto or estado.nombre,
+            'nombre_corto': estado.nombre_corto or estado.nombre[:3].upper(),
             'color': estado.color,
             'background_color': estado.background_color,
             'prioridad': estado.prioridad,
@@ -655,7 +660,9 @@ def api_calendario_mensual(request):
                     'rut': p.rut,
                     'dvrut': p.dvrut,
                     'cargo': p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo',
-                    'faena': p.asignaciones_faena.filter(activo=True).first().faena.nombre if p.asignaciones_faena.filter(activo=True).exists() else 'Sin asignar'
+                    'faena': p.asignaciones_faena.filter(activo=True).first().faena.nombre if p.asignaciones_faena.filter(activo=True).exists() else 'Sin asignar',
+                    'correo': p.correo if p.correo else 'No disponible',
+                    'direccion': p.direccion if p.direccion else 'No disponible',
                 }
                 for p in calendario_data['personal']
             ],

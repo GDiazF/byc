@@ -2,6 +2,7 @@ from django.urls import path
 # Importar vistas individualmente para claridad
 from .views import (
     PersonalListView,
+    PersonalDesactivadoListView,
     PersonalCreateView,
     PersonalDocumentCreateView,
     PersonalLaborCreateView,
@@ -9,6 +10,7 @@ from .views import (
     PersonalDeleteView,
     get_cargos,
     toggle_personal_status,
+    toggle_personal_activo,
     personal_documentation,
     add_license,
     add_exam,
@@ -42,6 +44,9 @@ from .views import (
 urlpatterns = [
     # Vista principal de la tabla
     path('personal/', PersonalListView.as_view(), name='table_personal'),
+    path('personal/', PersonalListView.as_view(), name='personal_list'),  # Alias para claridad
+    path('personal/desactivados/', PersonalDesactivadoListView.as_view(), name='personal_desactivado'),
+    path('personal/toggle-activo/', toggle_personal_activo, name='toggle_personal_activo'),
     path('personal/create/', PersonalCreateView.as_view(), name='personal_create'),
     path('personal/create/documents/', PersonalDocumentCreateView.as_view(), name='personal_document_create'),
     path('personal/create/info_laboral/', PersonalLaborCreateView.as_view(), name='personal_labor_create'),

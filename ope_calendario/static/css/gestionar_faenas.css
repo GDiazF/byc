@@ -1,0 +1,20 @@
+/* ============================================================================
+   ESTILOS PARA GESTIÓN DE FAENAS
+   ============================================================================ */
+
+/* Cards de faenas */
+.faena-card {
+    transition: all 0.2s;
+    border: 1px solid #dee2e6;
+}
+
+.faena-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Tablas */
+.table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+

@@ -48,14 +48,6 @@
 {% if personal_list %}
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 <script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
-<script>
-    $(document).ready(function() {
-        $('#personalLicenciaTable').DataTable({
-            paging: false,
-            searching: false,
-            info: false
-        });
-    });
-</script>
+<script src="{% static 'js/datatable_simple.js' %}"></script>
 {% endif %}
 {% endblock %} 

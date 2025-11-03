@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const formElement = document.querySelector('form');
-    
-    if (formElement && formElement.classList.contains('has-errors')) {
+    // Mostrar modal de error si hay errores de login
+    if (window.showLoginError) {
         const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
         errorModal.show();
     }
