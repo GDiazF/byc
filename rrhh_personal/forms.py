@@ -1,5 +1,6 @@
 from django import forms
 from .models import *
+from datetime import date
 
 
 #formulario para la creacion de personas
@@ -33,7 +34,16 @@ class PersonalCreationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.instance_id = kwargs.pop('instance_id', None)
         super().__init__(*args, **kwargs)
+        
+        # Establecer fecha máxima (hoy) para fecha de nacimiento
+        if 'fechanac' in self.fields:
+            self.fields['fechanac'].widget.attrs['max'] = date.today().isoformat()
 
+    def clean_fechanac(self):
+        fechanac = self.cleaned_data.get('fechanac')
+        if fechanac and fechanac > date.today():
+            raise forms.ValidationError('La fecha de nacimiento no puede ser posterior a la fecha actual.')
+        return fechanac
     
     class Meta:
         model = Personal
@@ -183,7 +193,7 @@ class LicenciasPersonal(forms.ModelForm):
             }),
             'rutaDoc': forms.FileInput(attrs={
                 'class': 'form-control',
-                'accept': '.pdf,.jpg,.jpeg,.png'
+                'accept': '.pdf'
             }),
             'observacion': forms.Textarea(attrs={
                 'class': 'form-control',
@@ -196,6 +206,17 @@ class LicenciasPersonal(forms.ModelForm):
             'rutaDoc': 'Documento',
             'observacion': 'Observación'
         }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_emision = cleaned_data.get('fechaEmision')
+        fecha_vencimiento = cleaned_data.get('fechaVencimiento')
+        
+        if fecha_emision and fecha_vencimiento:
+            if fecha_vencimiento < fecha_emision:
+                raise forms.ValidationError('La fecha de vencimiento no puede ser anterior a la fecha de emisión.')
+        
+        return cleaned_data
 
 
 #formularios de licencias internas ------------------------------------------------------
@@ -218,7 +239,7 @@ class LicenciasInternasPersonal(forms.ModelForm):
     class Meta:
         from .models import LicenciaInternaPorPersonal
         model = LicenciaInternaPorPersonal
-        fields = ['tipoLicenciaInterna_id', 'numero_licencia', 'empresa_emisora', 'fechaEmision', 'fechaVencimiento', 'rutaDoc', 'observacion', 'activo']
+        fields = ['tipoLicenciaInterna_id', 'numero_licencia', 'empresa_emisora', 'fechaEmision', 'fechaVencimiento', 'rutaDoc', 'observacion']
         widgets = {
             'numero_licencia': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -238,14 +259,11 @@ class LicenciasInternasPersonal(forms.ModelForm):
             }),
             'rutaDoc': forms.FileInput(attrs={
                 'class': 'form-control',
-                'accept': '.pdf,.jpg,.jpeg,.png'
+                'accept': '.pdf'
             }),
             'observacion': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 3
-            }),
-            'activo': forms.CheckboxInput(attrs={
-                'class': 'form-check-input'
             })
         }
         labels = {
@@ -254,9 +272,19 @@ class LicenciasInternasPersonal(forms.ModelForm):
             'fechaEmision': 'Fecha de Emisión',
             'fechaVencimiento': 'Fecha de Vencimiento',
             'rutaDoc': 'Documento',
-            'observacion': 'Observaciones',
-            'activo': 'Licencia Activa'
+            'observacion': 'Observaciones'
         }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_emision = cleaned_data.get('fechaEmision')
+        fecha_vencimiento = cleaned_data.get('fechaVencimiento')
+        
+        if fecha_emision and fecha_vencimiento:
+            if fecha_vencimiento < fecha_emision:
+                raise forms.ValidationError('La fecha de vencimiento no puede ser anterior a la fecha de emisión.')
+        
+        return cleaned_data
 
 
 #formulario para certificacion------------------------------------------------------------  
@@ -280,7 +308,7 @@ class CertificacionPersonal(forms.ModelForm):
         widgets = {
             'fechaEmision': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'fechaVencimiento': forms.DateInput(attrs={'type':'date', 'class': 'form-control'}),
-            'rutaDoc': forms.FileInput(attrs={'accept': 'application/pdf, image/jpg, image/png', 'class': 'form-control'}),
+            'rutaDoc': forms.FileInput(attrs={'accept': '.pdf', 'class': 'form-control'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
         }
         labels = {
@@ -289,6 +317,17 @@ class CertificacionPersonal(forms.ModelForm):
             'rutaDoc': 'Documento',
             'observacion': 'Observación'
         }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_emision = cleaned_data.get('fechaEmision')
+        fecha_vencimiento = cleaned_data.get('fechaVencimiento')
+        
+        if fecha_emision and fecha_vencimiento:
+            if fecha_vencimiento < fecha_emision:
+                raise forms.ValidationError('La fecha de vencimiento no puede ser anterior a la fecha de emisión.')
+        
+        return cleaned_data
 
 
 #formulario para examenes
@@ -318,7 +357,7 @@ class ExamenPersonal(forms.ModelForm):
         widgets = {
             'fechaEmision' : forms.DateInput(attrs={'type':'date', 'class': 'form-control'}),
             'fechaVencimiento' : forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'rutaDoc' : forms.FileInput(attrs={'accept': 'application/pdf, image/jpg, image/png', 'class': 'form-control'}),
+            'rutaDoc' : forms.FileInput(attrs={'accept': '.pdf', 'class': 'form-control'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
         }
         labels = {
@@ -327,6 +366,53 @@ class ExamenPersonal(forms.ModelForm):
             'rutaDoc': 'Documento',
             'observacion': 'Observación'
         }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_emision = cleaned_data.get('fechaEmision')
+        fecha_vencimiento = cleaned_data.get('fechaVencimiento')
+        
+        if fecha_emision and fecha_vencimiento:
+            if fecha_vencimiento < fecha_emision:
+                raise forms.ValidationError('La fecha de vencimiento no puede ser anterior a la fecha de emisión.')
+        
+        return cleaned_data
+
+
+# Formulario para ausentismos
+class AusentismoForm(forms.ModelForm):
+    tipoausen_id = forms.ModelChoiceField(
+        queryset=TipoAusentismo.objects.all().order_by('tipo'),
+        empty_label='Seleccione un tipo',
+        widget=forms.Select(attrs={'class': 'form-select', 'required': 'required'}),
+        label='Tipo de Ausentismo',
+        required=True
+    )
+    
+    class Meta:
+        model = Ausentismo
+        fields = ['tipoausen_id', 'fechaini', 'fechafin', 'observacion']
+        widgets = {
+            'fechaini': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'required': 'required'}),
+            'fechafin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'required': 'required'}),
+            'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+        labels = {
+            'fechaini': 'Fecha de Inicio',
+            'fechafin': 'Fecha de Fin',
+            'observacion': 'Observaciones'
+        }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fechaini')
+        fecha_fin = cleaned_data.get('fechafin')
+        
+        if fecha_inicio and fecha_fin:
+            if fecha_fin < fecha_inicio:
+                raise forms.ValidationError('La fecha de fin no puede ser anterior a la fecha de inicio.')
+        
+        return cleaned_data
 
         
 # Formulario para ingresar licencias médicas
@@ -334,34 +420,28 @@ class LicenciaMedicaPorPersonalForm(forms.ModelForm):
     tipoLicenciaMedica_id = forms.ModelChoiceField(
         queryset=TipoLicenciaMedica.objects.all().order_by('tipoLicenciaMedica'),
         empty_label='Seleccione un tipo',
-        widget=forms.Select(attrs={'class': 'form-select'}),
+        widget=forms.Select(attrs={'class': 'form-select', 'required': 'required'}),
         label='Tipo de Licencia Médica',
         required=True
     )
-    numero_folio = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'}),
-        label='N° Folio'
-    )
     fecha_fin_licencia = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'class': 'form-control', 'readonly': 'readonly'})
+        widget=forms.DateInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+        label='Fecha de Fin (Calculada)'
     )
 
     class Meta:
         model = LicenciaMedicaPorPersonal
-        exclude = []
+        fields = ['tipoLicenciaMedica_id', 'fechaEmision', 'dias_licencia', 'observacion']
         widgets = {
-            'fechaEmision': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'dias_licencia': forms.NumberInput(attrs={'class': 'form-control'}),
-            'rutaDoc': forms.FileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'}),
+            'fechaEmision': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'required': 'required'}),
+            'dias_licencia': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'required': 'required'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
         labels = {
             'fechaEmision': 'Fecha de Emisión',
             'dias_licencia': 'Días de Licencia',
-            'rutaDoc': 'Documento',
-            'observacion': 'Observación'
+            'observacion': 'Observaciones'
         }
 
         

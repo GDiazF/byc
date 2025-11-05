@@ -1,5 +1,5 @@
 from django.db import models
-from datetime import datetime
+from datetime import datetime, date
 import os
 from django.core.files.storage import FileSystemStorage
 from gen_settings.models import Region, Comuna, Empresa
@@ -62,8 +62,8 @@ def obtener_ruta_documento(instance, filename):
         carpeta = 'Otros'
         nombre_archivo = filename
     
-    # Retornar la ruta completa
-    return os.path.join('Documentacion_Personal', str(rut), carpeta, nombre_archivo)
+    # Retornar la ruta relativa (MEDIA_ROOT ya incluye la carpeta base)
+    return os.path.join(str(rut), carpeta, nombre_archivo)
 
 #RUTA PARA SOBREESCRIBIR ARCHIVO
 # ============================================================================
@@ -204,6 +204,20 @@ class Personal(models.Model):
     def __str__(self):
         return self.nombre + " " + self.apepat + " " + self.apemat
     
+    def get_licencias_activas_count(self):
+        """Retorna la cantidad de licencias médicas activas del personal"""
+        from datetime import date
+        return self.licenciamedicaporpersonal_set.filter(
+            fecha_fin_licencia__gte=date.today()
+        ).count()
+    
+    def get_ausentismos_activos_count(self):
+        """Retorna la cantidad de ausentismos activos del personal"""
+        from datetime import date
+        return self.ausentismo_set.filter(
+            fechafin__gte=date.today()
+        ).count()
+    
     class Meta:
         db_table = 'Personal'
 
@@ -289,6 +303,19 @@ class Ausentismo(models.Model):
     fechaini = models.DateField(null=False, blank=False)
     fechafin = models.DateField(null=False, blank=False)
     observacion = models.TextField(max_length=250, blank=True, null=True)
+
+    @property
+    def dias_totales(self):
+        """Calcula los días totales del ausentismo"""
+        if self.fechaini and self.fechafin:
+            return (self.fechafin - self.fechaini).days + 1
+        return 0
+    
+    @property
+    def esta_activo(self):
+        """Determina si el ausentismo está activo basándose en la fecha de fin"""
+        from datetime import date
+        return self.fechafin >= date.today() if self.fechafin else False
 
     def __str__(self):
         trabajador = f"{self.personal_id.nombre} {self.personal_id.apepat} {self.personal_id.apemat}"
@@ -470,12 +497,10 @@ class LicenciaMedicaPorPersonal(models.Model):
     licenciaMedicaPorPersonal_id = models.AutoField(primary_key=True, null=False, blank=False)
     personal_id = models.ForeignKey(Personal, on_delete=models.CASCADE, db_column='personal_id', null=False, blank=False)
     tipoLicenciaMedica_id = models.ForeignKey(TipoLicenciaMedica, on_delete=models.CASCADE, db_column='tipoLicenciaMedica_id', null=False, blank=False)
-    numero_folio = models.CharField(max_length=50, null=True, blank=True, verbose_name='N° Folio', default='0')
-    fechaEmision = models.DateField(null=False, blank=False)
-    dias_licencia = models.IntegerField(null=False, blank=False)
-    fecha_fin_licencia = models.DateField(null=False, blank=False, editable=False, default=datetime.now)
-    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=OverwriteStorage(), null=False, blank=False)
-    observacion = models.TextField(max_length=250, null=True, blank=True)
+    fechaEmision = models.DateField(null=False, blank=False, verbose_name='Fecha de Emisión')
+    dias_licencia = models.IntegerField(null=False, blank=False, verbose_name='Días de Licencia')
+    fecha_fin_licencia = models.DateField(null=False, blank=False, editable=False, default=datetime.now, verbose_name='Fecha de Fin')
+    observacion = models.TextField(max_length=250, null=True, blank=True, verbose_name='Observaciones')
 
     def save(self, *args, **kwargs):
         from datetime import timedelta
@@ -483,30 +508,20 @@ class LicenciaMedicaPorPersonal(models.Model):
             self.fecha_fin_licencia = self.fechaEmision + timedelta(days=self.dias_licencia - 1)
         super().save(*args, **kwargs)
 
-
+    @property
+    def esta_activa(self):
+        """Determina si la licencia médica está activa basándose en la fecha de fin"""
+        from datetime import date
+        return self.fecha_fin_licencia >= date.today() if self.fecha_fin_licencia else False
 
     def __str__(self):
         return f"Licencia Médica de {self.personal_id} - {self.tipoLicenciaMedica_id}"
-
-    def delete(self, *args, **kwargs):
-        # Guardar la ruta del archivo antes de eliminar el registro
-        if self.rutaDoc:
-            try:
-                file_path = self.rutaDoc.path
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-                    print(f"Archivo eliminado: {file_path}")
-                
-                # Intentar eliminar la carpeta Licencias_Medicas si está vacía
-                license_folder = os.path.dirname(file_path)
-                if os.path.exists(license_folder) and not os.listdir(license_folder):
-                    os.rmdir(license_folder)
-                    print(f"Carpeta vacía eliminada: {license_folder}")
-                    
-            except Exception as e:
-                print(f"Error al eliminar archivo de licencia médica: {e}")
-                
-        super().delete(*args, **kwargs)
+    
+    class Meta:
+        db_table = 'licencia_medica_por_personal'
+        verbose_name = 'Licencia Médica'
+        verbose_name_plural = 'Licencias Médicas'
+        ordering = ['-fechaEmision']
 
 
 #---------------------------------------------------------------------------------------------
@@ -571,7 +586,12 @@ class LicenciaInternaPorPersonal(models.Model):
         verbose_name='Documento'
     )
     observacion = models.TextField(max_length=250, null=True, blank=True, verbose_name='Observaciones')
-    activo = models.BooleanField(default=True, verbose_name='Activo')
+    
+    @property
+    def esta_activa(self):
+        """Determina si la licencia está activa basándose en la fecha de vencimiento"""
+        from datetime import date
+        return self.fechaVencimiento >= date.today() if self.fechaVencimiento else False
     
     class Meta:
         db_table = 'licencia_interna_por_personal'

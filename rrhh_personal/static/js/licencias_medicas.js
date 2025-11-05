@@ -1,4 +1,5 @@
 // Funciones para manejar licencias médicas
+console.log('=== Archivo licencias_medicas.js cargado ===');
 
 // Función para calcular fecha fin de licencia
 function calcularFechaFin() {
@@ -25,20 +26,75 @@ function calcularFechaFin() {
     }
 }
 
-// Inicializar eventos cuando el DOM esté listo
+// Esperar a que el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== DOM Content Loaded ===');
+    
+    // Verificar si jQuery está disponible
+    if (typeof jQuery !== 'undefined') {
+        console.log('jQuery está disponible, versión:', jQuery.fn.jquery);
+    } else {
+        console.error('jQuery NO está disponible');
+    }
+    
     // Eventos para calcular fecha fin
     const fechaEmision = document.getElementById('id_fechaEmision');
     const diasLicencia = document.getElementById('id_dias_licencia');
     
     if (fechaEmision) {
         fechaEmision.addEventListener('change', calcularFechaFin);
+        console.log('Event listener agregado a fechaEmision');
     }
     
     if (diasLicencia) {
         diasLicencia.addEventListener('input', calcularFechaFin);
+        console.log('Event listener agregado a diasLicencia');
     }
     
     // Calcular fecha fin al cargar la página
     calcularFechaFin();
+    
+    // Verificar si el botón existe
+    const submitButton = document.getElementById('submitButton');
+    console.log('Submit button encontrado:', submitButton);
+    
+    const confirmButton = document.getElementById('confirmButton');
+    console.log('Confirm button encontrado:', confirmButton);
+    
+    // Usar jQuery si está disponible
+    if (typeof jQuery !== 'undefined') {
+        jQuery(document).ready(function($) {
+            console.log('=== jQuery ready ===');
+            
+            // Manejar clic en botón de envío (crear/editar)
+            $('#submitButton').on('click', function(e) {
+                e.preventDefault();
+                console.log('>>> Submit button clicked');
+                
+                // Validar formulario
+                const form = document.getElementById('licenciaForm');
+                console.log('Form found:', form);
+                console.log('Form validity:', form ? form.checkValidity() : 'N/A');
+                
+                if (form && !form.checkValidity()) {
+                    form.classList.add('was-validated');
+                    console.log('Form is INVALID, showing validation messages');
+                    return;
+                }
+                
+                console.log('Form is VALID, showing confirmation modal');
+                // Mostrar modal de confirmación
+                $('#confirmModal').modal('show');
+            });
+
+            // Manejar confirmación de guardado/actualización
+            $('#confirmButton').on('click', function() {
+                console.log('>>> Confirm button clicked, submitting form');
+                // Enviar el formulario
+                $('#licenciaForm').submit();
+            });
+        });
+    } else {
+        console.error('No se puede usar jQuery - no disponible');
+    }
 }); 

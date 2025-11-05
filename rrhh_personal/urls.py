@@ -31,7 +31,6 @@ from .views import (
     LicenciaMedicaPorPersonalCreateView,
     LicenciaMedicaPorPersonalUpdateView,
     delete_licencia_medica,
-    delete_archivo_licencia_medica,
     listar_licencias_medicas_personal,
     buscar_personal_licencia_medica,
     buscar_personal_ausentismo,
@@ -82,7 +81,6 @@ urlpatterns = [
     path('personal/<int:personal_id>/licencias_medicas/', listar_licencias_medicas_personal, name='listar_licencias_medicas_personal'),
     path('licencia_medica/<int:pk>/edit/', LicenciaMedicaPorPersonalUpdateView.as_view(), name='edit_licencia_medica'),
     path('licencia_medica/<int:licencia_id>/delete/', delete_licencia_medica, name='delete_licencia_medica'),
-    path('licencia_medica/<int:licencia_id>/delete_archivo/', delete_archivo_licencia_medica, name='delete_archivo_licencia_medica'),
     # Búsqueda de personal para licencias médicas
     path('licencias_medicas/buscar/', buscar_personal_licencia_medica, name='buscar_personal_licencia_medica'),
     # Ausentismos y permisos

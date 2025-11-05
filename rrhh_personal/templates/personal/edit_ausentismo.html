@@ -1,12 +1,12 @@
 {% extends 'home/index.html' %}
 {% load static %}
 
-{% block title %}Editar Licencia Médica{% endblock %}
+{% block title %}Editar Ausentismo{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
 
-<!-- Modal de Confirmación de Actualización -->
+<!-- Modal de Confirmación -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -15,12 +15,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="confirmModalBody">
-                ¿Está seguro de que desea actualizar esta licencia médica?
-                <br><br>
-                <small class="text-muted">
-                    <i class="bi bi-info-circle"></i> 
-                    Se actualizarán los datos de la licencia médica.
-                </small>
+                ¿Está seguro de que desea actualizar este ausentismo?
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -30,26 +25,9 @@
     </div>
 </div>
 
-<!-- Modal de Éxito -->
-<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="successModalLabel">Operación Exitosa</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="successModalBody">
-                La licencia médica ha sido actualizada exitosamente.
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
-            </div>
-        </div>
-    </div>
-</div>
 <div class="card">
     <div class="card-header bg-dark text-white">
-        <h5 class="mb-0">Editar Licencia Médica</h5>
+        <h5 class="mb-0"><i class="bi bi-calendar-x me-2"></i>Editar Ausentismo</h5>
     </div>
     <div class="card-body p-4">
         <!-- Mensajes de Django -->
@@ -62,7 +40,7 @@
             {% endfor %}
         {% endif %}
         
-        <form method="post" class="needs-validation" novalidate id="licenciaForm">
+        <form method="post" class="needs-validation" novalidate id="ausentismoForm">
             {% csrf_token %}
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -72,25 +50,21 @@
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label for="id_tipoLicenciaMedica_id" class="form-label">Tipo de Licencia Médica</label>
-                    {{ form.tipoLicenciaMedica_id }}
-                    <div class="invalid-feedback">Por favor seleccione al menos un tipo.</div>
+                    <label for="id_tipoausen_id" class="form-label">Tipo de Ausentismo</label>
+                    {{ form.tipoausen_id }}
+                    <div class="invalid-feedback">Por favor seleccione un tipo.</div>
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label for="id_fechaEmision" class="form-label">Fecha de Emisión</label>
-                    {{ form.fechaEmision }}
-                    <div class="invalid-feedback">Por favor ingrese la fecha de emisión.</div>
+                <div class="col-md-6 mb-3">
+                    <label for="id_fechaini" class="form-label">Fecha de Inicio</label>
+                    {{ form.fechaini }}
+                    <div class="invalid-feedback">Por favor ingrese la fecha de inicio.</div>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <label for="id_dias_licencia" class="form-label">Días de Licencia</label>
-                    {{ form.dias_licencia }}
-                    <div class="invalid-feedback">Por favor ingrese la cantidad de días.</div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Fecha Fin</label>
-                    <input type="text" id="fecha_fin_licencia" class="form-control" readonly value="{{ object.fecha_fin_licencia|date:'d-m-Y' }}">
+                <div class="col-md-6 mb-3">
+                    <label for="id_fechafin" class="form-label">Fecha de Fin</label>
+                    {{ form.fechafin }}
+                    <div class="invalid-feedback">Por favor ingrese la fecha de fin.</div>
                 </div>
             </div>
             <div class="row">
@@ -101,7 +75,7 @@
             </div>
             <div class="row mt-4">
                 <div class="col-12">
-                    <a href="{% url 'listar_licencias_medicas_personal' personal.personal_id %}" class="btn btn-secondary me-2">
+                    <a href="{% url 'listar_ausentismos_personal' personal.personal_id %}" class="btn btn-secondary me-2">
                         <i class="bi bi-arrow-left me-1"></i>Cancelar
                     </a>
                     <button type="button" class="btn btn-primary" id="submitButton">
@@ -113,5 +87,6 @@
     </div>
 </div>
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
-<script src="{% static 'js/licencias_medicas.js' %}?v=2.0"></script>
-{% endblock %} 
+<script src="{% static 'js/ausentismos_form.js' %}"></script>
+{% endblock %}
+

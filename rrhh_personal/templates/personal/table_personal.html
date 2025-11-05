@@ -20,26 +20,70 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="confirmModalBody">
-                <div class="alert alert-danger mb-3">
-                    <i class="bi bi-exclamation-circle me-2"></i>
-                    <strong>¡ADVERTENCIA! ¿Está seguro que desea DESACTIVAR a este trabajador?</strong>
+                <div class="mb-3">
+                    <p class="text-danger fw-bold mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>
+                        ¿Está seguro que desea DESACTIVAR a este trabajador?
+                    </p>
                 </div>
-                <p>Al desactivar este personal:</p>
-                <ul>
+                <p class="mb-2"><strong>Al desactivar este personal:</strong></p>
+                <ul class="mb-3">
                     <li>❌ <strong>NO aparecerá en la lista de personal activo</strong></li>
                     <li>❌ No podrá ser asignado a nuevas faenas o proyectos</li>
                     <li>❌ Se moverá a la lista de "Personal Desactivado"</li>
                 </ul>
-                <div class="alert alert-info mt-3">
+                <p class="text-muted small mb-0">
                     <i class="bi bi-info-circle me-2"></i>
                     <strong>Nota:</strong> Solo usuarios con permisos necesarios podrán volver a activarlo 
                     desde la sección "Personal Desactivado".
-                </div>
+                </p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-danger" id="confirmButton">
                     <i class="bi bi-person-x me-1"></i>Sí, Desactivar Personal
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación para ELIMINAR -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Eliminación de Personal
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <p class="text-danger fw-bold mb-3">
+                        <i class="bi bi-exclamation-octagon me-2"></i>
+                        ¡ADVERTENCIA! ¿Está seguro que desea ELIMINAR PERMANENTEMENTE a este trabajador?
+                    </p>
+                </div>
+                <p class="mb-2"><strong>Esta acción es IRREVERSIBLE:</strong></p>
+                <ul class="mb-3">
+                    <li>🗑️ <strong>Se eliminará TODA la información del personal</strong></li>
+                    <li>🗑️ Se borrarán todos sus documentos y registros</li>
+                    <li>🗑️ Se eliminarán licencias, exámenes y certificaciones</li>
+                    <li>🗑️ <strong>NO SE PODRÁ RECUPERAR la información</strong></li>
+                </ul>
+                <div class="bg-warning bg-opacity-25 border border-warning p-3 rounded mb-0">
+                    <p class="text-dark mb-0">
+                        <i class="bi bi-lightbulb-fill me-2"></i>
+                        <strong>Recomendación:</strong> Si solo desea ocultar temporalmente al personal, 
+                        desactívelo en la columna de estado.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="deleteButton">
+                    <i class="bi bi-trash3 me-1"></i>Sí, Eliminar Permanentemente
                 </button>
             </div>
         </div>
@@ -69,6 +113,7 @@
         Gestión de Personal
     </div>
     <div class="card-body p-4">
+        {% csrf_token %}
         <div class="row mb-3">
             <div class="col-md-6">
                 <a href="{% url 'personal_create' %}" class="btn btn-success btn-sm">
@@ -89,7 +134,7 @@
             </div>
         </div>
         
-        <table id="personalTable" class="display table-striped compact hover">
+        <table id="personalTable" class="display table-striped compact hover" style="width:100%; visibility: hidden;">
             <thead>
                 <tr>
                     <th>RUT</th>
@@ -120,12 +165,9 @@
                         <a href="{% url 'personal_update' persona.personal_id %}" class="btn btn-primary btn-sm">
                             <i class="bi bi-pencil-square"></i>
                         </a>
-                        <form action="{% url 'personal_delete' persona.personal_id %}" method="post" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de que deseas eliminar a esta persona?');">
-                                <i class="bi bi-trash3"></i>
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-danger btn-sm delete-personal" data-id="{{ persona.personal_id }}" data-name="{{ persona.nombre }} {{ persona.apepat }}">
+                            <i class="bi bi-trash3"></i>
+                        </button>
                     </td>
                     <td>
                         <div class="form-check form-switch">
@@ -144,6 +186,6 @@
 
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 <script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
-<script src="{% static 'js/personal_table.js' %}?v=10.0"></script>
+<script src="{% static 'js/personal_table.js' %}?v=13.1"></script>
 
 {% endblock %}

@@ -1,6 +1,6 @@
 // Esperar a que el documento esté listo
 $(document).ready(function() {
-    console.log('Inicializando DataTable con opciones extendidas...');
+    console.log('Inicializando DataTable con opciones extendidas v13.1...');
     
     // Verificar si la tabla existe (solo se renderiza si hay datos)
     if ($('#personalTable').length === 0) {
@@ -34,12 +34,14 @@ $(document).ready(function() {
                 searchable: false
             }
         ],
-        dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
+        dom: '<"d-flex justify-content-between align-items-center mb-3"fl>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
         lengthChange: true,
         paging: true,
         info: true,
         initComplete: function() {
             console.log('DataTable inicializado correctamente');
+            // Mostrar la tabla solo cuando esté completamente inicializada
+            $('#personalTable').css('visibility', 'visible');
         }
     });
     
@@ -139,5 +141,48 @@ $(document).ready(function() {
         currentToggle = null;
         originalState = false;
         changeConfirmed = false;
+    });
+
+    // Variables para el manejo de eliminación
+    let personalIdToDelete = null;
+    let personalNameToDelete = '';
+
+    // Manejar el click en el botón de eliminar
+    $('.delete-personal').on('click', function(e) {
+        e.preventDefault();
+        personalIdToDelete = $(this).data('id');
+        personalNameToDelete = $(this).data('name');
+        
+        // Mostrar modal de eliminación
+        $('#deleteModal').modal('show');
+    });
+
+    // Manejar la confirmación de eliminación
+    $('#deleteButton').on('click', function() {
+        if (personalIdToDelete) {
+            // Crear un formulario oculto para hacer el POST
+            const form = $('<form>', {
+                'method': 'POST',
+                'action': '/users/personal/' + personalIdToDelete + '/delete/'
+            });
+            
+            // Agregar CSRF token
+            const csrfToken = $('input[name=csrfmiddlewaretoken]').val();
+            form.append($('<input>', {
+                'type': 'hidden',
+                'name': 'csrfmiddlewaretoken',
+                'value': csrfToken
+            }));
+            
+            // Agregar el formulario al body y enviarlo
+            $('body').append(form);
+            form.submit();
+        }
+    });
+
+    // Limpiar variables cuando se cierra el modal de eliminación
+    $('#deleteModal').on('hidden.bs.modal', function() {
+        personalIdToDelete = null;
+        personalNameToDelete = '';
     });
 }); 

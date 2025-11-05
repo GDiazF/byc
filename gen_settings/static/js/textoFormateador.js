@@ -20,6 +20,9 @@ function formatearTexto(texto) {
     // Eliminar símbolos y caracteres especiales (mantener letras, números y espacios)
     texto = texto.replace(/[^A-Z0-9\s]/g, '');
     
+    // Eliminar espacios al inicio y al final
+    texto = texto.trim();
+    
     return texto;
 }
 

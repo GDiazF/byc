@@ -4,6 +4,8 @@
 {% block title %}Ausentismos - {{ personal.nombre }} {{ personal.apepat }}{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.0/css/dataTables.dataTables.css">
+<link rel="stylesheet" href="{% static 'css/datatables.css' %}">
 
 <div class="card">
     <div class="card-header bg-dark text-white">
@@ -14,22 +16,23 @@
                 </h5>
                 <small>{{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }} - RUT: {{ personal.rut }}-{{ personal.dvrut }}</small>
             </div>
-            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addAusentismoModal">
+            <a href="{% url 'crear_ausentismo' personal.personal_id %}" class="btn btn-success btn-sm">
                 <i class="bi bi-plus-circle me-1"></i>Nuevo Ausentismo
-            </button>
+            </a>
         </div>
     </div>
     
     <div class="card-body p-3">
         {% if ausentismos %}
         <div class="table-responsive">
-            <table class="table table-hover table-sm table-bordered" id="ausentismosTable">
-                <thead class="table-dark">
+            <table class="display table-striped compact hover" id="ausentismosTable" style="width:100%; visibility: hidden;">
+                <thead>
                     <tr>
                         <th>Tipo</th>
                         <th>Fecha Inicio</th>
                         <th>Fecha Fin</th>
                         <th class="text-center">Días</th>
+                        <th class="text-center">Estado</th>
                         <th>Observaciones</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -44,11 +47,14 @@
                         <td>{{ ausentismo.fechaini|date:"d-m-Y" }}</td>
                         <td>{{ ausentismo.fechafin|date:"d-m-Y" }}</td>
                         <td class="text-center">
-                            {% with dias=ausentismo.fechafin|timeuntil:ausentismo.fechaini %}
-                                <span class="badge bg-warning text-dark">
-                                    {{ ausentismo.fechafin|timesince:ausentismo.fechaini|cut:" días"|cut:" día" }} días
-                                </span>
-                            {% endwith %}
+                            <span class="badge bg-primary">{{ ausentismo.dias_totales }} días</span>
+                        </td>
+                        <td class="text-center">
+                            {% if ausentismo.esta_activo %}
+                                <span class="badge bg-success">✓ Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Vencido</span>
+                            {% endif %}
                         </td>
                         <td>
                             {% if ausentismo.observacion %}
@@ -59,15 +65,11 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-warning edit-ausentismo" 
-                                        data-id="{{ ausentismo.ausentismo_id }}"
-                                        data-tipo="{{ ausentismo.tipoausen_id.tipoausen_id }}"
-                                        data-fechaini="{{ ausentismo.fechaini|date:'Y-m-d' }}"
-                                        data-fechafin="{{ ausentismo.fechafin|date:'Y-m-d' }}"
-                                        data-observacion="{{ ausentismo.observacion }}"
-                                        title="Editar">
+                                <a href="{% url 'actualizar_ausentismo' personal.personal_id ausentismo.ausentismo_id %}" 
+                                   class="btn btn-warning" 
+                                   title="Editar">
                                     <i class="bi bi-pencil"></i>
-                                </button>
+                                </a>
                                 <button class="btn btn-danger delete-ausentismo" 
                                         data-id="{{ ausentismo.ausentismo_id }}" 
                                         title="Eliminar">
@@ -81,13 +83,15 @@
             </table>
         </div>
         {% else %}
-        <div class="alert alert-info text-center py-4">
-            <i class="bi bi-info-circle fs-1 d-block mb-3"></i>
-            <h6>No hay ausentismos registrados</h6>
-            <p class="text-muted mb-3">Este trabajador no tiene ausentismos o permisos registrados.</p>
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addAusentismoModal">
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-calendar-x" style="font-size: 4rem; color: #6c757d;"></i>
+            </div>
+            <h5 class="text-muted mb-3">No hay ausentismos registrados</h5>
+            <p class="text-muted mb-4">Este trabajador no tiene ausentismos o permisos registrados.</p>
+            <a href="{% url 'crear_ausentismo' personal.personal_id %}" class="btn btn-success btn-lg">
                 <i class="bi bi-plus-circle me-1"></i>Registrar Primer Ausentismo
-            </button>
+            </a>
         </div>
         {% endif %}
         
@@ -96,62 +100,10 @@
                 <i class="bi bi-arrow-left me-1"></i>Volver
             </a>
             {% if ausentismos %}
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addAusentismoModal">
+            <a href="{% url 'crear_ausentismo' personal.personal_id %}" class="btn btn-success">
                 <i class="bi bi-plus-circle me-1"></i>Nuevo Ausentismo
-            </button>
+            </a>
             {% endif %}
-        </div>
-    </div>
-</div>
-
-<!-- Modal para Agregar/Editar Ausentismo -->
-<div class="modal fade" id="addAusentismoModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title" id="ausentismoModalTitle">Nuevo Ausentismo</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="ausentismoForm" data-personal-id="{{ personal.personal_id }}">
-                <input type="hidden" id="ausentismoId" name="ausentismo_id">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Personal</label>
-                        <p class="text-muted">{{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }}</p>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="tipoAusentismo" class="form-label">Tipo de Ausentismo *</label>
-                        <select class="form-select" id="tipoAusentismo" name="tipo_ausentismo" required>
-                            <option value="">Seleccionar tipo...</option>
-                            {% for tipo in tipos_ausentismo %}
-                            <option value="{{ tipo.tipoausen_id }}">{{ tipo.tipo }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="fechaInicio" class="form-label">Fecha Inicio *</label>
-                            <input type="date" class="form-control" id="fechaInicio" name="fecha_inicio" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="fechaFin" class="form-label">Fecha Fin *</label>
-                            <input type="date" class="form-control" id="fechaFin" name="fecha_fin" required>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="observaciones" class="form-label">Observaciones</label>
-                        <textarea class="form-control" id="observaciones" name="observaciones" rows="3"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-danger" id="btnEliminar" style="display: none;">Eliminar</button>
-                    <button type="submit" class="btn btn-success">Guardar</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -166,11 +118,11 @@
             </div>
             <div class="modal-body">
                 <p>¿Está seguro de que desea eliminar este ausentismo?</p>
-                <div class="alert alert-warning mb-0">
-                    <small>
+                <div class="bg-warning bg-opacity-25 border border-warning p-3 rounded mb-0">
+                    <p class="text-dark mb-0">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         Esta acción no se puede deshacer.
-                    </small>
+                    </p>
                 </div>
             </div>
             <div class="modal-footer">
@@ -181,29 +133,18 @@
     </div>
 </div>
 
-<!-- Modal de Mensaje -->
-<div class="modal fade" id="messageModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" id="messageModalHeader">
-                <h5 class="modal-title text-white" id="messageModalTitle">Mensaje</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="messageModalBody">
-                Mensaje
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
 {% block extrajs %}
 <meta name="csrf-token" content="{{ csrf_token }}">
-<script src="{% static 'js/busqueda_personal.js' %}"></script>
-<script src="{% static 'js/ausentismos.js' %}"></script>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
+
+<!-- Script de gestión de ausentismos (incluye inicialización de DataTable) -->
+<script src="{% static 'js/ausentismos.js' %}?v=4.0"></script>
 {% endblock %}
 

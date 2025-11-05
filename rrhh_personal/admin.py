@@ -134,7 +134,7 @@ class TipoAusentismoAdmin(admin.ModelAdmin):
 class AusentismoAdmin(admin.ModelAdmin):
     list_display = [
         'personal_id', 'tipoausen_id', 'fechaini', 'fechafin', 
-        'dias_totales', 'observacion_short'
+        'dias_badge', 'estado_badge', 'observacion_short'
     ]
     list_filter = ['tipoausen_id', 'fechaini', 'fechafin']
     search_fields = [
@@ -144,13 +144,23 @@ class AusentismoAdmin(admin.ModelAdmin):
     date_hierarchy = 'fechaini'
     ordering = ['-fechaini']
     
-    def dias_totales(self, obj):
-        if obj.fechaini and obj.fechafin:
-            delta = obj.fechafin - obj.fechaini
-            dias = delta.days + 1
-            return f"{dias} día{'s' if dias != 1 else ''}"
-        return "-"
-    dias_totales.short_description = "Días"
+    def dias_badge(self, obj):
+        dias = obj.dias_totales
+        return format_html(
+            '<span style="background-color: #3498db; color: white; padding: 3px 8px; border-radius: 3px;">{} días</span>',
+            dias
+        )
+    dias_badge.short_description = "Días"
+    
+    def estado_badge(self, obj):
+        if obj.esta_activo:
+            return format_html(
+                '<span style="background-color: #27ae60; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">✓ Activo</span>'
+            )
+        return format_html(
+            '<span style="background-color: #95a5a6; color: white; padding: 3px 8px; border-radius: 3px;">Vencido</span>'
+        )
+    estado_badge.short_description = "Estado"
     
     def observacion_short(self, obj):
         if obj.observacion:
@@ -174,14 +184,14 @@ class TipoLicenciaMedicaAdmin(admin.ModelAdmin):
 @admin.register(LicenciaMedicaPorPersonal)
 class LicenciaMedicaPorPersonalAdmin(admin.ModelAdmin):
     list_display = [
-        'personal_id', 'tipoLicenciaMedica_id', 'numero_folio', 
+        'personal_id', 'tipoLicenciaMedica_id', 
         'fechaEmision', 'dias_licencia', 'fecha_fin_licencia', 
-        'tiene_documento', 'observacion_short'
+        'estado_badge', 'observacion_short'
     ]
     list_filter = ['tipoLicenciaMedica_id', 'fechaEmision', 'fecha_fin_licencia']
     search_fields = [
         'personal_id__nombre', 'personal_id__apepat', 'personal_id__apemat',
-        'numero_folio', 'observacion'
+        'observacion'
     ]
     date_hierarchy = 'fechaEmision'
     ordering = ['-fechaEmision']
@@ -189,25 +199,25 @@ class LicenciaMedicaPorPersonalAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Información General', {
-            'fields': ('personal_id', 'tipoLicenciaMedica_id', 'numero_folio')
+            'fields': ('personal_id', 'tipoLicenciaMedica_id')
         }),
         ('Fechas', {
             'fields': ('fechaEmision', 'dias_licencia', 'fecha_fin_licencia')
         }),
-        ('Documentación', {
-            'fields': ('rutaDoc', 'observacion')
+        ('Observaciones', {
+            'fields': ('observacion',)
         }),
     )
     
-    def tiene_documento(self, obj):
-        if obj.rutaDoc:
+    def estado_badge(self, obj):
+        if obj.esta_activa:
             return format_html(
-                '<span style="color: #27ae60; font-weight: bold;">✓ Sí</span>'
+                '<span style="background-color: #27ae60; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">✓ Activa</span>'
             )
         return format_html(
-            '<span style="color: #e74c3c;">✗ No</span>'
+            '<span style="background-color: #95a5a6; color: white; padding: 3px 8px; border-radius: 3px;">Vencida</span>'
         )
-    tiene_documento.short_description = "Documento"
+    estado_badge.short_description = "Estado"
     
     def observacion_short(self, obj):
         if obj.observacion:
@@ -557,7 +567,7 @@ class LicenciaInternaPorPersonalAdmin(admin.ModelAdmin):
         'fechaEmision', 'fechaVencimiento', 'empresa_emisora', 
         'estado_badge', 'documento_badge'
     ]
-    list_filter = ['activo', 'tipoLicenciaInterna_id', 'fechaEmision', 'fechaVencimiento', 'empresa_emisora']
+    list_filter = ['tipoLicenciaInterna_id', 'fechaEmision', 'fechaVencimiento', 'empresa_emisora']
     search_fields = [
         'personal_id__nombre', 'personal_id__apepat', 'personal_id__apemat',
         'personal_id__rut', 'numero_licencia', 'empresa_emisora',
@@ -578,9 +588,6 @@ class LicenciaInternaPorPersonalAdmin(admin.ModelAdmin):
         ('Documentación', {
             'fields': ('rutaDoc', 'observacion')
         }),
-        ('Estado', {
-            'fields': ('activo',)
-        }),
     )
     
     def personal_nombre(self, obj):
@@ -589,7 +596,7 @@ class LicenciaInternaPorPersonalAdmin(admin.ModelAdmin):
     personal_nombre.admin_order_field = 'personal_id__apepat'
     
     def estado_badge(self, obj):
-        if obj.activo:
+        if obj.esta_activa:
             color = '#28a745'
             texto = 'ACTIVA'
             icono = '✓'

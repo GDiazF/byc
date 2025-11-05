@@ -12,7 +12,7 @@ window.DELETE_EXAM_URL = '{% url "delete_exam" 0 %}';
 window.DELETE_CERTIFICATION_URL = '{% url "delete_certification" personal.personal_id 0 %}';
 window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" personal.personal_id %}';
 </script>
-<script src="{% static 'js/documentation.js' %}"></script>
+<script src="{% static 'js/documentation.js' %}?v=23.1"></script>
 {% endblock %}
 
 {% block content %}
@@ -56,17 +56,13 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
         <div class="tab-content" id="docTabsContent">
             <!-- Documentos Personales Tab -->
             <div class="tab-pane fade show active" id="personal-docs" role="tabpanel" aria-labelledby="personal-docs-tab">
-                <div class="alert alert-info mb-3 py-2">
-                    <small><i class="bi bi-info-circle me-1"></i>Gestiona los documentos personales del trabajador individualmente.</small>
-                </div>
-                
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
+                    <table class="table table-sm table-bordered" style="table-layout: fixed;">
                         <thead class="table-dark">
                             <tr>
-                                <th>Documento</th>
-                                <th class="text-center">Estado</th>
-                                <th>Acciones</th>
+                                <th style="width: 40%;">Documento</th>
+                                <th class="text-center" style="width: 15%;">Estado</th>
+                                <th style="width: 45%;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -88,7 +84,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('curriculum', 'Curriculum Vitae')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('curriculum')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('curriculum')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -117,7 +113,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_antecedentes', 'Certificado de Antecedentes')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_antecedentes')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_antecedentes')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -146,7 +142,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('hoja_vida_conductor', 'Hoja de Vida del Conductor')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('hoja_vida_conductor')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('hoja_vida_conductor')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -175,7 +171,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('foto_carnet', 'Foto Carnet')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('foto_carnet')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('foto_carnet')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -204,7 +200,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_afp', 'Certificado AFP')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_afp')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_afp')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -233,7 +229,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_salud', 'Certificado de Salud')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_salud')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_salud')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -262,7 +258,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_estudios', 'Certificado de Estudios')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_estudios')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_estudios')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -291,7 +287,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_residencia', 'Certificado de Residencia')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('certificado_residencia')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_residencia')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -304,12 +300,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
 
                             <!-- Fotocopia Carnet -->
                             <tr>
-                                <td>
-                                    <i class="bi bi-card-image me-2"></i>Fotocopia Carnet
-                                    {% if personal.fecha_vencimiento_carnet %}
-                                        <br><small class="text-muted">Vence: {{ personal.fecha_vencimiento_carnet }}</small>
-                                    {% endif %}
-                                </td>
+                                <td><i class="bi bi-card-image me-2"></i>Fotocopia Carnet</td>
                                 <td class="text-center">
                                     {% if personal.fotocopia_carnet %}
                                         <span class="badge bg-success">✓ Cargado</span>
@@ -325,7 +316,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadCarnetModal()">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('fotocopia_carnet')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('fotocopia_carnet')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -354,7 +345,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('fotocopia_finiquito', 'Fotocopia Finiquito')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('fotocopia_finiquito')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('fotocopia_finiquito')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -383,7 +374,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('comprobante_banco', 'Comprobante Banco')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteDocument('comprobante_banco')">
+                                        <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('comprobante_banco')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     {% else %}
@@ -400,10 +391,6 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
 
             <!-- Licencias Tab -->
             <div class="tab-pane fade" id="licenses" role="tabpanel" aria-labelledby="licenses-tab">
-                <div class="alert alert-info mb-3 py-2">
-                    <small><i class="bi bi-info-circle me-1"></i>Gestiona las licencias de conducir del trabajador.</small>
-                </div>
-                
                 <div class="mb-3">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addLicenseModal">
                         <i class="bi bi-plus-square me-1"></i>
@@ -412,7 +399,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 </div>
                 
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
+                    <table id="licenses-table" class="table table-sm table-bordered">
                         <thead class="table-dark">
                             <tr>
                                 <th>Clases</th>
@@ -468,10 +455,6 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
 
             <!-- Licencias Internas Tab -->
             <div class="tab-pane fade" id="internal-licenses" role="tabpanel" aria-labelledby="internal-licenses-tab">
-                <div class="alert alert-info mb-3 py-2">
-                    <small><i class="bi bi-info-circle me-1"></i>Gestiona las licencias internas de conducir del trabajador.</small>
-                </div>
-                
                 <div class="mb-3">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addInternalLicenseModal">
                         <i class="bi bi-plus-square me-1"></i>
@@ -480,7 +463,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 </div>
                 
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
+                    <table id="internal-licenses-table" class="table table-sm table-bordered">
                         <thead class="table-dark">
                             <tr>
                                 <th>Tipo</th>
@@ -503,7 +486,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td class="text-center">{{ licencia.fechaEmision }}</td>
                                 <td class="text-center">{{ licencia.fechaVencimiento }}</td>
                                 <td class="text-center">
-                                    {% if licencia.activo %}
+                                    {% if licencia.esta_activa %}
                                         <span class="badge bg-success">Activa</span>
                                     {% else %}
                                         <span class="badge bg-secondary">Inactiva</span>
@@ -537,10 +520,6 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
 
             <!-- Certificaciones Tab -->
             <div class="tab-pane fade" id="certifications" role="tabpanel" aria-labelledby="certifications-tab">
-                <div class="alert alert-info mb-3 py-2">
-                    <small><i class="bi bi-info-circle me-1"></i>Gestiona las certificaciones del trabajador.</small>
-                </div>
-                
                 <div class="mb-3">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addCertificationModal">
                         <i class="bi bi-plus-square me-1"></i>
@@ -549,7 +528,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 </div>
                 
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
+                    <table id="certifications-table" class="table table-sm table-bordered">
                         <thead class="table-dark">
                             <tr>
                                 <th>Tipo</th>
@@ -596,10 +575,6 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
 
             <!-- Exámenes Tab -->
             <div class="tab-pane fade" id="exams" role="tabpanel" aria-labelledby="exams-tab">
-                <div class="alert alert-info mb-3 py-2">
-                    <small><i class="bi bi-info-circle me-1"></i>Gestiona los exámenes del trabajador.</small>
-                </div>
-                
                 <div class="mb-3">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addExamModal">
                         <i class="bi bi-plus-square me-1"></i>
@@ -608,7 +583,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 </div>
                 
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
+                    <table id="exams-table" class="table table-sm table-bordered">
                         <thead class="table-dark">
                             <tr>
                                 <th>Tipo</th>
@@ -681,7 +656,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 <h5 class="modal-title">Agregar Licencia</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="licenseForm" method="post" enctype="multipart/form-data">
+            <form id="licenseForm" method="post" enctype="multipart/form-data" data-submit-url="{% url 'add_license' personal.personal_id %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <!-- Tipos de Licencia -->
@@ -738,7 +713,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 <h5 class="modal-title">Agregar Licencia Interna</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="internalLicenseForm" method="post" enctype="multipart/form-data">
+            <form id="internalLicenseForm" method="post" enctype="multipart/form-data" data-submit-url="{% url 'add_internal_license' personal.personal_id %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <!-- Tipo de Licencia Interna -->
@@ -817,7 +792,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 <h5 class="modal-title">Agregar Examen</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="examForm" method="post" enctype="multipart/form-data">
+            <form id="examForm" method="post" enctype="multipart/form-data" data-submit-url="{% url 'add_exam' personal.personal_id %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
@@ -884,24 +859,6 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
     </div>
 </div>
 
-<!-- Modal de Notificación -->
-<div class="modal fade" id="notificationModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="notificationTitle"></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p id="notificationMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Modal para Agregar Certificación -->
 <div class="modal fade" id="addCertificationModal" tabindex="-1">
     <div class="modal-dialog">
@@ -910,7 +867,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 <h5 class="modal-title">Agregar Certificación</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="certificationForm" method="post" enctype="multipart/form-data">
+            <form id="certificationForm" method="post" enctype="multipart/form-data" data-submit-url="{% url 'save_certification' personal.personal_id %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
@@ -962,14 +919,14 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 <h5 class="modal-title" id="uploadDocumentTitle">Subir Documento</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="uploadDocumentForm" method="post" enctype="multipart/form-data">
+            <form id="uploadDocumentForm" method="post" enctype="multipart/form-data" data-upload-url="{% url 'upload_personal_document' personal.personal_id %}">
                 {% csrf_token %}
                 <input type="hidden" id="documentField" name="document_field">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="documentFile" class="form-label">Seleccionar archivo</label>
-                        <input type="file" class="form-control" id="documentFile" name="document_file" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                        <small class="form-text text-muted">Formatos aceptados: PDF, JPG, JPEG, PNG, DOC, DOCX</small>
+                        <input type="file" class="form-control" id="documentFile" name="document_file" required accept=".pdf">
+                        <small class="form-text text-muted">Formato aceptado: PDF únicamente</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -989,17 +946,17 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 <h5 class="modal-title">Subir Fotocopia de Carnet</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="uploadCarnetForm" method="post" enctype="multipart/form-data">
+            <form id="uploadCarnetForm" method="post" enctype="multipart/form-data" data-upload-url="{% url 'upload_carnet_document' personal.personal_id %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="carnetFile" class="form-label">Fotocopia del Carnet *</label>
-                        <input type="file" class="form-control" id="carnetFile" name="carnet_file" required accept=".pdf,.jpg,.jpeg,.png">
-                        <small class="form-text text-muted">Formatos aceptados: PDF, JPG, JPEG, PNG</small>
+                        <input type="file" class="form-control" id="carnetFile" name="carnet_file" required accept=".pdf">
+                        <small class="form-text text-muted">Formato aceptado: PDF únicamente</small>
                     </div>
                     <div class="mb-3">
-                        <label for="fechaVencimientoCarnet" class="form-label">Fecha de Vencimiento del Carnet</label>
-                        <input type="date" class="form-control" id="fechaVencimientoCarnet" name="fecha_vencimiento" value="{{ personal.fecha_vencimiento_carnet|date:'Y-m-d' }}">
+                        <label for="fechaVencimientoCarnet" class="form-label">Fecha de Vencimiento del Carnet *</label>
+                        <input type="date" class="form-control" id="fechaVencimientoCarnet" name="fecha_vencimiento" value="{{ personal.fecha_vencimiento_carnet|date:'Y-m-d' }}" required>
                         <small class="form-text text-muted">Fecha en que vence el carnet de identidad</small>
                     </div>
                 </div>

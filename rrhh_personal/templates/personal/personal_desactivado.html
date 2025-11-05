@@ -20,12 +20,14 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="confirmModalBody">
-                <div class="alert alert-success mb-3">
-                    <i class="bi bi-info-circle me-2"></i>
-                    <strong>¿Está seguro que desea ACTIVAR a este trabajador?</strong>
+                <div class="mb-3">
+                    <p class="text-success fw-bold mb-3">
+                        <i class="bi bi-check-circle me-2"></i>
+                        ¿Está seguro que desea ACTIVAR a este trabajador?
+                    </p>
                 </div>
-                <p>Al activar este personal:</p>
-                <ul>
+                <p class="mb-2"><strong>Al activar este personal:</strong></p>
+                <ul class="mb-0">
                     <li>✓ Volverá a aparecer en la lista de personal activo</li>
                     <li>✓ Podrá ser asignado a faenas y proyectos</li>
                     <li>✓ Desaparecerá de esta lista de personal desactivado</li>
@@ -72,12 +74,6 @@
         </div>
     </div>
     <div class="card-body p-4">
-        <div class="alert alert-info mb-3">
-            <i class="bi bi-info-circle me-2"></i>
-            <strong>Información:</strong> Esta lista muestra todo el personal que ha sido desactivado. 
-            Para volver a activar un trabajador, use el botón de estado.
-        </div>
-
         {% if personal %}
         <div class="row mb-3">
             <div class="col-md-6">
@@ -99,7 +95,7 @@
             </div>
         </div>
         
-        <table id="personalTable" class="display table-striped compact hover">
+        <table id="personalTable" class="display table-striped compact hover" style="width:100%; visibility: hidden;">
             <thead>
                 <tr>
                     <th>RUT</th>
@@ -107,8 +103,6 @@
                     <th>Cargo</th>
                     <th>Departamento</th>
                     <th>Empresa</th>
-                    <th>Documentacion</th>
-                    <th>Acciones</th>
                     <th>Activar</th>
                 </tr>
             </thead>
@@ -121,16 +115,6 @@
                     <td>{{ info_laboral.cargo_id.cargo|default:'No disponible' }}</td>
                     <td>{{ info_laboral.depto_id.depto|default:'No disponible' }}</td>
                     <td>{{ info_laboral.empresa_id.nomFantasia|default:'No disponible' }}</td>
-                    <td>
-                        <a href="{% url 'documentation' persona.personal_id %}" class="btn btn-warning btn-sm">
-                            <i class="bi bi-file-earmark-text"></i>
-                        </a>
-                    </td>
-                    <td>
-                        <a href="{% url 'personal_update' persona.personal_id %}" class="btn btn-primary btn-sm">
-                            <i class="bi bi-pencil-square"></i>
-                        </a>
-                    </td>
                     <td>
                         <div class="form-check form-switch">
                             <input class="form-check-input toggle-status" type="checkbox" 
@@ -160,7 +144,7 @@
 
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 <script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
-<script src="{% static 'js/personal_table.js' %}?v=11.0"></script>
+<script src="{% static 'js/personal_table.js' %}?v=13.1"></script>
 
 {% endblock %}
 

@@ -22,30 +22,128 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Función para mostrar notificaciones
+// Función para mostrar notificaciones estilo Django
 function showNotification(title, message, type = 'success') {
-    const modal = document.getElementById('notificationModal');
-    const modalTitle = document.getElementById('notificationTitle');
-    const modalMessage = document.getElementById('notificationMessage');
-    const modalHeader = modal.querySelector('.modal-header');
-    
-    modalHeader.className = 'modal-header';
-    if (type === 'success') {
-        modalHeader.classList.add('bg-success', 'text-white');
-    } else if (type === 'error') {
-        modalHeader.classList.add('bg-danger', 'text-white');
+    // Crear contenedor de alertas si no existe
+    let container = document.querySelector('.messages-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'messages-container';
+        container.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;';
+        document.body.appendChild(container);
     }
     
-    modalTitle.textContent = title;
-    modalMessage.textContent = message;
+    // Determinar clase de Bootstrap según tipo
+    const baseType = type.replace('-no-reload', '');
+    const alertClass = baseType === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = baseType === 'success' ? 'check-circle' : 'exclamation-triangle';
     
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
+    // Crear el alert
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show alert-permanent`;
+    alertDiv.setAttribute('role', 'alert');
+    alertDiv.style.marginBottom = '10px';
+    alertDiv.innerHTML = `
+        <i class="bi bi-${icon} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
     
-    if (type === 'success') {
-        modal.addEventListener('hidden.bs.modal', function handler() {
+    // Agregar al contenedor
+    container.appendChild(alertDiv);
+    
+    // Auto-cerrar después de 3 segundos
+    setTimeout(() => {
+        // Iniciar animación de salida
+        alertDiv.classList.remove('show');
+        
+        // Remover del DOM después de la animación
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 150); // Tiempo de la animación fade de Bootstrap
+    }, 3000);
+    
+    // Recargar página solo si el tipo no incluye "-no-reload"
+    if (type === 'success' && !type.includes('-no-reload')) {
+        setTimeout(() => {
             window.location.reload();
-            modal.removeEventListener('hidden.bs.modal', handler);
+        }, 2000);
+    }
+}
+
+// ============================================================================
+// MODAL RESET HANDLERS
+// ============================================================================
+
+function initializeModalResetHandlers() {
+    // Limpiar formulario de licencias cuando se abre en modo "agregar"
+    const licenseModal = document.getElementById('addLicenseModal');
+    if (licenseModal) {
+        licenseModal.addEventListener('show.bs.modal', function (event) {
+            // Si no se abrió desde un botón de editar, limpiar el formulario
+            const button = event.relatedTarget;
+            if (button && !button.classList.contains('edit-license')) {
+                const form = document.getElementById('licenseForm');
+                if (form) {
+                    form.reset();
+                    // Remover campo hidden de ID
+                    const hiddenId = form.querySelector('[name="license_id"]');
+                    if (hiddenId) hiddenId.remove();
+                    // Restaurar título
+                    document.querySelector('#addLicenseModal .modal-title').textContent = 'Agregar Licencia';
+                }
+            }
+        });
+    }
+    
+    // Limpiar formulario de licencias internas cuando se abre en modo "agregar"
+    const internalLicenseModal = document.getElementById('addInternalLicenseModal');
+    if (internalLicenseModal) {
+        internalLicenseModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            if (button && !button.classList.contains('edit-internal-license')) {
+                const form = document.getElementById('internalLicenseForm');
+                if (form) {
+                    form.reset();
+                    const hiddenId = form.querySelector('[name="internal_license_id"]');
+                    if (hiddenId) hiddenId.remove();
+                    document.querySelector('#addInternalLicenseModal .modal-title').textContent = 'Agregar Licencia Interna';
+                }
+            }
+        });
+    }
+    
+    // Limpiar formulario de exámenes cuando se abre en modo "agregar"
+    const examModal = document.getElementById('addExamModal');
+    if (examModal) {
+        examModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            if (button && !button.classList.contains('edit-exam')) {
+                const form = document.getElementById('examForm');
+                if (form) {
+                    form.reset();
+                    const hiddenId = form.querySelector('[name="exam_id"]');
+                    if (hiddenId) hiddenId.remove();
+                    document.querySelector('#addExamModal .modal-title').textContent = 'Agregar Examen';
+                }
+            }
+        });
+    }
+    
+    // Limpiar formulario de certificaciones cuando se abre en modo "agregar"
+    const certificationModal = document.getElementById('addCertificationModal');
+    if (certificationModal) {
+        certificationModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            if (button && !button.classList.contains('edit-certification')) {
+                const form = document.getElementById('certificationForm');
+                if (form) {
+                    form.reset();
+                    const hiddenId = form.querySelector('[name="cert_id"]');
+                    if (hiddenId) hiddenId.remove();
+                    document.querySelector('#addCertificationModal .modal-title').textContent = 'Agregar Certificación';
+                }
+            }
         });
     }
 }
@@ -70,8 +168,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize edit buttons
     initializeEditButtons();
     
+    // Initialize modal reset handlers
+    initializeModalResetHandlers();
+    
     // Initialize personal document handlers
     initializePersonalDocumentHandlers();
+    
+    // Initialize date validation
+    initializeDateValidation();
 });
 
 // ============================================================================
@@ -249,6 +353,8 @@ async function submitForm(form, type) {
         url = form.dataset.submitUrl;
     }
     
+    console.log('Submit form:', { type, url }); // DEBUG
+    
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -258,7 +364,9 @@ async function submitForm(form, type) {
             }
         });
         
+        console.log('Response status:', response.status); // DEBUG
         const data = await response.json();
+        console.log('Response data:', data); // DEBUG
         
         // Cerrar el modal
         const modalId = {
@@ -271,19 +379,58 @@ async function submitForm(form, type) {
         const modalElement = document.getElementById(modalId);
         if (modalElement) {
             const modal = bootstrap.Modal.getInstance(modalElement);
-            if (modal) modal.hide();
+            if (modal) {
+                console.log('Cerrando modal:', modalId); // DEBUG
+                modal.hide();
+            }
         }
         
-        if (data.status === 'success') {
-            showNotification('Éxito', data.message, 'success');
-        } else {
-            if (data.errors) {
-                handleFormErrors(form, data.errors);
+        setTimeout(() => {
+            if (data.status === 'success') {
+                showNotification('Éxito', data.message, 'success-no-reload');
+                
+                // Determinar si es edición o creación basándose en los campos hidden
+                const licenseId = form.querySelector('[name="license_id"]');
+                const certId = form.querySelector('[name="cert_id"]');
+                const examId = form.querySelector('[name="exam_id"]');
+                const internalLicenseId = form.querySelector('[name="internal_license_id"]');
+                
+                let isEdit = false;
+                let recordId = null;
+                
+                if (type === 'license' && licenseId && licenseId.value) {
+                    isEdit = true;
+                    recordId = licenseId.value;
+                } else if (type === 'internal-license' && internalLicenseId && internalLicenseId.value) {
+                    isEdit = true;
+                    recordId = internalLicenseId.value;
+                } else if (type === 'certification' && certId && certId.value) {
+                    isEdit = true;
+                    recordId = certId.value;
+                } else if (type === 'exam' && examId && examId.value) {
+                    isEdit = true;
+                    recordId = examId.value;
+                }
+                
+                console.log('Es edición?', isEdit, 'ID:', recordId, 'Type:', type); // DEBUG
+                
+                // Si es edición, actualizar la fila; si es nuevo, agregar la fila
+                if (isEdit && recordId) {
+                    console.log('Actualizando fila...'); // DEBUG
+                    updateRowById(type, recordId, data.data);
+                } else {
+                    console.log('Agregando nueva fila...'); // DEBUG
+                    addRowToTable(type, data.data);
+                }
+            } else {
+                if (data.errors) {
+                    handleFormErrors(form, data.errors);
+                }
+                showNotification('Error', data.message || 'Error al guardar', 'error');
             }
-            showNotification('Error', data.message || 'Error al guardar', 'error');
-        }
+        }, 300);
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error completo:', error);
         showNotification('Error', `Error al procesar la solicitud: ${error.message}`, 'error');
     }
 }
@@ -311,28 +458,37 @@ function handleFormErrors(form, errors) {
 // ============================================================================
 
 function initializeEditButtons() {
-    document.querySelectorAll('.edit-license').forEach(button => {
-        button.addEventListener('click', function() {
-            editLicense(this.dataset.id);
-        });
+    // Usar event delegation para soportar elementos dinámicos
+    document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.edit-license');
+        if (target) {
+            e.preventDefault();
+            editLicense(target.dataset.id);
+        }
     });
 
-    document.querySelectorAll('.edit-internal-license').forEach(button => {
-        button.addEventListener('click', function() {
-            editInternalLicense(this.dataset.id);
-        });
+    document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.edit-internal-license');
+        if (target) {
+            e.preventDefault();
+            editInternalLicense(target.dataset.id);
+        }
     });
 
-    document.querySelectorAll('.edit-certification').forEach(button => {
-        button.addEventListener('click', function() {
-            editCertification(this.dataset.id);
-        });
+    document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.edit-certification');
+        if (target) {
+            e.preventDefault();
+            editCertification(target.dataset.id);
+        }
     });
 
-    document.querySelectorAll('.edit-exam').forEach(button => {
-        button.addEventListener('click', function() {
-            editExam(this.dataset.id);
-        });
+    document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.edit-exam');
+        if (target) {
+            e.preventDefault();
+            editExam(target.dataset.id);
+        }
     });
 }
 
@@ -558,28 +714,37 @@ function addHiddenId(form, name, value) {
 // ============================================================================
 
 function initializeDeleteButtons() {
-    document.querySelectorAll('.delete-license').forEach(button => {
-        button.addEventListener('click', function() {
-            showDeleteConfirmation('license', this.dataset.id);
-        });
+    // Usar event delegation para soportar elementos dinámicos
+    document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.delete-license');
+        if (target) {
+            e.preventDefault();
+            showDeleteConfirmation('license', target.dataset.id);
+        }
     });
 
-    document.querySelectorAll('.delete-internal-license').forEach(button => {
-        button.addEventListener('click', function() {
-            showDeleteConfirmation('internal-license', this.dataset.id);
-        });
+    document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.delete-internal-license');
+        if (target) {
+            e.preventDefault();
+            showDeleteConfirmation('internal-license', target.dataset.id);
+        }
     });
 
-    document.querySelectorAll('.delete-exam').forEach(button => {
-        button.addEventListener('click', function() {
-            showDeleteConfirmation('exam', this.dataset.id);
-        });
+    document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.delete-exam');
+        if (target) {
+            e.preventDefault();
+            showDeleteConfirmation('exam', target.dataset.id);
+        }
     });
 
-    document.querySelectorAll('.delete-certification').forEach(button => {
-        button.addEventListener('click', function() {
-            showDeleteConfirmation('certification', this.dataset.id);
-        });
+    document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.delete-certification');
+        if (target) {
+            e.preventDefault();
+            showDeleteConfirmation('certification', target.dataset.id);
+        }
     });
 }
 
@@ -616,31 +781,267 @@ async function deleteDocument(type, id, confirmModal) {
     };
     
     const url = urls[type];
+    console.log('Eliminando:', { type, id, url }); // DEBUG
+    
     if (!url) {
         console.error('URL no definida para tipo:', type);
+        showNotification('Error', 'URL no configurada', 'error');
         return;
     }
     
     try {
+        const method = type === 'certification' ? 'POST' : 'DELETE';
+        console.log('Enviando request:', { method, url }); // DEBUG
+        
         const response = await fetch(url, {
-            method: type === 'certification' ? 'POST' : 'DELETE',
+            method: method,
             headers: {
-                'X-CSRFToken': getCookie('csrftoken')
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
             }
         });
         
+        console.log('Response status:', response.status); // DEBUG
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Response data:', data); // DEBUG
+        
         confirmModal.hide();
         
-        if (data.status === 'success') {
-            showNotification('Éxito', data.message, 'success');
-        } else {
-            showNotification('Error', data.message, 'error');
-        }
+        setTimeout(() => {
+            if (data.status === 'success') {
+                showNotification('Éxito', data.message, 'success-no-reload');
+                // Eliminar la fila dinámicamente
+                removeRowById(type, id);
+            } else {
+                showNotification('Error', data.message || 'Error al eliminar', 'error');
+            }
+        }, 300);
     } catch (error) {
-        console.error('Error:', error);
-        showNotification('Error', 'Error al procesar la solicitud', 'error');
+        console.error('Error completo:', error);
+        confirmModal.hide();
+        setTimeout(() => {
+            showNotification('Error', `Error al procesar la solicitud: ${error.message}`, 'error');
+        }, 300);
     }
+}
+
+function removeRowById(type, id) {
+    // Buscar y eliminar la fila correspondiente
+    const tableIds = {
+        'license': 'licenses-table',
+        'internal-license': 'internal-licenses-table',
+        'exam': 'exams-table',
+        'certification': 'certifications-table'
+    };
+    
+    const tableId = tableIds[type];
+    const table = document.getElementById(tableId);
+    
+    if (table) {
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const deleteBtn = row.querySelector(`.delete-${type}`);
+            if (deleteBtn && deleteBtn.dataset.id === id.toString()) {
+                // Animar la eliminación
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+                
+                // Si no quedan más filas, mostrar mensaje de "sin registros"
+                setTimeout(() => {
+                    const remainingRows = table.querySelectorAll('tbody tr');
+                    if (remainingRows.length === 0) {
+                        const colCount = table.querySelectorAll('thead th').length;
+                        const emptyRow = document.createElement('tr');
+                        emptyRow.innerHTML = `
+                            <td colspan="${colCount}" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox me-2"></i>No hay registros
+                            </td>
+                        `;
+                        table.querySelector('tbody').appendChild(emptyRow);
+                    }
+                }, 350);
+            }
+        });
+    }
+}
+
+function addRowToTable(type, data) {
+    const tableIds = {
+        'license': 'licenses-table',
+        'internal-license': 'internal-licenses-table',
+        'exam': 'exams-table',
+        'certification': 'certifications-table'
+    };
+    
+    const tableId = tableIds[type];
+    const table = document.getElementById(tableId);
+    
+    if (!table) {
+        console.error('Tabla no encontrada:', tableId);
+        return;
+    }
+    
+    const tbody = table.querySelector('tbody');
+    
+    // Si existe fila de "No hay registros", eliminarla
+    const noDataRow = tbody.querySelector('tr td[colspan]');
+    if (noDataRow) {
+        noDataRow.closest('tr').remove();
+    }
+    
+    // Crear nueva fila según el tipo
+    const newRow = createRowElement(type, data);
+    tbody.insertBefore(newRow, tbody.firstChild); // Insertar al inicio
+}
+
+function updateRowById(type, id, data) {
+    const tableIds = {
+        'license': 'licenses-table',
+        'internal-license': 'internal-licenses-table',
+        'exam': 'exams-table',
+        'certification': 'certifications-table'
+    };
+    
+    const tableId = tableIds[type];
+    const table = document.getElementById(tableId);
+    
+    if (!table) {
+        console.error('Tabla no encontrada:', tableId);
+        return;
+    }
+    
+    const tbody = table.querySelector('tbody');
+    const rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const deleteBtn = row.querySelector(`.delete-${type}`);
+        if (deleteBtn && deleteBtn.dataset.id === id.toString()) {
+            // Crear nueva fila con datos actualizados
+            const newRow = createRowElement(type, data);
+            row.replaceWith(newRow);
+        }
+    });
+}
+
+function createRowElement(type, data) {
+    const row = document.createElement('tr');
+    
+    let rowHTML = '';
+    
+    switch(type) {
+        case 'license':
+            // Dividir las clases en badges
+            const clasesBadges = data.clase ? data.clase.split(', ').map(clase => 
+                `<span class="badge bg-primary me-1">${clase}</span>`
+            ).join('') : '';
+            
+            rowHTML = `
+                <td>
+                    <i class="bi bi-card-text me-2"></i>
+                    ${clasesBadges}
+                </td>
+                <td class="text-center">${data.fecha_emision || ''}</td>
+                <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td class="text-center">
+                    ${data.documento ? '<span class="badge bg-success">✓ Con documento</span>' : '<span class="badge bg-secondary">Sin documento</span>'}
+                </td>
+                <td>
+                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
+                    <button class="btn btn-sm btn-warning me-1 edit-license" data-id="${data.id}">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-license" data-id="${data.id}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            break;
+            
+        case 'internal-license':
+            rowHTML = `
+                <td>
+                    <i class="bi bi-award me-2"></i>${data.tipo || ''}
+                </td>
+                <td class="text-center">${data.numero || '-'}</td>
+                <td>${data.empresa || '-'}</td>
+                <td class="text-center">${data.fecha_emision || ''}</td>
+                <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td class="text-center">
+                    ${data.activo ? '<span class="badge bg-success">Activa</span>' : '<span class="badge bg-secondary">Inactiva</span>'}
+                </td>
+                <td>
+                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
+                    <button class="btn btn-sm btn-warning me-1 edit-internal-license" data-id="${data.id}">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-internal-license" data-id="${data.id}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            break;
+            
+        case 'exam':
+            // Determinar el color del badge del resultado
+            let resultadoBadgeClass = 'bg-primary';
+            const resultadoLower = (data.resultado || '').toLowerCase();
+            if (resultadoLower.includes('aprobado')) {
+                resultadoBadgeClass = 'bg-success';
+            } else if (resultadoLower.includes('reprobado')) {
+                resultadoBadgeClass = 'bg-danger';
+            }
+            
+            rowHTML = `
+                <td>
+                    <i class="bi bi-clipboard2-pulse me-2"></i>${data.tipo || ''}
+                </td>
+                <td class="text-center">
+                    ${data.resultado && data.resultado !== '-' ? `<span class="badge ${resultadoBadgeClass}">${data.resultado}</span>` : '<span class="text-muted">-</span>'}
+                </td>
+                <td>${data.proveedor || ''}</td>
+                <td class="text-center">${data.fecha_emision || ''}</td>
+                <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td>
+                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
+                    <button class="btn btn-sm btn-warning me-1 edit-exam" data-id="${data.id}">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-exam" data-id="${data.id}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            break;
+            
+        case 'certification':
+            rowHTML = `
+                <td>
+                    <i class="bi bi-patch-check me-2"></i>${data.tipo || ''}
+                </td>
+                <td>${data.proveedor || ''}</td>
+                <td class="text-center">${data.fecha_emision || ''}</td>
+                <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td>
+                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
+                    <button class="btn btn-sm btn-warning me-1 edit-certification" data-id="${data.id}">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-certification" data-id="${data.id}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            break;
+    }
+    
+    row.innerHTML = rowHTML;
+    return row;
 }
 
 // ============================================================================
@@ -648,22 +1049,24 @@ async function deleteDocument(type, id, confirmModal) {
 // ============================================================================
 
 function initializePersonalDocumentHandlers() {
-    // Upload carnet form
-    const uploadCarnetForm = document.getElementById('uploadCarnetForm');
-    if (uploadCarnetForm) {
-        uploadCarnetForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            await uploadCarnetDocument(this);
-        });
-    }
+    // Limpiar event listeners duplicados usando delegación de eventos
+    document.body.removeEventListener('submit', handleDocumentFormSubmit);
+    document.body.addEventListener('submit', handleDocumentFormSubmit);
+}
 
-    // Upload document form
-    const uploadDocumentForm = document.getElementById('uploadDocumentForm');
-    if (uploadDocumentForm) {
-        uploadDocumentForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            await uploadPersonalDocument(this);
-        });
+function handleDocumentFormSubmit(e) {
+    // Manejar submit del formulario de carnet
+    if (e.target.id === 'uploadCarnetForm') {
+        e.preventDefault();
+        uploadCarnetDocument(e.target);
+        return;
+    }
+    
+    // Manejar submit del formulario de documento personal
+    if (e.target.id === 'uploadDocumentForm') {
+        e.preventDefault();
+        uploadPersonalDocument(e.target);
+        return;
     }
 }
 
@@ -676,12 +1079,18 @@ function showUploadModal(fieldName, documentTitle) {
 }
 
 function showUploadCarnetModal() {
+    // Limpiar el campo de fecha cuando se abre el modal
+    document.getElementById('fechaVencimientoCarnet').value = '';
+    // Limpiar el campo de archivo
+    document.getElementById('carnetFile').value = '';
+    
     new bootstrap.Modal(document.getElementById('uploadCarnetModal')).show();
 }
 
 async function uploadCarnetDocument(form) {
     const formData = new FormData(form);
-    const url = form.dataset.uploadUrl; // URL debe venir del template
+    const url = form.dataset.uploadUrl;
+    const documentField = 'fotocopia_carnet'; // El modal de carnet siempre sube este documento específico
     
     try {
         const response = await fetch(url, {
@@ -694,14 +1103,24 @@ async function uploadCarnetDocument(form) {
         
         const data = await response.json();
         
-        const modal = bootstrap.Modal.getInstance(document.getElementById('uploadCarnetModal'));
-        modal.hide();
-        
-        if (data.status === 'success') {
-            showNotification('Éxito', data.message, 'success');
-        } else {
-            showNotification('Error', data.message || 'Error al subir el carnet', 'error');
+        // Cerrar el modal primero
+        const modalElement = document.getElementById('uploadCarnetModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
         }
+        
+        // Esperar a que el modal se cierre completamente
+        setTimeout(() => {
+            if (data.status === 'success') {
+                showNotification('Éxito', data.message, 'success-no-reload');
+                // Actualizar la tabla dinámicamente con la URL del servidor
+                updateDocumentRow(documentField, data.document_url);
+            } else {
+                showNotification('Error', data.message || 'Error al subir el carnet', 'error');
+            }
+        }, 300);
+        
     } catch (error) {
         console.error('Error:', error);
         showNotification('Error', 'Error al procesar la solicitud', 'error');
@@ -710,7 +1129,8 @@ async function uploadCarnetDocument(form) {
 
 async function uploadPersonalDocument(form) {
     const formData = new FormData(form);
-    const url = form.dataset.uploadUrl; // URL debe venir del template
+    const url = form.dataset.uploadUrl;
+    const documentField = document.getElementById('documentField').value;
     
     try {
         const response = await fetch(url, {
@@ -723,21 +1143,100 @@ async function uploadPersonalDocument(form) {
         
         const data = await response.json();
         
-        const modal = bootstrap.Modal.getInstance(document.getElementById('uploadDocumentModal'));
-        modal.hide();
-        
-        if (data.status === 'success') {
-            showNotification('Éxito', data.message, 'success');
-        } else {
-            showNotification('Error', data.message || 'Error al subir el documento', 'error');
+        // Cerrar el modal primero
+        const modalElement = document.getElementById('uploadDocumentModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
         }
+        
+        // Esperar a que el modal se cierre completamente
+        setTimeout(() => {
+            if (data.status === 'success') {
+                showNotification('Éxito', data.message, 'success-no-reload');
+                // Actualizar la tabla dinámicamente con la URL del servidor
+                updateDocumentRow(documentField, data.document_url);
+            } else {
+                showNotification('Error', data.message || 'Error al subir el documento', 'error');
+            }
+        }, 300);
+        
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error en upload:', error);
         showNotification('Error', 'Error al procesar la solicitud', 'error');
     }
 }
 
-async function deleteDocument(fieldName) {
+function updateDocumentRow(documentField, documentUrl) {
+    // Buscar la fila que contiene este documento
+    const rows = document.querySelectorAll('#personal-docs tbody tr');
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 3) return;
+        
+        // Verificar si esta fila corresponde al documento
+        const actionCell = cells[2];
+        const buttons = actionCell.querySelectorAll('button');
+        
+        // Variable para verificar si esta es la fila correcta
+        let isCorrectRow = false;
+        
+        buttons.forEach(button => {
+            const onclick = button.getAttribute('onclick');
+            // Para fotocopia_carnet buscar showUploadCarnetModal, para otros documentos buscar el nombre del campo
+            if (documentField === 'fotocopia_carnet' && onclick && onclick.includes('showUploadCarnetModal')) {
+                isCorrectRow = true;
+            } else if (onclick && onclick.includes(`'${documentField}'`)) {
+                isCorrectRow = true;
+            }
+        });
+        
+        if (isCorrectRow) {
+            // Actualizar el badge de estado
+            const statusCell = cells[1];
+            statusCell.innerHTML = '<span class="badge bg-success">✓ Cargado</span>';
+            
+            // Determinar qué función de modal usar según el tipo de documento
+            let uploadFunction = `showUploadModal('${documentField}', '${getDocumentTitle(documentField)}')`;
+            if (documentField === 'fotocopia_carnet') {
+                uploadFunction = 'showUploadCarnetModal()';
+            }
+            
+            // Actualizar los botones de acción con la URL real del servidor
+            actionCell.innerHTML = `
+                <a href="${documentUrl}" target="_blank" class="btn btn-sm btn-primary me-1">
+                    <i class="bi bi-eye"></i> Ver
+                </a>
+                <button class="btn btn-sm btn-warning me-1" onclick="${uploadFunction}">
+                    <i class="bi bi-arrow-repeat"></i> Reemplazar
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('${documentField}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+        }
+    });
+}
+
+function getDocumentTitle(fieldName) {
+    const titles = {
+        'curriculum': 'Curriculum Vitae',
+        'certificado_antecedentes': 'Certificado de Antecedentes',
+        'hoja_vida_conductor': 'Hoja de Vida del Conductor',
+        'foto_carnet': 'Foto Carnet',
+        'certificado_afp': 'Certificado AFP',
+        'certificado_salud': 'Certificado de Salud',
+        'certificado_estudios': 'Certificado de Estudios',
+        'certificado_residencia': 'Certificado de Residencia',
+        'fotocopia_carnet': 'Fotocopia Carnet',
+        'fotocopia_finiquito': 'Fotocopia Finiquito',
+        'comprobante_banco': 'Comprobante Banco'
+    };
+    return titles[fieldName] || 'Documento';
+}
+
+async function deletePersonalDocument(fieldName) {
     const documentNames = {
         'curriculum': 'Curriculum Vitae',
         'certificado_antecedentes': 'Certificado de Antecedentes',
@@ -760,7 +1259,7 @@ async function deleteDocument(fieldName) {
     modalBody.textContent = `¿Está seguro que desea eliminar ${documentNames[fieldName]}? Esta acción no se puede deshacer.`;
     
     document.getElementById('confirmDeleteBtn').onclick = async function() {
-        const url = window.DELETE_PERSONAL_DOCUMENT_URL; // URL debe venir del template
+        const url = window.DELETE_PERSONAL_DOCUMENT_URL;
         
         try {
             const response = await fetch(url, {
@@ -775,11 +1274,16 @@ async function deleteDocument(fieldName) {
             const data = await response.json();
             confirmModal.hide();
             
-            if (data.status === 'success') {
-                showNotification('Éxito', data.message, 'success');
-            } else {
-                showNotification('Error', data.message, 'error');
-            }
+            // Esperar a que el modal se cierre completamente
+            setTimeout(() => {
+                if (data.status === 'success') {
+                    showNotification('Éxito', data.message, 'success-no-reload');
+                    // Actualizar la tabla dinámicamente eliminando el documento
+                    removeDocumentFromRow(fieldName);
+                } else {
+                    showNotification('Error', data.message, 'error');
+                }
+            }, 300);
         } catch (error) {
             console.error('Error:', error);
             showNotification('Error', 'Error al procesar la solicitud', 'error');
@@ -789,8 +1293,115 @@ async function deleteDocument(fieldName) {
     confirmModal.show();
 }
 
+function removeDocumentFromRow(documentField) {
+    // Buscar la fila que contiene este documento
+    const rows = document.querySelectorAll('#personal-docs tbody tr');
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 3) return;
+        
+        // Verificar si esta fila corresponde al documento
+        const actionCell = cells[2];
+        const buttons = actionCell.querySelectorAll('button, a');
+        
+        // Variable para verificar si esta es la fila correcta
+        let isCorrectRow = false;
+        
+        buttons.forEach(button => {
+            const onclick = button.getAttribute('onclick');
+            // Para fotocopia_carnet buscar showUploadCarnetModal, para otros documentos buscar el nombre del campo
+            if (documentField === 'fotocopia_carnet' && onclick && onclick.includes('showUploadCarnetModal')) {
+                isCorrectRow = true;
+            } else if (onclick && onclick.includes(`'${documentField}'`)) {
+                isCorrectRow = true;
+            }
+        });
+        
+        if (isCorrectRow) {
+            // Actualizar el badge de estado
+            const statusCell = cells[1];
+            statusCell.innerHTML = '<span class="badge bg-secondary">Sin archivo</span>';
+            
+            // Determinar qué función de modal usar según el tipo de documento
+            let uploadFunction = `showUploadModal('${documentField}', '${getDocumentTitle(documentField)}')`;
+            if (documentField === 'fotocopia_carnet') {
+                uploadFunction = 'showUploadCarnetModal()';
+            }
+            
+            // Actualizar el botón de acción a solo "Subir"
+            actionCell.innerHTML = `
+                <button class="btn btn-sm btn-success" onclick="${uploadFunction}">
+                    <i class="bi bi-upload"></i> Subir
+                </button>
+            `;
+        }
+    });
+}
+
+// ============================================================================
+// DATE VALIDATION
+// ============================================================================
+
+function initializeDateValidation() {
+    // Validar fechas en formularios
+    validateDatesInForm('licenseForm', 'id_fechaEmision', 'id_fechaVencimiento');
+    validateDatesInForm('internalLicenseForm', 'id_fechaEmision', 'id_fechaVencimiento');
+    validateDatesInForm('examForm', 'id_fechaEmision', 'id_fechaVencimiento');
+    validateDatesInForm('certificationForm', 'id_fechaEmision', 'id_fechaVencimiento');
+}
+
+function validateDatesInForm(formId, emisionFieldId, vencimientoFieldId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    
+    const emisionField = form.querySelector(`#${emisionFieldId}`);
+    const vencimientoField = form.querySelector(`#${vencimientoFieldId}`);
+    
+    if (!emisionField || !vencimientoField) return;
+    
+    const validateDates = () => {
+        const emisionValue = emisionField.value;
+        const vencimientoValue = vencimientoField.value;
+        
+        if (emisionValue && vencimientoValue) {
+            const emisionDate = new Date(emisionValue);
+            const vencimientoDate = new Date(vencimientoValue);
+            
+            if (vencimientoDate < emisionDate) {
+                vencimientoField.setCustomValidity('La fecha de vencimiento no puede ser anterior a la fecha de emisión');
+                vencimientoField.classList.add('is-invalid');
+                
+                // Mostrar mensaje de error
+                let errorDiv = vencimientoField.nextElementSibling;
+                if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
+                    errorDiv = document.createElement('div');
+                    errorDiv.className = 'invalid-feedback';
+                    vencimientoField.parentNode.appendChild(errorDiv);
+                }
+                errorDiv.textContent = 'La fecha de vencimiento no puede ser anterior a la fecha de emisión';
+                errorDiv.style.display = 'block';
+            } else {
+                vencimientoField.setCustomValidity('');
+                vencimientoField.classList.remove('is-invalid');
+                
+                // Ocultar mensaje de error
+                const errorDiv = vencimientoField.nextElementSibling;
+                if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
+                    errorDiv.style.display = 'none';
+                }
+            }
+        }
+    };
+    
+    // Agregar event listeners
+    emisionField.addEventListener('change', validateDates);
+    vencimientoField.addEventListener('change', validateDates);
+    vencimientoField.addEventListener('input', validateDates);
+}
+
 // Exponer funciones globalmente para uso desde HTML onclick
 window.showUploadModal = showUploadModal;
 window.showUploadCarnetModal = showUploadCarnetModal;
-window.deleteDocument = deleteDocument;
+window.deletePersonalDocument = deletePersonalDocument;
 

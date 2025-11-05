@@ -263,7 +263,6 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
                 return self.form_invalid(labor_form)
 
     def form_valid(self, form):
-        messages.success(self.request, 'Personal actualizado exitosamente.')
         response = super().form_valid(form)
         return response
 
@@ -317,6 +316,16 @@ def add_license(request, personal_id):
     if request.method == 'POST':
         try:
             personal = get_object_or_404(Personal, personal_id=personal_id)
+            
+            # Validar que solo sea PDF
+            if 'rutaDoc' in request.FILES:
+                document_file = request.FILES['rutaDoc']
+                if not document_file.name.lower().endswith('.pdf'):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Solo se aceptan archivos PDF'
+                    }, status=400)
+            
             form = LicenciasPersonal(request.POST, request.FILES)
             print("Form data:", request.POST)  # Debug print
             print("Files:", request.FILES)     # Debug print
@@ -330,9 +339,22 @@ def add_license(request, personal_id):
                 licencia.save()
                 form.save_m2m()  # Importante: guardar las relaciones many-to-many
                 
+                # Obtener las clases de licencia
+                clase = ', '.join([tipo.tipoLicencia for tipo in licencia.tipos.all()])
+                
                 return JsonResponse({
                     'status': 'success',
-                    'message': 'Licencia guardada exitosamente'
+                    'message': 'Licencia guardada exitosamente',
+                    'data': {
+                        'id': licencia.licenciaPorPersonal_id,
+                        'numero': '',  # Este modelo no tiene número
+                        'municipalidad': '',  # Este modelo no tiene municipalidad
+                        'clase': clase,
+                        'fecha_emision': licencia.fechaEmision.strftime('%d/%m/%Y'),
+                        'fecha_vencimiento': licencia.fechaVencimiento.strftime('%d/%m/%Y'),
+                        'documento': True if licencia.rutaDoc else False,
+                        'documento_url': licencia.rutaDoc.url if licencia.rutaDoc else None
+                    }
                 })
             else:
                 print("Form errors:", form.errors)  # Debug print
@@ -358,6 +380,16 @@ def add_exam(request, personal_id):
     if request.method == 'POST':
         try:
             personal = get_object_or_404(Personal, personal_id=personal_id)
+            
+            # Validar que solo sea PDF
+            if 'rutaDoc' in request.FILES:
+                document_file = request.FILES['rutaDoc']
+                if not document_file.name.lower().endswith('.pdf'):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Solo se aceptan archivos PDF'
+                    }, status=400)
+            
             form = ExamenPersonal(request.POST, request.FILES)
             print("Form data:", request.POST)  # Debug print
             print("Files:", request.FILES)     # Debug print
@@ -372,7 +404,18 @@ def add_exam(request, personal_id):
                 
                 return JsonResponse({
                     'status': 'success',
-                    'message': 'Examen guardado exitosamente'
+                    'message': 'Examen guardado exitosamente',
+                    'data': {
+                        'id': examen.examen_id,
+                        'tipo': examen.tipoEx_id.tipoExamen if examen.tipoEx_id else '',
+                        'resultado': str(examen.resultadoEx_id) if examen.resultadoEx_id else '-',
+                        'proveedor': str(examen.proveedor_id) if examen.proveedor_id else '',
+                        'fecha_emision': examen.fechaEmision.strftime('%d/%m/%Y'),
+                        'fecha_vencimiento': examen.fechaVencimiento.strftime('%d/%m/%Y'),
+                        'observacion': examen.observacion or '',
+                        'documento': True if examen.rutaDoc else False,
+                        'documento_url': examen.rutaDoc.url if examen.rutaDoc else None
+                    }
                 })
             else:
                 print("Form errors:", form.errors)  # Debug print
@@ -426,6 +469,16 @@ def add_internal_license(request, personal_id):
     if request.method == 'POST':
         try:
             personal = get_object_or_404(Personal, personal_id=personal_id)
+            
+            # Validar que solo sea PDF
+            if 'rutaDoc' in request.FILES:
+                document_file = request.FILES['rutaDoc']
+                if not document_file.name.lower().endswith('.pdf'):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Solo se aceptan archivos PDF'
+                    }, status=400)
+            
             from .forms import LicenciasInternasPersonal
             form = LicenciasInternasPersonal(request.POST, request.FILES)
             
@@ -436,7 +489,19 @@ def add_internal_license(request, personal_id):
                 
                 return JsonResponse({
                     'status': 'success',
-                    'message': 'Licencia interna guardada exitosamente'
+                    'message': 'Licencia interna guardada exitosamente',
+                    'data': {
+                        'id': licencia.licenciaInterna_id,
+                        'tipo': licencia.tipoLicenciaInterna_id.tipoLicenciaInterna if licencia.tipoLicenciaInterna_id else '',
+                        'numero': licencia.numero_licencia or '-',
+                        'empresa': licencia.empresa_emisora or '-',
+                        'fecha_emision': licencia.fechaEmision.strftime('%d/%m/%Y'),
+                        'fecha_vencimiento': licencia.fechaVencimiento.strftime('%d/%m/%Y'),
+                        'activo': licencia.esta_activa,
+                        'observacion': licencia.observacion or '',
+                        'documento': True if licencia.rutaDoc else False,
+                        'documento_url': licencia.rutaDoc.url if licencia.rutaDoc else None
+                    }
                 })
             else:
                 return JsonResponse({
@@ -481,7 +546,6 @@ def edit_internal_license(request, license_id):
                     'fecha_emision': license.fechaEmision.strftime('%Y-%m-%d'),
                     'fecha_vencimiento': license.fechaVencimiento.strftime('%Y-%m-%d'),
                     'observacion': license.observacion,
-                    'activo': license.activo,
                     'documento_url': license.rutaDoc.url if license.rutaDoc else None,
                     'documento_nombre': license.rutaDoc.name if license.rutaDoc else None
                 }
@@ -494,6 +558,15 @@ def edit_internal_license(request, license_id):
             from .models import LicenciaInternaPorPersonal
             from .forms import LicenciasInternasPersonal
             license = get_object_or_404(LicenciaInternaPorPersonal, licenciaInterna_id=license_id)
+            
+            # Validar que solo sea PDF si se sube un nuevo archivo
+            if 'rutaDoc' in request.FILES and request.FILES['rutaDoc']:
+                document_file = request.FILES['rutaDoc']
+                if not document_file.name.lower().endswith('.pdf'):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Solo se aceptan archivos PDF'
+                    }, status=400)
             
             # Crear un formulario personalizado para la edición
             form_data = request.POST.copy()
@@ -514,12 +587,23 @@ def edit_internal_license(request, license_id):
                     license.fechaEmision = form.cleaned_data['fechaEmision']
                     license.fechaVencimiento = form.cleaned_data['fechaVencimiento']
                     license.observacion = form.cleaned_data['observacion']
-                    license.activo = form.cleaned_data['activo']
                     license.save()
                     
                     return JsonResponse({
                         'status': 'success',
-                        'message': 'Licencia interna actualizada exitosamente'
+                        'message': 'Licencia interna actualizada exitosamente',
+                        'data': {
+                            'id': license.licenciaInterna_id,
+                            'tipo': license.tipoLicenciaInterna_id.tipoLicenciaInterna if license.tipoLicenciaInterna_id else '',
+                            'numero': license.numero_licencia or '-',
+                            'empresa': license.empresa_emisora or '-',
+                            'fecha_emision': license.fechaEmision.strftime('%d/%m/%Y'),
+                            'fecha_vencimiento': license.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'activo': license.esta_activa,
+                            'observacion': license.observacion or '',
+                            'documento': True if license.rutaDoc else False,
+                            'documento_url': license.rutaDoc.url if license.rutaDoc else None
+                        }
                     })
                 else:
                     return JsonResponse({
@@ -531,10 +615,22 @@ def edit_internal_license(request, license_id):
                 form = LicenciasInternasPersonal(form_data, form_files, instance=license)
                 
                 if form.is_valid():
-                    form.save()
+                    license = form.save()
                     return JsonResponse({
                         'status': 'success',
-                        'message': 'Licencia interna actualizada exitosamente'
+                        'message': 'Licencia interna actualizada exitosamente',
+                        'data': {
+                            'id': license.licenciaInterna_id,
+                            'tipo': license.tipoLicenciaInterna_id.tipoLicenciaInterna if license.tipoLicenciaInterna_id else '',
+                            'numero': license.numero_licencia or '-',
+                            'empresa': license.empresa_emisora or '-',
+                            'fecha_emision': license.fechaEmision.strftime('%d/%m/%Y'),
+                            'fecha_vencimiento': license.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'activo': license.esta_activa,
+                            'observacion': license.observacion or '',
+                            'documento': True if license.rutaDoc else False,
+                            'documento_url': license.rutaDoc.url if license.rutaDoc else None
+                        }
                     })
                 else:
                     return JsonResponse({
@@ -583,6 +679,13 @@ def upload_personal_document(request, personal_id):
                     'message': 'Faltan datos requeridos'
                 }, status=400)
             
+            # Validar que solo sea PDF
+            if not document_file.name.lower().endswith('.pdf'):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Solo se aceptan archivos PDF'
+                }, status=400)
+            
             # Validar que el campo exista en el modelo
             valid_fields = [
                 'curriculum', 'certificado_antecedentes', 'hoja_vida_conductor',
@@ -601,9 +704,13 @@ def upload_personal_document(request, personal_id):
             setattr(personal, document_field, document_file)
             personal.save()
             
+            # Obtener la URL del documento guardado
+            document_url = getattr(personal, document_field).url if getattr(personal, document_field) else None
+            
             return JsonResponse({
                 'status': 'success',
-                'message': 'Documento subido exitosamente'
+                'message': 'Documento subido exitosamente',
+                'document_url': document_url
             })
             
         except Exception as e:
@@ -633,22 +740,41 @@ def upload_carnet_document(request, personal_id):
                     'message': 'Debe seleccionar un archivo'
                 }, status=400)
             
+            # Validar que solo sea PDF
+            if not carnet_file.name.lower().endswith('.pdf'):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Solo se aceptan archivos PDF'
+                }, status=400)
+            
+            if not fecha_vencimiento:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'La fecha de vencimiento es obligatoria'
+                }, status=400)
+            
             # Guardar el archivo del carnet
             personal.fotocopia_carnet = carnet_file
             
-            # Guardar la fecha de vencimiento si se proporcionó
-            if fecha_vencimiento:
-                from datetime import datetime
-                try:
-                    personal.fecha_vencimiento_carnet = datetime.strptime(fecha_vencimiento, '%Y-%m-%d').date()
-                except ValueError:
-                    pass  # Si la fecha es inválida, no la guardamos
+            # Guardar la fecha de vencimiento
+            from datetime import datetime
+            try:
+                personal.fecha_vencimiento_carnet = datetime.strptime(fecha_vencimiento, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Formato de fecha inválido'
+                }, status=400)
             
             personal.save()
             
+            # Obtener la URL del documento guardado
+            document_url = personal.fotocopia_carnet.url if personal.fotocopia_carnet else None
+            
             return JsonResponse({
                 'status': 'success',
-                'message': 'Carnet subido exitosamente'
+                'message': 'Carnet subido exitosamente',
+                'document_url': document_url
             })
             
         except Exception as e:
@@ -699,7 +825,7 @@ def delete_personal_document(request, personal_id):
                 field.delete(save=False)
                 setattr(personal, document_field, None)
                 
-                # Si es el carnet, también limpiar la fecha de vencimiento
+                # Si es el carnet, también eliminar la fecha de vencimiento
                 if document_field == 'fotocopia_carnet':
                     personal.fecha_vencimiento_carnet = None
                 
@@ -762,6 +888,16 @@ def documentation_view(request, pk):
 def save_certification(request, pk):
     try:
         personal = get_object_or_404(Personal, personal_id=pk)
+        
+        # Validar que solo sea PDF
+        if 'rutaDoc' in request.FILES:
+            document_file = request.FILES['rutaDoc']
+            if not document_file.name.lower().endswith('.pdf'):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Solo se aceptan archivos PDF'
+                }, status=400)
+        
         form = CertificacionPersonal(request.POST, request.FILES)
         
         if form.is_valid():
@@ -771,7 +907,17 @@ def save_certification(request, pk):
             
             return JsonResponse({
                 'status': 'success',
-                'message': 'Certificación guardada exitosamente'
+                'message': 'Certificación guardada exitosamente',
+                'data': {
+                    'id': certification.certif_id,
+                    'tipo': certification.tipoCertificacion_id.tipoCertificacion if certification.tipoCertificacion_id else '',
+                    'proveedor': str(certification.proveedor_id) if certification.proveedor_id else '',
+                    'fecha_emision': certification.fechaEmision.strftime('%d/%m/%Y'),
+                    'fecha_vencimiento': certification.fechaVencimiento.strftime('%d/%m/%Y'),
+                    'observacion': certification.observacion or '',
+                    'documento': True if certification.rutaDoc else False,
+                    'documento_url': certification.rutaDoc.url if certification.rutaDoc else None
+                }
             })
         else:
             return JsonResponse({
@@ -899,54 +1045,6 @@ def delete_licencia_medica(request, licencia_id):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
-@login_required
-def delete_archivo_licencia_medica(request, licencia_id):
-    print(f"DEBUG: delete_archivo_licencia_medica llamado con licencia_id: {licencia_id}")
-    print(f"DEBUG: Método de la petición: {request.method}")
-    
-    if request.method == 'DELETE':
-        try:
-            licencia = get_object_or_404(LicenciaMedicaPorPersonal, licenciaMedicaPorPersonal_id=licencia_id)
-            print(f"DEBUG: Licencia encontrada: {licencia}")
-            
-            if licencia.rutaDoc:
-                print(f"DEBUG: Archivo encontrado: {licencia.rutaDoc.path}")
-                # Eliminar el archivo físico
-                try:
-                    if os.path.isfile(licencia.rutaDoc.path):
-                        os.remove(licencia.rutaDoc.path)
-                        print(f"DEBUG: Archivo eliminado físicamente: {licencia.rutaDoc.path}")
-                    else:
-                        print(f"DEBUG: Archivo no existe físicamente: {licencia.rutaDoc.path}")
-                except Exception as e:
-                    print(f"DEBUG: Error al eliminar archivo físico: {e}")
-                
-                # Limpiar el campo en la base de datos
-                licencia.rutaDoc = None
-                licencia.save()
-                print(f"DEBUG: Campo rutaDoc limpiado en la base de datos")
-                
-                response_data = {
-                    'status': 'success', 
-                    'message': 'Archivo eliminado exitosamente. Ahora puede subir un nuevo documento.'
-                }
-                print(f"DEBUG: Enviando respuesta exitosa: {response_data}")
-                return JsonResponse(response_data)
-            else:
-                print(f"DEBUG: No hay archivo para eliminar")
-                return JsonResponse({
-                    'status': 'error', 
-                    'message': 'No hay archivo para eliminar'
-                }, status=400)
-                
-        except Exception as e:
-            print(f"DEBUG: Excepción capturada: {e}")
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-    else:
-        print(f"DEBUG: Método no permitido: {request.method}")
-        return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
-
-
 # ============================================================================
 # VISTAS PARA AUSENTISMOS Y PERMISOS
 # ============================================================================
@@ -954,13 +1052,19 @@ def delete_archivo_licencia_medica(request, licencia_id):
 @login_required
 def buscar_personal_ausentismo(request):
     """Vista para buscar personal para gestionar ausentismos"""
+    from gen_settings.models import Empresa
+    
     personal_list = Personal.objects.filter(activo=True).prefetch_related(
         'infolaboral_set__cargo_id',
+        'infolaboral_set__empresa_id',
         'ausentismo_set'
     ).order_by('apepat', 'apemat', 'nombre')
     
+    empresas = Empresa.objects.all().order_by('nomFantasia')
+    
     context = {
         'personal_list': personal_list,
+        'empresas': empresas,
     }
     
     return render(request, 'personal/buscar_personal_ausentismo.html', context)
@@ -973,12 +1077,10 @@ def listar_ausentismos_personal(request, personal_id):
     ausentismos = Ausentismo.objects.filter(
         personal_id=personal
     ).select_related('tipoausen_id').order_by('-fechaini')
-    tipos_ausentismo = TipoAusentismo.objects.all().order_by('tipo')
     
     context = {
         'personal': personal,
         'ausentismos': ausentismos,
-        'tipos_ausentismo': tipos_ausentismo,
     }
     
     return render(request, 'personal/listar_ausentismos.html', context)
@@ -987,91 +1089,57 @@ def listar_ausentismos_personal(request, personal_id):
 @login_required
 def crear_ausentismo(request, personal_id):
     """Vista para crear un ausentismo"""
-    if request.method == 'POST':
-        try:
-            import json
-            personal = get_object_or_404(Personal, personal_id=personal_id)
-            data = json.loads(request.body)
-            
-            tipo_id = data.get('tipo_ausentismo_id')
-            fecha_inicio = data.get('fecha_inicio')
-            fecha_fin = data.get('fecha_fin')
-            observaciones = data.get('observaciones', '')
-            
-            if not all([tipo_id, fecha_inicio, fecha_fin]):
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Faltan datos requeridos'
-                }, status=400)
-            
-            tipo_ausentismo = get_object_or_404(TipoAusentismo, tipoausen_id=tipo_id)
-            
-            ausentismo = Ausentismo.objects.create(
-                personal_id=personal,
-                tipoausen_id=tipo_ausentismo,
-                fechaini=fecha_inicio,
-                fechafin=fecha_fin,
-                observacion=observaciones
-            )
-            
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Ausentismo registrado exitosamente'
-            })
-            
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': f'Error: {str(e)}'
-            }, status=500)
+    personal = get_object_or_404(Personal, personal_id=personal_id)
     
-    return JsonResponse({
-        'status': 'error',
-        'message': 'Método no permitido'
-    }, status=405)
+    if request.method == 'POST':
+        from .forms import AusentismoForm
+        form = AusentismoForm(request.POST)
+        if form.is_valid():
+            ausentismo = form.save(commit=False)
+            ausentismo.personal_id = personal
+            ausentismo.save()
+            messages.success(request, 'Ausentismo registrado exitosamente')
+            return redirect('listar_ausentismos_personal', personal_id=personal.personal_id)
+        else:
+            messages.error(request, 'Por favor corrija los errores en el formulario.')
+    else:
+        from .forms import AusentismoForm
+        form = AusentismoForm()
+    
+    context = {
+        'form': form,
+        'personal': personal,
+    }
+    
+    return render(request, 'personal/create_ausentismo.html', context)
 
 
 @login_required
 def actualizar_ausentismo(request, personal_id, ausentismo_id):
     """Vista para actualizar un ausentismo"""
-    if request.method == 'POST':
-        try:
-            import json
-            ausentismo = get_object_or_404(Ausentismo, ausentismo_id=ausentismo_id)
-            data = json.loads(request.body)
-            
-            tipo_id = data.get('tipo_ausentismo_id')
-            fecha_inicio = data.get('fecha_inicio')
-            fecha_fin = data.get('fecha_fin')
-            observaciones = data.get('observaciones', '')
-            
-            if tipo_id:
-                tipo_ausentismo = get_object_or_404(TipoAusentismo, tipoausen_id=tipo_id)
-                ausentismo.tipoausen_id = tipo_ausentismo
-            
-            if fecha_inicio:
-                ausentismo.fechaini = fecha_inicio
-            if fecha_fin:
-                ausentismo.fechafin = fecha_fin
-            
-            ausentismo.observacion = observaciones
-            ausentismo.save()
-            
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Ausentismo actualizado exitosamente'
-            })
-            
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': f'Error: {str(e)}'
-            }, status=500)
+    ausentismo = get_object_or_404(Ausentismo, ausentismo_id=ausentismo_id)
+    personal = ausentismo.personal_id
     
-    return JsonResponse({
-        'status': 'error',
-        'message': 'Método no permitido'
-    }, status=405)
+    if request.method == 'POST':
+        from .forms import AusentismoForm
+        form = AusentismoForm(request.POST, instance=ausentismo)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Ausentismo actualizado exitosamente')
+            return redirect('listar_ausentismos_personal', personal_id=personal.personal_id)
+        else:
+            messages.error(request, 'Por favor corrija los errores en el formulario.')
+    else:
+        from .forms import AusentismoForm
+        form = AusentismoForm(instance=ausentismo)
+    
+    context = {
+        'form': form,
+        'personal': personal,
+        'ausentismo': ausentismo,
+    }
+    
+    return render(request, 'personal/edit_ausentismo.html', context)
 
 
 @login_required
@@ -1101,13 +1169,19 @@ def eliminar_ausentismo(request, ausentismo_id):
 
 def buscar_personal_licencia_medica(request):
     """Vista mejorada para buscar personal para licencias médicas"""
+    from gen_settings.models import Empresa
+    
     personal_list = Personal.objects.filter(activo=True).prefetch_related(
         'infolaboral_set__cargo_id',
+        'infolaboral_set__empresa_id',
         'licenciamedicaporpersonal_set'
     ).order_by('apepat', 'apemat', 'nombre')
     
+    empresas = Empresa.objects.all().order_by('nomFantasia')
+    
     context = {
         'personal_list': personal_list,
+        'empresas': empresas,
     }
     
     return render(request, 'personal/buscar_personal_licencia_medica_new.html', context)
@@ -1147,6 +1221,15 @@ def edit_license(request, license_id):
             from .forms import LicenciasPersonal
             license = get_object_or_404(LicenciaPorPersonal, licenciaPorPersonal_id=license_id)
             
+            # Validar que solo sea PDF si se sube un nuevo archivo
+            if 'rutaDoc' in request.FILES and request.FILES['rutaDoc']:
+                document_file = request.FILES['rutaDoc']
+                if not document_file.name.lower().endswith('.pdf'):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Solo se aceptan archivos PDF'
+                    }, status=400)
+            
             # Crear un formulario personalizado para la edición
             form_data = request.POST.copy()
             form_files = request.FILES
@@ -1165,9 +1248,22 @@ def edit_license(request, license_id):
                     license.tipos.set(form.cleaned_data['tipos'])
                     license.save()
                     
+                    # Obtener las clases de licencia
+                    clase = ', '.join([tipo.tipoLicencia for tipo in license.tipos.all()])
+                    
                     return JsonResponse({
                         'status': 'success',
-                        'message': 'Licencia actualizada exitosamente'
+                        'message': 'Licencia actualizada exitosamente',
+                        'data': {
+                            'id': license.licenciaPorPersonal_id,
+                            'numero': '',  # Este modelo no tiene número
+                            'municipalidad': '',  # Este modelo no tiene municipalidad
+                            'clase': clase,
+                            'fecha_emision': license.fechaEmision.strftime('%d/%m/%Y'),
+                            'fecha_vencimiento': license.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'documento': True if license.rutaDoc else False,
+                            'documento_url': license.rutaDoc.url if license.rutaDoc else None
+                        }
                     })
                 else:
                     return JsonResponse({
@@ -1179,10 +1275,24 @@ def edit_license(request, license_id):
                 form = LicenciasPersonal(form_data, form_files, instance=license)
                 
                 if form.is_valid():
-                    form.save()
+                    license = form.save()
+                    
+                    # Obtener las clases de licencia
+                    clase = ', '.join([tipo.tipoLicencia for tipo in license.tipos.all()])
+                    
                     return JsonResponse({
                         'status': 'success',
-                        'message': 'Licencia actualizada exitosamente'
+                        'message': 'Licencia actualizada exitosamente',
+                        'data': {
+                            'id': license.licenciaPorPersonal_id,
+                            'numero': '',  # Este modelo no tiene número
+                            'municipalidad': '',  # Este modelo no tiene municipalidad
+                            'clase': clase,
+                            'fecha_emision': license.fechaEmision.strftime('%d/%m/%Y'),
+                            'fecha_vencimiento': license.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'documento': True if license.rutaDoc else False,
+                            'documento_url': license.rutaDoc.url if license.rutaDoc else None
+                        }
                     })
                 else:
                     return JsonResponse({
@@ -1233,6 +1343,15 @@ def edit_certification(request, cert_id):
             from .forms import CertificacionPersonal
             cert = get_object_or_404(Certificacion, certif_id=cert_id)
             
+            # Validar que solo sea PDF si se sube un nuevo archivo
+            if 'rutaDoc' in request.FILES and request.FILES['rutaDoc']:
+                document_file = request.FILES['rutaDoc']
+                if not document_file.name.lower().endswith('.pdf'):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Solo se aceptan archivos PDF'
+                    }, status=400)
+            
             # Crear un formulario personalizado para la edición
             form_data = request.POST.copy()
             form_files = request.FILES
@@ -1254,7 +1373,17 @@ def edit_certification(request, cert_id):
                     
                     return JsonResponse({
                         'status': 'success',
-                        'message': 'Certificación actualizada exitosamente'
+                        'message': 'Certificación actualizada exitosamente',
+                        'data': {
+                            'id': cert.certif_id,
+                            'tipo': cert.tipoCertificacion_id.tipoCertificacion if cert.tipoCertificacion_id else '',
+                            'proveedor': str(cert.proveedor_id) if cert.proveedor_id else '',
+                            'fecha_emision': cert.fechaEmision.strftime('%d/%m/%Y'),
+                            'fecha_vencimiento': cert.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'observacion': cert.observacion or '',
+                            'documento': True if cert.rutaDoc else False,
+                            'documento_url': cert.rutaDoc.url if cert.rutaDoc else None
+                        }
                     })
                 else:
                     return JsonResponse({
@@ -1266,10 +1395,21 @@ def edit_certification(request, cert_id):
                 form = CertificacionPersonal(form_data, form_files, instance=cert)
                 
                 if form.is_valid():
-                    form.save()
+                    cert = form.save()
+                    
                     return JsonResponse({
                         'status': 'success',
-                        'message': 'Certificación actualizada exitosamente'
+                        'message': 'Certificación actualizada exitosamente',
+                        'data': {
+                            'id': cert.certif_id,
+                            'tipo': cert.tipoCertificacion_id.tipoCertificacion if cert.tipoCertificacion_id else '',
+                            'proveedor': str(cert.proveedor_id) if cert.proveedor_id else '',
+                            'fecha_emision': cert.fechaEmision.strftime('%d/%m/%Y'),
+                            'fecha_vencimiento': cert.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'observacion': cert.observacion or '',
+                            'documento': True if cert.rutaDoc else False,
+                            'documento_url': cert.rutaDoc.url if cert.rutaDoc else None
+                        }
                     })
                 else:
                     return JsonResponse({
@@ -1321,6 +1461,15 @@ def edit_exam(request, exam_id):
             from .forms import ExamenPersonal
             exam = get_object_or_404(Examen, examen_id=exam_id)
             
+            # Validar que solo sea PDF si se sube un nuevo archivo
+            if 'rutaDoc' in request.FILES and request.FILES['rutaDoc']:
+                document_file = request.FILES['rutaDoc']
+                if not document_file.name.lower().endswith('.pdf'):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Solo se aceptan archivos PDF'
+                    }, status=400)
+            
             # Crear un formulario personalizado para la edición
             form_data = request.POST.copy()
             form_files = request.FILES
@@ -1343,7 +1492,18 @@ def edit_exam(request, exam_id):
                     
                     return JsonResponse({
                         'status': 'success',
-                        'message': 'Examen actualizado exitosamente'
+                        'message': 'Examen actualizado exitosamente',
+                        'data': {
+                            'id': exam.examen_id,
+                            'tipo': exam.tipoEx_id.tipoExamen if exam.tipoEx_id else '',
+                            'resultado': str(exam.resultadoEx_id) if exam.resultadoEx_id else '-',
+                            'proveedor': str(exam.proveedor_id) if exam.proveedor_id else '',
+                            'fecha_emision': exam.fechaEmision.strftime('%d/%m/%Y'),
+                            'fecha_vencimiento': exam.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'observacion': exam.observacion or '',
+                            'documento': True if exam.rutaDoc else False,
+                            'documento_url': exam.rutaDoc.url if exam.rutaDoc else None
+                        }
                     })
                 else:
                     return JsonResponse({
@@ -1355,10 +1515,22 @@ def edit_exam(request, exam_id):
                 form = ExamenPersonal(form_data, form_files, instance=exam)
                 
                 if form.is_valid():
-                    form.save()
+                    exam = form.save()
+                    
                     return JsonResponse({
                         'status': 'success',
-                        'message': 'Examen actualizado exitosamente'
+                        'message': 'Examen actualizado exitosamente',
+                        'data': {
+                            'id': exam.examen_id,
+                            'tipo': exam.tipoEx_id.tipoExamen if exam.tipoEx_id else '',
+                            'resultado': str(exam.resultadoEx_id) if exam.resultadoEx_id else '-',
+                            'proveedor': str(exam.proveedor_id) if exam.proveedor_id else '',
+                            'fecha_emision': exam.fechaEmision.strftime('%d/%m/%Y'),
+                            'fecha_vencimiento': exam.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'observacion': exam.observacion or '',
+                            'documento': True if exam.rutaDoc else False,
+                            'documento_url': exam.rutaDoc.url if exam.rutaDoc else None
+                        }
                     })
                 else:
                     return JsonResponse({
