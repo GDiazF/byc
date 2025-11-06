@@ -16,6 +16,7 @@ urlpatterns = [
     # Gestión de faenas
     path('faenas/', views.gestionar_faenas, name='gestionar_faenas'),
     path('faenas/<int:faena_id>/asignar/', views.asignar_personal_faena, name='asignar_personal_faena'),
+    path('api/listar-faenas/', views.listar_faenas_api, name='listar_faenas_api'),
     path('api/crear-faena/', views.crear_faena, name='crear_faena'),
     path('api/actualizar-faena/', views.actualizar_faena, name='actualizar_faena'),
     path('api/eliminar-faena/', views.eliminar_faena, name='eliminar_faena'),

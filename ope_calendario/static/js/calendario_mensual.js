@@ -1010,8 +1010,19 @@ function showAsignaciones(personalId) {
         asignaciones.forEach(asig => {
             const fechaInicio = formatearFechaChilena(asig.fecha_inicio);
             const fechaFin = asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Sin fecha fin';
-            const estadoClass = asig.activo ? 'success' : 'secondary';
-            const estadoText = asig.activo ? 'Activa' : 'Inactiva';
+            // Determinar estado basado en fechas, no en campo "activo"
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            let estadoClass = 'success';
+            let estadoText = 'Activa';
+            
+            if (asig.fecha_fin) {
+                const fechaFin = new Date(asig.fecha_fin);
+                if (fechaFin < hoy) {
+                    estadoClass = 'secondary';
+                    estadoText = 'Finalizada';
+                }
+            }
             
             html += `
                 <div class="list-group-item">
@@ -1084,7 +1095,7 @@ function editarAsignacion(personalId, asignacionId) {
     document.getElementById('fechaInicio').value = fechaInicio;
     document.getElementById('fechaFin').value = fechaFin;
     document.getElementById('observaciones').value = asignacion.observaciones || '';
-    document.getElementById('activo').checked = asignacion.activo;
+    // Campo "activo" eliminado - ya no es necesario
     
     // Precargar fechas de la faena y actualizar bloques
     precargarFechasFaena(asignacion.faena.id);
@@ -1643,7 +1654,7 @@ async function guardarAsignacion() {
         fecha_fin: formData.get('fecha_fin'), // Ahora es obligatoria
         bloque_inicio_id: formData.get('bloque_inicio_id'), // Si está vacío, el backend sabrá manejarlo
         observaciones: formData.get('observaciones') || '',
-        activo: document.getElementById('activo').checked
+        activo: true  // Siempre activo - se controla con fechas
     };
     const url = asignacionId ? '/calendario/api/actualizar-asignacion/' : '/calendario/api/crear-asignacion/';
     

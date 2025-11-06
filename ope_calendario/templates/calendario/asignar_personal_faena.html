@@ -4,6 +4,7 @@
 {% block title %}Asignar Personal - {{ faena_nombre }}{% endblock %}
 
 {% block extrajs %}
+<link rel="stylesheet" href="{% static 'css/asignar_personal_faena.css' %}">
 <script src="{% static 'js/asignar_personal_faena.js' %}"></script>
 <script>
 // Inicializar datos desde Django
@@ -26,37 +27,121 @@ initData(
     <div class="card-header bg-dark text-white">
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
-                <i class="bi bi-person-plus-fill me-2"></i>Asignar Personal a: {{ faena_nombre }}
+                <i class="bi bi-person-plus-fill me-2"></i>Asignar Personal a: <span class="badge bg-light text-dark ms-2">{{ faena_codigo }}</span>
             </h5>
-            <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-sm btn-outline-light">
+            <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-sm btn-light">
                 <i class="bi bi-arrow-left me-1"></i>Volver
             </a>
         </div>
     </div>
     <div class="card-body">
         <!-- Información de la faena -->
-        <div class="alert alert-info mb-3">
-            <div class="row">
-                <div class="col-md-7">
-                    <strong>Faena:</strong> {{ faena_nombre }}<br>
-                    {% if faena_descripcion %}
-                    <strong>Descripción:</strong> {{ faena_descripcion }}<br>
-                    {% endif %}
-                    {% if faena_fecha_inicio or faena_fecha_fin %}
-                    <strong>Duración de la Faena:</strong> 
-                    <span class="badge bg-dark">
-                        <i class="bi bi-calendar-range me-1"></i>
-                        {% if faena_fecha_inicio %}{{ faena_fecha_inicio|date:"d-m-Y" }}{% else %}Sin inicio{% endif %} → {% if faena_fecha_fin %}{{ faena_fecha_fin|date:"d-m-Y" }}{% else %}Sin fin{% endif %}
-                    </span>
-                    {% if faena_duracion_dias %}
-                    <small class="text-muted">({{ faena_duracion_dias }} días)</small>
-                    {% endif %}
-                    {% endif %}
+        <div class="card bg-light border-primary mb-3">
+            <div class="card-body py-2">
+                <div class="row">
+                    <div class="col-md-7">
+                        <strong>Faena:</strong> {{ faena_nombre }}<br>
+                        {% if faena_descripcion %}
+                        <strong>Descripción:</strong> {{ faena_descripcion }}<br>
+                        {% endif %}
+                        {% if faena_fecha_inicio or faena_fecha_fin %}
+                        <strong>Duración de la Faena:</strong> 
+                        <span class="badge bg-dark">
+                            <i class="bi bi-calendar-range me-1"></i>
+                            {% if faena_fecha_inicio %}{{ faena_fecha_inicio|date:"d-m-Y" }}{% else %}Sin inicio{% endif %} → {% if faena_fecha_fin %}{{ faena_fecha_fin|date:"d-m-Y" }}{% else %}Sin fin{% endif %}
+                        </span>
+                        {% if faena_duracion_dias %}
+                        <small class="text-muted">({{ faena_duracion_dias }} días)</small>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="col-md-5 text-end">
+                        <strong>Personal asignado:</strong> 
+                        <span class="badge bg-primary fs-6">{{ total_asignados }}</span>
+                    </div>
                 </div>
-                <div class="col-md-5 text-end">
-                    <strong>Personal ya asignado:</strong> 
-                    <span class="badge bg-primary fs-6">{{ total_asignados }}</span>
-                </div>
+            </div>
+        </div>
+        
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs mb-3" id="asignacionTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="asignar-tab" data-bs-toggle="tab" data-bs-target="#asignar" 
+                        type="button" role="tab" aria-controls="asignar" aria-selected="true">
+                    <i class="bi bi-person-plus me-2"></i>Asignar Nuevo Personal
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="gestionar-tab" data-bs-toggle="tab" data-bs-target="#gestionar" 
+                        type="button" role="tab" aria-controls="gestionar" aria-selected="false">
+                    <i class="bi bi-pencil-square me-2"></i>Gestionar Personal Asignado
+                    <span class="badge bg-primary ms-2">{{ total_asignados }}</span>
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Tabs Content -->
+        <div class="tab-content" id="asignacionTabsContent">
+            <!-- Tab: Asignar Nuevo Personal -->
+            <div class="tab-pane fade show active" id="asignar" role="tabpanel" aria-labelledby="asignar-tab">
+        
+        <!-- Área de Advertencias/Errores -->
+        <div id="areaAdvertencias" class="mb-3" style="display: none;">
+            <!-- Se llena dinámicamente con JavaScript -->
+        </div>
+        
+        <!-- Card de Configuración de Asignación Masiva -->
+        <div class="card mb-3">
+            <div class="card-header bg-dark text-white py-2">
+                <h6 class="mb-0">
+                    <i class="bi bi-sliders me-2"></i>Configuración de Asignación
+                </h6>
+            </div>
+            <div class="card-body py-2">
+                <form id="formAsignacion" onsubmit="event.preventDefault(); asignarMasivo();">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label for="turno_id" class="form-label small mb-1">Turno *</label>
+                            <select class="form-select form-select-sm" id="turno_id" required>
+                                <option value="">Seleccione...</option>
+                            </select>
+                            <div id="turnoDescripcion" class="small"></div>
+                        </div>
+                        
+                        <div class="col-md-2" id="bloqueContainer" style="display: none;">
+                            <label for="bloque_inicio_id" class="form-label small mb-1">Bloque Inicio</label>
+                            <select class="form-select form-select-sm" id="bloque_inicio_id">
+                                <option value="">Desde inicio</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="fecha_inicio" class="form-label small mb-1">Fecha Inicio *</label>
+                            <input type="date" class="form-control form-control-sm" id="fecha_inicio" required
+                                   min="{{ faena.fecha_inicio|date:'Y-m-d' }}"
+                                   max="{{ faena.fecha_fin|date:'Y-m-d' }}">
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="fecha_fin" class="form-label small mb-1">Fecha Fin</label>
+                            <input type="date" class="form-control form-control-sm" id="fecha_fin"
+                                   min="{{ faena.fecha_inicio|date:'Y-m-d' }}"
+                                   max="{{ faena.fecha_fin|date:'Y-m-d' }}">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="observaciones" class="form-label small mb-1">Observaciones</label>
+                            <input type="text" class="form-control form-control-sm" id="observaciones"
+                                      placeholder="Notas adicionales...">
+                        </div>
+                    </div>
+                    
+                    <div class="text-end mt-2">
+                        <button type="submit" class="btn btn-success btn-sm" id="btnAsignarMasivo" disabled>
+                            <i class="bi bi-check-circle me-1"></i>Asignar Personal Seleccionado
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
         
@@ -105,17 +190,29 @@ initData(
             </div>
         </div>
         
-        <!-- Acciones rápidas -->
-        <div class="mb-3">
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleSeleccionarTodos()">
-                <i class="bi bi-check-square me-1"></i>Seleccionar Todos Visibles
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limpiarSeleccion()">
-                <i class="bi bi-x-square me-1"></i>Limpiar Selección
-            </button>
-            <span class="ms-3 text-muted">
-                <strong id="totalSeleccionados">0</strong> de <strong id="totalPersonal">0</strong> trabajadores seleccionados
-            </span>
+        <!-- Acciones rápidas y selector de registros -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="toggleSeleccionarTodos()">
+                    <i class="bi bi-check-square me-1"></i>Seleccionar Todos Visibles
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarSeleccion()">
+                    <i class="bi bi-x-square me-1"></i>Limpiar Selección
+                </button>
+                <span class="ms-3 text-muted">
+                    <strong id="totalSeleccionados">0</strong> de <strong id="totalPersonal">0</strong> trabajadores seleccionados
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label mb-0 small">Mostrar:</label>
+                <select class="form-select form-select-sm" id="registrosPorPagina" style="width: auto;" onchange="cambiarRegistrosPorPagina()">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="9999">Todos</option>
+                </select>
+            </div>
         </div>
         
         <!-- Tabla de personal -->
@@ -139,73 +236,165 @@ initData(
                 </tbody>
             </table>
         </div>
+        
+        <!-- Controles de Paginación -->
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="small text-muted">
+                Mostrando <strong id="registroInicio">0</strong> a <strong id="registroFin">0</strong> de <strong id="totalRegistros">0</strong> registros
+            </span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0" id="paginacion">
+                    <!-- Se llena con JavaScript -->
+                </ul>
+            </nav>
+        </div>
+            </div>
+            
+            <!-- Tab: Gestionar Personal Asignado -->
+            <div class="tab-pane fade" id="gestionar" role="tabpanel" aria-labelledby="gestionar-tab">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Trabajador</th>
+                                <th>RUT</th>
+                                <th>Cargo</th>
+                                <th>Turno</th>
+                                <th>Bloque Inicio</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Fin</th>
+                                <th>Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPersonalAsignadoBody">
+                            <!-- Se llena con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Card de Configuración de Asignación -->
-<div class="card">
-    <div class="card-header bg-dark text-white">
-        <h5 class="mb-0">
-            <i class="bi bi-sliders me-2"></i>Configuración de Asignación
-        </h5>
-    </div>
-    <div class="card-body">
-        <form id="formAsignacion" onsubmit="event.preventDefault(); asignarMasivo();">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="turno_id" class="form-label">Turno *</label>
-                        <select class="form-select" id="turno_id" required>
-                            <option value="">Seleccione un turno...</option>
-                        </select>
-                        <div id="turnoDescripcion"></div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6" id="bloqueContainer" style="display: none;">
-                    <div class="mb-3">
-                        <label for="bloque_inicio_id" class="form-label">Bloque de Inicio</label>
-                        <select class="form-select" id="bloque_inicio_id">
-                            <option value="">Desde el inicio del ciclo</option>
-                        </select>
-                        <small class="text-muted">Define desde qué bloque comienza el ciclo para estos trabajadores</small>
-                    </div>
-                </div>
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modalConfirmarEliminar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="fecha_inicio" class="form-label">Fecha de Inicio *</label>
-                        <input type="date" class="form-control" id="fecha_inicio" required>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="fecha_fin" class="form-label">Fecha de Fin</label>
-                        <input type="date" class="form-control" id="fecha_fin">
-                        <small class="text-muted">Dejar vacío para asignación indefinida</small>
-                    </div>
-                </div>
+            <div class="modal-body">
+                <p class="mb-0">¿Está seguro que desea eliminar esta asignación?</p>
+                <p class="mb-0"><strong id="confirmarEliminar_nombreTrabajador"></strong> ya no estará asignado a esta faena.</p>
             </div>
-            
-            <div class="mb-3">
-                <label for="observaciones" class="form-label">Observaciones</label>
-                <textarea class="form-control" id="observaciones" rows="2"
-                          placeholder="Notas adicionales sobre esta asignación..."></textarea>
-            </div>
-            
-            <div class="d-flex justify-content-between align-items-center">
-                <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left me-1"></i>Cancelar
-                </a>
-                <button type="submit" class="btn btn-success" id="btnAsignarMasivo" disabled>
-                    <i class="bi bi-check-circle me-1"></i>Asignar Personal
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarEliminar">
+                    <i class="bi bi-trash me-1"></i>Eliminar
                 </button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
+
+<!-- Modal Editar Asignación Individual -->
+<div class="modal fade" id="modalEditarAsignacionIndividual" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil me-2"></i>Editar Asignación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditarAsignacionInd" onsubmit="guardarEdicionAsignacion(event)">
+                <div class="modal-body">
+                    <!-- Alertas -->
+                    <div id="alertEditAsignacion"></div>
+                    
+                    <input type="hidden" id="editAsig_id">
+                    
+                    <!-- Info trabajador -->
+                    <div class="card bg-light mb-3">
+                        <div class="card-body py-2">
+                            <strong>Trabajador:</strong> <span id="editAsig_nombreTrabajador"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editAsig_turno" class="form-label">Turno *</label>
+                        <select class="form-select" id="editAsig_turno" required onchange="cargarBloquesEdicion()">
+                            <option value="">Seleccione un turno...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="editAsig_bloqueContainer" style="display: none;">
+                        <label for="editAsig_bloque" class="form-label">Bloque de Inicio</label>
+                        <select class="form-select" id="editAsig_bloque">
+                            <option value="">Desde el inicio del ciclo</option>
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAsig_fechaInicio" class="form-label">Fecha Inicio *</label>
+                                <input type="date" class="form-control" id="editAsig_fechaInicio" required
+                                       {% if faena_fecha_inicio %}min="{{ faena_fecha_inicio|date:'Y-m-d' }}"{% endif %}
+                                       {% if faena_fecha_fin %}max="{{ faena_fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAsig_fechaFin" class="form-label">Fecha Fin</label>
+                                <input type="date" class="form-control" id="editAsig_fechaFin"
+                                       {% if faena_fecha_inicio %}min="{{ faena_fecha_inicio|date:'Y-m-d' }}"{% endif %}
+                                       {% if faena_fecha_fin %}max="{{ faena_fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editAsig_obs" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="editAsig_obs" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Validación/Mensajes -->
+<div class="modal fade" id="modalMensaje" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" id="modalMensajeHeader">
+                <h5 class="modal-title" id="modalMensajeTitulo">Mensaje</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalMensajeContenido">
+                <!-- Se llena con JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 

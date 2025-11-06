@@ -1,5 +1,14 @@
 /* Estilos para el calendario de planificación */
 
+/* Estandarizar títulos de cards (igual que RRHH) */
+.card-header h5,
+.card-header h5.mb-0 {
+    font-weight: 400 !important;
+    font-size: 1rem !important;
+    letter-spacing: normal !important;
+    margin: 0 !important;
+}
+
 /* Evitar que el spinner de la página padre oculte el calendario */
 body.loading .main-content .content-loading {
     display: none !important;

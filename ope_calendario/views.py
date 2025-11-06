@@ -1289,15 +1289,47 @@ def asignar_personal_faena(request, faena_id):
             'longitud_ciclo': sum([b.duracion_dias for b in turno.bloques.all()])
         })
     
+    # Obtener asignaciones activas de la faena
+    asignaciones_faena = faena.asignaciones.filter(activo=True).select_related(
+        'personal', 'turno', 'bloque_inicio'
+    ).prefetch_related('turno__bloques')
+    
+    # Preparar datos de asignaciones
+    asignaciones_data = []
+    for asig in asignaciones_faena:
+        asignaciones_data.append({
+            'id': asig.id,
+            'personal': {
+                'id': asig.personal.personal_id,
+                'nombre': f"{asig.personal.nombre} {asig.personal.apepat} {asig.personal.apemat}",
+                'rut': f"{asig.personal.rut}-{asig.personal.dvrut}",
+                'cargo': asig.personal.infolaboral_set.first().cargo_id.cargo if asig.personal.infolaboral_set.exists() else 'Sin cargo'
+            },
+            'turno': {
+                'id': asig.turno.id,
+                'nombre': asig.turno.nombre
+            },
+            'bloque_inicio': {
+                'id': asig.bloque_inicio.id,
+                'orden': asig.bloque_inicio.orden,
+                'duracion_dias': asig.bloque_inicio.duracion_dias,
+                'estado_nombre': asig.bloque_inicio.estado.nombre
+            } if asig.bloque_inicio else None,
+            'fecha_inicio': asig.fecha_inicio.isoformat(),
+            'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None,
+            'observaciones': asig.observaciones or ''
+        })
+    
     # Preparar datos de la faena
     faena_data = {
         'id': faena.id,
         'nombre': faena.nombre,
         'descripcion': faena.descripcion or '',
+        'asignaciones': asignaciones_data
     }
     
     # Contar asignados actuales
-    total_asignados = faena.asignaciones.filter(activo=True).count()
+    total_asignados = len(asignaciones_data)
     
     # Calcular duración si tiene ambas fechas
     duracion_dias = None
@@ -1306,6 +1338,7 @@ def asignar_personal_faena(request, faena_id):
     
     context = {
         'faena_id': faena_id,
+        'faena_codigo': faena.codigo,
         'faena_nombre': faena.nombre,
         'faena_descripcion': faena.descripcion,
         'faena_fecha_inicio': faena.fecha_inicio,
@@ -1317,6 +1350,7 @@ def asignar_personal_faena(request, faena_id):
         'faena_json': json.dumps(faena_data, cls=DjangoJSONEncoder),
         'cargos_unicos': sorted(cargos_set),
         'otras_faenas': otras_faenas,
+        'faena': faena,  # Pasar el objeto completo también
     }
     
     return render(request, 'calendario/asignar_personal_faena.html', context)
@@ -1356,6 +1390,7 @@ def gestionar_faenas(request):
         
         faenas_data.append({
             'id': faena.id,
+            'codigo': faena.codigo,
             'nombre': faena.nombre,
             'ubicacion': faena.ubicacion or '',
             'descripcion': faena.descripcion or '',
@@ -1457,33 +1492,45 @@ def crear_faena(request):
     try:
         data = json.loads(request.body)
         
+        codigo = data.get('codigo', '').upper()
         nombre = data.get('nombre')
         ubicacion = data.get('ubicacion', '')
         descripcion = data.get('descripcion', '')
         fecha_inicio = data.get('fecha_inicio')
         fecha_fin = data.get('fecha_fin')
         
+        if not codigo:
+            return JsonResponse({'error': 'El código de la faena es requerido'}, status=400)
+        
         if not nombre:
             return JsonResponse({'error': 'El nombre de la faena es requerido'}, status=400)
         
-        # Verificar si ya existe una faena con ese nombre
-        if Faena.objects.filter(nombre__iexact=nombre).exists():
-            return JsonResponse({'error': 'Ya existe una faena con ese nombre'}, status=400)
+        if not fecha_inicio:
+            return JsonResponse({'error': 'La fecha de inicio es requerida'}, status=400)
         
-        # Validar fechas
-        if fecha_inicio and fecha_fin:
-            from datetime import datetime
-            fecha_inicio_date = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
-            fecha_fin_date = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
-            if fecha_fin_date < fecha_inicio_date:
-                return JsonResponse({'error': 'La fecha de fin debe ser posterior a la fecha de inicio'}, status=400)
+        if not fecha_fin:
+            return JsonResponse({'error': 'La fecha de fin es requerida'}, status=400)
+        
+        # Verificar si ya existe una faena con ese código
+        if Faena.objects.filter(codigo__iexact=codigo).exists():
+            return JsonResponse({'error': 'Ya existe una faena con ese código'}, status=400)
+        
+        # Convertir y validar fechas
+        from datetime import datetime
+        fecha_inicio_date = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        fecha_fin_date = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+        
+        # Validar que fecha fin sea posterior a fecha inicio
+        if fecha_fin_date < fecha_inicio_date:
+            return JsonResponse({'error': 'La fecha de fin debe ser posterior a la fecha de inicio'}, status=400)
         
         faena = Faena.objects.create(
+            codigo=codigo,
             nombre=nombre,
             ubicacion=ubicacion,
             descripcion=descripcion,
-            fecha_inicio=fecha_inicio if fecha_inicio else None,
-            fecha_fin=fecha_fin if fecha_fin else None,
+            fecha_inicio=fecha_inicio_date,
+            fecha_fin=fecha_fin_date,
             activo=True
         )
         
@@ -1492,6 +1539,7 @@ def crear_faena(request):
             'message': 'Faena creada exitosamente',
             'faena': {
                 'id': faena.id,
+                'codigo': faena.codigo,
                 'nombre': faena.nombre,
                 'ubicacion': faena.ubicacion,
                 'descripcion': faena.descripcion,
@@ -1509,11 +1557,12 @@ def crear_faena(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def actualizar_faena(request):
-    """API para actualizar una faena existente"""
+    """API para actualizar una faena existente y ajustar asignaciones automáticamente"""
     try:
         data = json.loads(request.body)
         
         faena_id = data.get('faena_id')
+        codigo = data.get('codigo', '').upper()
         nombre = data.get('nombre')
         ubicacion = data.get('ubicacion', '')
         descripcion = data.get('descripcion', '')
@@ -1521,37 +1570,141 @@ def actualizar_faena(request):
         fecha_fin = data.get('fecha_fin')
         activo = data.get('activo', True)
         
-        if not faena_id or not nombre:
+        if not faena_id or not codigo or not nombre:
             return JsonResponse({'error': 'Faltan datos requeridos'}, status=400)
+        
+        if not fecha_inicio:
+            return JsonResponse({'error': 'La fecha de inicio es requerida'}, status=400)
+        
+        if not fecha_fin:
+            return JsonResponse({'error': 'La fecha de fin es requerida'}, status=400)
         
         try:
             faena = Faena.objects.get(id=faena_id)
         except Faena.DoesNotExist:
             return JsonResponse({'error': 'Faena no encontrada'}, status=404)
         
-        # Verificar si el nuevo nombre ya está en uso por otra faena
-        if Faena.objects.filter(nombre__iexact=nombre).exclude(id=faena_id).exists():
-            return JsonResponse({'error': 'Ya existe otra faena con ese nombre'}, status=400)
+        # Verificar si el nuevo código ya está en uso por otra faena
+        if Faena.objects.filter(codigo__iexact=codigo).exclude(id=faena_id).exists():
+            return JsonResponse({'error': 'Ya existe otra faena con ese código'}, status=400)
         
-        # Validar fechas
-        if fecha_inicio and fecha_fin:
-            from datetime import datetime
-            fecha_inicio_date = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
-            fecha_fin_date = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
-            if fecha_fin_date < fecha_inicio_date:
-                return JsonResponse({'error': 'La fecha de fin debe ser posterior a la fecha de inicio'}, status=400)
+        # Validar y convertir fechas
+        from datetime import datetime
+        nueva_fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        nueva_fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
         
+        if nueva_fecha_fin < nueva_fecha_inicio:
+            return JsonResponse({'error': 'La fecha de fin debe ser posterior a la fecha de inicio'}, status=400)
+        
+        # Guardar fechas antiguas para comparación
+        fecha_inicio_anterior = faena.fecha_inicio
+        fecha_fin_anterior = faena.fecha_fin
+        
+        # Actualizar la faena
+        faena.codigo = codigo
         faena.nombre = nombre
         faena.ubicacion = ubicacion
         faena.descripcion = descripcion
-        faena.fecha_inicio = fecha_inicio if fecha_inicio else None
-        faena.fecha_fin = fecha_fin if fecha_fin else None
+        faena.fecha_inicio = nueva_fecha_inicio
+        faena.fecha_fin = nueva_fecha_fin
         faena.activo = activo
         faena.save()
         
+        # LÓGICA INTELIGENTE: Actualizar asignaciones que coincidan exactamente con las fechas anteriores
+        asignaciones_actualizadas = 0
+        conflictos = []
+        asignaciones = AsignacionFaena.objects.filter(faena=faena, activo=True)
+        
+        for asignacion in asignaciones:
+            actualizado = False
+            nueva_fecha_inicio_asig = asignacion.fecha_inicio
+            nueva_fecha_fin_asig = asignacion.fecha_fin
+            
+            # Regla 1: Si la fecha de inicio de la asignación coincide exactamente con la fecha de inicio anterior de la faena
+            # Y las fechas cambiaron, actualizar
+            if (fecha_inicio_anterior and asignacion.fecha_inicio == fecha_inicio_anterior 
+                and nueva_fecha_inicio and nueva_fecha_inicio != fecha_inicio_anterior):
+                nueva_fecha_inicio_asig = nueva_fecha_inicio
+                actualizado = True
+            
+            # Regla 2: Si la fecha de fin de la asignación coincide exactamente con la fecha de fin anterior de la faena
+            # Y las fechas cambiaron, actualizar
+            if (fecha_fin_anterior and asignacion.fecha_fin == fecha_fin_anterior 
+                and nueva_fecha_fin and nueva_fecha_fin != fecha_fin_anterior):
+                nueva_fecha_fin_asig = nueva_fecha_fin
+                actualizado = True
+            
+            # Regla 3: Si la fecha de fin anterior era None y ahora hay una, NO actualizar asignaciones indefinidas
+            # (el usuario las dejó indefinidas intencionalmente)
+            
+            if actualizado:
+                # VALIDAR CONFLICTOS: Verificar si las nuevas fechas crean solapamiento con otras asignaciones
+                solapamiento_query = Q(personal=asignacion.personal, activo=True) & ~Q(id=asignacion.id) & ~Q(faena=faena)
+                
+                if nueva_fecha_fin_asig:
+                    solapamiento_query &= (
+                        Q(fecha_inicio__lte=nueva_fecha_fin_asig) & 
+                        (Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=nueva_fecha_inicio_asig))
+                    )
+                else:
+                    solapamiento_query &= (
+                        Q(fecha_inicio__lte=nueva_fecha_inicio_asig) & 
+                        (Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=nueva_fecha_inicio_asig))
+                    )
+                
+                asignaciones_conflictivas = AsignacionFaena.objects.filter(solapamiento_query).select_related('faena')
+                
+                if asignaciones_conflictivas.exists():
+                    # HAY CONFLICTO: Registrar y DESACTIVAR la asignación problemática
+                    conflicto_info = asignaciones_conflictivas.first()
+                    conflictos.append({
+                        'personal': f"{asignacion.personal.nombre} {asignacion.personal.apepat} {asignacion.personal.apemat}",
+                        'faena_conflicto': conflicto_info.faena.nombre,
+                        'codigo_conflicto': conflicto_info.faena.codigo,
+                        'fecha_inicio_conflicto': conflicto_info.fecha_inicio.isoformat(),
+                        'fecha_fin_conflicto': conflicto_info.fecha_fin.isoformat() if conflicto_info.fecha_fin else 'Indefinido'
+                    })
+                    # DESACTIVAR la asignación en lugar de dejarla con fechas inconsistentes
+                    asignacion.activo = False
+                    asignacion.observaciones = f"DESACTIVADA AUTOMÁTICAMENTE: Conflicto al actualizar fechas de faena. {asignacion.observaciones or ''}"
+                    asignacion.save()
+                else:
+                    # Sin conflictos, actualizar
+                    asignacion.fecha_inicio = nueva_fecha_inicio_asig
+                    asignacion.fecha_fin = nueva_fecha_fin_asig
+                    asignacion.save()
+                    asignaciones_actualizadas += 1
+        
+        # Si hay conflictos, devolverlos como advertencia
+        if conflictos:
+            mensaje_conflicto = f'{len(conflictos)} asignación(es) se DESACTIVARON automáticamente por conflictos al cambiar fechas de la faena:\n\n'
+            for conf in conflictos[:5]:  # Limitar a 5 para no saturar
+                mensaje_conflicto += f"• {conf['personal']} tiene conflicto con faena '{conf['codigo_conflicto']}' ({conf['fecha_inicio_conflicto']} → {conf['fecha_fin_conflicto']})\n"
+            if len(conflictos) > 5:
+                mensaje_conflicto += f"\n... y {len(conflictos) - 5} conflicto(s) más."
+            
+            mensaje_conflicto += "\n\nEstas asignaciones fueron desactivadas para evitar solapamientos. Puede reactivarlas manualmente ajustando las fechas."
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Faena actualizada. {asignaciones_actualizadas} asignación(es) ajustadas correctamente.',
+                'warning': mensaje_conflicto,
+                'asignaciones_actualizadas': asignaciones_actualizadas,
+                'asignaciones_desactivadas': len(conflictos),
+                'conflictos': conflictos
+            })
+        
+        # Invalidar caché del calendario
+        invalidar_cache_calendario()
+        
+        mensaje = 'Faena actualizada exitosamente'
+        if asignaciones_actualizadas > 0:
+            mensaje += f'. Se ajustaron automáticamente {asignaciones_actualizadas} asignación(es) que coincidían con las fechas anteriores de la faena.'
+        
         return JsonResponse({
             'success': True,
-            'message': 'Faena actualizada exitosamente'
+            'message': mensaje,
+            'asignaciones_actualizadas': asignaciones_actualizadas
         })
         
     except json.JSONDecodeError:
@@ -1561,9 +1714,46 @@ def actualizar_faena(request):
 
 
 @csrf_exempt
+@require_http_methods(["GET"])
+def listar_faenas_api(request):
+    """API para obtener lista de faenas con sus asignaciones"""
+    try:
+        from django.core.serializers.json import DjangoJSONEncoder
+        
+        faenas = Faena.objects.filter(activo=True).prefetch_related(
+            'asignaciones__personal',
+            'asignaciones__turno'
+        ).order_by('codigo', 'nombre')
+        
+        faenas_data = []
+        for faena in faenas:
+            asignaciones_activas = faena.asignaciones.filter(activo=True)
+            
+            faenas_data.append({
+                'id': faena.id,
+                'codigo': faena.codigo,
+                'nombre': faena.nombre,
+                'ubicacion': faena.ubicacion or '',
+                'descripcion': faena.descripcion or '',
+                'fecha_inicio': faena.fecha_inicio.isoformat() if faena.fecha_inicio else None,
+                'fecha_fin': faena.fecha_fin.isoformat() if faena.fecha_fin else None,
+                'activo': faena.activo,
+                'total_personal': asignaciones_activas.count()
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'faenas': faenas_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
 @require_http_methods(["POST"])
 def eliminar_faena(request):
-    """API para eliminar/desactivar una faena"""
+    """API para eliminar una faena (en cascada con sus asignaciones)"""
     try:
         data = json.loads(request.body)
         faena_id = data.get('faena_id')
@@ -1574,19 +1764,31 @@ def eliminar_faena(request):
         try:
             faena = Faena.objects.get(id=faena_id)
             
-            # Verificar si tiene asignaciones activas
-            if faena.asignaciones.filter(activo=True).exists():
-                return JsonResponse({
-                    'error': 'No se puede eliminar una faena con personal asignado. Primero elimine las asignaciones.'
-                }, status=400)
+            # Contar asignaciones que se eliminarán
+            total_asignaciones = faena.asignaciones.count()
             
+            # Guardar nombre para el mensaje
+            nombre_faena = faena.nombre
+            
+            # Eliminar la faena (CASCADE eliminará automáticamente las asignaciones)
             faena.delete()
+            
+            # Invalidar caché del calendario
+            invalidar_cache_calendario()
+            
+            # Mensaje según si tenía asignaciones o no
+            if total_asignaciones > 0:
+                mensaje = f'Faena "{nombre_faena}" eliminada correctamente junto con {total_asignaciones} asignación(es) de personal.'
+            else:
+                mensaje = f'Faena "{nombre_faena}" eliminada correctamente.'
+            
         except Faena.DoesNotExist:
             return JsonResponse({'error': 'Faena no encontrada'}, status=404)
         
         return JsonResponse({
             'success': True,
-            'message': 'Faena eliminada correctamente'
+            'message': mensaje,
+            'asignaciones_eliminadas': total_asignaciones
         })
         
     except json.JSONDecodeError:
@@ -1655,8 +1857,17 @@ def crear_asignacion_masiva(request):
                         (Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date))
                     )
                 
-                if AsignacionFaena.objects.filter(solapamiento_query).exists():
-                    errores.append(f"{personal_obj.nombre} {personal_obj.apepat}: Ya tiene asignación en esas fechas")
+                asignaciones_conflictivas = AsignacionFaena.objects.filter(solapamiento_query).select_related('faena')
+                
+                if asignaciones_conflictivas.exists():
+                    # Generar mensaje detallado del conflicto
+                    conflicto = asignaciones_conflictivas.first()
+                    fecha_fin_str = conflicto.fecha_fin.strftime('%d/%m/%Y') if conflicto.fecha_fin else 'Indefinido'
+                    errores.append(
+                        f"{personal_obj.nombre} {personal_obj.apepat} {personal_obj.apemat}: "
+                        f"Ya asignado en faena '{conflicto.faena.nombre}' "
+                        f"({conflicto.fecha_inicio.strftime('%d/%m/%Y')} → {fecha_fin_str})"
+                    )
                     continue
                 
                 # Crear asignación
@@ -1688,16 +1899,26 @@ def crear_asignacion_masiva(request):
         if total_exitosos > 0 and total_errores == 0:
             return JsonResponse({
                 'success': True,
-                'message': f'✓ {total_exitosos} trabajador{"es" if total_exitosos > 1 else ""} asignado{"s" if total_exitosos > 1 else ""} correctamente'
+                'message': f'{total_exitosos} trabajador{"es" if total_exitosos > 1 else ""} asignado{"s" if total_exitosos > 1 else ""} correctamente',
+                'total_asignados': total_exitosos,
+                'total_errores': 0
             })
         elif total_exitosos > 0 and total_errores > 0:
             return JsonResponse({
                 'success': True,
-                'message': f'✓ {total_exitosos} asignados. ⚠ {total_errores} con errores: {"; ".join(errores[:3])}'
+                'message': f'{total_exitosos} trabajador{"es" if total_exitosos > 1 else ""} asignado{"s" if total_exitosos > 1 else ""} correctamente',
+                'warning': True,
+                'total_asignados': total_exitosos,
+                'total_errores': total_errores,
+                'errores': errores
             })
         else:
             return JsonResponse({
-                'error': f'No se pudo asignar ningún trabajador. Errores: {"; ".join(errores[:5])}'
+                'success': False,
+                'error': f'No se pudo asignar ningún trabajador',
+                'total_asignados': 0,
+                'total_errores': total_errores,
+                'errores': errores
             }, status=400)
         
     except json.JSONDecodeError:

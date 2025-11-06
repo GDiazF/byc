@@ -2,19 +2,332 @@
    ESTILOS PARA GESTIÓN DE FAENAS
    ============================================================================ */
 
-/* Cards de faenas */
+/* Tarjetas de estadísticas compactas */
+.stat-card-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    color: white;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    min-height: 70px;
+    height: 70px;
+}
+
+.stat-card-compact:hover {
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card-compact i {
+    font-size: 1.75rem;
+    opacity: 0.9;
+}
+
+.stat-info {
+    flex-grow: 1;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.stat-text {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    opacity: 0.9;
+    margin-top: 0.25rem;
+}
+
+/* Cards de faenas - Compactas */
 .faena-card {
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .faena-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: #adb5bd;
 }
 
-/* Tablas */
+.faena-card .card-header {
+    border-radius: 6px 6px 0 0 !important;
+    padding: 0.5rem 0.75rem;
+}
+
+.faena-card .card-header h6 {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.faena-card .card-body {
+    padding: 0.75rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.faena-card .small {
+    font-size: 0.75rem;
+}
+
+/* Tablas - Tamaño equilibrado */
 .table th {
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+.table td {
+    font-size: 0.85rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+.table td strong {
+    font-size: 0.9rem !important;
+}
+
+.table .badge {
+    font-size: 0.75rem !important;
+}
+
+/* Mejoras generales */
+.card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* Estandarizar títulos de cards (igual que RRHH) */
+.card-header h5 {
+    font-weight: 400 !important;
+    font-size: 1rem !important;
+    letter-spacing: normal !important;
+}
+
+/* Sistema de pestañas */
+.nav-tabs .nav-link {
+    color: #495057;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: #dee2e6 #dee2e6 #dee2e6;
+}
+
+.nav-tabs .nav-link.active {
+    font-weight: 600;
+}
+
+.nav-tabs .badge {
+    font-size: 0.75rem;
+    padding: 0.25em 0.5em;
+}
+
+/* Vista de tabla */
+.table-responsive {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #212529;
+    color: white;
+    border: none;
+    padding: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 0.75rem;
+}
+
+/* Faenas finalizadas */
+.faena-finalizada {
+    opacity: 0.85;
+}
+
+.faena-finalizada .card-header {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+}
+
+/* Botón de vista activo */
+.btn-group .btn-secondary.active {
+    background-color: #212529;
+    color: white;
+    border-color: #212529;
+}
+
+.btn-group .btn-secondary:not(.active) {
+    opacity: 0.7;
+}
+
+.btn-group .btn-secondary:not(.active):hover {
+    opacity: 1;
+}
+
+/* Mejoras en badges */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Animaciones suaves */
+.tab-pane {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mejora para alertas en tabs */
+.tab-pane .alert {
+    border-radius: 8px;
+}
+
+/* Indicadores de inconsistencias en asignaciones */
+.table-warning {
+    background-color: #fff3cd !important;
+}
+
+.table-warning:hover {
+    background-color: #ffe69c !important;
+}
+
+.table-info {
+    background-color: #cfe2ff !important;
+}
+
+.table-info:hover {
+    background-color: #b6d4fe !important;
+}
+
+
+/* Badges más pequeños */
+.badge {
+    font-size: 0.7rem;
+    padding: 0.25em 0.5em;
+}
+
+/* Mejorar botones en cards */
+.faena-card .btn-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Modal de detalle de faena - fuente más pequeña */
+#detalleFaenaModal .modal-body {
+    font-size: 0.875rem;
+}
+
+#detalleFaenaModal .table {
+    font-size: 0.8rem;
+}
+
+#detalleFaenaModal .table th {
+    font-size: 0.75rem;
+    padding: 0.5rem;
+}
+
+#detalleFaenaModal .table td {
+    padding: 0.5rem;
+}
+
+#detalleFaenaModal .card-body {
+    font-size: 0.8rem;
+}
+
+#detalleFaenaModal h6 {
+    font-size: 0.95rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stat-card-compact {
+        padding: 0.6rem 0.8rem;
+    }
+    
+    .stat-card-compact i {
+        font-size: 1.5rem;
+    }
+    
+    .stat-number {
+        font-size: 1.25rem;
+    }
+    
+    .stat-text {
+        font-size: 0.7rem;
+    }
+    
+    /* En móvil, faenas ocupan más espacio */
+    .col-sm-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    /* Ocultar columna de descripción en móvil */
+    .table td:nth-child(2),
+    .table th:nth-child(2) {
+        display: none;
+    }
+    
+    /* Hacer botones más pequeños en móvil */
+    .btn-group-sm > .btn {
+        padding: 0.15rem 0.3rem;
+        font-size: 0.7rem;
+    }
+}
+
+@media (min-width: 992px) {
+    /* En desktop, faenas más compactas */
+    .col-lg-3 {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+}
+
+@media (min-width: 1400px) {
+    /* En pantallas grandes, aún más compactas */
+    .vista-cards .col-lg-3 {
+        flex: 0 0 20%;
+        max-width: 20%;
+    }
 }
 
