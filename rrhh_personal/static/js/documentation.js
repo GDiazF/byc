@@ -1,5 +1,6 @@
 // ============================================================================
 // GESTIÓN DE DOCUMENTACIÓN DE PERSONAL
+// Version: v26.0 - Estado Vigente/Vencida en todas las tablas
 // ============================================================================
 
 // ============================================================================
@@ -226,7 +227,7 @@ function initializeModalHandlers() {
     if (addInternalLicenseModal) {
         addInternalLicenseModal.addEventListener('shown.bs.modal', initializeInternalLicenseForm);
         addInternalLicenseModal.addEventListener('hidden.bs.modal', () => {
-            resetModalForm('internalLicenseForm', 'license_id', 'Agregar Licencia Interna');
+            resetModalForm('internalLicenseForm', 'internal_license_id', 'Agregar Licencia Interna');
         });
     }
 
@@ -319,8 +320,10 @@ function initializeExamForm() {
 function initializeCertificationForm() {
     const form = document.getElementById('certificationForm');
     if (form && !form.dataset.initialized) {
+        console.log('[CERT] Inicializando formulario de certificaciones');
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+            console.log('[CERT] Submit interceptado');
             submitForm(this, 'certification');
         });
         form.dataset.initialized = 'true';
@@ -332,28 +335,86 @@ function initializeCertificationForm() {
 // ============================================================================
 
 async function submitForm(form, type) {
+    console.log('[SUBMIT] Tipo:', type, 'Form ID:', form.id);
+    
+    // Validar fechas ANTES de enviar
+    const emisionField = form.querySelector('[name="fechaEmision"]');
+    const vencimientoField = form.querySelector('[name="fechaVencimiento"]');
+    
+    console.log('[VALIDACION] Campos encontrados:', {
+        emisionField: emisionField ? emisionField.value : 'NO ENCONTRADO',
+        vencimientoField: vencimientoField ? vencimientoField.value : 'NO ENCONTRADO'
+    });
+    
+    if (emisionField && vencimientoField && emisionField.value && vencimientoField.value) {
+        const emisionDate = new Date(emisionField.value);
+        const vencimientoDate = new Date(vencimientoField.value);
+        
+        console.log('[VALIDACION] Comparando fechas:', {
+            emision: emisionDate,
+            vencimiento: vencimientoDate,
+            vencimientoMenor: vencimientoDate < emisionDate
+        });
+        
+        if (vencimientoDate < emisionDate) {
+            console.log('[VALIDACION] ERROR: Fecha de vencimiento < emisión');
+            vencimientoField.classList.add('is-invalid');
+            let errorDiv = vencimientoField.nextElementSibling;
+            if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
+                errorDiv = document.createElement('div');
+                errorDiv.className = 'invalid-feedback';
+                vencimientoField.parentNode.appendChild(errorDiv);
+            }
+            errorDiv.textContent = 'La fecha de vencimiento no puede ser anterior a la fecha de emisión';
+            errorDiv.style.display = 'block';
+            
+            showNotification('Error de Validación', 'La fecha de vencimiento no puede ser anterior a la fecha de emisión', 'error');
+            return; // No enviar el formulario
+        } else {
+            console.log('[VALIDACION] Fechas válidas');
+            vencimientoField.classList.remove('is-invalid');
+            const errorDiv = vencimientoField.nextElementSibling;
+            if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
+                errorDiv.style.display = 'none';
+            }
+        }
+    }
+    
     const formData = new FormData(form);
     let url;
     
     // Determinar URL según tipo y si es edición o creación
     const licenseId = form.querySelector('[name="license_id"]');
+    const internalLicenseId = form.querySelector('[name="internal_license_id"]');
     const certId = form.querySelector('[name="cert_id"]');
     const examId = form.querySelector('[name="exam_id"]');
     
-    if (type === 'internal-license' && licenseId && licenseId.value) {
-        url = `/users/personal/${licenseId.value}/edit_internal_license/`;
+    console.log('[SUBMIT] IDs encontrados:', {
+        licenseId: licenseId ? licenseId.value : 'NO',
+        internalLicenseId: internalLicenseId ? internalLicenseId.value : 'NO',
+        certId: certId ? certId.value : 'NO',
+        examId: examId ? examId.value : 'NO'
+    });
+    
+    if (type === 'internal-license' && internalLicenseId && internalLicenseId.value) {
+        url = `/users/personal/${internalLicenseId.value}/edit_internal_license/`;
+        console.log('[SUBMIT] Modo: EDITAR licencia interna, ID:', internalLicenseId.value);
     } else if (type === 'license' && licenseId && licenseId.value) {
         url = `/users/personal/${licenseId.value}/edit_license/`;
+        console.log('[SUBMIT] Modo: EDITAR licencia, ID:', licenseId.value);
     } else if (type === 'certification' && certId && certId.value) {
         url = `/users/personal/${certId.value}/edit_certification/`;
+        console.log('[SUBMIT] Modo: EDITAR certificación, ID:', certId.value);
     } else if (type === 'exam' && examId && examId.value) {
         url = `/users/personal/${examId.value}/edit_exam/`;
+        console.log('[SUBMIT] Modo: EDITAR examen, ID:', examId.value);
     } else {
         // URLs para crear nuevos registros - estas deben venir del template
         url = form.dataset.submitUrl;
+        console.log('[SUBMIT] Modo: CREAR nuevo registro');
     }
     
-    console.log('Submit form:', { type, url }); // DEBUG
+    console.log('[SUBMIT] URL final:', url);
     
     try {
         const response = await fetch(url, {
@@ -547,6 +608,7 @@ async function editLicense(licenseId) {
 
 async function editInternalLicense(licenseId) {
     try {
+        console.log('[EDIT INTERNAL] Cargando licencia interna ID:', licenseId);
         const response = await fetch(`/users/personal/${licenseId}/edit_internal_license/`, {
             method: 'GET',
             headers: {
@@ -556,6 +618,7 @@ async function editInternalLicense(licenseId) {
         });
         
         const data = await response.json();
+        console.log('[EDIT INTERNAL] Datos recibidos:', data);
         
         if (data.status === 'success') {
             const form = document.getElementById('internalLicenseForm');
@@ -569,18 +632,21 @@ async function editInternalLicense(licenseId) {
             form.querySelector('[name="fechaEmision"]').value = data.license_data.fecha_emision;
             form.querySelector('[name="fechaVencimiento"]').value = data.license_data.fecha_vencimiento;
             form.querySelector('[name="observacion"]').value = data.license_data.observacion || '';
-            form.querySelector('[name="activo"]').checked = data.license_data.activo;
             
             handleExistingDocument(form, data.license_data);
-            addHiddenId(form, 'license_id', licenseId);
+            addHiddenId(form, 'internal_license_id', licenseId);
+            
+            console.log('[EDIT INTERNAL] Verificando campo hidden después de agregar:');
+            const hiddenCheck = form.querySelector('[name="internal_license_id"]');
+            console.log('[EDIT INTERNAL] Hidden field:', hiddenCheck ? hiddenCheck.value : 'NO ENCONTRADO');
             
             new bootstrap.Modal(document.getElementById('addInternalLicenseModal')).show();
         } else {
-            alert('Error: ' + data.message);
+            alert('Error al cargar los datos: ' + data.message);
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al cargar los datos');
+        alert('Error al cargar los datos: ' + error.message);
     }
 }
 
@@ -705,6 +771,9 @@ function addHiddenId(form, name, value) {
         hiddenId.type = 'hidden';
         hiddenId.name = name;
         form.appendChild(hiddenId);
+        console.log('[HIDDEN] Creado nuevo campo hidden:', name, '=', value);
+    } else {
+        console.log('[HIDDEN] Campo hidden ya existía:', name, '- actualizando de', hiddenId.value, 'a', value);
     }
     hiddenId.value = value;
 }
@@ -929,6 +998,23 @@ function updateRowById(type, id, data) {
     });
 }
 
+// Función helper para calcular si un documento está vigente o vencido
+function calcularEstadoVigencia(fechaVencimiento) {
+    if (!fechaVencimiento) return '<span class="badge bg-secondary">Sin fecha</span>';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const vencimiento = new Date(fechaVencimiento);
+    vencimiento.setHours(0, 0, 0, 0);
+    
+    if (vencimiento >= today) {
+        return '<span class="badge bg-success">Vigente</span>';
+    } else {
+        return '<span class="badge bg-danger">Vencida</span>';
+    }
+}
+
 function createRowElement(type, data) {
     const row = document.createElement('tr');
     
@@ -949,7 +1035,7 @@ function createRowElement(type, data) {
                 <td class="text-center">${data.fecha_emision || ''}</td>
                 <td class="text-center">${data.fecha_vencimiento || ''}</td>
                 <td class="text-center">
-                    ${data.documento ? '<span class="badge bg-success">✓ Con documento</span>' : '<span class="badge bg-secondary">Sin documento</span>'}
+                    ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
                 <td>
                     ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
@@ -973,7 +1059,7 @@ function createRowElement(type, data) {
                 <td class="text-center">${data.fecha_emision || ''}</td>
                 <td class="text-center">${data.fecha_vencimiento || ''}</td>
                 <td class="text-center">
-                    ${data.activo ? '<span class="badge bg-success">Activa</span>' : '<span class="badge bg-secondary">Inactiva</span>'}
+                    ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
                 <td>
                     ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
@@ -1007,6 +1093,9 @@ function createRowElement(type, data) {
                 <td>${data.proveedor || ''}</td>
                 <td class="text-center">${data.fecha_emision || ''}</td>
                 <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td class="text-center">
+                    ${calcularEstadoVigencia(data.fecha_vencimiento)}
+                </td>
                 <td>
                     ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
                     <button class="btn btn-sm btn-warning me-1 edit-exam" data-id="${data.id}">
@@ -1027,6 +1116,9 @@ function createRowElement(type, data) {
                 <td>${data.proveedor || ''}</td>
                 <td class="text-center">${data.fecha_emision || ''}</td>
                 <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td class="text-center">
+                    ${calcularEstadoVigencia(data.fecha_vencimiento)}
+                </td>
                 <td>
                     ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
                     <button class="btn btn-sm btn-warning me-1 edit-certification" data-id="${data.id}">
@@ -1381,6 +1473,7 @@ function validateDatesInForm(formId, emisionFieldId, vencimientoFieldId) {
                 }
                 errorDiv.textContent = 'La fecha de vencimiento no puede ser anterior a la fecha de emisión';
                 errorDiv.style.display = 'block';
+                return false; // Retornar false si hay error
             } else {
                 vencimientoField.setCustomValidity('');
                 vencimientoField.classList.remove('is-invalid');
@@ -1390,14 +1483,17 @@ function validateDatesInForm(formId, emisionFieldId, vencimientoFieldId) {
                 if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
                     errorDiv.style.display = 'none';
                 }
+                return true; // Retornar true si no hay error
             }
         }
+        return true; // Si no hay ambas fechas, dejar pasar
     };
     
-    // Agregar event listeners
+    // Agregar event listeners para validación en tiempo real
     emisionField.addEventListener('change', validateDates);
     vencimientoField.addEventListener('change', validateDates);
     vencimientoField.addEventListener('input', validateDates);
+    emisionField.addEventListener('input', validateDates);
 }
 
 // Exponer funciones globalmente para uso desde HTML onclick

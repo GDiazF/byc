@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/crear-asignacion-masiva/', views.crear_asignacion_masiva, name='crear_asignacion_masiva'),
     path('api/actualizar-asignacion/', views.actualizar_asignacion, name='actualizar_asignacion'),
     path('api/eliminar-asignacion/', views.eliminar_asignacion, name='eliminar_asignacion'),
+    path('api/personal/<int:personal_id>/info/', views.obtener_info_personal, name='obtener_info_personal'),
     
     # Gestión de faenas
     path('faenas/', views.gestionar_faenas, name='gestionar_faenas'),

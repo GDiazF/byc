@@ -49,9 +49,6 @@ def calendario_mensual(request):
     cargo_filter = request.GET.get('cargo', '')
     search_query = request.GET.get('search', '')
     
-    # Debug: imprimir filtros recibidos
-    print(f"[FILTROS] Faena: '{faena_filter}', Cargo: '{cargo_filter}', Búsqueda: '{search_query}'")
-    
     # Obtener datos del calendario con paginación
     calendario_data = obtener_calendario_mensual(
         year, month, faena_filter, cargo_filter, search_query, page, page_size
@@ -117,6 +114,38 @@ def calendario_mensual(request):
                 'fecha_inicio': em.fecha_inicio.isoformat(),
                 'fecha_fin': em.fecha_fin.isoformat(),
             } for em in calendario_data['estados_manuales']
+        ],
+        'estados_calculados': {
+            str(personal_id): {
+                str(dia): [
+                    {
+                        'id': estado.id,
+                        'nombre': estado.nombre,
+                        'nombre_corto': estado.nombre_corto or estado.nombre[:3],
+                        'color': estado.color,
+                        'background_color': estado.background_color,
+                        'prioridad': estado.prioridad,
+                        'detalles': estado.detalles if hasattr(estado, 'detalles') else None
+                    } for estado in estados_list
+                ] for dia, estados_list in dias_estados.items()
+            } for personal_id, dias_estados in calendario_data.get('estados_calculados', {}).items()
+        } if 'estados_calculados' in calendario_data else {},
+        'licencias_medicas': [
+            {
+                'personal_id': lic.personal_id_id,
+                'tipo': lic.tipoLicenciaMedica_id.tipoLicenciaMedica if lic.tipoLicenciaMedica_id else 'Sin especificar',
+                'fecha_inicio': lic.fechaEmision.isoformat(),
+                'fecha_fin': lic.fecha_fin_licencia.isoformat(),
+                'dias': lic.dias_licencia
+            } for lic in calendario_data.get('licencias_medicas', [])
+        ],
+        'ausentismos': [
+            {
+                'personal_id': aus.personal_id_id,
+                'tipo': aus.tipoausen_id.tipo if aus.tipoausen_id else 'Sin especificar',
+                'fecha_inicio': aus.fechaini.isoformat(),
+                'fecha_fin': aus.fechafin.isoformat()
+            } for aus in calendario_data.get('ausentismos', [])
         ],
         'dias_mes': calendario_data['dias_mes']
     }
@@ -188,6 +217,8 @@ def calendario_mensual(request):
             'id': faena.id,
             'nombre': faena.nombre,
             'ubicacion': faena.ubicacion,
+            'fecha_inicio': faena.fecha_inicio.isoformat() if faena.fecha_inicio else None,
+            'fecha_fin': faena.fecha_fin.isoformat() if faena.fecha_fin else None,
         }
         for faena in faenas
     ]
@@ -276,8 +307,6 @@ def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', se
     
     # Contar total antes de paginar
     total_personal = personal_query.count()
-    print(f"[QUERY] Filtros aplicados: {filtros_aplicados if filtros_aplicados else 'Ninguno'}")
-    print(f"[QUERY] Total personal encontrado: {total_personal}")
     
     # Aplicar paginación
     offset = (page - 1) * page_size
@@ -308,19 +337,178 @@ def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', se
         fecha_fin__gte=fecha_inicio
     ).select_related('personal', 'estado')
     
-    # Obtener ausentismos del personal en este rango de fechas
-    from rrhh_personal.models import Ausentismo
+    # OPTIMIZACIÓN: Obtener TODOS los datos necesarios de UNA VEZ
+    from rrhh_personal.models import Ausentismo, LicenciaMedicaPorPersonal
+    from .models import EstadoFuente
+    
+    # 1. Obtener todas las fuentes de estado configuradas
+    fuentes_estado = EstadoFuente.objects.select_related('estado', 'content_type').all()
+    
+    # 2. Obtener TODOS los registros de TODAS las fuentes para este mes
+    registros_por_fuente = {}
+    
+    for fuente in fuentes_estado:
+        if not fuente.estado.activo:
+            continue
+            
+        modelo = fuente.content_type.model_class()
+        if not modelo:
+            continue
+        
+        # Construir consulta para obtener todos los registros del mes
+        try:
+            registros = modelo.objects.filter(**{
+                f"{fuente.campo_personal}_id__in": personal_ids,
+                f"{fuente.campo_fecha_inicio}__lte": fecha_fin,
+                f"{fuente.campo_fecha_fin}__gte": fecha_inicio,
+            })
+            
+            # Aplicar filtros extra si existen
+            if fuente.filtro_extra:
+                for campo, valor in fuente.filtro_extra.items():
+                    registros = registros.filter(**{campo: valor})
+            
+            registros_por_fuente[fuente.estado.id] = {
+                'estado': fuente.estado,
+                'registros': list(registros),
+                'campo_personal': fuente.campo_personal,
+                'campo_inicio': fuente.campo_fecha_inicio,
+                'campo_fin': fuente.campo_fecha_fin
+            }
+        except Exception as e:
+            # Silenciosamente continuar si hay error en una fuente
+            continue
+    
+    # 3. Procesar estados en MEMORIA (sin consultas adicionales)
+    estados_por_personal = {}
+    
+    for persona in personal_list:
+        estados_por_personal[persona.personal_id] = {}
+        
+        for dia in range(1, ultimo_dia + 1):
+            fecha_actual = date(year, month, dia)
+            estados_del_dia = []
+            
+            # Revisar estados manuales
+            for em in estados_manuales:
+                if (em.personal.personal_id == persona.personal_id and 
+                    em.fecha_inicio <= fecha_actual <= em.fecha_fin):
+                    estados_del_dia.append({
+                        'estado': em.estado,
+                        'tipo': 'manual',
+                        'prioridad': em.estado.prioridad,
+                        'es_bloqueante': em.estado.es_bloqueante
+                    })
+            
+            # Revisar estados de fuentes externas
+            for estado_id, datos in registros_por_fuente.items():
+                for registro in datos['registros']:
+                    # Verificar que sea de esta persona
+                    personal_registro = getattr(registro, datos['campo_personal'])
+                    if personal_registro.personal_id != persona.personal_id:
+                        continue
+                    
+                    # Verificar que la fecha esté en el rango
+                    fecha_inicio_reg = getattr(registro, datos['campo_inicio'])
+                    fecha_fin_reg = getattr(registro, datos['campo_fin'])
+                    
+                    if fecha_inicio_reg <= fecha_actual <= fecha_fin_reg:
+                        # Crear una copia del estado con detalles del registro
+                        estado_con_detalles = type('Estado', (), {})()
+                        for attr in ['id', 'nombre', 'nombre_corto', 'color', 'background_color', 'prioridad', 'es_bloqueante']:
+                            setattr(estado_con_detalles, attr, getattr(datos['estado'], attr))
+                        
+                        # Agregar detalles específicos del registro fuente
+                        detalles = {}
+                        modelo_name = registro.__class__.__name__.lower()
+                        
+                        if modelo_name == 'ausentismo':
+                            detalles = {
+                                'tipo': 'Permiso',
+                                'tipo_detalle': registro.tipoausen_id.tipo if hasattr(registro, 'tipoausen_id') else 'Sin especificar',
+                                'fecha_inicio': fecha_inicio_reg.strftime('%d/%m/%Y'),
+                                'fecha_fin': fecha_fin_reg.strftime('%d/%m/%Y'),
+                                'observacion': getattr(registro, 'observacion', '')
+                            }
+                        elif modelo_name == 'licenciamedicaporpersonal':
+                            detalles = {
+                                'tipo': 'Licencia Médica',
+                                'tipo_detalle': registro.tipoLicenciaMedica_id.tipoLicenciaMedica if hasattr(registro, 'tipoLicenciaMedica_id') else 'Sin especificar',
+                                'fecha_inicio': fecha_inicio_reg.strftime('%d/%m/%Y'),
+                                'fecha_fin': fecha_fin_reg.strftime('%d/%m/%Y'),
+                                'dias': getattr(registro, 'dias_licencia', 0),
+                                'observacion': getattr(registro, 'observacion', '')
+                            }
+                        else:
+                            detalles = {
+                                'tipo': datos['estado'].nombre,
+                                'fecha_inicio': fecha_inicio_reg.strftime('%d/%m/%Y'),
+                                'fecha_fin': fecha_fin_reg.strftime('%d/%m/%Y')
+                            }
+                        
+                        estado_con_detalles.detalles = detalles
+                        
+                        estados_del_dia.append({
+                            'estado': estado_con_detalles,
+                            'tipo': 'fuente',
+                            'prioridad': datos['estado'].prioridad,
+                            'es_bloqueante': datos['estado'].es_bloqueante
+                        })
+                        break  # Solo necesitamos saber que existe
+            
+            # Revisar estado de turno
+            for asig in asignaciones:
+                if (asig.personal.personal_id == persona.personal_id and
+                    asig.fecha_inicio <= fecha_actual and
+                    (not asig.fecha_fin or asig.fecha_fin >= fecha_actual) and
+                    asig.activo):
+                    estado_turno = asig.obtener_estado_en_fecha(fecha_actual)
+                    if estado_turno:
+                        estados_del_dia.append({
+                            'estado': estado_turno,
+                            'tipo': 'turno',
+                            'prioridad': estado_turno.prioridad,
+                            'es_bloqueante': estado_turno.es_bloqueante
+                        })
+                    break
+            
+            # Resolver prioridades
+            if estados_del_dia:
+                # Si hay bloqueantes, tomar el de mayor prioridad
+                bloqueantes = [e for e in estados_del_dia if e['es_bloqueante']]
+                if bloqueantes:
+                    bloqueantes.sort(key=lambda x: x['prioridad'], reverse=True)
+                    estados_por_personal[persona.personal_id][dia] = [bloqueantes[0]['estado']]
+                else:
+                    # Ordenar por prioridad y tomar el mayor
+                    estados_del_dia.sort(key=lambda x: x['prioridad'], reverse=True)
+                    max_prioridad = estados_del_dia[0]['prioridad']
+                    estados_misma_prioridad = [e['estado'] for e in estados_del_dia if e['prioridad'] == max_prioridad]
+                    estados_por_personal[persona.personal_id][dia] = estados_misma_prioridad
+            else:
+                estados_por_personal[persona.personal_id][dia] = []
+    
+    # Obtener licencias médicas y ausentismos activos para validaciones
+    licencias_medicas = LicenciaMedicaPorPersonal.objects.filter(
+        personal_id_id__in=personal_ids,
+        fechaEmision__lte=fecha_fin,
+        fecha_fin_licencia__gte=fecha_inicio
+    ).select_related('personal_id', 'tipoLicenciaMedica_id')
+    
     ausentismos = Ausentismo.objects.filter(
-        personal_id__in=personal_ids,
+        personal_id_id__in=personal_ids,
         fechaini__lte=fecha_fin,
         fechafin__gte=fecha_inicio
-    ).select_related('personal_id', 'tipoausen_id') if personal_ids else []
+    ).select_related('personal_id', 'tipoausen_id')
     
-    # Estructura simplificada - NO calculamos estados aquí
+    # Estructura con estados calculados
     calendario = {
         'personal': personal_list,
         'asignaciones': list(asignaciones),
         'estados_manuales': list(estados_manuales),
+        'estados_calculados': estados_por_personal,  # NUEVO: Estados ya calculados
+        'licencias_medicas': list(licencias_medicas),
+        'ausentismos': list(ausentismos),
         'dias_mes': ultimo_dia,
         'total_personal': total_personal,
         'page': page,
@@ -392,10 +580,9 @@ def obtener_estado_final_personal_fecha_optimizado(personal, fecha, estados_fuen
                         estado_con_detalle['detalles'] = {
                             'motivo': getattr(registro, 'motivo', 'Licencia médica'),
                             'tipo': 'Licencia Médica',
-                            'fecha_emision': str(getattr(registro, 'fechaEmision', '')) if getattr(registro, 'fechaEmision', None) else None
-                        }
-                except Exception as e:
-                    print(f"Error agregando detalles: {e}")
+                        'fecha_emision': str(getattr(registro, 'fechaEmision', '')) if getattr(registro, 'fechaEmision', None) else None
+                    }
+                except Exception:
                     estado_con_detalle['detalles'] = {'tipo': 'Error al cargar detalles'}
                 
                 estados_fuente.append(estado_con_detalle)
@@ -689,8 +876,109 @@ def invalidar_cache_calendario():
     current_version = cache.get('calendario_version', 0)
     new_version = current_version + 1
     cache.set('calendario_version', new_version, None)  # Sin expiración
-    print(f"[CACHE] Versión del calendario incrementada: {current_version} -> {new_version}")
 
+
+@require_http_methods(["GET"])
+def obtener_info_personal(request, personal_id):
+    """API para obtener información completa del personal incluyendo documentación"""
+    try:
+        from rrhh_personal.models import (
+            Personal, LicenciaPorPersonal, LicenciaInternaPorPersonal,
+            Certificacion, Examen
+        )
+        from datetime import date
+        
+        personal = Personal.objects.get(personal_id=personal_id, activo=True)
+        
+        # Información básica
+        info = {
+            'personal_id': personal.personal_id,
+            'nombre': personal.nombre,
+            'apepat': personal.apepat,
+            'apemat': personal.apemat,
+            'rut': personal.rut,
+            'dvrut': personal.dvrut,
+            'correo': personal.correo or 'No disponible',
+            'direccion': personal.direccion or 'No disponible',
+            'cargo': personal.infolaboral_set.first().cargo_id.cargo if personal.infolaboral_set.exists() else 'Sin cargo',
+        }
+        
+        # Licencias de conducir
+        licencias = LicenciaPorPersonal.objects.filter(
+            personal_id=personal
+        ).prefetch_related('tipos')
+        
+        info['licencias_conducir'] = [{
+            'id': lic.licenciaPorPersonal_id,
+            'clases': ', '.join([t.tipoLicencia for t in lic.tipos.all()]),
+            'fecha_emision': lic.fechaEmision.strftime('%d/%m/%Y'),
+            'fecha_vencimiento': lic.fechaVencimiento.strftime('%d/%m/%Y'),
+            'vigente': lic.fechaVencimiento >= date.today(),
+            'tiene_documento': bool(lic.rutaDoc)
+        } for lic in licencias]
+        
+        # Licencias internas
+        licencias_internas = LicenciaInternaPorPersonal.objects.filter(
+            personal_id=personal
+        ).select_related('tipoLicenciaInterna_id')
+        
+        info['licencias_internas'] = [{
+            'id': lic.licenciaInterna_id,
+            'tipo': lic.tipoLicenciaInterna_id.tipoLicenciaInterna,
+            'numero': lic.numero_licencia or '-',
+            'empresa': lic.empresa_emisora or '-',
+            'fecha_emision': lic.fechaEmision.strftime('%d/%m/%Y'),
+            'fecha_vencimiento': lic.fechaVencimiento.strftime('%d/%m/%Y'),
+            'vigente': lic.esta_activa,
+            'tiene_documento': bool(lic.rutaDoc)
+        } for lic in licencias_internas]
+        
+        # Certificaciones
+        certificaciones = Certificacion.objects.filter(
+            personal_id=personal
+        ).select_related('tipoCertificacion_id', 'proveedor_id')
+        
+        info['certificaciones'] = [{
+            'id': cert.certif_id,
+            'tipo': cert.tipoCertificacion_id.tipoCertificacion if cert.tipoCertificacion_id else 'N/A',
+            'proveedor': str(cert.proveedor_id) if cert.proveedor_id else 'N/A',
+            'fecha_emision': cert.fechaEmision.strftime('%d/%m/%Y'),
+            'fecha_vencimiento': cert.fechaVencimiento.strftime('%d/%m/%Y'),
+            'vigente': cert.fechaVencimiento >= date.today(),
+            'tiene_documento': bool(cert.rutaDoc)
+        } for cert in certificaciones]
+        
+        # Exámenes
+        examenes = Examen.objects.filter(
+            personal_id=personal
+        ).select_related('tipoEx_id', 'resultadoEx_id', 'proveedor_id')
+        
+        info['examenes'] = [{
+            'id': exam.examen_id,
+            'tipo': exam.tipoEx_id.tipoExamen if exam.tipoEx_id else 'N/A',
+            'resultado': exam.resultadoEx_id.resultado if exam.resultadoEx_id else '-',
+            'proveedor': str(exam.proveedor_id) if exam.proveedor_id else 'N/A',
+            'fecha_emision': exam.fechaEmision.strftime('%d/%m/%Y'),
+            'fecha_vencimiento': exam.fechaVencimiento.strftime('%d/%m/%Y'),
+            'vigente': exam.fechaVencimiento >= date.today(),
+            'tiene_documento': bool(exam.rutaDoc)
+        } for exam in examenes]
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': info
+        })
+        
+    except Personal.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Personal no encontrado'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
 
 def limpiar_cache_calendario(request):
     """Vista administrativa para limpiar el caché del calendario manualmente"""

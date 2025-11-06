@@ -320,20 +320,33 @@ function generateCalendar() {
                     <small style="color: #fd7e14; font-style: italic; font-size: 0.65rem;">${cargo}</small>
                 </div>
                 <div class="personal-actions">
-                    <button class="btn-action btn-assign" onclick="event.stopPropagation(); openFaenaModal(${persona.personal_id})" title="Nueva asignación">
-                        <i class="bi bi-plus-circle"></i>
-                    </button>
-                    <button class="btn-action btn-edit" onclick="event.stopPropagation(); showAsignaciones(${persona.personal_id})" title="Editar asignaciones">
+                    <button class="btn-action btn-edit" onclick="event.stopPropagation(); showAsignaciones(${persona.personal_id})" title="Gestionar asignaciones">
                         <i class="bi bi-pencil"></i>
                     </button>
                 </div>
             </div>
         </td>`;
         
-        // Celdas de días - CÁLCULO EN CLIENTE
+        // Celdas de días - USAR ESTADOS CALCULADOS DEL BACKEND
         for (let day = 1; day <= daysInMonth; day++) {
-            const fecha = new Date(year, month, day);
-            const estado = calcularEstadoPersonalFecha(persona.personal_id, fecha);
+            let estado = null;
+            
+            // Primero intentar obtener del backend (estados_calculados)
+            if (calendarioData.estados_calculados && 
+                calendarioData.estados_calculados[persona.personal_id] && 
+                calendarioData.estados_calculados[persona.personal_id][day]) {
+                
+                const estadosDelDia = calendarioData.estados_calculados[persona.personal_id][day];
+                if (estadosDelDia && estadosDelDia.length > 0) {
+                    estado = estadosDelDia[0]; // Tomar el primer estado (mayor prioridad)
+                }
+            }
+            
+            // Si no hay estados calculados, usar el cálculo del cliente (fallback)
+            if (!estado) {
+                const fecha = new Date(year, month, day);
+                estado = calcularEstadoPersonalFecha(persona.personal_id, fecha);
+            }
             
             if (estado) {
                 bodyHTML += `<td onclick="showEstadoInfo(${persona.personal_id}, ${day})" 
@@ -371,8 +384,29 @@ function showEstadoInfo(personalId, day) {
     const cargo = persona.cargo || 'Sin cargo';
     const fecha = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     
-    // Calcular estado en tiempo real
-    const estado = calcularEstadoPersonalFecha(personalId, fecha);
+    // USAR ESTADOS CALCULADOS DEL BACKEND (incluye fuentes de estado)
+    let estado = null;
+    
+    // Primero intentar obtener del backend (estados_calculados)
+    if (calendarioData.estados_calculados && 
+        calendarioData.estados_calculados[personalId] && 
+        calendarioData.estados_calculados[personalId][day]) {
+        
+        const estadosDelDia = calendarioData.estados_calculados[personalId][day];
+        if (estadosDelDia && estadosDelDia.length > 0) {
+            estado = estadosDelDia[0]; // Tomar el primer estado (mayor prioridad)
+        }
+    }
+    
+    // Si no hay estados calculados, usar el cálculo del cliente (fallback)
+    if (!estado) {
+        estado = calcularEstadoPersonalFecha(personalId, fecha);
+    }
+    
+    // Si aún no hay estado, usar el predeterminado
+    if (!estado && calendarioData.estado_predeterminado) {
+        estado = calendarioData.estado_predeterminado;
+    }
     
     // Buscar asignación activa
     const asignaciones = asignacionesPorPersonal[personalId] || [];
@@ -396,57 +430,301 @@ function showEstadoInfo(personalId, day) {
     document.getElementById('modalEstado').textContent = estado ? estado.nombre : 'Sin estado';
     document.getElementById('modalFaena').textContent = faenaActual;
     document.getElementById('modalCargo').textContent = cargo;
+    
+    // Mostrar detalles adicionales si existen
+    const detallesDiv = document.getElementById('modalDetallesEstado');
+    if (estado && estado.detalles) {
+        let detallesHTML = '<div class="alert alert-info mt-2 mb-2" style="font-size: 0.9rem;">';
+        
+        if (estado.detalles.tipo_detalle) {
+            detallesHTML += `<div class="mb-1"><strong>Tipo:</strong> ${estado.detalles.tipo_detalle}</div>`;
+        }
+        
+        if (estado.detalles.fecha_inicio && estado.detalles.fecha_fin) {
+            detallesHTML += `<div class="mb-1"><strong>Período:</strong> ${estado.detalles.fecha_inicio} - ${estado.detalles.fecha_fin}</div>`;
+        }
+        
+        if (estado.detalles.dias) {
+            detallesHTML += `<div class="mb-1"><strong>Días:</strong> ${estado.detalles.dias}</div>`;
+        }
+        
+        if (estado.detalles.observacion) {
+            detallesHTML += `<div class="mb-0"><strong>Observación:</strong> ${estado.detalles.observacion}</div>`;
+        }
+        
+        detallesHTML += '</div>';
+        detallesDiv.innerHTML = detallesHTML;
+    } else {
+        detallesDiv.innerHTML = '';
+    }
      
     // Mostrar modal
     const modal = new bootstrap.Modal(document.getElementById('estadoModal'));
     modal.show();
 }
 
-// Mostrar información personal
-function showPersonalInfo(personalId) {
-    const persona = calendarioData.personal.find(p => p.personal_id === personalId);
-    if (!persona) return;
-    
-    const nombreCompleto = `${persona.nombre} ${persona.apepat} ${persona.apemat}`.trim();
-    const cargo = persona.cargo || 'Sin cargo';
-    const rut = `${persona.rut}-${persona.dvrut}`;
-    
-    let html = `
-        <div class="mb-2"><strong>Nombre:</strong> ${nombreCompleto}</div>
-        <div class="mb-2"><strong>RUT:</strong> ${rut}</div>
-        <div class="mb-2"><strong>Cargo:</strong> ${cargo}</div>
-        <div class="mb-2"><strong>Correo:</strong> ${persona.correo || 'No disponible'}</div>
-        <div class="mb-2"><strong>Dirección:</strong> ${persona.direccion || 'No disponible'}</div>
-    `;
-    
-    if (persona.asignaciones_faena && persona.asignaciones_faena.length > 0) {
-        html += '<hr><h6>Asignaciones Activas:</h6>';
-        persona.asignaciones_faena.forEach(asig => {
-            const fechaInicio = formatearFechaChilena(asig.fecha_inicio);
-            const fechaFin = asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Sin fecha fin';
-            html += `
-                <div class="alert alert-info mb-2 p-2">
-                    <strong>${asig.faena.nombre}</strong><br>
-                    <small>
-                        Desde: ${fechaInicio}<br>
-                        Hasta: ${fechaFin}
-                    </small>
-                </div>
-            `;
-        });
-    }
-    
-    html += `
-        <hr>
-        <button class="btn btn-success btn-sm w-100" onclick="openFaenaModal(${personalId})">
-            <i class="bi bi-plus-circle me-1"></i>Gestionar Asignaciones
-        </button>
-    `;
-    
-    document.getElementById('personalModalBody').innerHTML = html;
-    
+// Mostrar información personal con documentación
+async function showPersonalInfo(personalId) {
+    // Mostrar modal con spinner
     const modal = new bootstrap.Modal(document.getElementById('personalModal'));
     modal.show();
+    
+    try {
+        // Llamar a la API para obtener información completa
+        const response = await fetch(`/calendario/api/personal/${personalId}/info/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.status !== 'success') {
+            document.getElementById('personalModalBody').innerHTML = `
+                <div class="alert alert-danger">Error al cargar información: ${result.message}</div>
+            `;
+            return;
+        }
+        
+        const data = result.data;
+        const nombreCompleto = `${data.nombre} ${data.apepat} ${data.apemat}`.trim();
+        const rut = `${data.rut}-${data.dvrut}`;
+        
+        // Construir HTML del modal
+        let html = `
+            <div class="mb-4">
+                <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-person-badge me-2"></i>Información Personal</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold mb-1">RUT</label>
+                        <input type="text" class="form-control form-control-sm" value="${rut}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold mb-1">Cargo</label>
+                        <input type="text" class="form-control form-control-sm" value="${data.cargo}" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold mb-1">Nombre Completo</label>
+                        <input type="text" class="form-control form-control-sm" value="${nombreCompleto}" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold mb-1">Correo Electrónico</label>
+                        <input type="text" class="form-control form-control-sm" value="${data.correo}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold mb-1">Dirección</label>
+                        <input type="text" class="form-control form-control-sm" value="${data.direccion}" readonly>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Tabs para documentación
+        html += `
+            <ul class="nav nav-tabs mb-3" id="docModalTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="lic-conducir-tab" data-bs-toggle="tab" data-bs-target="#lic-conducir" type="button">
+                        <i class="bi bi-card-text me-1"></i>Licencias Conducir
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="lic-internas-tab" data-bs-toggle="tab" data-bs-target="#lic-internas" type="button">
+                        <i class="bi bi-award me-1"></i>Licencias Internas
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="certificaciones-tab" data-bs-toggle="tab" data-bs-target="#certificaciones" type="button">
+                        <i class="bi bi-patch-check me-1"></i>Certificaciones
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="examenes-tab" data-bs-toggle="tab" data-bs-target="#examenes" type="button">
+                        <i class="bi bi-clipboard2-pulse me-1"></i>Exámenes
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content">
+                <!-- Licencias de Conducir -->
+                <div class="tab-pane fade show active" id="lic-conducir">
+                    ${generarTablaLicenciasConducir(data.licencias_conducir)}
+                </div>
+                
+                <!-- Licencias Internas -->
+                <div class="tab-pane fade" id="lic-internas">
+                    ${generarTablaLicenciasInternas(data.licencias_internas)}
+                </div>
+                
+                <!-- Certificaciones -->
+                <div class="tab-pane fade" id="certificaciones">
+                    ${generarTablaCertificaciones(data.certificaciones)}
+                </div>
+                
+                <!-- Exámenes -->
+                <div class="tab-pane fade" id="examenes">
+                    ${generarTablaExamenes(data.examenes)}
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('personalModalBody').innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('personalModalBody').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Error al cargar la información del personal
+            </div>
+        `;
+    }
+}
+
+// Generar tabla de licencias de conducir
+function generarTablaLicenciasConducir(licencias) {
+    if (licencias.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin licencias de conducir registradas</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Clases</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${licencias.map(lic => `
+                    <tr>
+                        <td>${lic.clases || 'N/A'}</td>
+                        <td class="text-center">${lic.fecha_vencimiento}</td>
+                        <td class="text-center">
+                            ${lic.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// Generar tabla de licencias internas
+function generarTablaLicenciasInternas(licencias) {
+    if (licencias.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin licencias internas registradas</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Tipo</th>
+                    <th>N° Licencia</th>
+                    <th>Empresa</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${licencias.map(lic => `
+                    <tr>
+                        <td>${lic.tipo}</td>
+                        <td class="text-center">${lic.numero}</td>
+                        <td>${lic.empresa}</td>
+                        <td class="text-center">${lic.fecha_vencimiento}</td>
+                        <td class="text-center">
+                            ${lic.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// Generar tabla de certificaciones
+function generarTablaCertificaciones(certificaciones) {
+    if (certificaciones.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin certificaciones registradas</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Tipo</th>
+                    <th>Proveedor</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${certificaciones.map(cert => `
+                    <tr>
+                        <td>${cert.tipo}</td>
+                        <td>${cert.proveedor}</td>
+                        <td class="text-center">${cert.fecha_vencimiento}</td>
+                        <td class="text-center">
+                            ${cert.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// Generar tabla de exámenes
+function generarTablaExamenes(examenes) {
+    if (examenes.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin exámenes registrados</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Tipo</th>
+                    <th class="text-center">Resultado</th>
+                    <th>Proveedor</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${examenes.map(exam => {
+                    let resultadoBadge = 'bg-secondary';
+                    if (exam.resultado.toLowerCase().includes('aprobado')) {
+                        resultadoBadge = 'bg-success';
+                    } else if (exam.resultado.toLowerCase().includes('reprobado')) {
+                        resultadoBadge = 'bg-danger';
+                    }
+                    
+                    return `
+                        <tr>
+                            <td>${exam.tipo}</td>
+                            <td class="text-center">
+                                ${exam.resultado !== '-' ? `<span class="badge ${resultadoBadge} text-white">${exam.resultado}</span>` : '-'}
+                            </td>
+                            <td>${exam.proveedor}</td>
+                            <td class="text-center">${exam.fecha_vencimiento}</td>
+                            <td class="text-center">
+                                ${exam.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
 // Configurar filtros
@@ -615,9 +893,18 @@ function populateFaenaOptions() {
     const faenas = calendarioData.faenas || [];
     
     faenas.forEach(faena => {
-                     const option = document.createElement('option');
-                     option.value = faena.id;
-                     option.textContent = faena.nombre;
+        const option = document.createElement('option');
+        option.value = faena.id;
+        option.textContent = faena.nombre;
+        
+        // Agregar información de fechas como data attributes
+        if (faena.fecha_inicio) {
+            option.dataset.fechaInicio = faena.fecha_inicio;
+        }
+        if (faena.fecha_fin) {
+            option.dataset.fechaFin = faena.fecha_fin;
+        }
+        
         select.appendChild(option);
     });
 }
@@ -650,12 +937,27 @@ function updateBloqueOptions(turnoId) {
     const turno = turnos.find(t => t.id === turnoId);
      
      if (turno && turno.bloques) {
-         turno.bloques.forEach(bloque => {
+         let primerBloqueId = null;
+         
+         turno.bloques.forEach((bloque, index) => {
              const option = document.createElement('option');
              option.value = bloque.id;
+             option.dataset.orden = bloque.orden; // Agregar data-orden para búsqueda
             option.textContent = `Bloque ${bloque.orden} - ${bloque.estado.nombre} (${bloque.duracion_dias} días)`;
             select.appendChild(option);
+            
+            // Guardar el ID del primer bloque
+            if (index === 0) {
+                primerBloqueId = bloque.id;
+            }
         });
+        
+        // Seleccionar automáticamente el bloque 1 si no hay uno ya seleccionado
+        // y NO estamos en modo edición
+        const asignacionId = document.getElementById('asignacionId').value;
+        if (!asignacionId && primerBloqueId) {
+            select.value = primerBloqueId;
+        }
     }
 }
 
@@ -754,8 +1056,14 @@ function editarAsignacion(personalId, asignacionId) {
     const persona = calendarioData.personal.find(p => p.personal_id === personalId);
     if (!persona) return;
     
-    const asignacion = persona.asignaciones_faena.find(a => a.id === asignacionId);
-    if (!asignacion) return;
+    // Buscar la asignación en asignacionesPorPersonal (donde están cargadas)
+    const asignaciones = asignacionesPorPersonal[personalId] || [];
+    const asignacion = asignaciones.find(a => a.id === parseInt(asignacionId));
+    
+    if (!asignacion) {
+        showAlert('Error', 'No se pudo cargar la asignación', 'error');
+        return;
+    }
     
     const nombreCompleto = `${persona.nombre} ${persona.apepat} ${persona.apemat}`.trim();
     
@@ -768,21 +1076,38 @@ function editarAsignacion(personalId, asignacionId) {
     document.getElementById('faenaPersonalNombre').textContent = nombreCompleto;
     document.getElementById('faenaSelect').value = asignacion.faena.id;
     document.getElementById('turnoSelect').value = asignacion.turno_id;
-    document.getElementById('fechaInicio').value = asignacion.fecha_inicio || '';
-    document.getElementById('fechaFin').value = asignacion.fecha_fin || '';
+    
+    // Convertir fechas ISO a formato de input date (YYYY-MM-DD)
+    const fechaInicio = asignacion.fecha_inicio.split('T')[0];
+    const fechaFin = asignacion.fecha_fin ? asignacion.fecha_fin.split('T')[0] : '';
+    
+    document.getElementById('fechaInicio').value = fechaInicio;
+    document.getElementById('fechaFin').value = fechaFin;
     document.getElementById('observaciones').value = asignacion.observaciones || '';
     document.getElementById('activo').checked = asignacion.activo;
     
-    // Actualizar bloques del turno
+    // Precargar fechas de la faena y actualizar bloques
+    precargarFechasFaena(asignacion.faena.id);
     updateBloqueOptions(asignacion.turno_id);
-    if (asignacion.bloque_inicio_id) {
-        document.getElementById('bloqueInicioSelect').value = asignacion.bloque_inicio_id;
+    
+    // Seleccionar el bloque de inicio si existe
+    if (asignacion.bloque_inicio_orden) {
+        setTimeout(() => {
+            const bloqueSelect = document.getElementById('bloqueInicioSelect');
+            const bloqueOption = Array.from(bloqueSelect.options).find(opt => 
+                opt.dataset && opt.dataset.orden === String(asignacion.bloque_inicio_orden)
+            );
+            
+            if (bloqueOption) {
+                bloqueSelect.value = bloqueOption.value;
+            }
+        }, 100);
     }
     
     // Mostrar botón eliminar
     document.getElementById('btnEliminar').style.display = 'inline-block';
     
-    // Cerrar modal de personal
+    // Cerrar modal de personal si está abierto
     const personalModalEl = document.getElementById('personalModal');
     const personalModal = bootstrap.Modal.getInstance(personalModalEl);
     if (personalModal) {
@@ -840,32 +1165,492 @@ function openFaenaModal(personalId) {
 function setupModalEvents() {
     document.getElementById('btnGuardar').addEventListener('click', guardarAsignacion);
     document.getElementById('btnEliminar').addEventListener('click', eliminarAsignacion);
+    
+    // Evento para precargar fechas cuando se seleccione una faena
+    const faenaSelect = document.getElementById('faenaSelect');
+    if (faenaSelect) {
+        faenaSelect.addEventListener('change', function() {
+            precargarFechasFaena(this.value);
+        });
+    }
+    
+    // Validaciones de fechas
+    const fechaInicioInput = document.getElementById('fechaInicio');
+    const fechaFinInput = document.getElementById('fechaFin');
+    
+    if (fechaInicioInput) {
+        fechaInicioInput.addEventListener('change', function() {
+            validarFechasAsignacion();
+        });
+    }
+    
+    if (fechaFinInput) {
+        fechaFinInput.addEventListener('change', function() {
+            validarFechasAsignacion();
+        });
+    }
+}
+
+// Precargar fechas de la faena seleccionada
+function precargarFechasFaena(faenaId) {
+    if (!faenaId) {
+        // Si no hay faena seleccionada, limpiar fechas
+        document.getElementById('fechaInicio').value = '';
+        document.getElementById('fechaFin').value = '';
+        document.getElementById('fechaInicio').removeAttribute('min');
+        document.getElementById('fechaInicio').removeAttribute('max');
+        document.getElementById('fechaFin').removeAttribute('min');
+        document.getElementById('fechaFin').removeAttribute('max');
+        return;
+    }
+    
+    const faena = calendarioData.faenas.find(f => f.id === parseInt(faenaId));
+    if (!faena) return;
+    
+    // Solo precargar si NO estamos editando una asignación existente
+    const asignacionId = document.getElementById('asignacionId').value;
+    const shouldPrecarga = !asignacionId; // Solo precargar en modo "nueva asignación"
+    
+    // Configurar min/max siempre (para validación)
+    if (faena.fecha_inicio) {
+        document.getElementById('fechaInicio').setAttribute('min', faena.fecha_inicio);
+        if (shouldPrecarga) {
+            document.getElementById('fechaInicio').value = faena.fecha_inicio;
+        }
+    }
+    
+    if (faena.fecha_fin) {
+        document.getElementById('fechaInicio').setAttribute('max', faena.fecha_fin);
+        document.getElementById('fechaFin').setAttribute('min', faena.fecha_inicio || '');
+        document.getElementById('fechaFin').setAttribute('max', faena.fecha_fin);
+        if (shouldPrecarga) {
+            document.getElementById('fechaFin').value = faena.fecha_fin;
+        }
+    }
+    
+    // Validar después de precargar
+    validarFechasAsignacion();
+}
+
+// Validar si el personal tiene licencia médica activa en el período
+function validarLicenciaMedicaActiva() {
+    const personalId = parseInt(document.getElementById('personalId').value);
+    const fechaInicio = document.getElementById('fechaInicio').value;
+    const fechaFin = document.getElementById('fechaFin').value;
+    
+    if (!personalId || !fechaInicio || !fechaFin) {
+        return { existe: false };
+    }
+    
+    const licenciasMedicas = calendarioData.licencias_medicas || [];
+    
+    const nuevaInicio = new Date(fechaInicio);
+    const nuevaFin = new Date(fechaFin);
+    
+    // Buscar licencias que se solapen con el período
+    for (const licencia of licenciasMedicas) {
+        if (licencia.personal_id !== personalId) continue;
+        
+        const licInicio = new Date(licencia.fecha_inicio);
+        const licFin = new Date(licencia.fecha_fin);
+        
+        // Verificar solapamiento
+        if (nuevaInicio <= licFin && licInicio <= nuevaFin) {
+            return {
+                existe: true,
+                tipo: licencia.tipo,
+                fecha_inicio: licencia.fecha_inicio,
+                fecha_fin: licencia.fecha_fin,
+                dias: licencia.dias
+            };
+        }
+    }
+    
+    return { existe: false };
+}
+
+// Validar si el personal tiene ausentismo activo en el período
+function validarAusentismoActivo() {
+    const personalId = parseInt(document.getElementById('personalId').value);
+    const fechaInicio = document.getElementById('fechaInicio').value;
+    const fechaFin = document.getElementById('fechaFin').value;
+    
+    if (!personalId || !fechaInicio || !fechaFin) {
+        return { existe: false };
+    }
+    
+    const ausentismos = calendarioData.ausentismos || [];
+    
+    const nuevaInicio = new Date(fechaInicio);
+    const nuevaFin = new Date(fechaFin);
+    
+    // Buscar ausentismos que se solapen con el período
+    for (const ausentismo of ausentismos) {
+        if (ausentismo.personal_id !== personalId) continue;
+        
+        const ausInicio = new Date(ausentismo.fecha_inicio);
+        const ausFin = new Date(ausentismo.fecha_fin);
+        
+        // Verificar solapamiento
+        if (nuevaInicio <= ausFin && ausInicio <= nuevaFin) {
+            return {
+                existe: true,
+                tipo: ausentismo.tipo,
+                fecha_inicio: ausentismo.fecha_inicio,
+                fecha_fin: ausentismo.fecha_fin
+            };
+        }
+    }
+    
+    return { existe: false };
+}
+
+// Validar solapamiento de fechas con otras asignaciones (de DIFERENTES faenas)
+function validarSolapamientoFechas() {
+    const personalId = parseInt(document.getElementById('personalId').value);
+    const fechaInicio = document.getElementById('fechaInicio').value;
+    const fechaFin = document.getElementById('fechaFin').value;
+    const faenaIdNueva = parseInt(document.getElementById('faenaSelect').value);
+    
+    if (!personalId || !fechaInicio || !fechaFin || !faenaIdNueva) {
+        return { existe: false };
+    }
+    
+    const asignacionesPersona = asignacionesPorPersonal[personalId] || [];
+    
+    // Convertir fechas a Date para comparación
+    const nuevaInicio = new Date(fechaInicio);
+    const nuevaFin = new Date(fechaFin);
+    
+    // Buscar solapamientos (SOLO en OTRAS faenas diferentes)
+    for (const asig of asignacionesPersona) {
+        if (!asig.activo) continue;
+        
+        // IMPORTANTE: Ignorar asignaciones a la misma faena
+        if (asig.faena.id === faenaIdNueva) continue;
+        
+        const asigInicio = new Date(asig.fecha_inicio);
+        const asigFin = asig.fecha_fin ? new Date(asig.fecha_fin) : null;
+        
+        // Lógica de solapamiento:
+        // Dos rangos se solapan si: inicio1 <= fin2 AND inicio2 <= fin1
+        let seSolapan = false;
+        
+        if (asigFin) {
+            // Asignación existente tiene fecha fin
+            seSolapan = nuevaInicio <= asigFin && asigInicio <= nuevaFin;
+        } else {
+            // Asignación existente sin fin (indefinida) - solo revisar si la nueva empieza antes de que termine la existente
+            seSolapan = asigInicio <= nuevaFin;
+        }
+        
+        if (seSolapan) {
+            const turno = calendarioData.turnos.find(t => t.id === asig.turno_id);
+            return {
+                existe: true,
+                faena: asig.faena.nombre,
+                turno: turno ? turno.nombre : 'Sin turno',
+                fecha_inicio: asig.fecha_inicio.split('T')[0],
+                fecha_fin: asig.fecha_fin ? asig.fecha_fin.split('T')[0] : 'Indefinida'
+            };
+        }
+    }
+    
+    return { existe: false };
+}
+
+// Validar fechas de asignación
+function validarFechasAsignacion() {
+    const faenaId = document.getElementById('faenaSelect').value;
+    if (!faenaId) return true;
+    
+    const faena = calendarioData.faenas.find(f => f.id === parseInt(faenaId));
+    if (!faena) return true;
+    
+    const fechaInicioInput = document.getElementById('fechaInicio');
+    const fechaFinInput = document.getElementById('fechaFin');
+    const fechaInicio = fechaInicioInput.value;
+    const fechaFin = fechaFinInput.value;
+    
+    let isValid = true;
+    
+    // Limpiar mensajes de error previos
+    fechaInicioInput.setCustomValidity('');
+    fechaFinInput.setCustomValidity('');
+    fechaInicioInput.classList.remove('is-invalid');
+    fechaFinInput.classList.remove('is-invalid');
+    
+    // Validar fecha de inicio
+    if (fechaInicio && faena.fecha_inicio) {
+        if (fechaInicio < faena.fecha_inicio) {
+            fechaInicioInput.setCustomValidity('La fecha de inicio no puede ser anterior al inicio de la faena');
+            fechaInicioInput.classList.add('is-invalid');
+            isValid = false;
+        }
+    }
+    
+    if (fechaInicio && faena.fecha_fin) {
+        if (fechaInicio > faena.fecha_fin) {
+            fechaInicioInput.setCustomValidity('La fecha de inicio no puede ser posterior al fin de la faena');
+            fechaInicioInput.classList.add('is-invalid');
+            isValid = false;
+        }
+    }
+    
+    // Validar fecha de fin
+    if (fechaFin && faena.fecha_inicio) {
+        if (fechaFin < faena.fecha_inicio) {
+            fechaFinInput.setCustomValidity('La fecha de fin no puede ser anterior al inicio de la faena');
+            fechaFinInput.classList.add('is-invalid');
+            isValid = false;
+        }
+    }
+    
+    if (fechaFin && faena.fecha_fin) {
+        if (fechaFin > faena.fecha_fin) {
+            fechaFinInput.setCustomValidity('La fecha de fin no puede ser posterior al fin de la faena');
+            fechaFinInput.classList.add('is-invalid');
+            isValid = false;
+        }
+    }
+    
+    // Validar que fecha fin no sea menor que fecha inicio
+    if (fechaInicio && fechaFin && fechaFin < fechaInicio) {
+        fechaFinInput.setCustomValidity('La fecha de fin no puede ser anterior a la fecha de inicio');
+        fechaFinInput.classList.add('is-invalid');
+        isValid = false;
+    }
+    
+    return isValid;
 }
 
 // Guardar asignación
 async function guardarAsignacion() {
     const form = document.getElementById('faenaForm');
+    const btnGuardar = document.getElementById('btnGuardar');
+    
+    // Prevenir doble submit
+    if (btnGuardar.disabled) return;
+    
+    // Validar fechas antes de enviar
+    if (!validarFechasAsignacion()) {
+        showAlert('Error de Validación', 'Por favor, corrija las fechas de la asignación. Las fechas deben estar dentro del período de la faena.', 'error');
+        return;
+    }
+    
+    // Validar que el formulario sea válido
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    // Validar que el turno tenga bloques configurados
+    const turnoId = parseInt(document.getElementById('turnoSelect').value);
+    const turno = calendarioData.turnos.find(t => t.id === turnoId);
+    
+    if (!turno) {
+        showAlert('Error', 'Debe seleccionar un turno válido', 'error');
+        return;
+    }
+    
+    if (!turno.bloques || turno.bloques.length === 0) {
+        const mensaje = `
+            <div class="mb-3">
+                <i class="bi bi-exclamation-circle-fill text-danger" style="font-size: 2rem;"></i>
+                <h6 class="mt-2 mb-1">❌ Turno Sin Bloques Configurados</h6>
+                <p class="text-muted mb-0">El turno "${turno.nombre}" no tiene bloques configurados.</p>
+            </div>
+            <div class="alert alert-warning mb-0">
+                <small>
+                    <strong><i class="bi bi-info-circle me-1"></i>¿Qué hacer?</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Contacte al administrador para que configure los bloques del turno "${turno.nombre}"</li>
+                        <li>Los bloques definen la secuencia de trabajo (ej: Día → Descanso → Noche → Descanso)</li>
+                        <li>O seleccione un turno diferente que sí tenga bloques configurados</li>
+                    </ul>
+                </small>
+            </div>
+        `;
+        showAlert('Turno Incompleto', mensaje, 'error');
+        return;
+    }
+    
+    // Validar licencias médicas activas
+    const licenciaActiva = validarLicenciaMedicaActiva();
+    if (licenciaActiva.existe) {
+        const mensaje = `
+            <div class="mb-3">
+                <i class="bi bi-heartbreak-fill text-danger" style="font-size: 2rem;"></i>
+                <h6 class="mt-2 mb-1">🏥 Advertencia: Personal con Licencia Médica</h6>
+                <p class="text-muted mb-0">Este personal tiene una licencia médica activa en el período seleccionado.</p>
+            </div>
+            <div class="alert alert-danger mb-3">
+                <div class="mb-2"><strong>Licencia Médica Activa:</strong></div>
+                <div><strong>Tipo:</strong> ${licenciaActiva.tipo}</div>
+                <div><strong>Período:</strong> ${licenciaActiva.fecha_inicio} al ${licenciaActiva.fecha_fin}</div>
+                <div><strong>Días:</strong> ${licenciaActiva.dias}</div>
+            </div>
+            <div class="alert alert-warning mb-0">
+                <small>
+                    <strong><i class="bi bi-exclamation-triangle me-1"></i>¿Continuar de todos modos?</strong>
+                    <p class="mb-0 mt-1">Se recomienda NO asignar personal con licencia médica. Verifique que la licencia haya finalizado o ajuste las fechas de la asignación.</p>
+                </small>
+            </div>
+        `;
+        showAlert('Personal con Licencia Médica Activa', mensaje, 'error');
+        return;
+    }
+    
+    // Validar ausentismos activos
+    const ausentismoActivo = validarAusentismoActivo();
+    if (ausentismoActivo.existe) {
+        const mensaje = `
+            <div class="mb-3">
+                <i class="bi bi-calendar-x-fill text-warning" style="font-size: 2rem;"></i>
+                <h6 class="mt-2 mb-1">📅 Advertencia: Personal con Permiso</h6>
+                <p class="text-muted mb-0">Este personal tiene un permiso/ausentismo en el período seleccionado.</p>
+            </div>
+            <div class="alert alert-warning mb-3">
+                <div class="mb-2"><strong>Permiso Activo:</strong></div>
+                <div><strong>Tipo:</strong> ${ausentismoActivo.tipo}</div>
+                <div><strong>Período:</strong> ${ausentismoActivo.fecha_inicio} al ${ausentismoActivo.fecha_fin}</div>
+            </div>
+            <div class="alert alert-info mb-0">
+                <small>
+                    <strong><i class="bi bi-info-circle me-1"></i>Recomendación:</strong>
+                    <p class="mb-0 mt-1">Verifique que el permiso no coincida con días laborales importantes, o ajuste las fechas de la asignación.</p>
+                </small>
+            </div>
+        `;
+        showAlert('Personal con Permiso Activo', mensaje, 'error');
+        return;
+    }
+    
+    // Validar solapamiento de fechas (solo al crear nueva asignación)
+    const asignacionId = form.querySelector('[name="asignacion_id"]').value;
+    if (!asignacionId) {
+        const solapamiento = validarSolapamientoFechas();
+        if (solapamiento.existe) {
+            const fechaInicioNueva = document.getElementById('fechaInicio').value;
+            const fechaFinNueva = document.getElementById('fechaFin').value;
+            const faenaIdNueva = parseInt(document.getElementById('faenaSelect').value);
+            const faenaNueva = calendarioData.faenas.find(f => f.id === faenaIdNueva);
+            
+            const mensaje = `
+                <div class="mb-3">
+                    <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2 mb-1">⚠️ No se puede asignar: Conflicto de Fechas</h6>
+                    <p class="text-muted mb-0">Esta persona ya tiene una asignación en ese período de tiempo.</p>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="card border-danger">
+                            <div class="card-header bg-danger text-white py-1 px-2">
+                                <small><strong>❌ Asignación que Intentas Crear</strong></small>
+                            </div>
+                            <div class="card-body p-2">
+                                <small>
+                                    <div><strong>Faena:</strong> ${faenaNueva ? faenaNueva.nombre : 'N/A'}</div>
+                                    <div><strong>Período:</strong></div>
+                                    <div class="ms-2">${fechaInicioNueva} al ${fechaFinNueva}</div>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning py-1 px-2">
+                                <small><strong>⚠️ Asignación Existente (Conflicto)</strong></small>
+                            </div>
+                            <div class="card-body p-2">
+                                <small>
+                                    <div><strong>Faena:</strong> ${solapamiento.faena}</div>
+                                    <div><strong>Turno:</strong> ${solapamiento.turno}</div>
+                                    <div><strong>Período:</strong></div>
+                                    <div class="ms-2">${solapamiento.fecha_inicio} al ${solapamiento.fecha_fin}</div>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mb-0">
+                    <small>
+                        <strong><i class="bi bi-lightbulb me-1"></i>¿Cómo solucionar este conflicto?</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Modifica las fechas para que NO se solapen con la asignación existente</li>
+                            <li>O edita/elimina la asignación existente primero</li>
+                        </ul>
+                    </small>
+                </div>
+            `;
+            showAlert('Conflicto de Períodos', mensaje, 'error');
+            return;
+        }
+    }
+    
+    // Deshabilitar botón mientras se procesa
+    btnGuardar.disabled = true;
+    btnGuardar.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Guardando...';
+    
+    try {
+    
     const formData = new FormData(form);
+    const asignacionId = formData.get('asignacion_id');
+    
+    // Si NO es edición, validar que no exista ya una asignación a la misma faena
+    if (!asignacionId) {
+        const personalId = parseInt(formData.get('personal_id'));
+        const faenaId = parseInt(formData.get('faena_id'));
+        
+        const asignacionesPersona = asignacionesPorPersonal[personalId] || [];
+        const asignacionExistente = asignacionesPersona.find(asig => 
+            asig.faena.id === faenaId && asig.activo
+        );
+        
+        if (asignacionExistente) {
+            const faena = calendarioData.faenas.find(f => f.id === faenaId);
+            const turno = calendarioData.turnos.find(t => t.id === asignacionExistente.turno_id);
+            
+            const fechaInicio = asignacionExistente.fecha_inicio.split('T')[0];
+            const fechaFin = asignacionExistente.fecha_fin ? asignacionExistente.fecha_fin.split('T')[0] : 'Indefinida';
+            
+            const mensaje = `
+                <div class="mb-3">
+                    <strong>Este personal ya tiene una asignación activa a la faena "${faena.nombre}"</strong>
+                </div>
+                <div class="alert alert-warning mb-0">
+                    <div class="mb-2"><strong>Detalles de la asignación existente:</strong></div>
+                    <div><strong>Turno:</strong> ${turno ? turno.nombre : 'Sin turno'}</div>
+                    <div><strong>Período:</strong> ${fechaInicio} al ${fechaFin}</div>
+                </div>
+                <div class="mt-3 text-muted">
+                    <small><i class="bi bi-info-circle me-1"></i>Si desea modificar esta asignación, cierre este modal y edite la asignación existente.</small>
+                </div>
+            `;
+            
+            showAlert('No se Puede Crear Asignación Duplicada', mensaje, 'error');
+            return;
+        }
+    }
     
     const data = {
         personal_id: formData.get('personal_id'),
         faena_id: formData.get('faena_id'),
         turno_id: formData.get('turno_id'),
         fecha_inicio: formData.get('fecha_inicio'),
-        fecha_fin: formData.get('fecha_fin') || null,
-        bloque_inicio_id: formData.get('bloque_inicio_id') || null,
+        fecha_fin: formData.get('fecha_fin'), // Ahora es obligatoria
+        bloque_inicio_id: formData.get('bloque_inicio_id'), // Si está vacío, el backend sabrá manejarlo
         observaciones: formData.get('observaciones') || '',
         activo: document.getElementById('activo').checked
     };
-    
-    const asignacionId = formData.get('asignacion_id');
     const url = asignacionId ? '/calendario/api/actualizar-asignacion/' : '/calendario/api/crear-asignacion/';
     
     if (asignacionId) {
         data.asignacion_id = asignacionId;
     }
     
-    try {
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -880,12 +1665,16 @@ async function guardarAsignacion() {
         if (response.ok) {
             showAlert(result.message, 'success');
             setTimeout(() => location.reload(), 1500);
-                 } else {
+        } else {
             showAlert('Error: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('Error:', error);
         showAlert('Error al guardar la asignación', 'error');
+    } finally {
+        // Rehabilitar botón siempre (en caso de error)
+        btnGuardar.disabled = false;
+        btnGuardar.innerHTML = '<i class="bi bi-save me-1"></i>Guardar';
     }
 }
 

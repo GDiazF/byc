@@ -12,7 +12,7 @@ window.DELETE_EXAM_URL = '{% url "delete_exam" 0 %}';
 window.DELETE_CERTIFICATION_URL = '{% url "delete_certification" personal.personal_id 0 %}';
 window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" personal.personal_id %}';
 </script>
-<script src="{% static 'js/documentation.js' %}?v=23.1"></script>
+<script src="{% static 'js/documentation.js' %}?v=26.0"></script>
 {% endblock %}
 
 {% block content %}
@@ -421,10 +421,12 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td class="text-center">{{ licencia.fechaEmision }}</td>
                                 <td class="text-center">{{ licencia.fechaVencimiento }}</td>
                                 <td class="text-center">
-                                    {% if licencia.rutaDoc %}
-                                        <span class="badge bg-success">✓ Con documento</span>
+                                    {% load tz %}
+                                    {% now "Y-m-d" as today %}
+                                    {% if licencia.fechaVencimiento|date:"Y-m-d" >= today %}
+                                        <span class="badge bg-success">Vigente</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">Sin documento</span>
+                                        <span class="badge bg-danger">Vencida</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -487,9 +489,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td class="text-center">{{ licencia.fechaVencimiento }}</td>
                                 <td class="text-center">
                                     {% if licencia.esta_activa %}
-                                        <span class="badge bg-success">Activa</span>
+                                        <span class="badge bg-success">Vigente</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">Inactiva</span>
+                                        <span class="badge bg-danger">Vencida</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -535,6 +537,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <th>Proveedor</th>
                                 <th class="text-center">Fecha Emisión</th>
                                 <th class="text-center">Fecha Vencimiento</th>
+                                <th class="text-center">Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -547,6 +550,15 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>{{ certificacion.proveedor_id }}</td>
                                 <td class="text-center">{{ certificacion.fechaEmision }}</td>
                                 <td class="text-center">{{ certificacion.fechaVencimiento }}</td>
+                                <td class="text-center">
+                                    {% load tz %}
+                                    {% now "Y-m-d" as today %}
+                                    {% if certificacion.fechaVencimiento|date:"Y-m-d" >= today %}
+                                        <span class="badge bg-success">Vigente</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Vencida</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if certificacion.rutaDoc %}
                                         <a href="{{ certificacion.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
@@ -563,7 +575,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
+                                <td colspan="6" class="text-center text-muted py-4">
                                     <i class="bi bi-inbox me-2"></i>No hay certificaciones registradas
                                 </td>
                             </tr>
@@ -591,6 +603,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <th>Proveedor</th>
                                 <th class="text-center">Fecha Emisión</th>
                                 <th class="text-center">Fecha Vencimiento</th>
+                                <th class="text-center">Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -612,6 +625,15 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>{{ examen.proveedor_id }}</td>
                                 <td class="text-center">{{ examen.fechaEmision }}</td>
                                 <td class="text-center">{{ examen.fechaVencimiento }}</td>
+                                <td class="text-center">
+                                    {% load tz %}
+                                    {% now "Y-m-d" as today %}
+                                    {% if examen.fechaVencimiento|date:"Y-m-d" >= today %}
+                                        <span class="badge bg-success">Vigente</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Vencida</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if examen.rutaDoc %}
                                         <a href="{{ examen.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
@@ -628,7 +650,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">
+                                <td colspan="7" class="text-center text-muted py-4">
                                     <i class="bi bi-inbox me-2"></i>No hay exámenes registrados
                                 </td>
                             </tr>

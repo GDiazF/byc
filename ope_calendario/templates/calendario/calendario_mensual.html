@@ -40,11 +40,11 @@
         <!-- Información de paginación y filtros -->
         <div class="row mb-3">
             <div class="col-md-6">
-                <div class="alert alert-light border mb-0 py-2">
-                    <small>
+                <div class="bg-light border rounded px-3 py-2 mb-0">
+                    <small class="text-secondary">
                         <i class="bi bi-info-circle me-1"></i>
-                        Mostrando <strong>{{ calendario_data.personal|length }}</strong> de <strong>{{ total_personal }}</strong> trabajadores
-                        {% if total_pages > 1 %} - Página <strong>{{ current_page }}</strong> de <strong>{{ total_pages }}</strong>{% endif %}
+                        Mostrando <strong class="text-dark">{{ calendario_data.personal|length }}</strong> de <strong class="text-dark">{{ total_personal }}</strong> trabajadores
+                        {% if total_pages > 1 %} - Página <strong class="text-dark">{{ current_page }}</strong> de <strong class="text-dark">{{ total_pages }}</strong>{% endif %}
                     </small>
                 </div>
             </div>
@@ -108,7 +108,7 @@
                 {% if todos_estados %}
                     {% for estado in todos_estados %}
                     <div class="status-legend-item">
-                        <div class="status-legend-color" style="background-color: {{ estado.background_color }}; color: {{ estado.color }}; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600;">
+                        <div class="status-legend-color" style="background-color: {{ estado.background_color }}; color: {{ estado.color }}; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600;">
                             {{ estado.nombre_corto|default:estado.nombre|slice:":3" }}
                         </div>
                         <small>{{ estado.nombre }}</small>
@@ -187,6 +187,7 @@
                 <div class="mb-2">
                     <strong>Estado:</strong> <span id="modalEstado"></span>
                     </div>
+                <div id="modalDetallesEstado"></div>
                 <div class="mb-2">
                     <strong>Faena:</strong> <span id="modalFaena"></span>
                     </div>
@@ -200,18 +201,23 @@
 
     <!-- Modal para información personal -->
 <div class="modal fade" id="personalModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title">Información Personal</h5>
+                <h5 class="modal-title">Información Personal y Documentación</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="personalModalBody">
-                <!-- Se llenará dinámicamente -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
                     </div>
-                    </div>
+                    <p class="mt-2 text-muted">Cargando información...</p>
+                </div>
+            </div>
         </div>
     </div>
+</div>
 
     <!-- Modal para gestión de faenas -->
 <div class="modal fade" id="faenaModal" tabindex="-1">
@@ -232,41 +238,63 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="faenaSelect" class="form-label">Faena *</label>
+                        <label for="faenaSelect" class="form-label">
+                            Faena <span class="text-danger">*</span>
+                        </label>
                         <select class="form-select" id="faenaSelect" name="faena_id" required>
                             <option value="">Seleccionar faena...</option>
                         </select>
+                        <small class="form-text text-muted">Seleccione la faena donde trabajará el personal</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="turnoSelect" class="form-label">Turno *</label>
+                        <label for="turnoSelect" class="form-label">
+                            Turno <span class="text-danger">*</span>
+                        </label>
                         <select class="form-select" id="turnoSelect" name="turno_id" required>
                             <option value="">Seleccionar turno...</option>
                         </select>
+                        <small class="form-text text-muted">Seleccione el ciclo de trabajo (ej: 7x7, 5x2)</small>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="fechaInicio" class="form-label">Fecha de Inicio *</label>
+                            <label for="fechaInicio" class="form-label">
+                                Fecha de Inicio <span class="text-danger">*</span>
+                            </label>
                             <input type="date" class="form-control" id="fechaInicio" name="fecha_inicio" required>
-                    </div>
+                            <div class="invalid-feedback">
+                                La fecha de inicio debe estar dentro del período de la faena
+                            </div>
+                            <small class="form-text text-muted">Se precarga automáticamente según la faena</small>
+                        </div>
                         <div class="col-md-6 mb-3">
-                            <label for="fechaFin" class="form-label">Fecha de Fin</label>
-                            <input type="date" class="form-control" id="fechaFin" name="fecha_fin">
+                            <label for="fechaFin" class="form-label">
+                                Fecha de Fin <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" class="form-control" id="fechaFin" name="fecha_fin" required>
+                            <div class="invalid-feedback">
+                                La fecha de fin debe estar dentro del período de la faena
+                            </div>
+                            <small class="form-text text-muted">Se precarga automáticamente según la faena</small>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="bloqueInicioSelect" class="form-label">Bloque Inicio</label>
+                        <label for="bloqueInicioSelect" class="form-label">
+                            Bloque de Inicio
+                        </label>
                         <select class="form-select" id="bloqueInicioSelect" name="bloque_inicio_id">
                             <option value="">Seleccionar bloque de inicio...</option>
                         </select>
-                        <small class="text-muted">Bloque del turno desde el cual arranca el ciclo</small>
+                        <small class="form-text text-muted">Por defecto se selecciona el Bloque 1 del turno</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="observaciones" class="form-label">Observaciones</label>
-                        <textarea class="form-control" id="observaciones" name="observaciones" rows="3"></textarea>
+                        <label for="observaciones" class="form-label">
+                            Observaciones <span class="text-muted">(Opcional)</span>
+                        </label>
+                        <textarea class="form-control" id="observaciones" name="observaciones" rows="3" placeholder="Notas adicionales sobre esta asignación..."></textarea>
                     </div>
                     
                     <div class="form-check mb-3">
@@ -277,8 +305,12 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-danger" id="btnEliminar" style="display: none;">Eliminar</button>
-                <button type="button" class="btn btn-success" id="btnGuardar">Guardar</button>
+                <button type="button" class="btn btn-danger" id="btnEliminar" style="display: none;">
+                    <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+                <button type="button" class="btn btn-success" id="btnGuardar">
+                    <i class="bi bi-save me-1"></i>Guardar
+                </button>
             </div>
             </div>
         </div>

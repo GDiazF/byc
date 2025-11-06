@@ -394,11 +394,6 @@ def obtener_estado_final_personal_fecha(personal, fecha):
     # 4. Resolver conflictos de prioridad
     todos_estados = []
     
-    # Debug: mostrar qué estados se encontraron
-    print(f"DEBUG PRIORIDADES: {personal.nombre} - {fecha}")
-    print(f"  Estados de fuente: {[e.nombre for e in estados_fuente]}")
-    print(f"  Estado de turno: {estado_turno.nombre if estado_turno else 'None'}")
-    
     # Agregar estados de fuentes externas
     for estado in estados_fuente:
         todos_estados.append({
@@ -446,13 +441,6 @@ def obtener_estado_final_personal_fecha(personal, fecha):
         x['estado'] for x in todos_estados 
         if x['prioridad'] == prioridad_maxima
     ]
-    
-    # Debug: imprimir para verificar
-    print(f"DEBUG: {personal.nombre} - {fecha}")
-    estados_info = [f"{x['estado'].nombre}({x['prioridad']})" for x in todos_estados]
-    print(f"  Estados encontrados: {estados_info}")
-    print(f"  Prioridad máxima: {prioridad_maxima}")
-    print(f"  Estados seleccionados: {[e.nombre for e in estados_misma_prioridad]}")
     
     return estados_misma_prioridad
 

@@ -179,15 +179,27 @@ body.loading .main-content .content-loading {
 .status-legend-item {
     display: inline-flex;
     align-items: center;
-    margin-right: 12px;
-    margin-bottom: 4px;
+    margin-right: 8px;
+    margin-bottom: 6px;
+    padding: 4px 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    background-color: #fafafa;
+    transition: all 0.2s ease;
+}
+
+.status-legend-item:hover {
+    background-color: #f0f0f0;
+    border-color: #d0d0d0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .status-legend-color {
-    width: 20px;
-    height: 20px;
-    border-radius: 3px;
-    margin-right: 5px;
+    min-width: 32px;
+    height: 28px;
+    padding: 0 4px;
+    border-radius: 4px;
+    margin-right: 6px;
     border: 1px solid #dee2e6;
 }
 
