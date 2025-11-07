@@ -514,10 +514,16 @@ async function showPersonalInfo(personalId) {
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold mb-1">Empresa</label>
+                        <input type="text" class="form-control form-control-sm" value="${data.empresa}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold mb-1">Correo Electrónico</label>
                         <input type="text" class="form-control form-control-sm" value="${data.correo}" readonly>
                     </div>
-                    <div class="col-md-6 mb-3">
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
                         <label class="form-label fw-bold mb-1">Dirección</label>
                         <input type="text" class="form-control form-control-sm" value="${data.direccion}" readonly>
                     </div>
@@ -732,6 +738,7 @@ function setupFilters() {
     const searchInput = document.getElementById('searchInput');
     const faenaFilter = document.getElementById('faenaFilter');
     const cargoFilter = document.getElementById('cargoFilter');
+    const empresaFilter = document.getElementById('empresaFilter');
     
     // Usar debounce para búsqueda (esperar 500ms después de escribir)
     let searchTimeout;
@@ -745,6 +752,7 @@ function setupFilters() {
     // Para selects, aplicar inmediatamente
     faenaFilter.addEventListener('change', applyFiltersWithReload);
     cargoFilter.addEventListener('change', applyFiltersWithReload);
+    empresaFilter.addEventListener('change', applyFiltersWithReload);
 }
 
 // Aplicar filtros recargando la página (para usar caché del backend)
@@ -752,6 +760,7 @@ function applyFiltersWithReload() {
     const searchValue = document.getElementById('searchInput').value.trim();
     const faenaValue = document.getElementById('faenaFilter').value;
     const cargoValue = document.getElementById('cargoFilter').value;
+    const empresaValue = document.getElementById('empresaFilter').value;
     
     // Construir URL con parámetros
     const url = new URL(window.location.href);
@@ -772,6 +781,7 @@ function applyFiltersWithReload() {
     if (searchValue) url.searchParams.set('search', searchValue);
     if (faenaValue) url.searchParams.set('faena', faenaValue);
     if (cargoValue) url.searchParams.set('cargo', cargoValue);
+    if (empresaValue) url.searchParams.set('empresa', empresaValue);
     
     // Recargar página con nuevos parámetros
     window.location.href = url.toString();

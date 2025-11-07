@@ -13,6 +13,8 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/index.css' %}">
     
+    {% block extrastyles %}{% endblock %}
+    
 </head>
 <body class="loading">
     
@@ -84,13 +86,8 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'buscar_personal_licencia_medica' %}">
-                                <i class="bi bi-clipboard-pulse me-2"></i>Licencias médicas
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'buscar_personal_ausentismo' %}">
-                                <i class="bi bi-calendar-x me-2"></i>Ausentismos
+                            <a class="nav-link" href="{% url 'gestionar_ausencias' %}">
+                                <i class="bi bi-clipboard2-pulse me-2"></i>Gestión de Ausencias
                             </a>
                         </li>
                     </ul>

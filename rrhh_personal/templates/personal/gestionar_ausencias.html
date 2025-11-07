@@ -1,0 +1,268 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Gestión de Ausencias{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-clipboard2-pulse me-2"></i>Gestión de Ausencias del Personal
+        </h5>
+    </div>
+    
+    <div class="card-body">
+        
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-3" id="ausenciasTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="licencias-tab" data-bs-toggle="tab" 
+                        data-bs-target="#licencias" type="button" role="tab">
+                    <i class="bi bi-clipboard-pulse me-1"></i>Licencias Médicas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="ausentismos-tab" data-bs-toggle="tab" 
+                        data-bs-target="#ausentismos" type="button" role="tab">
+                    <i class="bi bi-calendar-x me-1"></i>Ausentismos y Permisos
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="ausenciasTabContent">
+            
+            <!-- TAB: LICENCIAS MÉDICAS -->
+            <div class="tab-pane fade show active" id="licencias" role="tabpanel">
+                
+                <!-- Fila 1: Contador -->
+                <div class="row mb-3 align-items-center">
+                    <div class="col-md-12 text-end">
+                        <span class="small text-muted">
+                            <i class="bi bi-people-fill me-1"></i>
+                            <strong id="totalRegistrosLicencias">0</strong> trabajadores encontrados
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Fila 2: Selector de registros, búsqueda y filtros -->
+                <div class="row mb-3 align-items-center">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label mb-0 small">Mostrar:</label>
+                            <select class="form-select form-select-sm" id="registrosPorPaginaLicencias" style="width: auto;">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="9999">Todos</option>
+                            </select>
+                            <span class="small text-muted">registros</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInputLicencias" 
+                                   placeholder="Buscar por RUT, nombre, cargo...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select form-select-sm" id="filtroEmpresaLicencias">
+                            <option value="">Todas las empresas</option>
+                            {% for empresa in empresas %}
+                            <option value="{{ empresa.nomFantasia }}">{{ empresa.nomFantasia }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <button class="btn btn-sm btn-secondary w-100" id="limpiarFiltrosLicencias" title="Limpiar filtros">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de personal -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered rrhh-table" id="personalTableLicencias">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="sortable" data-column="rut" data-tipo="licencias" style="cursor: pointer;">
+                                    RUT <i class="bi bi-arrow-down-up ms-1"></i>
+                                </th>
+                                <th class="sortable" data-column="nombre" data-tipo="licencias" style="cursor: pointer;">
+                                    Nombre <i class="bi bi-arrow-down-up ms-1"></i>
+                                </th>
+                                <th class="sortable" data-column="cargo" data-tipo="licencias" style="cursor: pointer;">
+                                    Cargo <i class="bi bi-arrow-down-up ms-1"></i>
+                                </th>
+                                <th class="sortable" data-column="empresa" data-tipo="licencias" style="cursor: pointer;">
+                                    Empresa <i class="bi bi-arrow-down-up ms-1"></i>
+                                </th>
+                                <th class="text-center">Licencias Activas</th>
+                                <th class="text-center" style="width: 120px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="personalTableBodyLicencias">
+                            <!-- Se llena con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación Licencias -->
+                <div class="row mt-3 align-items-center">
+                    <div class="col-md-6">
+                        <span class="small text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Mostrando <strong id="registroInicioLicencias">0</strong> a <strong id="registroFinLicencias">0</strong> de <strong id="totalRegistrosPaginacionLicencias">0</strong> registros
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <nav>
+                            <ul class="pagination pagination-sm justify-content-end mb-0" id="paginacionLicencias">
+                                <!-- Se llena con JavaScript -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- TAB: AUSENTISMOS -->
+            <div class="tab-pane fade" id="ausentismos" role="tabpanel">
+                
+                <!-- Fila 1: Contador -->
+                <div class="row mb-3 align-items-center">
+                    <div class="col-md-12 text-end">
+                        <span class="small text-muted">
+                            <i class="bi bi-people-fill me-1"></i>
+                            <strong id="totalRegistrosAusentismos">0</strong> trabajadores encontrados
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Fila 2: Selector de registros, búsqueda y filtros -->
+                <div class="row mb-3 align-items-center">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label mb-0 small">Mostrar:</label>
+                            <select class="form-select form-select-sm" id="registrosPorPaginaAusentismos" style="width: auto;">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="9999">Todos</option>
+                            </select>
+                            <span class="small text-muted">registros</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInputAusentismos" 
+                                   placeholder="Buscar por RUT, nombre, cargo...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select form-select-sm" id="filtroEmpresaAusentismos">
+                            <option value="">Todas las empresas</option>
+                            {% for empresa in empresas %}
+                            <option value="{{ empresa.nomFantasia }}">{{ empresa.nomFantasia }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <button class="btn btn-sm btn-secondary w-100" id="limpiarFiltrosAusentismos" title="Limpiar filtros">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de personal -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered rrhh-table" id="personalTableAusentismos">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="sortable" data-column="rut" data-tipo="ausentismos" style="cursor: pointer;">
+                                    RUT <i class="bi bi-arrow-down-up ms-1"></i>
+                                </th>
+                                <th class="sortable" data-column="nombre" data-tipo="ausentismos" style="cursor: pointer;">
+                                    Nombre <i class="bi bi-arrow-down-up ms-1"></i>
+                                </th>
+                                <th class="sortable" data-column="cargo" data-tipo="ausentismos" style="cursor: pointer;">
+                                    Cargo <i class="bi bi-arrow-down-up ms-1"></i>
+                                </th>
+                                <th class="sortable" data-column="empresa" data-tipo="ausentismos" style="cursor: pointer;">
+                                    Empresa <i class="bi bi-arrow-down-up ms-1"></i>
+                                </th>
+                                <th class="text-center">Ausentismos Activos</th>
+                                <th class="text-center" style="width: 120px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="personalTableBodyAusentismos">
+                            <!-- Se llena con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación Ausentismos -->
+                <div class="row mt-3 align-items-center">
+                    <div class="col-md-6">
+                        <span class="small text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Mostrando <strong id="registroInicioAusentismos">0</strong> a <strong id="registroFinAusentismos">0</strong> de <strong id="totalRegistrosPaginacionAusentismos">0</strong> registros
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <nav>
+                            <ul class="pagination pagination-sm justify-content-end mb-0" id="paginacionAusentismos">
+                                <!-- Se llena con JavaScript -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extrajs %}
+<script>
+// Datos del servidor para LICENCIAS
+window.personalDataLicencias = [
+    {% for persona in personal %}
+    {% with info_laboral=persona.infolaboral_set.first %}
+    {
+        id: {{ persona.personal_id }},
+        rut: "{{ persona.rut }}-{{ persona.dvrut }}",
+        nombre: "{{ persona.nombre }} {{ persona.apepat }} {{ persona.apemat }}",
+        cargo: "{% if info_laboral and info_laboral.cargo_id %}{{ info_laboral.cargo_id.cargo }}{% else %}-{% endif %}",
+        empresa: "{% if info_laboral and info_laboral.empresa_id %}{{ info_laboral.empresa_id.nomFantasia }}{% else %}-{% endif %}",
+        licenciasActivas: {{ persona.get_licencias_activas_count }},
+        ausentismosActivos: {{ persona.get_ausentismos_activos_count }}
+    }{% if not forloop.last %},{% endif %}
+    {% endwith %}
+    {% endfor %}
+];
+
+// Los mismos datos para ausentismos (es el mismo personal)
+window.personalDataAusentismos = window.personalDataLicencias;
+
+window.empresas = [
+    {% for empresa in empresas %}
+    "{{ empresa.nomFantasia }}"{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+</script>
+<script src="{% static 'js/gestionar_ausencias.js' %}?v=2.2"></script>
+{% endblock %}
+

@@ -61,7 +61,7 @@ function renderizarTablaPersonal() {
     const busqueda = document.getElementById('searchInput').value.toLowerCase();
     const filtroEstado = document.getElementById('filtroEstado').value;
     const filtroCargo = document.getElementById('filtroCargo').value;
-    const filtroFaena = document.getElementById('filtroFaena').value;
+    const filtroEmpresa = document.getElementById('filtroEmpresa').value;
     
     // Filtrar personal
     personalFiltrado = personal.filter(p => {
@@ -81,21 +81,16 @@ function renderizarTablaPersonal() {
         // Filtro de cargo
         const matchCargo = !filtroCargo || p.cargo === filtroCargo;
         
-        // Filtro de faena
-        let matchFaena = true;
-        if (filtroFaena && p.asignacion_actual) {
-            matchFaena = p.asignacion_actual.faena === filtroFaena;
-        } else if (filtroFaena === 'sin_asignar') {
-            matchFaena = !p.tiene_asignacion;
-        }
+        // Filtro de empresa
+        const matchEmpresa = !filtroEmpresa || p.empresa === filtroEmpresa;
         
-        return matchBusqueda && matchEstado && matchCargo && matchFaena;
+        return matchBusqueda && matchEstado && matchCargo && matchEmpresa;
     });
     
     if (personalFiltrado.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center py-4">
+                <td colspan="8" class="text-center py-4">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
                     <p class="text-muted mt-2">No se encontraron trabajadores con los filtros aplicados</p>
                 </td>
@@ -133,9 +128,17 @@ function renderizarTablaPersonal() {
                     <input class="form-check-input personal-checkbox" type="checkbox" 
                            value="${p.id}" ${isChecked ? 'checked' : ''}>
                 </td>
-                <td>${p.nombre_completo}</td>
+                <td>
+                    <a href="#" onclick="event.preventDefault(); showPersonalInfo(${p.id});" 
+                       class="text-decoration-none text-primary fw-semibold" 
+                       style="cursor: pointer;"
+                       title="Ver información completa">
+                        ${p.nombre_completo}
+                    </a>
+                </td>
                 <td>${p.rut}</td>
                 <td>${p.cargo}</td>
+                <td>${p.empresa}</td>
                 <td>
                     <span class="badge ${estadoClass}">${estadoText}</span>
                 </td>
@@ -297,7 +300,7 @@ function limpiarFiltros() {
     document.getElementById('searchInput').value = '';
     document.getElementById('filtroEstado').value = '';
     document.getElementById('filtroCargo').value = '';
-    document.getElementById('filtroFaena').value = '';
+    document.getElementById('filtroEmpresa').value = '';
     paginaActual = 1; // Resetear a página 1
     cerrarAdvertencia(); // Limpiar advertencias al cambiar filtros
     renderizarTablaPersonal();
@@ -439,7 +442,7 @@ async function asignarMasivo() {
                 
                 // También mostrar alerta flotante de éxito parcial
                 if (result.total_asignados > 0) {
-                    mostrarAlerta(result.message, 'success');
+            mostrarAlerta(result.message, 'success');
                 }
                 
                 // NO recargar completamente, pero actualizar datos
@@ -455,7 +458,7 @@ async function asignarMasivo() {
                 }));
                 
                 // Recargar en el tab de asignar (no gestionar) para que vean la advertencia
-                setTimeout(() => {
+            setTimeout(() => {
                     window.location.reload();
                 }, 1500);
                 
@@ -473,8 +476,8 @@ async function asignarMasivo() {
             // Error total
             if (result.errores && result.errores.length > 0) {
                 mostrarAdvertenciaPersistente(0, result.total_errores, result.errores);
-            } else {
-                mostrarAlerta(result.error || 'Error al asignar personal', 'error');
+        } else {
+            mostrarAlerta(result.error || 'Error al asignar personal', 'error');
             }
         }
     } catch (error) {
@@ -541,6 +544,9 @@ function initData(personalData, turnosData, faenaData, fechaInicio, fechaFin) {
 // GESTIÓN DE PERSONAL ASIGNADO
 // ============================================================================
 
+// Variables globales para filtrado de personal asignado
+let asignacionesFiltradas = [];
+
 // Renderizar tabla de personal asignado
 function renderizarPersonalAsignado() {
     const tbody = document.getElementById('tablaPersonalAsignadoBody');
@@ -548,7 +554,7 @@ function renderizarPersonalAsignado() {
     if (!faena.asignaciones || faena.asignaciones.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="text-center py-4">
+                <td colspan="10" class="text-center py-4">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
                     <p class="text-muted mt-2">No hay personal asignado a esta faena</p>
                     <button class="btn btn-primary" onclick="document.getElementById('asignar-tab').click()">
@@ -560,7 +566,22 @@ function renderizarPersonalAsignado() {
         return;
     }
     
-    tbody.innerHTML = faena.asignaciones.map(asig => {
+    // Aplicar filtros si existen
+    asignacionesFiltradas = filtrarPersonalAsignado(false);
+    
+    if (asignacionesFiltradas.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10" class="text-center py-4">
+                    <i class="bi bi-inbox fs-1 text-muted"></i>
+                    <p class="text-muted mt-2">No se encontraron trabajadores con los filtros aplicados</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = asignacionesFiltradas.map(asig => {
         // Determinar estado
         let estadoBadge = '';
         if (asig.fecha_fin) {
@@ -578,9 +599,17 @@ function renderizarPersonalAsignado() {
         
         return `
             <tr>
-                <td><strong>${asig.personal.nombre}</strong></td>
+                <td>
+                    <a href="#" onclick="event.preventDefault(); showPersonalInfo(${asig.personal.id});" 
+                       class="text-decoration-none text-primary fw-semibold" 
+                       style="cursor: pointer;"
+                       title="Ver información completa">
+                        ${asig.personal.nombre}
+                    </a>
+                </td>
                 <td class="text-muted small">${asig.personal.rut}</td>
                 <td>${asig.personal.cargo}</td>
+                <td>${asig.personal.empresa}</td>
                 <td><span class="badge bg-primary" style="font-size: 0.75rem;">${asig.turno.nombre}</span></td>
                 <td>${asig.bloque_inicio ? `Bloque ${asig.bloque_inicio.orden}` : '-'}</td>
                 <td>${formatearFechaChilena(asig.fecha_inicio)}</td>
@@ -599,6 +628,46 @@ function renderizarPersonalAsignado() {
             </tr>
         `;
     }).join('');
+}
+
+// Filtrar personal asignado
+function filtrarPersonalAsignado(rerender = true) {
+    if (!faena.asignaciones || faena.asignaciones.length === 0) {
+        return [];
+    }
+    
+    const busqueda = document.getElementById('searchAsignadosInput')?.value.toLowerCase() || '';
+    const filtroCargo = document.getElementById('filtroCargoAsignados')?.value || '';
+    const filtroEmpresa = document.getElementById('filtroEmpresaAsignados')?.value || '';
+    
+    const filtradas = faena.asignaciones.filter(asig => {
+        // Búsqueda por nombre o RUT
+        const nombreCompleto = asig.personal.nombre.toLowerCase();
+        const rut = asig.personal.rut.toLowerCase();
+        const matchBusqueda = !busqueda || nombreCompleto.includes(busqueda) || rut.includes(busqueda);
+        
+        // Filtro de cargo
+        const matchCargo = !filtroCargo || asig.personal.cargo === filtroCargo;
+        
+        // Filtro de empresa
+        const matchEmpresa = !filtroEmpresa || asig.personal.empresa === filtroEmpresa;
+        
+        return matchBusqueda && matchCargo && matchEmpresa;
+    });
+    
+    if (rerender) {
+        renderizarPersonalAsignado();
+    }
+    
+    return filtradas;
+}
+
+// Limpiar filtros de personal asignado
+function limpiarFiltrosAsignados() {
+    document.getElementById('searchAsignadosInput').value = '';
+    document.getElementById('filtroCargoAsignados').value = '';
+    document.getElementById('filtroEmpresaAsignados').value = '';
+    renderizarPersonalAsignado();
 }
 
 // Editar asignación individual
@@ -889,7 +958,7 @@ document.addEventListener('DOMContentLoaded', function() {
         paginaActual = 1;
         renderizarTablaPersonal();
     });
-    document.getElementById('filtroFaena').addEventListener('change', function() {
+    document.getElementById('filtroEmpresa').addEventListener('change', function() {
         paginaActual = 1;
         renderizarTablaPersonal();
     });
@@ -1029,5 +1098,290 @@ function mostrarModal(titulo, mensaje, tipo = 'info') {
     // Mostrar modal
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
+}
+
+// ============================================================================
+// MODAL DE INFORMACIÓN PERSONAL
+// ============================================================================
+
+/**
+ * Muestra el modal con información completa del personal
+ * @param {number} personalId - ID del personal
+ */
+async function showPersonalInfo(personalId) {
+    // Mostrar modal con spinner
+    const modal = new bootstrap.Modal(document.getElementById('personalModal'));
+    modal.show();
+    
+    try {
+        // Llamar a la API para obtener información completa
+        const response = await fetch(`/calendario/api/personal/${personalId}/info/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.status !== 'success') {
+            document.getElementById('personalModalBody').innerHTML = `
+                <div class="alert alert-danger">Error al cargar información: ${result.message}</div>
+            `;
+            return;
+        }
+        
+        const data = result.data;
+        const nombreCompleto = `${data.nombre} ${data.apepat} ${data.apemat}`.trim();
+        const rut = `${data.rut}-${data.dvrut}`;
+        
+        // Construir HTML del modal (igual que en calendario_mensual.js)
+        let html = `
+            <div class="mb-4">
+                <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-person-badge me-2"></i>Información Personal</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold mb-1">RUT</label>
+                        <input type="text" class="form-control form-control-sm" value="${rut}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold mb-1">Cargo</label>
+                        <input type="text" class="form-control form-control-sm" value="${data.cargo}" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold mb-1">Nombre Completo</label>
+                        <input type="text" class="form-control form-control-sm" value="${nombreCompleto}" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold mb-1">Empresa</label>
+                        <input type="text" class="form-control form-control-sm" value="${data.empresa}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold mb-1">Correo Electrónico</label>
+                        <input type="text" class="form-control form-control-sm" value="${data.correo}" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold mb-1">Dirección</label>
+                        <input type="text" class="form-control form-control-sm" value="${data.direccion}" readonly>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Tabs para documentación (igual que en calendario_mensual.js)
+        html += `
+            <ul class="nav nav-tabs mb-3" id="docModalTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="lic-conducir-tab" data-bs-toggle="tab" data-bs-target="#lic-conducir" type="button">
+                        <i class="bi bi-card-text me-1"></i>Licencias Conducir
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="lic-internas-tab" data-bs-toggle="tab" data-bs-target="#lic-internas" type="button">
+                        <i class="bi bi-award me-1"></i>Licencias Internas
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="certificaciones-tab" data-bs-toggle="tab" data-bs-target="#certificaciones" type="button">
+                        <i class="bi bi-patch-check me-1"></i>Certificaciones
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="examenes-tab" data-bs-toggle="tab" data-bs-target="#examenes" type="button">
+                        <i class="bi bi-clipboard2-pulse me-1"></i>Exámenes
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content">
+                <!-- Licencias de Conducir -->
+                <div class="tab-pane fade show active" id="lic-conducir">
+                    ${generarTablaLicenciasConducir(data.licencias_conducir)}
+                </div>
+                
+                <!-- Licencias Internas -->
+                <div class="tab-pane fade" id="lic-internas">
+                    ${generarTablaLicenciasInternas(data.licencias_internas)}
+                </div>
+                
+                <!-- Certificaciones -->
+                <div class="tab-pane fade" id="certificaciones">
+                    ${generarTablaCertificaciones(data.certificaciones)}
+                </div>
+                
+                <!-- Exámenes -->
+                <div class="tab-pane fade" id="examenes">
+                    ${generarTablaExamenes(data.examenes)}
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('personalModalBody').innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('personalModalBody').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Error al cargar la información del personal
+            </div>
+        `;
+    }
+}
+
+/**
+ * Genera tabla de licencias de conducir
+ */
+function generarTablaLicenciasConducir(licencias) {
+    if (licencias.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin licencias de conducir registradas</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Clases</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${licencias.map(lic => `
+                    <tr>
+                        <td>${lic.clases || 'N/A'}</td>
+                        <td class="text-center">${lic.fecha_vencimiento}</td>
+                        <td class="text-center">
+                            ${lic.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+/**
+ * Genera tabla de licencias internas
+ */
+function generarTablaLicenciasInternas(licencias) {
+    if (licencias.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin licencias internas registradas</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Tipo</th>
+                    <th>N° Licencia</th>
+                    <th>Empresa</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${licencias.map(lic => `
+                    <tr>
+                        <td>${lic.tipo}</td>
+                        <td class="text-center">${lic.numero}</td>
+                        <td>${lic.empresa}</td>
+                        <td class="text-center">${lic.fecha_vencimiento}</td>
+                        <td class="text-center">
+                            ${lic.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+/**
+ * Genera tabla de certificaciones
+ */
+function generarTablaCertificaciones(certificaciones) {
+    if (certificaciones.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin certificaciones registradas</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Tipo</th>
+                    <th>Proveedor</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${certificaciones.map(cert => `
+                    <tr>
+                        <td>${cert.tipo}</td>
+                        <td>${cert.proveedor}</td>
+                        <td class="text-center">${cert.fecha_vencimiento}</td>
+                        <td class="text-center">
+                            ${cert.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+/**
+ * Genera tabla de exámenes médicos
+ */
+function generarTablaExamenes(examenes) {
+    if (examenes.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin exámenes registrados</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Tipo</th>
+                    <th class="text-center">Resultado</th>
+                    <th>Proveedor</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${examenes.map(exam => {
+                    let resultadoBadge = 'bg-secondary';
+                    if (exam.resultado.toLowerCase().includes('aprobado')) {
+                        resultadoBadge = 'bg-success';
+                    } else if (exam.resultado.toLowerCase().includes('reprobado')) {
+                        resultadoBadge = 'bg-danger';
+                    }
+                    
+                    return `
+                        <tr>
+                            <td>${exam.tipo}</td>
+                            <td class="text-center">
+                                ${exam.resultado !== '-' ? `<span class="badge ${resultadoBadge} text-white">${exam.resultado}</span>` : '-'}
+                            </td>
+                            <td>${exam.proveedor}</td>
+                            <td class="text-center">${exam.fecha_vencimiento}</td>
+                            <td class="text-center">
+                                ${exam.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
 }
 

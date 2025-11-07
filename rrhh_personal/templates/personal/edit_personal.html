@@ -4,15 +4,25 @@
 
 {% block title %}Editar Personal{% endblock %}
 
-{% block content %}
+{% block extrastyles %}
 <link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+{% endblock %}
+
+{% block content %}
 
 <div class="card">
     <div class="card-header bg-dark text-white">
-        <h5 class="mb-0">Editar Personal</h5>
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-pencil-square me-2"></i>Editar Personal
+            </h5>
+            <a href="{% url 'table_personal' %}" class="btn btn-sm btn-light">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+        </div>
     </div>
-    <div class="card-body p-4">
-        <ul class="nav nav-tabs mb-4" id="personalTabs" role="tablist">
+    <div class="card-body">
+        <ul class="nav nav-tabs mb-3" id="personalTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
                     <i class="bi bi-person-fill me-2"></i>Información Personal
@@ -31,106 +41,123 @@
                 <form method="post" id="personal-form" class="needs-validation" novalidate>
                     {% csrf_token %}
                     <input type="hidden" name="form_type" value="personal">
-                    <div class="row">
-                        <div class="col-md-2 mb-3">
-                            <label for="id_rut" class="form-label">RUT</label>
-                            {{ form.rut }}
-                            <div class="invalid-feedback">
-                                Por favor ingrese un RUT válido.
-                            </div>
+                    
+                    <!-- Sección: Identificación -->
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <i class="bi bi-card-text me-2"></i>
+                            <span>Identificación</span>
                         </div>
-                        <div class="col-md-1 mb-3">
-                            <label for="id_dvrut" class="form-label">DV</label>
-                            {{ form.dvrut }}
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="id_nombre" class="form-label">Nombre</label>
-                            {{ form.nombre }}
-                            <div class="invalid-feedback">
-                                Por favor ingrese un nombre.
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="id_apepat" class="form-label">Apellido Paterno</label>
-                            {{ form.apepat }}
-                            <div class="invalid-feedback">
-                                Por favor ingrese el apellido paterno.
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="id_apemat" class="form-label">Apellido Materno</label>
-                            {{ form.apemat }}
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <label for="id_sexo_id" class="form-label">Sexo</label>
-                            {{ form.sexo_id }}
-                            <div class="invalid-feedback">
-                                Por favor seleccione el sexo.
-                            </div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label for="id_fechanac" class="form-label">Fecha Nacimiento</label>
-                            {{ form.fechanac }}
-                            <div class="invalid-feedback">
-                                Por favor ingrese la fecha de nacimiento.
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_estcivil_id" class="form-label">Estado Civil</label>
-                            {{ form.estcivil_id }}
-                            <div class="invalid-feedback">
-                                Por favor seleccione el estado civil.
+                        <div class="form-section-body">
+                            <div class="row g-2">
+                                <div class="col-md-2">
+                                    <label for="id_rut" class="form-label">RUT *</label>
+                                    {{ form.rut }}
+                                    <div class="invalid-feedback">RUT inválido</div>
+                                </div>
+                                <div class="col-md-1">
+                                    <label for="id_dvrut" class="form-label">DV *</label>
+                                    {{ form.dvrut }}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="id_correo" class="form-label">Correo</label>
-                            {{ form.correo }}
-                            <div class="invalid-feedback">
-                                Por favor ingrese un correo válido.
+                    <!-- Sección: Datos Personales -->
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <i class="bi bi-person-fill me-2"></i>
+                            <span>Datos Personales</span>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label for="id_nombre" class="form-label">Nombre *</label>
+                                    {{ form.nombre }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_apepat" class="form-label">Apellido Paterno *</label>
+                                    {{ form.apepat }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_apemat" class="form-label">Apellido Materno</label>
+                                    {{ form.apemat }}
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mt-2">
+                                <div class="col-md-3">
+                                    <label for="id_sexo_id" class="form-label">Sexo *</label>
+                                    {{ form.sexo_id }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_fechanac" class="form-label">Fecha Nacimiento *</label>
+                                    {{ form.fechanac }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_estcivil_id" class="form-label">Estado Civil *</label>
+                                    {{ form.estcivil_id }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="id_direccion" class="form-label">Dirección</label>
-                            {{ form.direccion }}
+                    <!-- Sección: Contacto -->
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <i class="bi bi-envelope-fill me-2"></i>
+                            <span>Información de Contacto</span>
                         </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_region" class="form-label">Región</label>
-                            {{ form.region_id }}
-                            <div class="invalid-feedback">
-                                Por favor seleccione la región.
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_comuna" class="form-label">Comuna</label>
-                            {{ form.comuna_id }}
-                            <div class="invalid-feedback">
-                                Por favor seleccione la comuna.
+                        <div class="form-section-body">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label for="id_correo" class="form-label">Correo Electrónico</label>
+                                    {{ form.correo }}
+                                    <div class="invalid-feedback">Correo inválido</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_direccion" class="form-label">Dirección</label>
+                                    {{ form.direccion }}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <a href="{% url 'table_personal' %}" class="btn btn-secondary me-2">
-                                <i class="bi bi-arrow-left me-1"></i>Cancelar
+                    <!-- Sección: Ubicación -->
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <i class="bi bi-geo-alt-fill me-2"></i>
+                            <span>Ubicación</span>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label for="id_region" class="form-label">Región *</label>
+                                    {{ form.region_id }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_comuna" class="form-label">Comuna *</label>
+                                    {{ form.comuna_id }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="row mt-3">
+                        <div class="col-12 d-flex justify-content-end gap-2">
+                            <a href="{% url 'table_personal' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancelar
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Actualizar
+                                <i class="bi bi-save me-1"></i>Guardar Cambios
                             </button>
                         </div>
                     </div>
@@ -143,50 +170,62 @@
                 <form method="post" id="labor-form" class="needs-validation" novalidate>
                     {% csrf_token %}
                     <input type="hidden" name="form_type" value="labor">
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="id_empresa_id" class="form-label">Empresa</label>
-                            {{ labor_form.empresa_id }}
-                            <div class="invalid-feedback">
-                                Por favor seleccione una empresa.
+                    
+                    <!-- Sección: Empresa -->
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <i class="bi bi-building me-2"></i>
+                            <span>Empresa</span>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="row g-2">
+                                <div class="col-md-12">
+                                    <label for="id_empresa_id" class="form-label">Empresa *</label>
+                                    {{ labor_form.empresa_id }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_depto_id" class="form-label">Departamento</label>
-                            {{ labor_form.depto_id }}
-                            <div class="invalid-feedback">
-                                Por favor seleccione un departamento.
-                            </div>
+                    <!-- Sección: Puesto de Trabajo -->
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <i class="bi bi-briefcase-fill me-2"></i>
+                            <span>Puesto de Trabajo</span>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_cargo_id" class="form-label">Cargo</label>
-                            {{ labor_form.cargo_id }}
-                            <div class="invalid-feedback">
-                                Por favor seleccione un cargo.
+                        <div class="form-section-body">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label for="id_depto_id" class="form-label">Departamento *</label>
+                                    {{ labor_form.depto_id }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_cargo_id" class="form-label">Cargo *</label>
+                                    {{ labor_form.cargo_id }}
+                                    <div class="invalid-feedback">Requerido</div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-2 mt-2">
+                                <div class="col-md-6">
+                                    <label for="id_fechacontrata" class="form-label">Fecha de Contratación</label>
+                                    {{ labor_form.fechacontrata }}
+                                    <div class="invalid-feedback">Fecha inválida</div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_fechacontrata" class="form-label">Fecha de Contratación</label>
-                            {{ labor_form.fechacontrata }}
-                            <div class="invalid-feedback">
-                                Por favor ingrese la fecha de contratación.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <a href="{% url 'table_personal' %}" class="btn btn-secondary me-2">
-                                <i class="bi bi-arrow-left me-1"></i>Cancelar
+                    <!-- Botones -->
+                    <div class="row mt-3">
+                        <div class="col-12 d-flex justify-content-end gap-2">
+                            <a href="{% url 'table_personal' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancelar
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Actualizar
+                                <i class="bi bi-save me-1"></i>Guardar Cambios
                             </button>
                         </div>
                     </div>
@@ -196,6 +235,9 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extrajs %}
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 <script src="{% static 'js/utils/validarRut.js' %}"></script>
 <script src="{% static 'js/utils/location.js' %}"></script>

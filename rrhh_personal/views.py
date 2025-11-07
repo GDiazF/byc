@@ -34,7 +34,26 @@ class PersonalListView(ListView, LoginRequiredMixin):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         from gen_settings.models import Empresa
+        import json
+        from django.core.serializers.json import DjangoJSONEncoder
+        
         context['empresas'] = Empresa.objects.all()
+        
+        # Preparar datos del personal para JSON
+        personal_data = []
+        for persona in context['personal']:
+            info_laboral = persona.infolaboral_set.first()
+            personal_data.append({
+                'id': persona.personal_id,
+                'rut': f"{persona.rut}-{persona.dvrut}",
+                'nombre': f"{persona.nombre} {persona.apepat} {persona.apemat}",
+                'cargo': info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'No disponible',
+                'departamento': info_laboral.depto_id.depto if info_laboral and info_laboral.depto_id else 'No disponible',
+                'empresa': info_laboral.empresa_id.nomFantasia if info_laboral and info_laboral.empresa_id else 'No disponible',
+                'activo': persona.activo
+            })
+        
+        context['personal_json'] = json.dumps(personal_data, cls=DjangoJSONEncoder)
         
         # Obtener y procesar empresa_id
         empresa_id = self.request.GET.get('empresa')
@@ -1050,27 +1069,6 @@ def delete_licencia_medica(request, licencia_id):
 # ============================================================================
 
 @login_required
-def buscar_personal_ausentismo(request):
-    """Vista para buscar personal para gestionar ausentismos"""
-    from gen_settings.models import Empresa
-    
-    personal_list = Personal.objects.filter(activo=True).prefetch_related(
-        'infolaboral_set__cargo_id',
-        'infolaboral_set__empresa_id',
-        'ausentismo_set'
-    ).order_by('apepat', 'apemat', 'nombre')
-    
-    empresas = Empresa.objects.all().order_by('nomFantasia')
-    
-    context = {
-        'personal_list': personal_list,
-        'empresas': empresas,
-    }
-    
-    return render(request, 'personal/buscar_personal_ausentismo.html', context)
-
-
-@login_required
 def listar_ausentismos_personal(request, personal_id):
     """Vista para listar ausentismos de un personal"""
     personal = get_object_or_404(Personal, personal_id=personal_id)
@@ -1167,24 +1165,27 @@ def eliminar_ausentismo(request, ausentismo_id):
     }, status=405)
 
 
-def buscar_personal_licencia_medica(request):
-    """Vista mejorada para buscar personal para licencias médicas"""
+def gestionar_ausencias(request):
+    """Vista unificada para gestionar licencias médicas y ausentismos"""
     from gen_settings.models import Empresa
     
-    personal_list = Personal.objects.filter(activo=True).prefetch_related(
+    # Obtener todo el personal activo con sus relaciones
+    personal = Personal.objects.filter(activo=True).prefetch_related(
         'infolaboral_set__cargo_id',
         'infolaboral_set__empresa_id',
-        'licenciamedicaporpersonal_set'
+        'licenciamedicaporpersonal_set',
+        'ausentismo_set'
     ).order_by('apepat', 'apemat', 'nombre')
     
+    # Obtener empresas para los filtros
     empresas = Empresa.objects.all().order_by('nomFantasia')
     
     context = {
-        'personal_list': personal_list,
+        'personal': personal,
         'empresas': empresas,
     }
     
-    return render(request, 'personal/buscar_personal_licencia_medica_new.html', context)
+    return render(request, 'personal/gestionar_ausencias.html', context)
 
 
 @login_required
@@ -1560,7 +1561,26 @@ class PersonalDesactivadoListView(ListView, LoginRequiredMixin):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         from gen_settings.models import Empresa
+        import json
+        from django.core.serializers.json import DjangoJSONEncoder
+        
         context['empresas'] = Empresa.objects.all()
+        
+        # Preparar datos del personal para JSON
+        personal_data = []
+        for persona in context['personal']:
+            info_laboral = persona.infolaboral_set.first()
+            personal_data.append({
+                'id': persona.personal_id,
+                'rut': f"{persona.rut}-{persona.dvrut}",
+                'nombre': f"{persona.nombre} {persona.apepat} {persona.apemat}",
+                'cargo': info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'No disponible',
+                'departamento': info_laboral.depto_id.depto if info_laboral and info_laboral.depto_id else 'No disponible',
+                'empresa': info_laboral.empresa_id.nomFantasia if info_laboral and info_laboral.empresa_id else 'No disponible',
+                'activo': persona.activo
+            })
+        
+        context['personal_json'] = json.dumps(personal_data, cls=DjangoJSONEncoder)
         
         empresa_id = self.request.GET.get('empresa')
         if empresa_id and empresa_id.strip():

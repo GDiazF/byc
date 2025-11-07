@@ -47,11 +47,12 @@ def calendario_mensual(request):
     # Obtener filtros
     faena_filter = request.GET.get('faena', '')
     cargo_filter = request.GET.get('cargo', '')
+    empresa_filter = request.GET.get('empresa', '')
     search_query = request.GET.get('search', '')
     
     # Obtener datos del calendario con paginación
     calendario_data = obtener_calendario_mensual(
-        year, month, faena_filter, cargo_filter, search_query, page, page_size
+        year, month, faena_filter, cargo_filter, empresa_filter, search_query, page, page_size
     )
     
     # Obtener rango de fechas del mes para filtrar asignaciones
@@ -63,6 +64,7 @@ def calendario_mensual(request):
     faenas = Faena.objects.filter(activo=True).order_by('nombre')
     turnos = Turno.objects.filter(activo=True).prefetch_related('bloques__estado').order_by('nombre')
     cargos = Personal.objects.filter(activo=True).values_list('infolaboral__cargo_id__cargo', flat=True).distinct().order_by('infolaboral__cargo_id__cargo')
+    empresas = Personal.objects.filter(activo=True).values_list('infolaboral__empresa_id__nomFantasia', flat=True).distinct().order_by('infolaboral__empresa_id__nomFantasia')
     
     # Obtener TODOS los estados disponibles para la leyenda
     todos_estados = Estado.objects.filter(activo=True).order_by('-prioridad', 'nombre')
@@ -88,6 +90,7 @@ def calendario_mensual(request):
                 'rut': p.rut,
                 'dvrut': p.dvrut,
                 'cargo': p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo',
+                'empresa': p.infolaboral_set.first().empresa_id.nomFantasia if p.infolaboral_set.exists() and p.infolaboral_set.first().empresa_id else 'Sin empresa',
                 'correo': p.correo if p.correo else 'No disponible',
                 'direccion': p.direccion if p.direccion else 'No disponible',
             } for p in calendario_data['personal']
@@ -174,6 +177,7 @@ def calendario_mensual(request):
         'current_month_name': month_names[month - 1],
         'faenas': faenas,  # Para loops de Django
         'cargos': cargos,  # Para loops de Django
+        'empresas': empresas,  # Para loops de Django
         'todos_estados': todos_estados,  # Para mostrar la leyenda en el template
         'filtros': json.dumps({
             'faena': faena_filter,
@@ -261,7 +265,7 @@ def calendario_mensual(request):
     
     return render(request, 'calendario/calendario_mensual.html', context)
 
-def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', search_query='', page=1, page_size=25):
+def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', empresa_filter='', search_query='', page=1, page_size=25):
     """
     Obtiene datos para el calendario con paginación.
     NUEVA ARQUITECTURA: Envía asignaciones al frontend, estados se calculan en JavaScript
@@ -284,17 +288,38 @@ def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', se
     filtros_aplicados = []
     
     if faena_filter and faena_filter.strip():
-        personal_query = personal_query.filter(
-            asignaciones_faena__faena__nombre__icontains=faena_filter,
-            asignaciones_faena__activo=True
-        ).distinct()
-        filtros_aplicados.append(f"faena={faena_filter}")
+        if faena_filter.lower() == 'sin asignar':
+            # Filtrar personal SIN asignaciones activas en el mes actual
+            # Incluir tanto asignaciones con fecha_fin como asignaciones indefinidas (sin fecha_fin)
+            personal_con_asignaciones = AsignacionFaena.objects.filter(
+                Q(activo=True) &
+                Q(fecha_inicio__lte=fecha_fin) &
+                (Q(fecha_fin__gte=fecha_inicio) | Q(fecha_fin__isnull=True))
+            ).values_list('personal_id', flat=True).distinct()
+            
+            personal_query = personal_query.exclude(
+                personal_id__in=personal_con_asignaciones
+            )
+            filtros_aplicados.append("faena=Sin asignar")
+        else:
+            # Filtrar por faena específica
+            personal_query = personal_query.filter(
+                asignaciones_faena__faena__nombre__icontains=faena_filter,
+                asignaciones_faena__activo=True
+            ).distinct()
+            filtros_aplicados.append(f"faena={faena_filter}")
     
     if cargo_filter and cargo_filter.strip():
         personal_query = personal_query.filter(
             infolaboral__cargo_id__cargo__icontains=cargo_filter
         ).distinct()
         filtros_aplicados.append(f"cargo={cargo_filter}")
+    
+    if empresa_filter and empresa_filter.strip():
+        personal_query = personal_query.filter(
+            infolaboral__empresa_id__nomFantasia__icontains=empresa_filter
+        ).distinct()
+        filtros_aplicados.append(f"empresa={empresa_filter}")
     
     if search_query and search_query.strip():
         personal_query = personal_query.filter(
@@ -901,6 +926,7 @@ def obtener_info_personal(request, personal_id):
             'correo': personal.correo or 'No disponible',
             'direccion': personal.direccion or 'No disponible',
             'cargo': personal.infolaboral_set.first().cargo_id.cargo if personal.infolaboral_set.exists() else 'Sin cargo',
+            'empresa': personal.infolaboral_set.first().empresa_id.nomFantasia if personal.infolaboral_set.exists() and personal.infolaboral_set.first().empresa_id else 'Sin empresa',
         }
         
         # Licencias de conducir
@@ -1237,6 +1263,7 @@ def asignar_personal_faena(request, faena_id):
     # Preparar datos del personal
     personal_data = []
     cargos_set = set()
+    empresas_set = set()
     
     for p in personal_list:
         # Verificar asignación activa
@@ -1247,13 +1274,16 @@ def asignar_personal_faena(request, faena_id):
         ).select_related('faena', 'turno').first()
         
         cargo = p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo'
+        empresa = p.infolaboral_set.first().empresa_id.nomFantasia if p.infolaboral_set.exists() and p.infolaboral_set.first().empresa_id else 'Sin empresa'
         cargos_set.add(cargo)
+        empresas_set.add(empresa)
         
         personal_data.append({
             'id': p.personal_id,
             'nombre_completo': f"{p.nombre} {p.apepat} {p.apemat}",
             'rut': f"{p.rut}-{p.dvrut}",
             'cargo': cargo,
+            'empresa': empresa,
             'tiene_asignacion': asignacion_activa is not None,
             'asignacion_actual': {
                 'faena': asignacion_activa.faena.nombre,
@@ -1303,7 +1333,8 @@ def asignar_personal_faena(request, faena_id):
                 'id': asig.personal.personal_id,
                 'nombre': f"{asig.personal.nombre} {asig.personal.apepat} {asig.personal.apemat}",
                 'rut': f"{asig.personal.rut}-{asig.personal.dvrut}",
-                'cargo': asig.personal.infolaboral_set.first().cargo_id.cargo if asig.personal.infolaboral_set.exists() else 'Sin cargo'
+                'cargo': asig.personal.infolaboral_set.first().cargo_id.cargo if asig.personal.infolaboral_set.exists() else 'Sin cargo',
+                'empresa': asig.personal.infolaboral_set.first().empresa_id.nomFantasia if asig.personal.infolaboral_set.exists() and asig.personal.infolaboral_set.first().empresa_id else 'Sin empresa'
             },
             'turno': {
                 'id': asig.turno.id,
@@ -1349,6 +1380,7 @@ def asignar_personal_faena(request, faena_id):
         'turnos_json': json.dumps(turnos_data, cls=DjangoJSONEncoder),
         'faena_json': json.dumps(faena_data, cls=DjangoJSONEncoder),
         'cargos_unicos': sorted(cargos_set),
+        'empresas_unicas': sorted(empresas_set),
         'otras_faenas': otras_faenas,
         'faena': faena,  # Pasar el objeto completo también
     }

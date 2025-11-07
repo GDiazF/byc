@@ -3,6 +3,12 @@
 
 {% block title %}Documentación de Personal{% endblock %}
 
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+<link rel="stylesheet" href="{% static 'css/documentation.css' %}?v=2.0">
+{% endblock %}
+
 {% block extrajs %}
 <script>
 // Configurar URLs para el JavaScript
@@ -16,8 +22,6 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
 {% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
-<link rel="stylesheet" href="{% static 'css/documentation.css' %}">
 
 <div class="card">
     <div class="card-header bg-dark text-white">
@@ -57,12 +61,12 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
             <!-- Documentos Personales Tab -->
             <div class="tab-pane fade show active" id="personal-docs" role="tabpanel" aria-labelledby="personal-docs-tab">
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered" style="table-layout: fixed;">
+                    <table class="table table-sm table-bordered rrhh-table" style="table-layout: fixed;">
                         <thead class="table-dark">
                             <tr>
-                                <th style="width: 40%;">Documento</th>
-                                <th class="text-center" style="width: 15%;">Estado</th>
-                                <th style="width: 45%;">Acciones</th>
+                                <th style="width: 35%;">Documento</th>
+                                <th class="text-center" style="width: 12%;">Estado</th>
+                                <th style="width: 53%;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -399,7 +403,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 </div>
                 
                 <div class="table-responsive">
-                    <table id="licenses-table" class="table table-sm table-bordered">
+                    <table id="licenses-table" class="table table-sm table-bordered rrhh-table">
                         <thead class="table-dark">
                             <tr>
                                 <th>Clases</th>
@@ -465,7 +469,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 </div>
                 
                 <div class="table-responsive">
-                    <table id="internal-licenses-table" class="table table-sm table-bordered">
+                    <table id="internal-licenses-table" class="table table-sm table-bordered rrhh-table">
                         <thead class="table-dark">
                             <tr>
                                 <th>Tipo</th>
@@ -530,7 +534,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 </div>
                 
                 <div class="table-responsive">
-                    <table id="certifications-table" class="table table-sm table-bordered">
+                    <table id="certifications-table" class="table table-sm table-bordered rrhh-table">
                         <thead class="table-dark">
                             <tr>
                                 <th>Tipo</th>
@@ -595,7 +599,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                 </div>
                 
                 <div class="table-responsive">
-                    <table id="exams-table" class="table table-sm table-bordered">
+                    <table id="exams-table" class="table table-sm table-bordered rrhh-table">
                         <thead class="table-dark">
                             <tr>
                                 <th>Tipo</th>

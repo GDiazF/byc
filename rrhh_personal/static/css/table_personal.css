@@ -1,0 +1,109 @@
+/* ============================================================================
+   GESTIÓN DE PERSONAL - ESTILOS IDÉNTICOS A CALENDARIO
+   Copiados de asignar_personal_faena.css
+   ============================================================================ */
+
+/* Estandarizar títulos de cards (igual que calendario) */
+.card-header h5 {
+    font-weight: 400 !important;
+    font-size: 1rem !important;
+    letter-spacing: normal !important;
+}
+
+/* Tamaño de fuente equilibrado en la tabla */
+#personalTable tbody td,
+#personalTableBody td {
+    font-size: 0.85rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+#personalTable tbody td strong,
+#personalTableBody td strong {
+    font-size: 0.9rem !important;
+}
+
+#personalTable th,
+.table-sm th {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+.table .badge {
+    font-size: 0.75rem !important;
+    padding: 0.25em 0.5em !important;
+}
+
+/* Botones más pequeños (igual que calendario) */
+.btn-group-sm .btn,
+.btn-sm {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.4rem !important;
+}
+
+/* Inputs y selects de filtros más pequeños */
+.input-group-sm .form-control,
+.form-select-sm,
+.form-control-sm {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+    height: auto !important;
+}
+
+.input-group-sm .input-group-text {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+}
+
+/* Labels más pequeños */
+.form-label.small,
+label.small {
+    font-size: 0.7rem !important;
+}
+
+/* Textos secundarios más pequeños */
+.text-muted.small,
+.small.text-muted {
+    font-size: 0.7rem !important;
+}
+
+/* Mejorar espaciado de filas */
+.table-sm tbody tr {
+    height: auto !important;
+}
+
+/* Switch de estado */
+.form-check-input {
+    cursor: pointer;
+    width: 2.5em;
+    height: 1.25em;
+}
+
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+/* Hover en filas */
+#personalTable tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Columnas ordenables */
+.sortable {
+    user-select: none;
+    cursor: pointer;
+}
+
+.sortable:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.sortable i {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+/* Paginación */
+.pagination-sm .page-link {
+    font-size: 0.75rem !important;
+}

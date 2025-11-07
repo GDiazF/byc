@@ -60,7 +60,7 @@
         
         <!-- Filtros y búsqueda -->
         <div class="row mb-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input type="text" class="form-control" id="searchInput" 
@@ -68,7 +68,7 @@
                            value="{{ request.GET.search|default:'' }}">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select class="form-select form-select-sm" id="faenaFilter">
                     <option value="">Faena: Todas</option>
                     {% for faena in faenas %}
@@ -81,7 +81,7 @@
                     </option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select class="form-select form-select-sm" id="cargoFilter">
                     <option value="">Cargo: Todos</option>
                     {% for cargo in cargos %}
@@ -92,6 +92,18 @@
                     <option value="Sin cargo" {% if request.GET.cargo == 'Sin cargo' %}selected{% endif %}>
                         Sin cargo
                     </option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="empresaFilter">
+                    <option value="">Empresa: Todas</option>
+                    {% for empresa in empresas %}
+                    {% if empresa %}
+                    <option value="{{ empresa }}" {% if request.GET.empresa == empresa %}selected{% endif %}>
+                        {{ empresa }}
+                    </option>
+                    {% endif %}
+                    {% endfor %}
                 </select>
             </div>
             <div class="col-md-2 text-end">

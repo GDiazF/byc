@@ -1,6 +1,6 @@
 // ============================================================================
-// GESTIÓN DE PERSONAL - TABLA PERSONALIZADA (Sin DataTables/jQuery)
-// Reemplazo completo de DataTables con JavaScript vanilla
+// PERSONAL DESACTIVADO - TABLA PERSONALIZADA
+// Sin DataTables/jQuery - JavaScript vanilla
 // ============================================================================
 
 // Variables globales
@@ -11,18 +11,18 @@ let registrosPorPagina = 10;
 let ordenActual = { columna: 'nombre', direccion: 'asc' };
 let currentToggle = null;
 let originalState = false;
-let personalIdToDelete = null;
+let changeConfirmed = false;
 
 // ============================================================================
 // INICIALIZACIÓN
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inicializando tabla personalizada de gestión de personal...');
+    console.log('Inicializando tabla personalizada de personal desactivado...');
     
     // Cargar datos del personal
     personal = window.personalData || [];
-    console.log(`Cargados ${personal.length} registros de personal`);
+    console.log(`Cargados ${personal.length} registros de personal desactivado`);
     
     // Inicializar event listeners
     inicializarEventListeners();
@@ -57,8 +57,7 @@ function inicializarEventListeners() {
     });
     
     // Modales
-    document.getElementById('confirmButton').addEventListener('click', confirmarDesactivacion);
-    document.getElementById('deleteButton').addEventListener('click', confirmarEliminacion);
+    document.getElementById('confirmButton').addEventListener('click', confirmarActivacion);
     
     // Limpiar al cerrar modal de confirmación
     document.getElementById('confirmModal').addEventListener('hidden.bs.modal', function() {
@@ -68,11 +67,6 @@ function inicializarEventListeners() {
         currentToggle = null;
         originalState = false;
         changeConfirmed = false;
-    });
-    
-    // Limpiar al cerrar modal de eliminación
-    document.getElementById('deleteModal').addEventListener('hidden.bs.modal', function() {
-        personalIdToDelete = null;
     });
 }
 
@@ -122,7 +116,7 @@ function renderizarTabla() {
     if (personalFiltrado.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center py-4">
+                <td colspan="6" class="text-center py-4">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
                     <p class="text-muted mt-2">No se encontraron registros con los filtros aplicados</p>
                 </td>
@@ -152,22 +146,6 @@ function renderizarTabla() {
             <td>${p.cargo}</td>
             <td>${p.departamento}</td>
             <td>${p.empresa}</td>
-            <td>
-                <a href="/users/personal/${p.id}/documentation/" class="btn btn-warning btn-sm" title="Ver documentación">
-                    <i class="bi bi-file-earmark-text"></i>
-                </a>
-            </td>
-            <td>
-                <div class="btn-group btn-group-sm">
-                    <a href="/users/personal/${p.id}/update/" class="btn btn-primary btn-sm" title="Editar">
-                        <i class="bi bi-pencil-square"></i>
-                    </a>
-                    <button type="button" class="btn btn-danger btn-sm" 
-                            onclick="abrirModalEliminar(${p.id})" title="Eliminar">
-                        <i class="bi bi-trash3"></i>
-                    </button>
-                </div>
-            </td>
             <td class="text-center">
                 <div class="form-check form-switch d-flex justify-content-center">
                     <input class="form-check-input" type="checkbox" 
@@ -219,7 +197,6 @@ function renderizarPaginacion(totalPaginas) {
     let inicio = Math.max(1, paginaActual - Math.floor(maxPaginas / 2));
     let fin = Math.min(totalPaginas, inicio + maxPaginas - 1);
     
-    // Ajustar inicio si estamos cerca del final
     if (fin - inicio < maxPaginas - 1) {
         inicio = Math.max(1, fin - maxPaginas + 1);
     }
@@ -286,10 +263,8 @@ function cambiarRegistrosPorPagina() {
 
 function ordenarPor(columna) {
     if (ordenActual.columna === columna) {
-        // Cambiar dirección
         ordenActual.direccion = ordenActual.direccion === 'asc' ? 'desc' : 'asc';
     } else {
-        // Nueva columna, orden ascendente
         ordenActual.columna = columna;
         ordenActual.direccion = 'asc';
     }
@@ -297,12 +272,10 @@ function ordenarPor(columna) {
 }
 
 function actualizarIconosOrdenamiento() {
-    // Limpiar todos los iconos
     document.querySelectorAll('.sortable i').forEach(icon => {
         icon.className = 'bi bi-arrow-down-up ms-1';
     });
     
-    // Actualizar el icono de la columna ordenada
     const thActual = document.querySelector(`.sortable[data-column="${ordenActual.columna}"]`);
     if (thActual) {
         const icon = thActual.querySelector('i');
@@ -324,10 +297,8 @@ function limpiarFiltros() {
 }
 
 // ============================================================================
-// TOGGLE DE ESTADO
+// TOGGLE DE ESTADO (ACTIVAR)
 // ============================================================================
-
-let changeConfirmed = false;
 
 function toggleEstado(checkbox) {
     currentToggle = checkbox;
@@ -342,11 +313,10 @@ function toggleEstado(checkbox) {
     checkbox.checked = originalState;
 }
 
-function confirmarDesactivacion() {
+function confirmarActivacion() {
     if (!currentToggle) return;
     
     const personalId = parseInt(currentToggle.dataset.id);
-    const nuevoEstado = !originalState;
     
     // Llamada AJAX para actualizar el estado
     fetch('/users/personal/toggle-activo/', {
@@ -367,9 +337,8 @@ function confirmarDesactivacion() {
             confirmModal.hide();
             
             // Mostrar mensaje de éxito
-            const accion = data.activo ? 'activado' : 'desactivado';
             document.getElementById('successModalBody').innerHTML = `
-                <i class="bi bi-check-circle me-2"></i>Personal ${accion} correctamente
+                <i class="bi bi-check-circle me-2"></i>Personal activado correctamente
             `;
             const successModal = new bootstrap.Modal(document.getElementById('successModal'));
             successModal.show();
@@ -394,51 +363,3 @@ function confirmarDesactivacion() {
     });
 }
 
-// ============================================================================
-// ELIMINACIÓN
-// ============================================================================
-
-function abrirModalEliminar(personalId) {
-    personalIdToDelete = personalId;
-    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    modal.show();
-}
-
-function confirmarEliminacion() {
-    if (!personalIdToDelete) return;
-    
-    // Crear formulario para el POST
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/users/personal/${personalIdToDelete}/delete/`;
-    
-    // Agregar CSRF token
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = 'csrfmiddlewaretoken';
-    csrfInput.value = window.csrfToken;
-    form.appendChild(csrfInput);
-    
-    // Agregar al DOM y enviar
-    document.body.appendChild(form);
-    form.submit();
-}
-
-// ============================================================================
-// UTILIDADES
-// ============================================================================
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}

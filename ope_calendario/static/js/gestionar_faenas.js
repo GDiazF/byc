@@ -146,10 +146,10 @@ function renderizarFaenaCard(faena, esActiva = true) {
                             <i class="bi bi-geo-alt me-1"></i><strong>${faena.codigo}</strong>
                         </h6>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-sm btn-light" onclick="editarFaena(${faena.id})" title="Editar">
+                            <button class="btn btn-sm btn-secondary" onclick="editarFaena(${faena.id})" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-sm btn-light" onclick="confirmarEliminarFaena(${faena.id})" title="Eliminar">
+                            <button class="btn btn-sm btn-danger" onclick="confirmarEliminarFaena(${faena.id})" title="Eliminar">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>

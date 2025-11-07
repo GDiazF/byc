@@ -1,0 +1,97 @@
+/* ============================================================================
+   ESTILOS PARA TABLAS DE RRHH
+   COPIADO EXACTO de asignar_personal_faena.css
+   ============================================================================ */
+
+/* Estandarizar títulos de cards */
+.card-header h5 {
+    font-weight: 400 !important;
+    font-size: 1rem !important;
+    letter-spacing: normal !important;
+}
+
+/* Tamaño de fuente equilibrado en tablas */
+#personalTableBody td,
+#personalTable tbody td,
+#licenciasMedicasTable tbody td,
+#licenciasTableBody td,
+#ausentismosTable tbody td,
+#ausentismosTableBody td,
+.rrhh-table tbody td {
+    font-size: 0.85rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+#personalTableBody td strong,
+#personalTable tbody td strong,
+#licenciasMedicasTable tbody td strong,
+#ausentismosTable tbody td strong,
+.rrhh-table tbody td strong {
+    font-size: 0.9rem !important;
+}
+
+#personalTableBody th,
+#personalTable thead th,
+#licenciasMedicasTable thead th,
+#licenciasTableBody th,
+#ausentismosTable thead th,
+#ausentismosTableBody th,
+.table-sm th,
+.rrhh-table thead th {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+.table .badge {
+    font-size: 0.75rem !important;
+    padding: 0.25em 0.5em !important;
+}
+
+/* Botones más pequeños */
+.btn-group-sm .btn,
+.btn-sm {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.4rem !important;
+}
+
+/* Inputs y selects de filtros más pequeños */
+.input-group-sm .form-control,
+.form-select-sm {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+    height: auto !important;
+}
+
+/* Labels más pequeños */
+.form-label.small {
+    font-size: 0.7rem !important;
+}
+
+/* Textos secundarios más pequeños */
+.text-muted.small {
+    font-size: 0.7rem !important;
+}
+
+/* Mejorar espaciado de filas */
+.table-sm tbody tr {
+    height: auto !important;
+}
+
+/* Switch más grande */
+.form-check-input {
+    transform: scale(1.2) !important;
+    cursor: pointer;
+}
+
+/* Advertencias en modales - NO usar clase alert (se auto-destruye) */
+.bg-warning.bg-opacity-25 {
+    background-color: rgba(255, 193, 7, 0.15) !important;
+}
+
+.border-warning {
+    border-color: #ffc107 !important;
+}
+
+.rounded {
+    border-radius: 6px !important;
+}

@@ -32,8 +32,7 @@ from .views import (
     LicenciaMedicaPorPersonalUpdateView,
     delete_licencia_medica,
     listar_licencias_medicas_personal,
-    buscar_personal_licencia_medica,
-    buscar_personal_ausentismo,
+    gestionar_ausencias,
     listar_ausentismos_personal,
     crear_ausentismo,
     actualizar_ausentismo,
@@ -81,10 +80,9 @@ urlpatterns = [
     path('personal/<int:personal_id>/licencias_medicas/', listar_licencias_medicas_personal, name='listar_licencias_medicas_personal'),
     path('licencia_medica/<int:pk>/edit/', LicenciaMedicaPorPersonalUpdateView.as_view(), name='edit_licencia_medica'),
     path('licencia_medica/<int:licencia_id>/delete/', delete_licencia_medica, name='delete_licencia_medica'),
-    # Búsqueda de personal para licencias médicas
-    path('licencias_medicas/buscar/', buscar_personal_licencia_medica, name='buscar_personal_licencia_medica'),
+    # Vista unificada de ausencias (licencias médicas y ausentismos)
+    path('ausencias/', gestionar_ausencias, name='gestionar_ausencias'),
     # Ausentismos y permisos
-    path('ausentismos/buscar/', buscar_personal_ausentismo, name='buscar_personal_ausentismo'),
     path('personal/<int:personal_id>/ausentismos/', listar_ausentismos_personal, name='listar_ausentismos_personal'),
     path('personal/<int:personal_id>/ausentismos/create/', crear_ausentismo, name='crear_ausentismo'),
     path('personal/<int:personal_id>/ausentismos/<int:ausentismo_id>/update/', actualizar_ausentismo, name='actualizar_ausentismo'),

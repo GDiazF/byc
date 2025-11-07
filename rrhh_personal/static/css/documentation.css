@@ -249,3 +249,27 @@
     text-align: center;
 }
 
+/* ============================================================================
+   TABLA DE DOCUMENTOS PERSONALES - COMPACTA
+   ============================================================================ */
+
+/* Hacer la tabla de documentos personales más compacta */
+#personal-docs .rrhh-table tbody td {
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.8rem !important;
+}
+
+#personal-docs .rrhh-table tbody td .btn-sm {
+    font-size: 0.65rem !important;
+    padding: 0.15rem 0.35rem !important;
+}
+
+#personal-docs .rrhh-table tbody td .badge {
+    font-size: 0.7rem !important;
+    padding: 0.2em 0.4em !important;
+}
+
+#personal-docs .rrhh-table tbody td i.bi {
+    font-size: 0.75rem;
+}
+
