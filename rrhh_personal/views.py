@@ -108,132 +108,51 @@ class PersonalCreateView(LoginRequiredMixin, CreateView):
         from django.utils import timezone
         context = super().get_context_data(**kwargs)
         context['now'] = timezone.now()
+        # Agregar formulario de información laboral
+        if 'labor_form' not in context:
+            context['labor_form'] = InfoLaboralPersonalForm()
         return context
     
     def form_valid(self, form):
-        # Almacenar datos básicos en la sesión
-        personal_data = form.cleaned_data
-        self.request.session['personal_data'] = {
-            'rut': personal_data['rut'],
-            'dvrut': personal_data['dvrut'],
-            'nombre': personal_data['nombre'],
-            'apepat': personal_data['apepat'],
-            'apemat': personal_data['apemat'],
-            'sexo_id': personal_data['sexo_id'].pk if personal_data['sexo_id'] else None,
-            'fechanac': personal_data['fechanac'].strftime('%Y-%m-%d') if personal_data['fechanac'] else None,
-            'estcivil_id': personal_data['estcivil_id'].pk if personal_data['estcivil_id'] else None,
-            'correo': personal_data['correo'],
-            'region_id': personal_data['region_id'].pk if personal_data['region_id'] else None,
-            'comuna_id': personal_data['comuna_id'].pk if personal_data['comuna_id'] else None,
-            'direccion': personal_data['direccion'],
-        }
+        # PRIMERO validar el formulario laboral ANTES de guardar nada
+        labor_form = InfoLaboralPersonalForm(self.request.POST)
         
-        messages.success(self.request, 'Información personal validada. Por favor complete la información laboral.')
-        return redirect('personal_labor_create')
-
-    def form_invalid(self, form):
-        messages.error(self.request, 'Error en el formulario personal. Por favor revise los datos ingresados.')
-        return super().form_invalid(form)
-
-class PersonalDocumentCreateView(LoginRequiredMixin, CreateView):
-    model = Personal
-    form_class = PersonalCreationForm
-    template_name = 'personal/create_personal_documents.html'
-    
-    def dispatch(self, request, *args, **kwargs):
-        if 'personal_data' not in request.session:
-            messages.error(request, 'Por favor complete primero la información personal.')
-            return redirect('personal_create')
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_form(self, form_class=None):
-        form = super().get_form(form_class)
-        # Mantener solo los campos de documentación
-        basic_fields = [
-            'rut', 'dvrut', 'nombre', 'apepat', 'apemat', 'sexo_id',
-            'fechanac', 'estcivil_id', 'correo', 'region_id', 'comuna_id', 'direccion'
-        ]
-        for field in basic_fields:
-            if field in form.fields:
-                del form.fields[field]
-        return form
-
-    def form_valid(self, form):
-        # Procesar los archivos
-        files_data = {}
-        for field_name, field in form.files.items():
-            file_content = field.read()
-            files_data[field_name] = {
-                'name': field.name,
-                'content': base64.b64encode(file_content).decode('utf-8'),
-                'content_type': field.content_type
-            }
-            field.seek(0)
-
-        # Almacenar datos de documentos en la sesión
-        self.request.session['document_data'] = files_data
+        if not labor_form.is_valid():
+            # Si la info laboral no es válida, NO crear el personal
+            messages.error(
+                self.request, 
+                'Error en la información laboral. Todos los campos laborales son obligatorios.'
+            )
+            context = self.get_context_data(form=form)
+            context['labor_form'] = labor_form  # Pasar el formulario con errores
+            return self.render_to_response(context)
         
-        messages.success(self.request, 'Documentación validada. Por favor complete la información laboral.')
-        return redirect('personal_labor_create')
-
-    def form_invalid(self, form):
-        messages.error(self.request, 'Error en el formulario de documentación. Por favor revise los archivos subidos.')
-        return super().form_invalid(form)
-
-class PersonalLaborCreateView(LoginRequiredMixin, CreateView):
-    model = InfoLaboral
-    form_class = InfoLaboralPersonalForm
-    template_name = 'personal/create_personal_labor.html'
-    success_url = reverse_lazy('table_personal')
-
-    def dispatch(self, request, *args, **kwargs):
-        if 'personal_data' not in request.session:
-            messages.error(request, 'Por favor complete primero la información personal.')
-            return redirect('personal_create')
-        return super().dispatch(request, *args, **kwargs)
-
-    def form_valid(self, form):
+        # Si ambos formularios son válidos, guardar en transacción
         try:
             with transaction.atomic():
-                # Recuperar los datos personales de la sesión
-                personal_data = self.request.session['personal_data']
-                
-                # Crear el objeto Personal (sin documentos por ahora)
-                personal = Personal(
-                    rut=personal_data['rut'],
-                    dvrut=personal_data['dvrut'],
-                    nombre=personal_data['nombre'],
-                    apepat=personal_data['apepat'],
-                    apemat=personal_data['apemat'],
-                    sexo_id_id=personal_data['sexo_id'],
-                    fechanac=personal_data['fechanac'],
-                    estcivil_id_id=personal_data['estcivil_id'],
-                    correo=personal_data['correo'],
-                    region_id_id=personal_data['region_id'],
-                    comuna_id_id=personal_data['comuna_id'],
-                    direccion=personal_data['direccion']
-                )
-                personal.save()
-
-                # Asignar el personal al formulario laboral y guardar
-                form.instance.personal_id = personal
+                # Guardar el personal
                 self.object = form.save()
-
-                # Limpiar los datos de la sesión
-                if 'personal_data' in self.request.session:
-                    del self.request.session['personal_data']
-                if 'document_data' in self.request.session:
-                    del self.request.session['document_data']
                 
-                messages.success(self.request, 'Personal creado exitosamente con toda su información.')
-                return super().form_valid(form)
+                # Guardar información laboral
+                info_laboral = labor_form.save(commit=False)
+                info_laboral.personal_id = self.object
+                info_laboral.save()
+                
+                messages.success(
+                    self.request, 
+                    f'Personal {self.object.nombre} {self.object.apepat} creado exitosamente con su información laboral.'
+                )
+                
+                return redirect('table_personal')
         except Exception as e:
-            messages.error(self.request, f'Error al guardar la información: {str(e)}')
+            messages.error(self.request, f'Error al crear el personal: {str(e)}')
             return self.form_invalid(form)
 
     def form_invalid(self, form):
-        messages.error(self.request, 'Error en el formulario laboral. Por favor revise los datos ingresados.')
-        return super().form_invalid(form)
+        messages.error(self.request, 'Error en el formulario. Por favor revise los datos ingresados.')
+        context = self.get_context_data(form=form)
+        context['labor_form'] = InfoLaboralPersonalForm(self.request.POST)
+        return self.render_to_response(context)
 
 @login_required
 def get_cargos(request):
@@ -251,8 +170,12 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
         from django.utils import timezone
         context = super().get_context_data(**kwargs)
         if 'labor_form' not in context:
-            info_laboral, created = InfoLaboral.objects.get_or_create(personal_id=self.object)
-            context['labor_form'] = InfoLaboralPersonalForm(instance=info_laboral)
+            try:
+                info_laboral = InfoLaboral.objects.get(personal_id=self.object)
+                context['labor_form'] = InfoLaboralPersonalForm(instance=info_laboral)
+            except InfoLaboral.DoesNotExist:
+                # Si no existe info laboral, crear formulario vacío
+                context['labor_form'] = InfoLaboralPersonalForm()
         
         context['now'] = timezone.now()
         return context
@@ -270,16 +193,22 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
             else:
                 return self.form_invalid(form)
         
-        
         elif form_type == 'labor':
-            info_laboral = InfoLaboral.objects.get(personal_id=self.object)
+            # Obtener o crear InfoLaboral
+            info_laboral, created = InfoLaboral.objects.get_or_create(personal_id=self.object)
             labor_form = InfoLaboralPersonalForm(request.POST, instance=info_laboral)
+            
             if labor_form.is_valid():
-                labor_form.save()
+                info_laboral = labor_form.save(commit=False)
+                info_laboral.personal_id = self.object
+                info_laboral.save()
                 messages.success(request, 'Información laboral actualizada exitosamente.')
                 return redirect(f"{request.path}?tab=labor")
             else:
-                return self.form_invalid(labor_form)
+                messages.error(request, 'Error en la información laboral. Por favor revise los datos.')
+                context = self.get_context_data()
+                context['labor_form'] = labor_form
+                return self.render_to_response(context)
 
     def form_valid(self, form):
         response = super().form_valid(form)

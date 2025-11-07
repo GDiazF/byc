@@ -5,7 +5,7 @@
 {% block title %}Editar Personal{% endblock %}
 
 {% block extrastyles %}
-<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}?v=2.0">
 {% endblock %}
 
 {% block content %}
@@ -238,10 +238,9 @@
 {% endblock %}
 
 {% block extrajs %}
-<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 <script src="{% static 'js/utils/validarRut.js' %}"></script>
 <script src="{% static 'js/utils/location.js' %}"></script>
-<script src="{% static 'js/utils/department_cargo.js' %}"></script>
+<script src="{% static 'js/departamento_cargo.js' %}?v=2.0"></script>
 <script src="{% static 'js/personal_form.js' %}"></script>
 <script src="{% static 'js/personal_edit_tabs.js' %}"></script>
 {% endblock %} 

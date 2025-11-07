@@ -4,7 +4,7 @@
 {% block title %}Crear Personal{% endblock %}
 
 {% block extrastyles %}
-<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}?v=2.0">
 {% endblock %}
 
 {% block content %}
@@ -132,14 +132,46 @@
                 </div>
             </div>
 
+            <!-- Sección: Información Laboral -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-briefcase-fill me-2"></i>
+                    <span>Información Laboral</span>
+                </div>
+                <div class="form-section-body">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label for="id_empresa_id" class="form-label">Empresa *</label>
+                            {{ labor_form.empresa_id }}
+                            <div class="invalid-feedback">Requerido</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="id_depto_id" class="form-label">Departamento *</label>
+                            {{ labor_form.depto_id }}
+                            <div class="invalid-feedback">Requerido</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="id_cargo_id" class="form-label">Cargo *</label>
+                            {{ labor_form.cargo_id }}
+                            <div class="invalid-feedback">Requerido</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="id_fechacontrata" class="form-label">Fecha Contrata *</label>
+                            {{ labor_form.fechacontrata }}
+                            <div class="invalid-feedback">Requerido</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Botones -->
             <div class="row mt-3">
                 <div class="col-12 d-flex justify-content-end gap-2">
                     <a href="{% url 'table_personal' %}" class="btn btn-secondary">
                         <i class="bi bi-x-circle me-1"></i>Cancelar
                     </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-arrow-right me-1"></i>Siguiente
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i>Crear Personal
                     </button>
                 </div>
             </div>
@@ -150,9 +182,9 @@
 {% endblock %}
 
 {% block extrajs %}
-<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 <script src="{% static 'js/utils/validarRut.js' %}"></script>
 <script src="{% static 'js/textoFormateador.js' %}"></script>
 <script src="{% static 'js/utils/location.js' %}"></script>
+<script src="{% static 'js/departamento_cargo.js' %}?v=2.0"></script>
 <script src="{% static 'js/personal_form.js' %}"></script>
 {% endblock %}
