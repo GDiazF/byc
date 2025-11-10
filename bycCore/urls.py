@@ -28,6 +28,7 @@ urlpatterns = [
     path('users/', include('rrhh_personal.urls')),
     path('gen_settings/', include('gen_settings.urls')),
     path('calendario/', include('ope_calendario.urls')),
+    path('maquinarias/', include('maquinarias.urls')),
 ]
 
 if settings.DEBUG:

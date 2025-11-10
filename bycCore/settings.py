@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     'main_login',
     'rrhh_personal',
     'main_home',
-    'maq_fichatecnica',
+    'maquinarias',
     'gen_settings',
     # 'storages',  # Solo para producción con S3
     'django.contrib.admin',

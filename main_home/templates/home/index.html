@@ -102,7 +102,14 @@
                 <div class="collapse" id="collapseUsers">
                     <ul class="nav flex-column ps-4">
                         <li class="nav-item">
-                            <a class="nav-link" href="#">Equipos</a>
+                            <a class="nav-link" href="{% url 'maquinarias:lista_equipos' %}">
+                                <i class="bi bi-truck me-2"></i>Equipos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'maquinarias:equipos_desactivados' %}">
+                                <i class="bi bi-tools-slash me-2"></i>Equipos Desactivados
+                            </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#">Ficha técnica</a>

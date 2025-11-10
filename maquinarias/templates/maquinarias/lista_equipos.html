@@ -1,0 +1,204 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Gestión de Equipos{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
+<link rel="stylesheet" href="{% static 'maquinarias/css/lista_equipos.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-tools me-2"></i>Gestión de Equipos y Maquinarias
+        </h5>
+    </div>
+    
+    <div class="card-body p-4">
+        <!-- Botón Nuevo Equipo -->
+        <div class="row mb-3 align-items-center">
+            <div class="col-md-6">
+                <a href="{% url 'maquinarias:crear_equipo' %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-plus-square me-1"></i>Crear Equipo
+                </a>
+            </div>
+            <div class="col-md-6 text-end">
+                <span class="small text-muted">
+                    <i class="bi bi-tools me-1"></i>
+                    <strong id="totalEquipos">0</strong> equipos encontrados
+                </span>
+            </div>
+        </div>
+        
+        <!-- Filtros y búsqueda -->
+        <div class="row mb-3 align-items-center">
+            <div class="col-md-3">
+                <label class="form-label small">Buscar</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" 
+                           placeholder="Buscar por nombre...">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Empresa</label>
+                <select class="form-select form-select-sm" id="empresaFilter">
+                    <option value="">Todas</option>
+                    {% for empresa in empresas %}
+                    <option value="{{ empresa.id }}">{{ empresa.nomFantasia }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Tipo</label>
+                <select class="form-select form-select-sm" id="tipoFilter">
+                    <option value="">Todos</option>
+                    {% for tipo in tipos_equipo %}
+                    <option value="{{ tipo.tipoEquipo_id }}">{{ tipo.tipoEquipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Marca</label>
+                <select class="form-select form-select-sm" id="marcaFilter">
+                    <option value="">Todas</option>
+                    {% for marca in marcas %}
+                    <option value="{{ marca.marcaEquipo_id }}">{{ marca.marcaEquipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 text-end">
+                <label class="form-label small">&nbsp;</label>
+                <button class="btn btn-sm btn-secondary" onclick="limpiarFiltros()">
+                    <i class="bi bi-x-circle me-1"></i>Limpiar filtros
+                </button>
+            </div>
+        </div>
+        
+        <!-- Tabla de equipos -->
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-bordered rrhh-table" id="equiposTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 15%;">Nombre Equipo</th>
+                        <th style="width: 12%;">Tipo</th>
+                        <th style="width: 12%;">Marca</th>
+                        <th style="width: 12%;">Modelo</th>
+                        <th style="width: 12%;">Empresa</th>
+                        <th style="width: 8%;" class="text-center">Ficha Técnica</th>
+                        <th style="width: 8%;" class="text-center">Documentación</th>
+                        <th style="width: 8%;" class="text-center">Estado</th>
+                        <th style="width: 13%;" class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="equiposTableBody">
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Cargando equipos...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="row mt-3 align-items-center">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label mb-0 small">Mostrar:</label>
+                    <select class="form-select form-select-sm" id="pageSizeSelect" style="width: auto;" onchange="cambiarTamanoPagina()">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span class="small text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Mostrando <strong id="registroInicio">0</strong> a <strong id="registroFin">0</strong> de <strong id="totalRegistros">0</strong> registros
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <nav>
+                    <ul class="pagination pagination-sm justify-content-end mb-0" id="paginacion">
+                        <!-- Se llena con JavaScript -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación para DESACTIVAR -->
+<div class="modal fade" id="confirmDesactivarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Desactivación de Equipo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <p class="text-danger fw-bold mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>
+                        ¿Está seguro que desea DESACTIVAR este equipo?
+                    </p>
+                </div>
+                <p class="mb-2"><strong>Al desactivar este equipo:</strong></p>
+                <ul class="mb-3">
+                    <li>❌ <strong>NO aparecerá en la lista de equipos activos</strong></li>
+                    <li>❌ No estará disponible para asignaciones</li>
+                    <li>❌ Se moverá a la lista de "Equipos Desactivados"</li>
+                </ul>
+                <p class="mb-2"><strong>Equipo a desactivar:</strong></p>
+                <div class="alert alert-light border mb-0">
+                    <strong id="equipoDesactivarNombre"></strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="btnConfirmarDesactivar">
+                    <i class="bi bi-toggle-off me-1"></i>Sí, Desactivar Equipo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="confirmarEliminarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar el equipo <strong id="equipoEliminarNombre"></strong>?</p>
+                <p class="text-danger mb-0"><small>Esta acción no se puede deshacer.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarEliminar">
+                    <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extrajs %}
+<script src="{% static 'maquinarias/js/lista_equipos.js' %}"></script>
+{% endblock %}
+

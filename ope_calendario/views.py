@@ -386,9 +386,10 @@ def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', em
         'turno__bloques__estado'
     )
     
-    # Obtener estados manuales de este personal en este mes
+    # Obtener estados manuales de este personal en este mes (solo personal activo)
     estados_manuales_query = EstadoManual.objects.filter(
         personal_id__in=personal_ids,
+        personal__activo=True,  # Filtrar solo personal activo
         fecha_inicio__lte=fecha_fin,
         fecha_fin__gte=fecha_inicio
     )
@@ -1429,8 +1430,11 @@ def asignar_personal_faena(request, faena_id):
             'longitud_ciclo': sum([b.duracion_dias for b in turno.bloques.all()])
         })
     
-    # Obtener asignaciones activas de la faena
-    asignaciones_faena = faena.asignaciones.filter(activo=True).select_related(
+    # Obtener asignaciones activas de la faena (solo personal activo)
+    asignaciones_faena = faena.asignaciones.filter(
+        activo=True,
+        personal__activo=True  # Filtrar solo personal activo
+    ).select_related(
         'personal', 'turno', 'bloque_inicio'
     ).prefetch_related('turno__bloques')
     
@@ -1472,9 +1476,10 @@ def asignar_personal_faena(request, faena_id):
     # Contar asignados actuales
     total_asignados = len(asignaciones_data)
     
-    # Obtener estados manuales de esta faena
+    # Obtener estados manuales de esta faena (solo personal activo)
     estados_manuales_faena = EstadoManual.objects.filter(
-        faena=faena
+        faena=faena,
+        personal__activo=True  # Filtrar solo personal activo
     ).select_related(
         'personal', 
         'estado'
@@ -1558,7 +1563,8 @@ def gestionar_faenas(request):
     faenas_data = []
     for faena in faenas:
         asignaciones_activas = faena.asignaciones.filter(
-            activo=True
+            activo=True,
+            personal__activo=True  # Filtrar solo personal activo
         ).select_related('personal', 'turno', 'bloque_inicio')
         
         faenas_data.append({
@@ -1786,7 +1792,7 @@ def actualizar_faena(request):
         # LÓGICA INTELIGENTE: Actualizar asignaciones que coincidan exactamente con las fechas anteriores
         asignaciones_actualizadas = 0
         conflictos = []
-        asignaciones = AsignacionFaena.objects.filter(faena=faena, activo=True)
+        asignaciones = AsignacionFaena.objects.filter(faena=faena, activo=True, personal__activo=True)
         
         for asignacion in asignaciones:
             actualizado = False
@@ -1900,7 +1906,7 @@ def listar_faenas_api(request):
         
         faenas_data = []
         for faena in faenas:
-            asignaciones_activas = faena.asignaciones.filter(activo=True)
+            asignaciones_activas = faena.asignaciones.filter(activo=True, personal__activo=True)
             
             faenas_data.append({
                 'id': faena.id,
@@ -2141,10 +2147,11 @@ def api_personal_faena(request, faena_id):
     except Faena.DoesNotExist:
         return JsonResponse({'error': 'Faena no encontrada'}, status=404)
     
-    # Obtener asignaciones activas de esta faena que se superpongan con el mes
+    # Obtener asignaciones activas de esta faena que se superpongan con el mes (solo personal activo)
     asignaciones = AsignacionFaena.objects.filter(
         faena=faena,
         activo=True,
+        personal__activo=True,  # Filtrar solo personal activo
         fecha_inicio__lte=fecha_fin_mes
     ).filter(
         Q(fecha_fin__gte=fecha_inicio_mes) | Q(fecha_fin__isnull=True)

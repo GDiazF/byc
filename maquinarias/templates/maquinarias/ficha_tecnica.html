@@ -1,0 +1,105 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Ficha Técnica - {{ equipo.nombreEquipo }}{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}?v=2.0">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-file-earmark-text me-2"></i>Ficha Técnica - {{ equipo.nombreEquipo }}
+            </h5>
+            <a href="{% url 'maquinarias:lista_equipos' %}" class="btn btn-sm btn-light">
+                <i class="bi bi-arrow-left me-1"></i>Volver a Lista
+            </a>
+        </div>
+    </div>
+    
+    <div class="card-body p-4">
+        <!-- Información del Equipo -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="bi bi-info-circle me-2"></i>
+                <span>Información General</span>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <strong class="d-block text-muted small">Nombre:</strong>
+                        <p class="mb-0">{{ equipo.nombreEquipo }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong class="d-block text-muted small">Tipo:</strong>
+                        <p class="mb-0">
+                            <span class="badge bg-secondary">{{ equipo.modeloEquipo_id.tipoEquipo_id.siglaEquipo }}</span>
+                            {{ equipo.modeloEquipo_id.tipoEquipo_id.tipoEquipo }}
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong class="d-block text-muted small">Código Interno:</strong>
+                        <p class="mb-0">{{ equipo.codigoInterno }}</p>
+                    </div>
+                </div>
+                
+                <div class="row g-3 mt-2">
+                    <div class="col-md-4">
+                        <strong class="d-block text-muted small">Marca:</strong>
+                        <p class="mb-0">{{ equipo.modeloEquipo_id.marcaEquipo_id.marcaEquipo }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong class="d-block text-muted small">Modelo:</strong>
+                        <p class="mb-0">{{ equipo.modeloEquipo_id.modeloEquipo }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong class="d-block text-muted small">Patente:</strong>
+                        <p class="mb-0">{{ equipo.patente|default:"-" }}</p>
+                    </div>
+                </div>
+                
+                <div class="row g-3 mt-2">
+                    <div class="col-md-12">
+                        <strong class="d-block text-muted small">Empresa:</strong>
+                        <p class="mb-0">{{ equipo.empresa_id.nomFantasia }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mediciones -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="bi bi-speedometer2 me-2"></i>
+                <span>Mediciones Actuales</span>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <strong class="d-block text-muted small">Horómetro:</strong>
+                        <p class="mb-0 fs-5">{{ equipo.horometro|default:"0" }} <small class="text-muted">hrs</small></p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong class="d-block text-muted small">Odómetro:</strong>
+                        <p class="mb-0 fs-5">{{ equipo.odometro|default:"0" }} <small class="text-muted">km</small></p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong class="d-block text-muted small">Horómetro Superestructural:</strong>
+                        <p class="mb-0 fs-5">{{ equipo.horometroSuperEstructural|default:"0" }} <small class="text-muted">hrs</small></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Placeholder para información adicional -->
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Próximamente:</strong> Aquí se mostrará información técnica detallada del equipo (especificaciones, capacidades, características, etc.)
+        </div>
+    </div>
+</div>
+{% endblock %}
+

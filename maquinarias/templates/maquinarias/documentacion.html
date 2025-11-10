@@ -1,0 +1,95 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Documentación - {{ equipo.nombreEquipo }}{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}?v=2.0">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-folder me-2"></i>Documentación - {{ equipo.nombreEquipo }}
+            </h5>
+            <a href="{% url 'maquinarias:lista_equipos' %}" class="btn btn-sm btn-light">
+                <i class="bi bi-arrow-left me-1"></i>Volver a Lista
+            </a>
+        </div>
+    </div>
+    
+    <div class="card-body p-4">
+        <!-- Información del Equipo -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="alert alert-light border">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong class="text-muted small">Equipo:</strong>
+                            <p class="mb-0 fw-bold">{{ equipo.nombreEquipo }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <strong class="text-muted small">Tipo:</strong>
+                            <p class="mb-0">
+                                <span class="badge bg-secondary">{{ equipo.modeloEquipo_id.tipoEquipo_id.siglaEquipo }}</span>
+                                {{ equipo.modeloEquipo_id.tipoEquipo_id.tipoEquipo }}
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <strong class="text-muted small">Marca/Modelo:</strong>
+                            <p class="mb-0">{{ equipo.modeloEquipo_id.marcaEquipo_id.marcaEquipo }} {{ equipo.modeloEquipo_id.modeloEquipo }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <strong class="text-muted small">Empresa:</strong>
+                            <p class="mb-0">{{ equipo.empresa_id.nomFantasia }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Documentos -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="bi bi-files me-2"></i>
+                <span>Documentos del Equipo</span>
+            </div>
+            <div class="form-section-body">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Próximamente:</strong> Sistema de gestión de documentos del equipo (revisión técnica, permisos de circulación, seguros, manuales, certificaciones, etc.)
+                </div>
+                
+                <!-- Placeholder para tabla de documentos -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tipo de Documento</th>
+                                <th>Nombre</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    <i class="bi bi-folder-x fs-1"></i>
+                                    <p class="mt-2">No hay documentos registrados</p>
+                                    <button class="btn btn-sm btn-primary" disabled>
+                                        <i class="bi bi-plus-circle me-1"></i>Agregar Documento
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
