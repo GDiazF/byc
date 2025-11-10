@@ -78,3 +78,12 @@
     margin-bottom: 0.5rem !important;
 }
 
+/* Columnas ordenables */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sortable:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}

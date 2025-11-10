@@ -40,6 +40,17 @@
             {% endfor %}
         {% endif %}
         
+        <!-- Errores de validación del formulario -->
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endif %}
+        
         <form method="post" class="needs-validation" novalidate id="ausentismoForm">
             {% csrf_token %}
             <div class="row">
@@ -56,15 +67,20 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     <label for="id_fechaini" class="form-label">Fecha de Inicio</label>
                     {{ form.fechaini }}
                     <div class="invalid-feedback">Por favor ingrese la fecha de inicio.</div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label for="id_fechafin" class="form-label">Fecha de Fin</label>
-                    {{ form.fechafin }}
-                    <div class="invalid-feedback">Por favor ingrese la fecha de fin.</div>
+                <div class="col-md-4 mb-3">
+                    <label for="id_dias_ausentismo" class="form-label">Días de Ausentismo</label>
+                    {{ form.dias_ausentismo }}
+                    <div class="invalid-feedback">Por favor ingrese los días (mínimo 1).</div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="id_fechafin" class="form-label">Fecha de Fin (Calculada)</label>
+                    {{ form.fechafin_display }}
+                    <small class="form-text text-muted">Se calcula automáticamente</small>
                 </div>
             </div>
             <div class="row">

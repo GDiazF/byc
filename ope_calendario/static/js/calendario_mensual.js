@@ -408,7 +408,7 @@ function showEstadoInfo(personalId, day) {
         estado = calendarioData.estado_predeterminado;
     }
     
-    // Buscar asignación activa
+    // Buscar asignación activa (turno normal)
     const asignaciones = asignacionesPorPersonal[personalId] || [];
     const asignacionActiva = asignaciones.find(asig => {
         const fechaIni = new Date(asig.fecha_inicio);
@@ -418,7 +418,13 @@ function showEstadoInfo(personalId, day) {
     
     let faenaActual = 'Sin asignar';
     let turnoNombre = '-';
-    if (asignacionActiva) {
+    
+    // Primero verificar si el estado tiene información de faena (estados manuales)
+    if (estado && estado.faena_nombre) {
+        faenaActual = estado.faena_nombre;
+        turnoNombre = 'Estado Manual';
+    } else if (asignacionActiva) {
+        // Si no es estado manual, usar la asignación de turno normal
         faenaActual = asignacionActiva.faena.nombre;
         const turno = turnosMap[asignacionActiva.turno_id];
         turnoNombre = turno ? turno.nombre : '-';
@@ -465,6 +471,9 @@ function showEstadoInfo(personalId, day) {
 
 // Mostrar información personal con documentación
 async function showPersonalInfo(personalId) {
+    // Cambiar título del modal
+    document.getElementById('personalModalTitle').textContent = 'Información Personal y Documentación';
+    
     // Mostrar modal con spinner
     const modal = new bootstrap.Modal(document.getElementById('personalModal'));
     modal.show();
@@ -973,6 +982,9 @@ function updateBloqueOptions(turnoId) {
 
 // Mostrar asignaciones para editar/eliminar (solo las del mes actual)
 function showAsignaciones(personalId) {
+    // Cambiar título del modal
+    document.getElementById('personalModalTitle').textContent = 'Asignaciones y Estados Manuales';
+    
     const persona = calendarioData.personal.find(p => p.personal_id === personalId);
     if (!persona) return;
     
@@ -998,25 +1010,38 @@ function showAsignaciones(personalId) {
         return iniciaAntesODuranteMes && terminaDespuesODuranteMes;
     });
     
+    // Buscar estados manuales de este personal en el mes actual
+    const estadosManuales = (calendarioData.estados_manuales || []).filter(em => {
+        if (em.personal_id !== personalId) return false;
+        
+        const fechaInicio = new Date(em.fecha_inicio);
+        const fechaFin = new Date(em.fecha_fin);
+        
+        return fechaInicio <= ultimoDiaMes && fechaFin >= primerDiaMes;
+    });
+    
     let html = `
-        <h6 class="mb-3">Asignaciones de <strong>${nombreCompleto}</strong></h6>
-        <p class="text-muted small mb-3">
-            <i class="bi bi-calendar-month me-1"></i>Mostrando asignaciones activas en: ${currentMonthName} ${currentYear}
-        </p>
+        <div class="mb-2">
+            <strong>${nombreCompleto}</strong>
+            <div class="text-muted small">
+                <i class="bi bi-calendar-month me-1"></i>${currentMonthName} ${currentYear}
+            </div>
+        </div>
     `;
     
-    if (asignaciones.length === 0) {
+    if (asignaciones.length === 0 && estadosManuales.length === 0) {
         html += `
-            <div class="alert alert-info">
-                No tiene asignaciones activas en este mes.
+            <div class="alert alert-info py-2 small mb-2">
+                No tiene asignaciones ni estados manuales activos en este mes.
             </div>
-            <button class="btn btn-success w-100" onclick="openFaenaModal(${personalId})">
+            <button class="btn btn-sm btn-success w-100" onclick="openFaenaModal(${personalId})">
                 <i class="bi bi-plus-circle me-1"></i>Nueva Asignación
             </button>
         `;
     } else {
-        html += '<div class="list-group mb-3">';
+        html += '<div class="list-group list-group-flush mb-2">';
         
+        // Mostrar asignaciones de turno
         asignaciones.forEach(asig => {
             const fechaInicio = formatearFechaChilena(asig.fecha_inicio);
             const fechaFin = asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Sin fecha fin';
@@ -1027,7 +1052,8 @@ function showAsignaciones(personalId) {
             let estadoText = 'Activa';
             
             if (asig.fecha_fin) {
-                const fechaFin = new Date(asig.fecha_fin);
+                const fechaFin = new Date(asig.fecha_fin + 'T00:00:00');
+                fechaFin.setHours(0, 0, 0, 0);
                 if (fechaFin < hoy) {
                     estadoClass = 'secondary';
                     estadoText = 'Finalizada';
@@ -1035,21 +1061,20 @@ function showAsignaciones(personalId) {
             }
             
             html += `
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <h6 class="mb-1">${asig.faena.nombre}</h6>
-                            <p class="mb-1 small">
-                                <strong>Desde:</strong> ${fechaInicio} 
-                                <strong>Hasta:</strong> ${fechaFin}
-                            </p>
-                            <span class="badge bg-${estadoClass}">${estadoText}</span>
+                <div class="list-group-item px-0 py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1 me-2">
+                            <div class="fw-bold small">${asig.faena.nombre}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">
+                                ${fechaInicio} → ${fechaFin}
+                            </div>
+                            <span class="badge bg-${estadoClass}" style="font-size: 0.65rem;">${estadoText}</span>
                         </div>
-                        <div class="btn-group-vertical btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="editarAsignacion(${personalId}, ${asig.id})" title="Editar">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="editarAsignacion(${personalId}, ${asig.id})" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-danger" onclick="confirmarEliminarAsignacion(${asig.id})" title="Eliminar">
+                            <button class="btn btn-sm btn-outline-danger" onclick="confirmarEliminarAsignacion(${asig.id})" title="Eliminar">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -1058,9 +1083,49 @@ function showAsignaciones(personalId) {
             `;
         });
         
+        // Mostrar estados manuales
+        if (estadosManuales.length > 0) {
+            if (asignaciones.length > 0) {
+                html += '<hr class="my-2">';
+                html += '<div class="small text-muted mb-2"><i class="bi bi-wrench me-1"></i><strong>Estados Manuales:</strong></div>';
+            }
+            
+            estadosManuales.forEach(em => {
+                const fechaInicio = formatearFechaChilena(em.fecha_inicio);
+                const fechaFin = formatearFechaChilena(em.fecha_fin);
+                
+                // Buscar el nombre del estado
+                const estado = calendarioData.todos_estados_disponibles.find(e => e.id === em.estado_id);
+                const estadoNombre = estado ? estado.nombre : 'Desconocido';
+                
+                html += `
+                    <div class="list-group-item px-0 py-2 bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="flex-grow-1 me-2">
+                                <div class="fw-bold small">
+                                    <i class="bi bi-wrench me-1 text-warning"></i>Estado Manual
+                                </div>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    <i class="bi bi-calendar-range me-1"></i>${fechaInicio} → ${fechaFin}
+                                </div>
+                                <span class="badge" style="background-color: ${estado ? estado.background_color : '#666'}; color: ${estado ? estado.color : '#fff'}; font-size: 0.65rem;">
+                                    ${estadoNombre}
+                                </span>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-sm btn-outline-secondary disabled" title="Ver en gestión de faenas">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
         html += '</div>';
         html += `
-            <button class="btn btn-success w-100" onclick="openFaenaModal(${personalId})">
+            <button class="btn btn-sm btn-outline-primary w-100 mt-2" onclick="openFaenaModal(${personalId})">
                 <i class="bi bi-plus-circle me-1"></i>Nueva Asignación
             </button>
         `;

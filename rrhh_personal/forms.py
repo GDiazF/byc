@@ -389,28 +389,77 @@ class AusentismoForm(forms.ModelForm):
         required=True
     )
     
+    # Campo adicional solo para mostrar la fecha de fin (no se guardará)
+    fechafin_display = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'id': 'id_fechafin'}),
+        label='Fecha de Fin (Calculada)'
+    )
+    
     class Meta:
         model = Ausentismo
-        fields = ['tipoausen_id', 'fechaini', 'fechafin', 'observacion']
+        fields = ['tipoausen_id', 'fechaini', 'dias_ausentismo', 'observacion']
         widgets = {
             'fechaini': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'required': 'required'}),
-            'fechafin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'required': 'required'}),
+            'dias_ausentismo': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'required': 'required'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
         labels = {
             'fechaini': 'Fecha de Inicio',
-            'fechafin': 'Fecha de Fin',
+            'dias_ausentismo': 'Días de Ausentismo',
             'observacion': 'Observaciones'
         }
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Si es CREACIÓN (no edición), limpiar el valor por defecto del modelo
+        if not self.instance.pk:
+            self.fields['dias_ausentismo'].initial = None
+        
+        # Si es edición, calcular y mostrar la fecha de fin en formato chileno
+        if self.instance and self.instance.pk:
+            if self.instance.fechafin:
+                # Formatear fecha en formato chileno DD/MM/YYYY
+                self.fields['fechafin_display'].initial = self.instance.fechafin.strftime('%d/%m/%Y')
+    
+    def clean_dias_ausentismo(self):
+        dias = self.cleaned_data.get('dias_ausentismo')
+        if dias and dias < 1:
+            raise forms.ValidationError('Los días de ausentismo deben ser al menos 1.')
+        return dias
+    
     def clean(self):
         cleaned_data = super().clean()
-        fecha_inicio = cleaned_data.get('fechaini')
-        fecha_fin = cleaned_data.get('fechafin')
+        fechaini = cleaned_data.get('fechaini')
+        dias_ausentismo = cleaned_data.get('dias_ausentismo')
         
-        if fecha_inicio and fecha_fin:
-            if fecha_fin < fecha_inicio:
-                raise forms.ValidationError('La fecha de fin no puede ser anterior a la fecha de inicio.')
+        if fechaini and dias_ausentismo:
+            from datetime import timedelta
+            # Calcular fecha de fin
+            fechafin = fechaini + timedelta(days=dias_ausentismo - 1)
+            
+            # Obtener el personal_id desde la vista (se pasa en el constructor)
+            if hasattr(self, 'personal_id'):
+                # Verificar solapamiento con otros ausentismos del mismo personal
+                solapamientos = Ausentismo.objects.filter(
+                    personal_id=self.personal_id
+                ).exclude(
+                    pk=self.instance.pk if self.instance.pk else None
+                ).filter(
+                    # Condición de solapamiento: 
+                    # (fecha_inicio_nueva <= fecha_fin_existente) AND (fecha_fin_nueva >= fecha_inicio_existente)
+                    fechaini__lte=fechafin,
+                    fechafin__gte=fechaini
+                )
+                
+                if solapamientos.exists():
+                    primer_solapamiento = solapamientos.first()
+                    raise forms.ValidationError(
+                        f'Las fechas se solapan con un ausentismo existente: '
+                        f'{primer_solapamiento.tipoausen_id} del {primer_solapamiento.fechaini.strftime("%d/%m/%Y")} '
+                        f'al {primer_solapamiento.fechafin.strftime("%d/%m/%Y")}.'
+                    )
         
         return cleaned_data
 
@@ -443,5 +492,39 @@ class LicenciaMedicaPorPersonalForm(forms.ModelForm):
             'dias_licencia': 'Días de Licencia',
             'observacion': 'Observaciones'
         }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_emision = cleaned_data.get('fechaEmision')
+        dias_licencia = cleaned_data.get('dias_licencia')
+        
+        if fecha_emision and dias_licencia:
+            from datetime import timedelta
+            # Calcular fecha de fin
+            fecha_fin = fecha_emision + timedelta(days=dias_licencia - 1)
+            
+            # Obtener el personal_id desde la vista (se pasa en el constructor)
+            if hasattr(self, 'personal_id'):
+                # Verificar solapamiento con otras licencias médicas del mismo personal
+                solapamientos = LicenciaMedicaPorPersonal.objects.filter(
+                    personal_id=self.personal_id
+                ).exclude(
+                    pk=self.instance.pk if self.instance.pk else None
+                ).filter(
+                    # Condición de solapamiento: 
+                    # (fecha_inicio_nueva <= fecha_fin_existente) AND (fecha_fin_nueva >= fecha_inicio_existente)
+                    fechaEmision__lte=fecha_fin,
+                    fecha_fin_licencia__gte=fecha_emision
+                )
+                
+                if solapamientos.exists():
+                    primer_solapamiento = solapamientos.first()
+                    raise forms.ValidationError(
+                        f'Las fechas se solapan con una licencia médica existente: '
+                        f'{primer_solapamiento.tipoLicenciaMedica_id} del {primer_solapamiento.fechaEmision.strftime("%d/%m/%Y")} '
+                        f'al {primer_solapamiento.fecha_fin_licencia.strftime("%d/%m/%Y")}.'
+                    )
+        
+        return cleaned_data
 
         

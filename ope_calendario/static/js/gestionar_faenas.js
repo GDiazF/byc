@@ -75,12 +75,24 @@ function formatearFechaChilena(fecha) {
 
 // Verificar si una faena está activa o finalizada
 function esFaenaActiva(faena) {
-    if (!faena.fecha_fin) {
-        return true; // Sin fecha de fin = activa
-    }
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
+    
+    // Si no tiene fecha de fin, verificar solo la fecha de inicio
+    if (!faena.fecha_fin) {
+        // Si no tiene fecha de inicio, se considera activa
+        if (!faena.fecha_inicio) {
+            return true;
+        }
+        const fechaInicio = new Date(faena.fecha_inicio + 'T00:00:00');
+        fechaInicio.setHours(0, 0, 0, 0);
+        // Si ya empezó o empieza hoy, es activa
+        return fechaInicio <= hoy;
+    }
+    
+    // Si tiene fecha de fin, verificar que no haya terminado
     const fechaFin = new Date(faena.fecha_fin + 'T00:00:00');
+    fechaFin.setHours(0, 0, 0, 0);
     return fechaFin >= hoy;
 }
 
@@ -90,8 +102,10 @@ function calcularDuracionFaena(faena) {
         return 'N/A';
     }
     const inicio = new Date(faena.fecha_inicio + 'T00:00:00');
+    inicio.setHours(0, 0, 0, 0);
     const fin = new Date(faena.fecha_fin + 'T00:00:00');
-    const dias = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
+    fin.setHours(0, 0, 0, 0);
+    const dias = Math.round((fin - inicio) / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir ambos días
     
     if (dias < 30) {
         return `${dias} día${dias !== 1 ? 's' : ''}`;
@@ -107,28 +121,54 @@ function calcularDuracionFaena(faena) {
 
 // Obtener estado de la faena
 function obtenerEstadoFaena(faena) {
-    if (!faena.fecha_fin) {
-        return '<span class="badge bg-success" style="font-size: 0.7rem;">Activa</span>';
-    }
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    const fechaFin = new Date(faena.fecha_fin + 'T00:00:00');
-    const diasRestantes = Math.ceil((fechaFin - hoy) / (1000 * 60 * 60 * 24));
     
+    // Estilos uniformes para los badges
+    const badgeEstilo = 'font-size: 0.7rem; min-width: 60px; display: inline-block; text-align: center;';
+    const badgeDiasEstilo = 'font-size: 0.7rem; min-width: 45px; display: inline-block; text-align: center;';
+    
+    // Verificar si tiene fecha de inicio
+    if (!faena.fecha_inicio) {
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span>`;
+    }
+    
+    const fechaInicio = new Date(faena.fecha_inicio + 'T00:00:00');
+    fechaInicio.setHours(0, 0, 0, 0);
+    
+    // Si la faena aún no ha empezado
+    if (fechaInicio > hoy) {
+        const diasParaInicio = Math.round((fechaInicio - hoy) / (1000 * 60 * 60 * 24));
+        return `<span class="badge" style="${badgeEstilo} background-color: #fd7e14; color: white;">Próxima</span> <span class="badge bg-secondary" style="${badgeDiasEstilo}" title="Inicia en ${diasParaInicio} día${diasParaInicio !== 1 ? 's' : ''}">En ${diasParaInicio}d</span>`;
+    }
+    
+    // Si no tiene fecha de fin, está activa indefinidamente
+    if (!faena.fecha_fin) {
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span>`;
+    }
+    
+    const fechaFin = new Date(faena.fecha_fin + 'T00:00:00');
+    fechaFin.setHours(0, 0, 0, 0);
+    const diasRestantes = Math.round((fechaFin - hoy) / (1000 * 60 * 60 * 24));
+    
+    // Si ya finalizó
     if (diasRestantes < 0) {
-        return '<span class="badge bg-secondary" style="font-size: 0.7rem;">Finalizada</span>';
+        return `<span class="badge bg-secondary" style="${badgeEstilo}">Finalizada</span>`;
+    } else if (diasRestantes === 0) {
+        // Hoy es el último día (CRÍTICO)
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-danger" style="${badgeDiasEstilo}" title="¡URGENTE! Último día">Hoy</span>`;
     } else if (diasRestantes >= 1 && diasRestantes <= 3) {
         // Rojo: 1-3 días (CRÍTICO)
-        return `<span class="badge bg-success" style="font-size: 0.7rem;">Activa</span> <span class="badge bg-danger" style="font-size: 0.7rem;" title="¡URGENTE! Finaliza en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}">${diasRestantes}d</span>`;
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-danger" style="${badgeDiasEstilo}" title="¡URGENTE! Finaliza en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}">${diasRestantes}d</span>`;
     } else if (diasRestantes >= 4 && diasRestantes <= 14) {
         // Amarillo: 4-14 días (ALERTA)
-        return `<span class="badge bg-success" style="font-size: 0.7rem;">Activa</span> <span class="badge bg-warning text-dark" style="font-size: 0.7rem;" title="Finaliza en ${diasRestantes} días">${diasRestantes}d</span>`;
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-warning text-dark" style="${badgeDiasEstilo}" title="Finaliza en ${diasRestantes} días">${diasRestantes}d</span>`;
     } else if (diasRestantes >= 15 && diasRestantes <= 29) {
         // Azul: 15-29 días (PLANIFICAR)
-        return `<span class="badge bg-success" style="font-size: 0.7rem;">Activa</span> <span class="badge bg-primary" style="font-size: 0.7rem;" title="Finaliza en ${diasRestantes} días">${diasRestantes}d</span>`;
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-primary" style="${badgeDiasEstilo}" title="Finaliza en ${diasRestantes} días">${diasRestantes}d</span>`;
     } else {
         // Gris: 30+ días (SIN URGENCIA)
-        return `<span class="badge bg-success" style="font-size: 0.7rem;">Activa</span> <span class="badge bg-secondary" style="font-size: 0.7rem;" title="Finaliza en ${diasRestantes} días">${diasRestantes}d</span>`;
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-secondary" style="${badgeDiasEstilo}" title="Finaliza en ${diasRestantes} días">${diasRestantes}d</span>`;
     }
 }
 

@@ -15,6 +15,7 @@ initData(
     {% if faena_fecha_inicio %}'{{ faena_fecha_inicio|date:"Y-m-d" }}'{% else %}null{% endif %},
     {% if faena_fecha_fin %}'{{ faena_fecha_fin|date:"Y-m-d" }}'{% else %}null{% endif %}
 );
+
 </script>
 {% endblock %}
 
@@ -29,9 +30,11 @@ initData(
             <h5 class="mb-0">
                 <i class="bi bi-person-plus-fill me-2"></i>Asignar Personal a: <span class="badge bg-light text-dark ms-2">{{ faena_codigo }}</span>
             </h5>
-            <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-sm btn-light">
-                <i class="bi bi-arrow-left me-1"></i>Volver
-            </a>
+            <div>
+                <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-sm btn-light">
+                    <i class="bi bi-arrow-left me-1"></i>Volver
+                </a>
+            </div>
         </div>
     </div>
     <div class="card-body">
@@ -68,14 +71,27 @@ initData(
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="asignar-tab" data-bs-toggle="tab" data-bs-target="#asignar" 
                         type="button" role="tab" aria-controls="asignar" aria-selected="true">
-                    <i class="bi bi-person-plus me-2"></i>Asignar Nuevo Personal
+                    <i class="bi bi-person-plus me-2"></i>Asignar Personal
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="asignar-manual-tab" data-bs-toggle="tab" data-bs-target="#asignar-manual" 
+                        type="button" role="tab" aria-controls="asignar-manual" aria-selected="false">
+                    <i class="bi bi-calendar-check me-2"></i>Asignar Turno Manual
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="gestionar-tab" data-bs-toggle="tab" data-bs-target="#gestionar" 
                         type="button" role="tab" aria-controls="gestionar" aria-selected="false">
-                    <i class="bi bi-pencil-square me-2"></i>Gestionar Personal Asignado
+                    <i class="bi bi-list-check me-2"></i>Personal Asignado (Turnos)
                     <span class="badge bg-primary ms-2">{{ total_asignados }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="estados-manuales-tab" data-bs-toggle="tab" data-bs-target="#estados-manuales" 
+                        type="button" role="tab" aria-controls="estados-manuales" aria-selected="false">
+                    <i class="bi bi-wrench me-2"></i>Estados Manuales
+                    <span class="badge bg-warning text-dark ms-2">{{ total_estados_manuales }}</span>
                 </button>
             </li>
         </ul>
@@ -118,15 +134,15 @@ initData(
                         <div class="col-md-2">
                             <label for="fecha_inicio" class="form-label small mb-1">Fecha Inicio *</label>
                             <input type="date" class="form-control form-control-sm" id="fecha_inicio" required
-                                   min="{{ faena.fecha_inicio|date:'Y-m-d' }}"
-                                   max="{{ faena.fecha_fin|date:'Y-m-d' }}">
+                                   {% if faena.fecha_inicio %}min="{{ faena.fecha_inicio|date:'Y-m-d' }}"{% endif %}
+                                   {% if faena.fecha_fin %}max="{{ faena.fecha_fin|date:'Y-m-d' }}"{% endif %}>
                         </div>
                         
                         <div class="col-md-2">
                             <label for="fecha_fin" class="form-label small mb-1">Fecha Fin</label>
                             <input type="date" class="form-control form-control-sm" id="fecha_fin"
-                                   min="{{ faena.fecha_inicio|date:'Y-m-d' }}"
-                                   max="{{ faena.fecha_fin|date:'Y-m-d' }}">
+                                   {% if faena.fecha_inicio %}min="{{ faena.fecha_inicio|date:'Y-m-d' }}"{% endif %}
+                                   {% if faena.fecha_fin %}max="{{ faena.fecha_fin|date:'Y-m-d' }}"{% endif %}>
                         </div>
                         
                         <div class="col-md-3">
@@ -189,19 +205,11 @@ initData(
             </div>
         </div>
         
-        <!-- Acciones rápidas y selector de registros -->
+        <!-- Selector de registros y contador -->
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <button type="button" class="btn btn-sm btn-primary" onclick="toggleSeleccionarTodos()">
-                    <i class="bi bi-check-square me-1"></i>Seleccionar Todos Visibles
-                </button>
-                <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarSeleccion()">
-                    <i class="bi bi-x-square me-1"></i>Limpiar Selección
-                </button>
-                <span class="ms-3 text-muted">
-                    <strong id="totalSeleccionados">0</strong> de <strong id="totalPersonal">0</strong> trabajadores seleccionados
-                </span>
-            </div>
+            <span class="text-muted small">
+                <strong id="totalSeleccionados">0</strong> de <strong id="totalPersonal">0</strong> trabajadores seleccionados
+            </span>
             <div class="d-flex align-items-center gap-2">
                 <label class="form-label mb-0 small">Mostrar:</label>
                 <select class="form-select form-select-sm" id="registrosPorPagina" style="width: auto;" onchange="cambiarRegistrosPorPagina()">
@@ -214,28 +222,36 @@ initData(
             </div>
         </div>
         
-        <!-- Tabla de personal -->
-        <div class="table-responsive">
-            <table class="table table-sm table-hover table-bordered">
-                <thead class="table-dark">
-                    <tr>
-                        <th style="width: 50px;" class="text-center">
-                            <i class="bi bi-check-square"></i>
-                        </th>
-                        <th>Nombre Completo</th>
-                        <th>RUT</th>
-                        <th>Cargo</th>
-                        <th>Empresa</th>
-                        <th>Estado</th>
-                        <th>Faena Actual</th>
-                        <th>Período Asignación</th>
-                    </tr>
-                </thead>
-                <tbody id="personalTableBody">
-                    <!-- Se llena con JavaScript -->
-                </tbody>
-            </table>
-        </div>
+         <!-- Tabla de personal -->
+         <div class="table-responsive">
+             <table class="table table-sm table-hover align-middle" style="table-layout: fixed; width: 100%;">
+                 <thead class="table-dark">
+                     <tr>
+                         <th style="width: 4%;" class="text-center">
+                             <input class="form-check-input" type="checkbox" id="selectAllAsignar" onchange="toggleSelectAllAsignar()">
+                         </th>
+                         <th class="sortable" data-column="nombre" style="width: 20%;" onclick="ordenarTablaAsignar('nombre')">
+                             Nombre Completo <i class="bi bi-arrow-down-up ms-1"></i>
+                         </th>
+                         <th class="sortable" data-column="rut" style="width: 10%;" onclick="ordenarTablaAsignar('rut')">
+                             RUT <i class="bi bi-arrow-down-up ms-1"></i>
+                         </th>
+                         <th class="sortable" data-column="cargo" style="width: 15%;" onclick="ordenarTablaAsignar('cargo')">
+                             Cargo <i class="bi bi-arrow-down-up ms-1"></i>
+                         </th>
+                         <th class="sortable" data-column="empresa" style="width: 15%;" onclick="ordenarTablaAsignar('empresa')">
+                             Empresa <i class="bi bi-arrow-down-up ms-1"></i>
+                         </th>
+                         <th style="width: 10%;">Estado</th>
+                         <th style="width: 13%;">Faena Actual</th>
+                         <th style="width: 13%;">Período Asignación</th>
+                     </tr>
+                 </thead>
+                 <tbody id="personalTableBody">
+                     <!-- Se llena con JavaScript -->
+                 </tbody>
+             </table>
+         </div>
         
         <!-- Controles de Paginación -->
         <div class="d-flex justify-content-between align-items-center mt-3">
@@ -247,67 +263,404 @@ initData(
                     <!-- Se llena con JavaScript -->
                 </ul>
             </nav>
-        </div>
+                </div>
+            </div>
+
+            <!-- Tab: Asignar Estado Manual -->
+            <div class="tab-pane fade" id="asignar-manual" role="tabpanel" aria-labelledby="asignar-manual-tab">
+                
+                <!-- Área de Advertencias/Errores -->
+                <div id="areaAdvertenciasManual" class="mb-3" style="display: none;">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                </div>
+                
+                <!-- Formulario de Configuración -->
+                <div class="card mb-3">
+                    <div class="card-header bg-dark text-white py-2">
+                        <h6 class="mb-0">
+                            <i class="bi bi-sliders me-2"></i>Configuración de Asignación Manual
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Estado *</label>
+                                <select class="form-select form-select-sm" id="estadoManualSelect" required>
+                                    <option value="">Seleccione...</option>
+                                    {% for estado in estados_disponibles %}
+                                    <option value="{{ estado.id }}">{{ estado.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Fecha Inicio *</label>
+                                <input type="date" class="form-control form-control-sm" id="fechaInicioManual" required
+                                       {% if faena.fecha_inicio %}min="{{ faena.fecha_inicio|date:'Y-m-d' }}"{% endif %}
+                                       {% if faena.fecha_fin %}max="{{ faena.fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Fecha Fin *</label>
+                                <input type="date" class="form-control form-control-sm" id="fechaFinManual" required
+                                       {% if faena.fecha_inicio %}min="{{ faena.fecha_inicio|date:'Y-m-d' }}"{% endif %}
+                                       {% if faena.fecha_fin %}max="{{ faena.fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">&nbsp;</label>
+                                <button type="button" class="btn btn-primary btn-sm w-100" id="btnAsignarManual" onclick="asignarEstadoManualTab()">
+                                    <i class="bi bi-check-circle me-1"></i>Asignar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold">Observaciones</label>
+                                <textarea class="form-control form-control-sm" id="observacionesManual" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- Filtros -->
+                 <div class="row mb-3">
+                     <div class="col-md-4">
+                         <label class="form-label small">Buscar</label>
+                         <div class="input-group input-group-sm">
+                             <span class="input-group-text"><i class="bi bi-search"></i></span>
+                             <input type="text" class="form-control" id="searchManualInput" placeholder="Nombre o RUT..." onkeyup="filtrarPersonalManual()">
+                         </div>
+                     </div>
+                     <div class="col-md-3">
+                         <label class="form-label small">Cargo</label>
+                         <select class="form-select form-select-sm" id="filtroCargoManual" onchange="filtrarPersonalManual()">
+                             <option value="">Todos los cargos</option>
+                             {% for cargo in cargos_unicos %}
+                             <option value="{{ cargo }}">{{ cargo }}</option>
+                             {% endfor %}
+                         </select>
+                     </div>
+                     <div class="col-md-3">
+                         <label class="form-label small">Empresa</label>
+                         <select class="form-select form-select-sm" id="filtroEmpresaManual" onchange="filtrarPersonalManual()">
+                             <option value="">Todas las empresas</option>
+                             {% for empresa in empresas_unicas %}
+                             <option value="{{ empresa }}">{{ empresa }}</option>
+                             {% endfor %}
+                         </select>
+                     </div>
+                     <div class="col-md-2">
+                         <label class="form-label small">&nbsp;</label>
+                         <button class="btn btn-sm btn-secondary w-100" onclick="limpiarFiltrosManual()" title="Limpiar filtros">
+                             <i class="bi bi-x-circle me-1"></i>Limpiar
+                         </button>
+                     </div>
+                 </div>
+
+                 <!-- Selector de registros -->
+                 <div class="d-flex justify-content-end align-items-center mb-3">
+                     <div class="d-flex align-items-center gap-2">
+                         <label class="form-label mb-0 small">Mostrar:</label>
+                         <select class="form-select form-select-sm" id="registrosPorPaginaManual" style="width: auto;" onchange="cambiarRegistrosPorPaginaManual()">
+                             <option value="10">10</option>
+                             <option value="25" selected>25</option>
+                             <option value="50">50</option>
+                             <option value="100">100</option>
+                             <option value="9999">Todos</option>
+                         </select>
+                     </div>
+                 </div>
+
+                 <!-- Tabla de Personal -->
+                 <div class="table-responsive">
+                     <table class="table table-sm table-hover align-middle" style="table-layout: fixed; width: 100%;">
+                         <thead class="table-dark">
+                             <tr>
+                                 <th style="width: 4%;" class="text-center">
+                                     <input class="form-check-input" type="checkbox" id="selectAllManual" onchange="toggleSelectAllManual()">
+                                 </th>
+                                 <th class="sortable" data-column="nombre" style="width: 20%;" onclick="ordenarTablaManual('nombre')">
+                                     Nombre Completo <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="rut" style="width: 10%;" onclick="ordenarTablaManual('rut')">
+                                     RUT <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="cargo" style="width: 15%;" onclick="ordenarTablaManual('cargo')">
+                                     Cargo <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="empresa" style="width: 15%;" onclick="ordenarTablaManual('empresa')">
+                                     Empresa <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th style="width: 10%;">Estado</th>
+                                 <th style="width: 13%;">Faena Actual</th>
+                                 <th style="width: 13%;">Período</th>
+                             </tr>
+                         </thead>
+                         <tbody id="personalManualTableBody">
+                             <!-- Se llena con JavaScript -->
+                         </tbody>
+                     </table>
+                 </div>
+
+                <!-- Paginación Manual -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="small text-muted">
+                        Mostrando <strong id="registroInicioManual">0</strong> a <strong id="registroFinManual">0</strong> de <strong id="totalRegistrosManual">0</strong> registros
+                    </span>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="paginacionManual">
+                            <!-- Se llena con JavaScript -->
+                        </ul>
+                    </nav>
+                </div>
+
+                <!-- Resumen de Selección -->
+                <div id="resumenSeleccionManual" class="alert alert-primary mt-3" style="display: none;">
+                    <strong><i class="bi bi-info-circle me-1"></i>Personal seleccionado:</strong>
+                    <span id="cantidadSeleccionadosManual">0</span> trabajador(es)
+                </div>
             </div>
             
             <!-- Tab: Gestionar Personal Asignado -->
             <div class="tab-pane fade" id="gestionar" role="tabpanel" aria-labelledby="gestionar-tab">
-                <!-- Filtros para Personal Asignado -->
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label small">Buscar</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-control" id="searchAsignadosInput" 
-                                   placeholder="Nombre o RUT..." onkeyup="filtrarPersonalAsignado()">
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small">Cargo</label>
-                        <select class="form-select form-select-sm" id="filtroCargoAsignados" onchange="filtrarPersonalAsignado()">
-                            <option value="">Todos los cargos</option>
-                            {% for cargo in cargos_unicos %}
-                            <option value="{{ cargo }}">{{ cargo }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small">Empresa</label>
-                        <select class="form-select form-select-sm" id="filtroEmpresaAsignados" onchange="filtrarPersonalAsignado()">
-                            <option value="">Todas las empresas</option>
-                            {% for empresa in empresas_unicas %}
-                            <option value="{{ empresa }}">{{ empresa }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small">&nbsp;</label>
-                        <button class="btn btn-sm btn-secondary w-100" onclick="limpiarFiltrosAsignados()" title="Limpiar filtros">
-                            <i class="bi bi-x-circle me-1"></i>Limpiar
-                        </button>
-                    </div>
-                </div>
+                 <!-- Filtros para Personal Asignado -->
+                 <div class="row mb-3">
+                     <div class="col-md-4">
+                         <label class="form-label small">Buscar</label>
+                         <div class="input-group input-group-sm">
+                             <span class="input-group-text"><i class="bi bi-search"></i></span>
+                             <input type="text" class="form-control" id="searchAsignadosInput" 
+                                    placeholder="Nombre o RUT..." onkeyup="filtrarPersonalAsignado()">
+                         </div>
+                     </div>
+                     <div class="col-md-3">
+                         <label class="form-label small">Cargo</label>
+                         <select class="form-select form-select-sm" id="filtroCargoAsignados" onchange="filtrarPersonalAsignado()">
+                             <option value="">Todos los cargos</option>
+                             {% for cargo in cargos_unicos %}
+                             <option value="{{ cargo }}">{{ cargo }}</option>
+                             {% endfor %}
+                         </select>
+                     </div>
+                     <div class="col-md-3">
+                         <label class="form-label small">Empresa</label>
+                         <select class="form-select form-select-sm" id="filtroEmpresaAsignados" onchange="filtrarPersonalAsignado()">
+                             <option value="">Todas las empresas</option>
+                             {% for empresa in empresas_unicas %}
+                             <option value="{{ empresa }}">{{ empresa }}</option>
+                             {% endfor %}
+                         </select>
+                     </div>
+                     <div class="col-md-2">
+                         <label class="form-label small">&nbsp;</label>
+                         <button class="btn btn-sm btn-secondary w-100" onclick="limpiarFiltrosAsignados()" title="Limpiar filtros">
+                             <i class="bi bi-x-circle me-1"></i>Limpiar
+                         </button>
+                     </div>
+                 </div>
+
+                 <!-- Selector de registros -->
+                 <div class="d-flex justify-content-end align-items-center mb-3">
+                     <div class="d-flex align-items-center gap-2">
+                         <label class="form-label mb-0 small">Mostrar:</label>
+                         <select class="form-select form-select-sm" id="registrosPorPaginaGestionar" style="width: auto;" onchange="cambiarRegistrosPorPaginaGestionar()">
+                             <option value="10">10</option>
+                             <option value="25" selected>25</option>
+                             <option value="50">50</option>
+                             <option value="100">100</option>
+                             <option value="9999">Todos</option>
+                         </select>
+                     </div>
+                 </div>
                 
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Trabajador</th>
-                                <th>RUT</th>
-                                <th>Cargo</th>
-                                <th>Empresa</th>
-                                <th>Turno</th>
-                                <th>Bloque Inicio</th>
-                                <th>Fecha Inicio</th>
-                                <th>Fecha Fin</th>
-                                <th>Estado</th>
-                                <th class="text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaPersonalAsignadoBody">
-                            <!-- Se llena con JavaScript -->
+                 <div class="table-responsive">
+                     <table class="table table-sm table-hover align-middle" style="table-layout: fixed; width: 100%;">
+                         <thead class="table-dark">
+                             <tr>
+                                 <th class="sortable" data-column="nombre" style="width: 18%;" onclick="ordenarTablaGestionar('nombre')">
+                                     Trabajador <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="rut" style="width: 10%;" onclick="ordenarTablaGestionar('rut')">
+                                     RUT <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="cargo" style="width: 13%;" onclick="ordenarTablaGestionar('cargo')">
+                                     Cargo <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="empresa" style="width: 13%;" onclick="ordenarTablaGestionar('empresa')">
+                                     Empresa <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th style="width: 10%;">Turno</th>
+                                 <th style="width: 10%;">Bloque Inicio</th>
+                                 <th class="sortable" data-column="fecha_inicio" style="width: 10%;" onclick="ordenarTablaGestionar('fecha_inicio')">
+                                     Fecha Inicio <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th style="width: 10%;">Fecha Fin</th>
+                                 <th style="width: 8%;">Estado</th>
+                                 <th class="text-center" style="width: 8%;">Acciones</th>
+                             </tr>
+                         </thead>
+                         <tbody id="tablaPersonalAsignadoBody">
+                             <!-- Se llena con JavaScript -->
+                         </tbody>
+                     </table>
+                 </div>
+
+                 <!-- Paginación Personal Asignado -->
+                 <div class="d-flex justify-content-between align-items-center mt-3">
+                     <span class="small text-muted">
+                         Mostrando <strong id="registroInicioGestionar">0</strong> a <strong id="registroFinGestionar">0</strong> de <strong id="totalRegistrosGestionar">0</strong> registros
+                     </span>
+                     <nav>
+                         <ul class="pagination pagination-sm mb-0" id="paginacionGestionar">
+                             <!-- Se llena con JavaScript -->
+                         </ul>
+                     </nav>
+                 </div>
+            </div>
+
+            <!-- Tab: Estados Manuales -->
+            <div class="tab-pane fade" id="estados-manuales" role="tabpanel" aria-labelledby="estados-manuales-tab">
+                 <!-- Filtros para Estados Manuales -->
+                 <div class="row mb-3">
+                     <div class="col-md-4">
+                         <label class="form-label small">Buscar</label>
+                         <div class="input-group input-group-sm">
+                             <span class="input-group-text"><i class="bi bi-search"></i></span>
+                             <input type="text" class="form-control" id="searchEstadosManualesInput" 
+                                    placeholder="Nombre o RUT..." onkeyup="filtrarEstadosManuales()">
+                         </div>
+                     </div>
+                     <div class="col-md-3">
+                         <label class="form-label small">Cargo</label>
+                         <select class="form-select form-select-sm" id="filtroCargoEstadosManuales" onchange="filtrarEstadosManuales()">
+                             <option value="">Todos los cargos</option>
+                             {% for cargo in cargos_unicos %}
+                             <option value="{{ cargo }}">{{ cargo }}</option>
+                             {% endfor %}
+                         </select>
+                     </div>
+                     <div class="col-md-3">
+                         <label class="form-label small">Empresa</label>
+                         <select class="form-select form-select-sm" id="filtroEmpresaEstadosManuales" onchange="filtrarEstadosManuales()">
+                             <option value="">Todas las empresas</option>
+                             {% for empresa in empresas_unicas %}
+                             <option value="{{ empresa }}">{{ empresa }}</option>
+                             {% endfor %}
+                         </select>
+                     </div>
+                     <div class="col-md-2">
+                         <label class="form-label small">&nbsp;</label>
+                         <button class="btn btn-sm btn-secondary w-100" onclick="limpiarFiltrosEstadosManuales()" title="Limpiar filtros">
+                             <i class="bi bi-x-circle me-1"></i>Limpiar
+                         </button>
+                     </div>
+                 </div>
+
+                 <!-- Selector de registros -->
+                 <div class="d-flex justify-content-end align-items-center mb-3">
+                     <div class="d-flex align-items-center gap-2">
+                         <label class="form-label mb-0 small">Mostrar:</label>
+                         <select class="form-select form-select-sm" id="registrosPorPaginaEstadosManuales" style="width: auto;" onchange="cambiarRegistrosPorPaginaEstadosManuales()">
+                             <option value="10">10</option>
+                             <option value="25" selected>25</option>
+                             <option value="50">50</option>
+                             <option value="100">100</option>
+                             <option value="9999">Todos</option>
+                         </select>
+                     </div>
+                 </div>
+                
+                 <div class="table-responsive">
+                     <table class="table table-sm table-hover align-middle" style="table-layout: fixed; width: 100%;">
+                         <thead class="table-dark">
+                             <tr>
+                                 <th class="sortable" data-column="nombre" style="width: 20%;" onclick="ordenarTablaEstadosManuales('nombre')">
+                                     Trabajador <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="rut" style="width: 11%;" onclick="ordenarTablaEstadosManuales('rut')">
+                                     RUT <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="cargo" style="width: 15%;" onclick="ordenarTablaEstadosManuales('cargo')">
+                                     Cargo <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="empresa" style="width: 15%;" onclick="ordenarTablaEstadosManuales('empresa')">
+                                     Empresa <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th style="width: 12%;">Estado</th>
+                                 <th class="sortable" data-column="fecha_inicio" style="width: 10%;" onclick="ordenarTablaEstadosManuales('fecha_inicio')">
+                                     Fecha Inicio <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th style="width: 10%;">Fecha Fin</th>
+                                 <th style="width: 7%;">Días</th>
+                                 <th class="text-center" style="width: 10%;">Acciones</th>
+                             </tr>
+                         </thead>
+                         <tbody id="tablaEstadosManualesBody">
+                             {% if estados_manuales %}
+                                 {% for item in estados_manuales %}
+                                <tr data-nombre="{{ item.estado.personal.nombre }} {{ item.estado.personal.apepat }} {{ item.estado.personal.apemat }}"
+                                    data-rut="{{ item.estado.personal.rut }}-{{ item.estado.personal.dvrut }}"
+                                    data-cargo="{% if item.estado.personal.infolaboral_set.first %}{{ item.estado.personal.infolaboral_set.first.cargo_id.cargo }}{% endif %}"
+                                    data-empresa="{% if item.estado.personal.infolaboral_set.first %}{{ item.estado.personal.infolaboral_set.first.empresa_id.nomFantasia }}{% endif %}"
+                                    data-fecha-inicio="{{ item.estado.fecha_inicio|date:'Y-m-d' }}">
+                                    <td class="small">
+                                        <a href="#" onclick="event.preventDefault(); showPersonalInfo({{ item.estado.personal.personal_id }});" 
+                                           class="text-decoration-none text-primary fw-semibold" 
+                                           title="Ver información completa">
+                                            {{ item.estado.personal.nombre }} {{ item.estado.personal.apepat }} {{ item.estado.personal.apemat }}
+                                        </a>
+                                    </td>
+                                    <td class="text-muted small">{{ item.estado.personal.rut }}-{{ item.estado.personal.dvrut }}</td>
+                                    <td class="small">{% if item.estado.personal.infolaboral_set.first %}{{ item.estado.personal.infolaboral_set.first.cargo_id.cargo }}{% else %}-{% endif %}</td>
+                                    <td class="small">{% if item.estado.personal.infolaboral_set.first %}{{ item.estado.personal.infolaboral_set.first.empresa_id.nomFantasia }}{% else %}-{% endif %}</td>
+                                    <td>
+                                        <span class="badge" style="background-color: {{ item.estado.estado.color }}; color: white; font-size: 0.75rem;">
+                                            {{ item.estado.estado.nombre }}
+                                        </span>
+                                    </td>
+                                    <td class="small">{{ item.estado.fecha_inicio|date:"d-m-Y" }}</td>
+                                    <td class="small">{{ item.estado.fecha_fin|date:"d-m-Y" }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary" style="font-size: 0.75rem;">
+                                            {{ item.dias_duracion }} día{% if item.dias_duracion != 1 %}s{% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-danger" 
+                                                onclick="eliminarEstadoManual({{ item.estado.id }}, '{{ item.estado.personal.nombre }} {{ item.estado.personal.apepat }}')"
+                                                title="Eliminar estado manual">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-4">
+                                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                                        <p class="text-muted mt-2">No hay estados manuales registrados para esta faena</p>
+                                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('asignar-manual-tab').click()">
+                                            <i class="bi bi-plus-circle me-1"></i>Asignar Turno Manual
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endif %}
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Paginación Estados Manuales -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="small text-muted">
+                        Mostrando <strong id="registroInicioEstadosManuales">0</strong> a <strong id="registroFinEstadosManuales">0</strong> de <strong id="totalRegistrosEstadosManuales">0</strong> registros
+                    </span>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="paginacionEstadosManuales">
+                            <!-- Se llena con JavaScript -->
+                        </ul>
+                    </nav>
                 </div>
             </div>
         </div>
@@ -452,6 +805,7 @@ initData(
         </div>
     </div>
 </div>
+
 
 {% endblock %}
 

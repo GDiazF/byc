@@ -909,6 +909,9 @@ class LicenciaMedicaPorPersonalCreateView(LoginRequiredMixin, CreateView):
         # Quitar el campo personal_id del formulario
         if 'personal_id' in form.fields:
             del form.fields['personal_id']
+        # Pasar el personal_id al formulario para validación de solapamiento
+        personal_id = self.kwargs.get('personal_id')
+        form.personal_id = Personal.objects.get(pk=personal_id)
         return form
 
     def get_context_data(self, **kwargs):
@@ -925,7 +928,7 @@ class LicenciaMedicaPorPersonalCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        messages.error(self.request, 'Error en el formulario. Por favor revise los datos ingresados.')
+        # No mostrar mensaje genérico, los errores específicos se muestran con form.non_field_errors
         return super().form_invalid(form)
 
 # Vista para listar y editar licencias médicas de un personal
@@ -957,6 +960,8 @@ class LicenciaMedicaPorPersonalUpdateView(LoginRequiredMixin, UpdateView):
         # Quitar el campo personal_id del formulario
         if 'personal_id' in form.fields:
             del form.fields['personal_id']
+        # Pasar el personal_id al formulario para validación de solapamiento
+        form.personal_id = self.object.personal_id
         return form
 
     def get_context_data(self, **kwargs):
@@ -979,18 +984,24 @@ class LicenciaMedicaPorPersonalUpdateView(LoginRequiredMixin, UpdateView):
         return response
 
     def form_invalid(self, form):
-        messages.error(self.request, 'Error en el formulario. Por favor revise los datos ingresados.')
+        # No mostrar mensaje genérico, los errores específicos se muestran con form.non_field_errors
         return super().form_invalid(form)
 
 @login_required
 def delete_licencia_medica(request, licencia_id):
-    if request.method == 'DELETE':
+    if request.method == 'POST':
         try:
             licencia = get_object_or_404(LicenciaMedicaPorPersonal, licenciaMedicaPorPersonal_id=licencia_id)
+            personal_id = licencia.personal_id.personal_id
             licencia.delete()
-            return JsonResponse({'status': 'success', 'message': 'Licencia médica eliminada exitosamente'})
+            
+            messages.success(request, 'Licencia médica eliminada exitosamente')
+            return redirect('listar_licencias_medicas_personal', personal_id=personal_id)
+            
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            messages.error(request, f'Error al eliminar: {str(e)}')
+            return redirect('listar_licencias_medicas_personal', personal_id=licencia.personal_id.personal_id)
+    
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 # ============================================================================
@@ -1021,17 +1032,20 @@ def crear_ausentismo(request, personal_id):
     if request.method == 'POST':
         from .forms import AusentismoForm
         form = AusentismoForm(request.POST)
+        # Pasar el personal_id al formulario para validación de solapamiento
+        form.personal_id = personal
         if form.is_valid():
             ausentismo = form.save(commit=False)
             ausentismo.personal_id = personal
             ausentismo.save()
             messages.success(request, 'Ausentismo registrado exitosamente')
             return redirect('listar_ausentismos_personal', personal_id=personal.personal_id)
-        else:
-            messages.error(request, 'Por favor corrija los errores en el formulario.')
+        # No mostrar mensaje genérico, los errores específicos se muestran con form.non_field_errors
     else:
         from .forms import AusentismoForm
         form = AusentismoForm()
+        # Pasar el personal_id al formulario para validación de solapamiento
+        form.personal_id = personal
     
     context = {
         'form': form,
@@ -1050,15 +1064,18 @@ def actualizar_ausentismo(request, personal_id, ausentismo_id):
     if request.method == 'POST':
         from .forms import AusentismoForm
         form = AusentismoForm(request.POST, instance=ausentismo)
+        # Pasar el personal_id al formulario para validación de solapamiento
+        form.personal_id = personal
         if form.is_valid():
             form.save()
             messages.success(request, 'Ausentismo actualizado exitosamente')
             return redirect('listar_ausentismos_personal', personal_id=personal.personal_id)
-        else:
-            messages.error(request, 'Por favor corrija los errores en el formulario.')
+        # No mostrar mensaje genérico, los errores específicos se muestran con form.non_field_errors
     else:
         from .forms import AusentismoForm
         form = AusentismoForm(instance=ausentismo)
+        # Pasar el personal_id al formulario para validación de solapamiento
+        form.personal_id = personal
     
     context = {
         'form': form,
@@ -1072,21 +1089,18 @@ def actualizar_ausentismo(request, personal_id, ausentismo_id):
 @login_required
 def eliminar_ausentismo(request, ausentismo_id):
     """Vista para eliminar un ausentismo"""
-    if request.method == 'DELETE':
+    if request.method == 'POST':
         try:
             ausentismo = get_object_or_404(Ausentismo, ausentismo_id=ausentismo_id)
+            personal_id = ausentismo.personal_id.personal_id
             ausentismo.delete()
             
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Ausentismo eliminado exitosamente'
-            })
+            messages.success(request, 'Ausentismo eliminado exitosamente')
+            return redirect('listar_ausentismos_personal', personal_id=personal_id)
             
         except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': f'Error: {str(e)}'
-            }, status=500)
+            messages.error(request, f'Error al eliminar: {str(e)}')
+            return redirect('listar_ausentismos_personal', personal_id=ausentismo.personal_id.personal_id)
     
     return JsonResponse({
         'status': 'error',

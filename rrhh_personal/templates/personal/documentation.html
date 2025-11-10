@@ -5,8 +5,8 @@
 
 {% block extrastyles %}
 <link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
-<link rel="stylesheet" href="{% static 'css/form_styles.css' %}">
-<link rel="stylesheet" href="{% static 'css/documentation.css' %}?v=2.0">
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}?v=4.0">
+<link rel="stylesheet" href="{% static 'css/documentation.css' %}?v=4.0">
 {% endblock %}
 
 {% block extrajs %}
@@ -18,7 +18,7 @@ window.DELETE_EXAM_URL = '{% url "delete_exam" 0 %}';
 window.DELETE_CERTIFICATION_URL = '{% url "delete_certification" personal.personal_id 0 %}';
 window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" personal.personal_id %}';
 </script>
-<script src="{% static 'js/documentation.js' %}?v=26.0"></script>
+<script src="{% static 'js/documentation.js' %}?v=29.0"></script>
 {% endblock %}
 
 {% block content %}
@@ -29,33 +29,41 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
         <small>RUT: {{ personal.rut }}-{{ personal.dvrut }}</small>
     </div>
     <div class="card-body p-4">
-        <ul class="nav nav-tabs mb-4" id="docTabs" role="tablist">
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs mb-3" id="docTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="personal-docs-tab" data-bs-toggle="tab" data-bs-target="#personal-docs" type="button" role="tab" aria-controls="personal-docs" aria-selected="true">
+                <button class="nav-link active" id="personal-docs-tab" data-bs-toggle="tab" data-bs-target="#personal-docs" 
+                        type="button" role="tab" aria-controls="personal-docs" aria-selected="true">
                     <i class="bi bi-file-earmark-person me-2"></i>Documentos Personales
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="licenses-tab" data-bs-toggle="tab" data-bs-target="#licenses" type="button" role="tab" aria-controls="licenses" aria-selected="false">
+                <button class="nav-link" id="licenses-tab" data-bs-toggle="tab" data-bs-target="#licenses" 
+                        type="button" role="tab" aria-controls="licenses" aria-selected="false">
                     <i class="bi bi-card-text me-2"></i>Licencias de Conducir
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="internal-licenses-tab" data-bs-toggle="tab" data-bs-target="#internal-licenses" type="button" role="tab" aria-controls="internal-licenses" aria-selected="false">
+                <button class="nav-link" id="internal-licenses-tab" data-bs-toggle="tab" data-bs-target="#internal-licenses" 
+                        type="button" role="tab" aria-controls="internal-licenses" aria-selected="false">
                     <i class="bi bi-award me-2"></i>Licencias Internas
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="certifications-tab" data-bs-toggle="tab" data-bs-target="#certifications" type="button" role="tab" aria-controls="certifications" aria-selected="false">
+                <button class="nav-link" id="certifications-tab" data-bs-toggle="tab" data-bs-target="#certifications" 
+                        type="button" role="tab" aria-controls="certifications" aria-selected="false">
                     <i class="bi bi-patch-check me-2"></i>Certificaciones
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="exams-tab" data-bs-toggle="tab" data-bs-target="#exams" type="button" role="tab" aria-controls="exams" aria-selected="false">
+                <button class="nav-link" id="exams-tab" data-bs-toggle="tab" data-bs-target="#exams" 
+                        type="button" role="tab" aria-controls="exams" aria-selected="false">
                     <i class="bi bi-clipboard2-pulse me-2"></i>Exámenes
                 </button>
             </li>
         </ul>
+        
+        <!-- Tabs Content -->
 
         <div class="tab-content" id="docTabsContent">
             <!-- Documentos Personales Tab -->
@@ -83,9 +91,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.curriculum %}
                                         <a href="{{ personal.curriculum.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('curriculum', 'Curriculum Vitae')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('curriculum', 'Curriculum Vitae')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('curriculum')">
@@ -112,9 +120,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.certificado_antecedentes %}
                                         <a href="{{ personal.certificado_antecedentes.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_antecedentes', 'Certificado de Antecedentes')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_antecedentes', 'Certificado de Antecedentes')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_antecedentes')">
@@ -141,9 +149,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.hoja_vida_conductor %}
                                         <a href="{{ personal.hoja_vida_conductor.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('hoja_vida_conductor', 'Hoja de Vida del Conductor')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('hoja_vida_conductor', 'Hoja de Vida del Conductor')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('hoja_vida_conductor')">
@@ -170,9 +178,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.foto_carnet %}
                                         <a href="{{ personal.foto_carnet.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('foto_carnet', 'Foto Carnet')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('foto_carnet', 'Foto Carnet')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('foto_carnet')">
@@ -199,9 +207,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.certificado_afp %}
                                         <a href="{{ personal.certificado_afp.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_afp', 'Certificado AFP')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_afp', 'Certificado AFP')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_afp')">
@@ -228,9 +236,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.certificado_salud %}
                                         <a href="{{ personal.certificado_salud.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_salud', 'Certificado de Salud')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_salud', 'Certificado de Salud')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_salud')">
@@ -257,9 +265,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.certificado_estudios %}
                                         <a href="{{ personal.certificado_estudios.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_estudios', 'Certificado de Estudios')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_estudios', 'Certificado de Estudios')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_estudios')">
@@ -286,9 +294,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.certificado_residencia %}
                                         <a href="{{ personal.certificado_residencia.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('certificado_residencia', 'Certificado de Residencia')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_residencia', 'Certificado de Residencia')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_residencia')">
@@ -315,7 +323,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.fotocopia_carnet %}
                                         <a href="{{ personal.fotocopia_carnet.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadCarnetModal()">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
@@ -344,9 +352,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.fotocopia_finiquito %}
                                         <a href="{{ personal.fotocopia_finiquito.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('fotocopia_finiquito', 'Fotocopia Finiquito')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('fotocopia_finiquito', 'Fotocopia Finiquito')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('fotocopia_finiquito')">
@@ -373,9 +381,9 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if personal.comprobante_banco %}
                                         <a href="{{ personal.comprobante_banco.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-warning me-1" onclick="showUploadModal('comprobante_banco', 'Comprobante Banco')">
+                                        <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('comprobante_banco', 'Comprobante Banco')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('comprobante_banco')">
@@ -436,10 +444,10 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if licencia.rutaDoc %}
                                         <a href="{{ licencia.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
                                     {% endif %}
-                                    <button class="btn btn-sm btn-warning me-1 edit-license" data-id="{{ licencia.licenciaPorPersonal_id }}">
+                                    <button class="btn btn-sm btn-secondary me-1 edit-license" data-id="{{ licencia.licenciaPorPersonal_id }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                     <button class="btn btn-sm btn-danger delete-license" data-id="{{ licencia.licenciaPorPersonal_id }}">
@@ -501,10 +509,10 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if licencia.rutaDoc %}
                                         <a href="{{ licencia.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
                                     {% endif %}
-                                    <button class="btn btn-sm btn-warning me-1 edit-internal-license" data-id="{{ licencia.licenciaInterna_id }}">
+                                    <button class="btn btn-sm btn-secondary me-1 edit-internal-license" data-id="{{ licencia.licenciaInterna_id }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                     <button class="btn btn-sm btn-danger delete-internal-license" data-id="{{ licencia.licenciaInterna_id }}">
@@ -566,10 +574,10 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if certificacion.rutaDoc %}
                                         <a href="{{ certificacion.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
                                     {% endif %}
-                                    <button class="btn btn-sm btn-warning me-1 edit-certification" data-id="{{ certificacion.certif_id }}">
+                                    <button class="btn btn-sm btn-secondary me-1 edit-certification" data-id="{{ certificacion.certif_id }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                     <button class="btn btn-sm btn-danger delete-certification" data-id="{{ certificacion.certif_id }}">
@@ -641,10 +649,10 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 <td>
                                     {% if examen.rutaDoc %}
                                         <a href="{{ examen.rutaDoc.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-eye"></i> Ver
+                                            <i class="bi bi-eye"></i>
                                         </a>
                                     {% endif %}
-                                    <button class="btn btn-sm btn-warning me-1 edit-exam" data-id="{{ examen.examen_id }}">
+                                    <button class="btn btn-sm btn-secondary me-1 edit-exam" data-id="{{ examen.examen_id }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                     <button class="btn btn-sm btn-danger delete-exam" data-id="{{ examen.examen_id }}">

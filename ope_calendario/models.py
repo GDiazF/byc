@@ -313,8 +313,9 @@ class EstadoManual(models.Model):
     """
     personal = models.ForeignKey("rrhh_personal.Personal", on_delete=models.CASCADE, related_name="estados_manuales", db_index=True)
     estado = models.ForeignKey(Estado, on_delete=models.PROTECT, related_name="aplicaciones_manuales", db_index=True)
-    fecha_inicio = models.DateField(db_index=True)
-    fecha_fin = models.DateField(db_index=True)
+    faena = models.ForeignKey(Faena, on_delete=models.CASCADE, related_name="estados_manuales", db_index=True, blank=True, null=False)
+    fecha_inicio = models.DateField(db_index=True, blank=True, null=True)
+    fecha_fin = models.DateField(db_index=True, blank=True, null=True)
     motivo = models.CharField(max_length=200, blank=True, null=True)
     activo = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)

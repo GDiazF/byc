@@ -2,34 +2,23 @@
    ESTILOS PARA DOCUMENTACIÓN DE PERSONAL
    ============================================================================ */
 
-/* Tabs */
-.nav-tabs {
-    border-bottom: 2px solid #dee2e6;
-}
-
+/* Tabs - Estilo consistente con calendario/faenas */
 .nav-tabs .nav-link {
-    margin-bottom: -2px;
-    border: none;
-    color: #6c757d;
-    padding: 0.75rem 1.25rem;
+    color: #495057;
     font-weight: 500;
-    transition: all 0.3s ease;
 }
 
 .nav-tabs .nav-link:hover {
-    border: none;
-    color: #495057;
+    border-color: #dee2e6 #dee2e6 #dee2e6;
 }
 
 .nav-tabs .nav-link.active {
-    color: #0d6efd;
-    border: none;
-    border-bottom: 2px solid #0d6efd;
-    background-color: transparent;
+    font-weight: 600;
 }
 
-.tab-content {
-    padding-top: 2rem;
+.nav-tabs .badge {
+    font-size: 0.75rem;
+    padding: 0.25em 0.5em;
 }
 
 /* Secciones de documentos */
@@ -45,21 +34,15 @@
     background-color: #e9ecef;
 }
 
-/* Botones pequeños */
+/* Botones pequeños - Estilo consistente con calendario/faenas */
 .btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.9rem !important;
-    line-height: 1.5;
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
 }
 
-.btn-success.btn-sm {
-    height: 31px;
-    display: inline-flex;
-    align-items: center;
-}
-
-.btn-success.btn-sm i {
-    font-size: 0.9rem;
+.btn-group-sm .btn {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
 }
 
 /* Checkboxes de licencias */

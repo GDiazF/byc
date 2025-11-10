@@ -300,16 +300,24 @@ class Ausentismo(models.Model):
     ausentismo_id = models.AutoField(primary_key=True, null=False, blank=False)
     tipoausen_id = models.ForeignKey(TipoAusentismo, on_delete=models.CASCADE, db_column='tipoausen_id', null=False, blank=False)
     personal_id = models.ForeignKey(Personal, on_delete=models.CASCADE, db_column='personal_id', null=False, blank=False)
-    fechaini = models.DateField(null=False, blank=False)
-    fechafin = models.DateField(null=False, blank=False)
-    observacion = models.TextField(max_length=250, blank=True, null=True)
+    fechaini = models.DateField(null=False, blank=False, verbose_name='Fecha de Inicio')
+    dias_ausentismo = models.IntegerField(null=False, blank=False, verbose_name='Días de Ausentismo', default=1)
+    fechafin = models.DateField(null=False, blank=False, editable=False, verbose_name='Fecha de Fin')
+    observacion = models.TextField(max_length=250, blank=True, null=True, verbose_name='Observaciones')
+
+    def save(self, *args, **kwargs):
+        """Calcula automáticamente la fecha de fin basándose en fecha inicio + días"""
+        from datetime import timedelta
+        if self.fechaini and self.dias_ausentismo:
+            self.fechafin = self.fechaini + timedelta(days=self.dias_ausentismo - 1)
+        super().save(*args, **kwargs)
 
     @property
     def dias_totales(self):
         """Calcula los días totales del ausentismo"""
         if self.fechaini and self.fechafin:
             return (self.fechafin - self.fechaini).days + 1
-        return 0
+        return self.dias_ausentismo if hasattr(self, 'dias_ausentismo') else 0
     
     @property
     def esta_activo(self):

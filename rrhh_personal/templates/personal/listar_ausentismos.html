@@ -40,17 +40,10 @@
 
 <div class="card">
     <div class="card-header bg-dark text-white">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h5 class="mb-0">
-                    <i class="bi bi-calendar-x me-2"></i>Ausentismos - {{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }}
-                </h5>
-                <small class="text-light opacity-75">RUT: {{ personal.rut }}-{{ personal.dvrut }}</small>
-            </div>
-            <a href="{% url 'gestionar_ausencias' %}?tab=ausentismos" class="btn btn-sm btn-light">
-                <i class="bi bi-arrow-left me-1"></i>Volver
-            </a>
-        </div>
+        <h5 class="mb-0">
+            <i class="bi bi-calendar-x me-2"></i>Ausentismos - {{ personal.nombre }} {{ personal.apepat }} {{ personal.apemat }}
+        </h5>
+        <small class="text-light opacity-75">RUT: {{ personal.rut }}-{{ personal.dvrut }}</small>
     </div>
     
     <div class="card-body">
@@ -58,9 +51,12 @@
         
         {% if ausentismos %}
         
-        <!-- Fila 1: Botón nuevo y contador -->
+        <!-- Fila 1: Botones y contador -->
         <div class="row mb-3 align-items-center">
             <div class="col-md-6">
+                <a href="{% url 'gestionar_ausencias' %}?tab=ausentismos" class="btn btn-secondary btn-sm me-2">
+                    <i class="bi bi-arrow-left me-1"></i>Volver
+                </a>
                 <a href="{% url 'crear_ausentismo' personal.personal_id %}" class="btn btn-success btn-sm">
                     <i class="bi bi-plus-circle me-1"></i>Nuevo Ausentismo
                 </a>
@@ -140,16 +136,11 @@
             <i class="bi bi-calendar-x" style="font-size: 4rem; color: #6c757d;"></i>
             <h5 class="text-muted mb-3 mt-3">No hay ausentismos registrados</h5>
             <p class="text-muted mb-4">Este trabajador no tiene ausentismos o permisos registrados.</p>
+            <a href="{% url 'gestionar_ausencias' %}?tab=ausentismos" class="btn btn-secondary me-2">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
             <a href="{% url 'crear_ausentismo' personal.personal_id %}" class="btn btn-success">
                 <i class="bi bi-plus-circle me-1"></i>Registrar Primer Ausentismo
-            </a>
-        </div>
-        {% endif %}
-        
-        {% if ausentismos %}
-        <div class="mt-3">
-            <a href="{% url 'gestionar_ausencias' %}?tab=ausentismos" class="btn btn-secondary btn-sm">
-                <i class="bi bi-arrow-left me-1"></i>Volver a Gestión de Ausencias
             </a>
         </div>
         {% endif %}

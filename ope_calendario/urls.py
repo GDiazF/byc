@@ -16,8 +16,14 @@ urlpatterns = [
     # Gestión de faenas
     path('faenas/', views.gestionar_faenas, name='gestionar_faenas'),
     path('faenas/<int:faena_id>/asignar/', views.asignar_personal_faena, name='asignar_personal_faena'),
+    path('estados-manuales/<int:estado_id>/delete/', views.eliminar_estado_manual, name='eliminar_estado_manual'),
+    path('api/asignar-estado-manual/', views.asignar_estado_manual_api, name='asignar_estado_manual_api'),
     path('api/listar-faenas/', views.listar_faenas_api, name='listar_faenas_api'),
     path('api/crear-faena/', views.crear_faena, name='crear_faena'),
     path('api/actualizar-faena/', views.actualizar_faena, name='actualizar_faena'),
     path('api/eliminar-faena/', views.eliminar_faena, name='eliminar_faena'),
+    
+    # APIs para calendario de faena
+    path('api/estados/', views.api_estados, name='api_estados'),
+    path('api/personal-faena/<int:faena_id>/', views.api_personal_faena, name='api_personal_faena'),
 ]

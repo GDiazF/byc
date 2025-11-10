@@ -1,6 +1,6 @@
 // ============================================================================
 // GESTIÓN DE DOCUMENTACIÓN DE PERSONAL
-// Version: v26.0 - Estado Vigente/Vencida en todas las tablas
+// Version: v29.0 - CORREGIDO: Duplicación al editar (obtener ID antes de cerrar modal)
 // ============================================================================
 
 // ============================================================================
@@ -77,6 +77,29 @@ function showNotification(title, message, type = 'success') {
 // ============================================================================
 
 function initializeModalResetHandlers() {
+    // Función helper para limpiar completamente un formulario
+    const cleanFormCompletely = (form) => {
+        if (!form) return;
+        
+        form.reset();
+        
+        // Limpiar mensajes de validación y estilos is-invalid
+        form.querySelectorAll('.is-invalid').forEach(el => {
+            el.classList.remove('is-invalid');
+            el.setCustomValidity('');
+        });
+        
+        // Ocultar mensajes de error
+        form.querySelectorAll('.invalid-feedback').forEach(el => {
+            el.style.display = 'none';
+            el.textContent = '';
+        });
+        
+        // Remover información de documento existente
+        const existingDocInfo = form.querySelector('.existing-document-info');
+        if (existingDocInfo) existingDocInfo.remove();
+    };
+    
     // Limpiar formulario de licencias cuando se abre en modo "agregar"
     const licenseModal = document.getElementById('addLicenseModal');
     if (licenseModal) {
@@ -86,7 +109,7 @@ function initializeModalResetHandlers() {
             if (button && !button.classList.contains('edit-license')) {
                 const form = document.getElementById('licenseForm');
                 if (form) {
-                    form.reset();
+                    cleanFormCompletely(form);
                     // Remover campo hidden de ID
                     const hiddenId = form.querySelector('[name="license_id"]');
                     if (hiddenId) hiddenId.remove();
@@ -105,7 +128,7 @@ function initializeModalResetHandlers() {
             if (button && !button.classList.contains('edit-internal-license')) {
                 const form = document.getElementById('internalLicenseForm');
                 if (form) {
-                    form.reset();
+                    cleanFormCompletely(form);
                     const hiddenId = form.querySelector('[name="internal_license_id"]');
                     if (hiddenId) hiddenId.remove();
                     document.querySelector('#addInternalLicenseModal .modal-title').textContent = 'Agregar Licencia Interna';
@@ -122,7 +145,7 @@ function initializeModalResetHandlers() {
             if (button && !button.classList.contains('edit-exam')) {
                 const form = document.getElementById('examForm');
                 if (form) {
-                    form.reset();
+                    cleanFormCompletely(form);
                     const hiddenId = form.querySelector('[name="exam_id"]');
                     if (hiddenId) hiddenId.remove();
                     document.querySelector('#addExamModal .modal-title').textContent = 'Agregar Examen';
@@ -139,7 +162,7 @@ function initializeModalResetHandlers() {
             if (button && !button.classList.contains('edit-certification')) {
                 const form = document.getElementById('certificationForm');
                 if (form) {
-                    form.reset();
+                    cleanFormCompletely(form);
                     const hiddenId = form.querySelector('[name="cert_id"]');
                     if (hiddenId) hiddenId.remove();
                     document.querySelector('#addCertificationModal .modal-title').textContent = 'Agregar Certificación';
@@ -266,6 +289,18 @@ function resetModalForm(formId, hiddenIdName, modalTitle) {
         // Restaurar campo de archivo como requerido
         const fileInput = form.querySelector('[name="rutaDoc"]');
         if (fileInput) fileInput.required = true;
+        
+        // Limpiar TODOS los mensajes de validación y estilos is-invalid
+        form.querySelectorAll('.is-invalid').forEach(el => {
+            el.classList.remove('is-invalid');
+            el.setCustomValidity(''); // Limpiar mensajes de validación personalizados
+        });
+        
+        // Ocultar TODOS los mensajes de error
+        form.querySelectorAll('.invalid-feedback').forEach(el => {
+            el.style.display = 'none';
+            el.textContent = '';
+        });
     }
     
     // Resetear título del modal
@@ -429,7 +464,32 @@ async function submitForm(form, type) {
         const data = await response.json();
         console.log('Response data:', data); // DEBUG
         
-        // Cerrar el modal
+        // IMPORTANTE: Determinar si es edición ANTES de cerrar el modal
+        const licenseId = form.querySelector('[name="license_id"]');
+        const certId = form.querySelector('[name="cert_id"]');
+        const examId = form.querySelector('[name="exam_id"]');
+        const internalLicenseId = form.querySelector('[name="internal_license_id"]');
+        
+        let isEdit = false;
+        let recordId = null;
+        
+        if (type === 'license' && licenseId && licenseId.value) {
+            isEdit = true;
+            recordId = licenseId.value;
+        } else if (type === 'internal-license' && internalLicenseId && internalLicenseId.value) {
+            isEdit = true;
+            recordId = internalLicenseId.value;
+        } else if (type === 'certification' && certId && certId.value) {
+            isEdit = true;
+            recordId = certId.value;
+        } else if (type === 'exam' && examId && examId.value) {
+            isEdit = true;
+            recordId = examId.value;
+        }
+        
+        console.log('[SUBMIT] Es edición (antes de cerrar modal)?', isEdit, 'ID:', recordId, 'Type:', type); // DEBUG
+        
+        // Cerrar el modal DESPUÉS de obtener el ID
         const modalId = {
             'license': 'addLicenseModal',
             'internal-license': 'addInternalLicenseModal',
@@ -450,37 +510,15 @@ async function submitForm(form, type) {
             if (data.status === 'success') {
                 showNotification('Éxito', data.message, 'success-no-reload');
                 
-                // Determinar si es edición o creación basándose en los campos hidden
-                const licenseId = form.querySelector('[name="license_id"]');
-                const certId = form.querySelector('[name="cert_id"]');
-                const examId = form.querySelector('[name="exam_id"]');
-                const internalLicenseId = form.querySelector('[name="internal_license_id"]');
-                
-                let isEdit = false;
-                let recordId = null;
-                
-                if (type === 'license' && licenseId && licenseId.value) {
-                    isEdit = true;
-                    recordId = licenseId.value;
-                } else if (type === 'internal-license' && internalLicenseId && internalLicenseId.value) {
-                    isEdit = true;
-                    recordId = internalLicenseId.value;
-                } else if (type === 'certification' && certId && certId.value) {
-                    isEdit = true;
-                    recordId = certId.value;
-                } else if (type === 'exam' && examId && examId.value) {
-                    isEdit = true;
-                    recordId = examId.value;
-                }
-                
-                console.log('Es edición?', isEdit, 'ID:', recordId, 'Type:', type); // DEBUG
+                console.log('[SUBMIT] Procesando respuesta - Es edición?', isEdit, 'ID:', recordId); // DEBUG
+                console.log('[SUBMIT] Data recibida del servidor:', data.data); // DEBUG
                 
                 // Si es edición, actualizar la fila; si es nuevo, agregar la fila
                 if (isEdit && recordId) {
-                    console.log('Actualizando fila...'); // DEBUG
+                    console.log('[SUBMIT] Actualizando fila con ID:', recordId); // DEBUG
                     updateRowById(type, recordId, data.data);
                 } else {
-                    console.log('Agregando nueva fila...'); // DEBUG
+                    console.log('[SUBMIT] Agregando nueva fila...'); // DEBUG
                     addRowToTable(type, data.data);
                 }
             } else {
@@ -941,6 +979,8 @@ function removeRowById(type, id) {
 }
 
 function addRowToTable(type, data) {
+    console.log('[ADD ROW] Agregando nueva fila:', type, 'con ID:', data.id);
+    
     const tableIds = {
         'license': 'licenses-table',
         'internal-license': 'internal-licenses-table',
@@ -952,7 +992,7 @@ function addRowToTable(type, data) {
     const table = document.getElementById(tableId);
     
     if (!table) {
-        console.error('Tabla no encontrada:', tableId);
+        console.error('[ADD ROW] Tabla no encontrada:', tableId);
         return;
     }
     
@@ -967,6 +1007,7 @@ function addRowToTable(type, data) {
     // Crear nueva fila según el tipo
     const newRow = createRowElement(type, data);
     tbody.insertBefore(newRow, tbody.firstChild); // Insertar al inicio
+    console.log('[ADD ROW] Fila agregada exitosamente');
 }
 
 function updateRowById(type, id, data) {
@@ -988,14 +1029,35 @@ function updateRowById(type, id, data) {
     const tbody = table.querySelector('tbody');
     const rows = tbody.querySelectorAll('tr');
     
+    console.log(`[UPDATE] Buscando fila con tipo: ${type}, id: ${id}`);
+    console.log(`[UPDATE] Data.id del servidor:`, data.id);
+    
+    let found = false;
+    let rowIndex = 0;
     rows.forEach(row => {
         const deleteBtn = row.querySelector(`.delete-${type}`);
+        const deleteBtnId = deleteBtn ? deleteBtn.dataset.id : 'NO BUTTON';
+        console.log(`[UPDATE] Fila ${rowIndex}: delete button id="${deleteBtnId}", comparando con id="${id}" (string: "${id.toString()}")`);
+        console.log(`[UPDATE] Fila ${rowIndex}: ¿Son iguales? ${deleteBtnId === id.toString()}, ¿Son iguales con ==? ${deleteBtnId == id}`);
+        
         if (deleteBtn && deleteBtn.dataset.id === id.toString()) {
+            console.log(`[UPDATE] ✓ FILA ENCONTRADA en índice ${rowIndex} - Actualizando...`);
             // Crear nueva fila con datos actualizados
             const newRow = createRowElement(type, data);
             row.replaceWith(newRow);
+            found = true;
         }
+        rowIndex++;
     });
+    
+    if (!found) {
+        console.error(`[UPDATE] ✗ NO SE ENCONTRÓ la fila con id: ${id}. Esto causará duplicación.`);
+        console.error(`[UPDATE] Tipo: ${type}, ID buscado: "${id}" (tipo: ${typeof id}), Total de filas: ${rows.length}`);
+        console.error(`[UPDATE] IDs de botones encontrados:`, Array.from(rows).map(r => {
+            const btn = r.querySelector(`.delete-${type}`);
+            return btn ? btn.dataset.id : 'NO BUTTON';
+        }));
+    }
 }
 
 // Función helper para calcular si un documento está vigente o vencido
@@ -1005,9 +1067,22 @@ function calcularEstadoVigencia(fechaVencimiento) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const vencimiento = new Date(fechaVencimiento);
+    let vencimiento;
+    
+    // Soportar múltiples formatos de fecha: DD/MM/YYYY o YYYY-MM-DD
+    if (fechaVencimiento.includes('/')) {
+        // Formato DD/MM/YYYY
+        const [day, month, year] = fechaVencimiento.split('/').map(Number);
+        vencimiento = new Date(year, month - 1, day);
+    } else {
+        // Formato YYYY-MM-DD
+        const [year, month, day] = fechaVencimiento.split('-').map(Number);
+        vencimiento = new Date(year, month - 1, day);
+    }
+    
     vencimiento.setHours(0, 0, 0, 0);
     
+    // Vigente si la fecha es mayor O IGUAL a hoy (incluyendo el mismo día)
     if (vencimiento >= today) {
         return '<span class="badge bg-success">Vigente</span>';
     } else {
@@ -1016,6 +1091,8 @@ function calcularEstadoVigencia(fechaVencimiento) {
 }
 
 function createRowElement(type, data) {
+    console.log('[CREATE ROW] Creando fila para tipo:', type, 'con data.id:', data.id);
+    
     const row = document.createElement('tr');
     
     let rowHTML = '';
@@ -1038,8 +1115,8 @@ function createRowElement(type, data) {
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
                 <td>
-                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
-                    <button class="btn btn-sm btn-warning me-1 edit-license" data-id="${data.id}">
+                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i></a>` : ''}
+                    <button class="btn btn-sm btn-secondary me-1 edit-license" data-id="${data.id}">
                         <i class="bi bi-pencil"></i>
                     </button>
                     <button class="btn btn-sm btn-danger delete-license" data-id="${data.id}">
@@ -1062,8 +1139,8 @@ function createRowElement(type, data) {
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
                 <td>
-                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
-                    <button class="btn btn-sm btn-warning me-1 edit-internal-license" data-id="${data.id}">
+                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i></a>` : ''}
+                    <button class="btn btn-sm btn-secondary me-1 edit-internal-license" data-id="${data.id}">
                         <i class="bi bi-pencil"></i>
                     </button>
                     <button class="btn btn-sm btn-danger delete-internal-license" data-id="${data.id}">
@@ -1097,8 +1174,8 @@ function createRowElement(type, data) {
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
                 <td>
-                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
-                    <button class="btn btn-sm btn-warning me-1 edit-exam" data-id="${data.id}">
+                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i></a>` : ''}
+                    <button class="btn btn-sm btn-secondary me-1 edit-exam" data-id="${data.id}">
                         <i class="bi bi-pencil"></i>
                     </button>
                     <button class="btn btn-sm btn-danger delete-exam" data-id="${data.id}">
@@ -1120,8 +1197,8 @@ function createRowElement(type, data) {
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
                 <td>
-                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i> Ver</a>` : ''}
-                    <button class="btn btn-sm btn-warning me-1 edit-certification" data-id="${data.id}">
+                    ${data.documento ? `<a href="${data.documento_url}" target="_blank" class="btn btn-sm btn-primary me-1"><i class="bi bi-eye"></i></a>` : ''}
+                    <button class="btn btn-sm btn-secondary me-1 edit-certification" data-id="${data.id}">
                         <i class="bi bi-pencil"></i>
                     </button>
                     <button class="btn btn-sm btn-danger delete-certification" data-id="${data.id}">

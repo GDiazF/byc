@@ -57,6 +57,17 @@
             {% endfor %}
         {% endif %}
         
+        <!-- Errores de validación del formulario -->
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endif %}
+        
         <form method="post" class="needs-validation" novalidate id="licenciaForm">
             {% csrf_token %}
             <div class="row">
