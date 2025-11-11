@@ -40,7 +40,7 @@ class Equipo(models.Model):
     codigoInterno = models.CharField(max_length=100, null=False, blank=False)
     patente = models.CharField(max_length=100, null=True, blank=True)
     horometro = models.IntegerField(null=True, blank=True)
-    odometro = models.IntegerField(null=False, blank=False)
+    odometro = models.IntegerField(null=True, blank=True)
     horometroSuperEstructural = models.IntegerField(null=True, blank=True)
     nombreEquipo = models.CharField(max_length=100, null=False, blank=True)  # Se genera automáticamente
     activo = models.BooleanField(default=True, null=False, blank=False)
@@ -88,3 +88,74 @@ class Equipo(models.Model):
 
     def __str__(self):
         return self.nombreEquipo
+
+
+class Seccion(models.Model):
+    """Secciones/sistemas de un equipo (motor, radiador, sistema hidráulico, etc.)"""
+    seccion_id = models.AutoField(primary_key=True, null=False, blank=False)
+    nombre = models.CharField(max_length=100, unique=True, null=False, blank=False)
+    descripcion = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'maquinarias_seccion'
+        verbose_name = 'Sección'
+        verbose_name_plural = 'Secciones'
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return self.nombre
+
+
+class TipoReparacion(models.Model):
+    """Tipos de reparación para cada sección"""
+    tipoReparacion_id = models.AutoField(primary_key=True, null=False, blank=False)
+    seccion_id = models.ForeignKey(Seccion, on_delete=models.CASCADE, db_column='seccion_id', related_name='tipos_reparacion', null=False, blank=False)
+    nombre = models.CharField(max_length=200, null=False, blank=False)
+    descripcion = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'maquinarias_tiporeparacion'
+        verbose_name = 'Tipo de Reparación'
+        verbose_name_plural = 'Tipos de Reparación'
+        unique_together = [['seccion_id', 'nombre']]
+        ordering = ['seccion_id', 'nombre']
+    
+    def __str__(self):
+        return f"{self.nombre} ({self.seccion_id.nombre})"
+
+
+class PautaMantenimientoPreventivo(models.Model):
+    """Pauta de mantenimiento preventivo para un modelo de equipo"""
+    pauta_id = models.AutoField(primary_key=True, null=False, blank=False)
+    modeloEquipo_id = models.ForeignKey(ModeloEquipo, on_delete=models.CASCADE, db_column='modeloEquipo_id', related_name='pautas_mantenimiento', null=False, blank=False)
+    nombre = models.CharField(max_length=200, null=False, blank=False)
+    descripcion = models.TextField(blank=True, null=True)
+    activo = models.BooleanField(default=True, null=False, blank=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'maquinarias_pautamantenimientopreventivo'
+        verbose_name = 'Pauta de Mantenimiento Preventivo'
+        verbose_name_plural = 'Pautas de Mantenimiento Preventivo'
+        ordering = ['modeloEquipo_id', 'nombre']
+    
+    def __str__(self):
+        return f"{self.nombre} - {self.modeloEquipo_id}"
+
+
+class ItemPauta(models.Model):
+    """Relación entre una pauta, una sección y sus tipos de reparación"""
+    itemPauta_id = models.AutoField(primary_key=True, null=False, blank=False)
+    pauta_id = models.ForeignKey(PautaMantenimientoPreventivo, on_delete=models.CASCADE, db_column='pauta_id', related_name='items', null=False, blank=False)
+    seccion_id = models.ForeignKey(Seccion, on_delete=models.CASCADE, db_column='seccion_id', related_name='items_pauta', null=False, blank=False)
+    tipos_reparacion = models.ManyToManyField(TipoReparacion, related_name='items_pauta')
+    
+    class Meta:
+        db_table = 'maquinarias_itempauta'
+        verbose_name = 'Item de Pauta'
+        verbose_name_plural = 'Items de Pauta'
+        unique_together = [['pauta_id', 'seccion_id']]
+    
+    def __str__(self):
+        return f"{self.pauta_id.nombre} - {self.seccion_id.nombre}"

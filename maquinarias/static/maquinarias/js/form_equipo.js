@@ -203,15 +203,33 @@ function guardarEquipo(event) {
         return;
     }
     
+    // Validar números negativos
+    const horometroVal = horometro ? parseInt(horometro) : null;
+    const odometroVal = odometro ? parseInt(odometro) : null;
+    const horometroSEVal = horometroSE ? parseInt(horometroSE) : null;
+    
+    if (horometroVal !== null && horometroVal < 0) {
+        mostrarError('El horómetro no puede ser negativo');
+        return;
+    }
+    if (odometroVal !== null && odometroVal < 0) {
+        mostrarError('El odómetro no puede ser negativo');
+        return;
+    }
+    if (horometroSEVal !== null && horometroSEVal < 0) {
+        mostrarError('El horómetro superestructural no puede ser negativo');
+        return;
+    }
+    
     const data = {
         equipo_id: equipoId || null,
         empresa_id: parseInt(empresaId),
         modeloEquipo_id: parseInt(modeloId),
-        codigoInterno: codigo,
-        patente: document.getElementById('patente').value.trim(),
-        horometro: parseInt(horometro) || 0,
-        odometro: parseInt(odometro) || 0,
-        horometroSuperEstructural: horometroSE ? parseInt(horometroSE) : 0
+        codigoInterno: codigo.trim().toUpperCase(),
+        patente: document.getElementById('patente').value.trim().toUpperCase(),
+        horometro: horometroVal,
+        odometro: odometroVal,
+        horometroSuperEstructural: horometroSEVal
     };
     
     console.log('Datos a enviar:', data);
@@ -252,9 +270,8 @@ function guardarEquipo(event) {
     });
 }
 
-// Mostrar notificación estilo toast (igual que en personal)
+// Mostrar notificación estilo alert
 function showNotification(message, type = 'success') {
-    // Crear contenedor de alertas si no existe
     let container = document.querySelector('.messages-container');
     if (!container) {
         container = document.createElement('div');
@@ -263,31 +280,27 @@ function showNotification(message, type = 'success') {
         document.body.appendChild(container);
     }
     
-    // Determinar clase de Bootstrap según tipo
     const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-    const icon = type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill';
+    const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
     
-    // Crear el alert
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show alert-permanent`;
     alertDiv.setAttribute('role', 'alert');
     alertDiv.style.marginBottom = '10px';
     alertDiv.innerHTML = `
         <i class="bi bi-${icon} me-2"></i>
-        <strong>${message}</strong>
+        ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     
-    // Agregar al contenedor
     container.appendChild(alertDiv);
     
-    // Auto-cerrar después de 4 segundos
     setTimeout(() => {
         alertDiv.classList.remove('show');
         setTimeout(() => {
             alertDiv.remove();
         }, 150);
-    }, 4000);
+    }, 3000);
 }
 
 // Mostrar mensaje de éxito

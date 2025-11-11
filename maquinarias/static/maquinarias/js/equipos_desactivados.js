@@ -239,15 +239,15 @@ function showNotification(message, type = 'success') {
     }
     
     const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-    const icon = type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill';
+    const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
     
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show alert-permanent`;
     alertDiv.setAttribute('role', 'alert');
     alertDiv.style.marginBottom = '10px';
     alertDiv.innerHTML = `
         <i class="bi bi-${icon} me-2"></i>
-        <strong>${message}</strong>
+        ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     
@@ -258,6 +258,6 @@ function showNotification(message, type = 'success') {
         setTimeout(() => {
             alertDiv.remove();
         }, 150);
-    }, 4000);
+    }, 3000);
 }
 

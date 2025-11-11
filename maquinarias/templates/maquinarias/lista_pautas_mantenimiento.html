@@ -1,0 +1,144 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Gestión de Pautas de Mantenimiento{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
+<link rel="stylesheet" href="{% static 'maquinarias/css/form_pauta.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-clipboard-check me-2"></i>Gestión de Pautas de Mantenimiento Preventivo
+        </h5>
+    </div>
+    
+    <div class="card-body p-4">
+        <!-- Botón Nueva Pauta -->
+        <div class="row mb-3 align-items-center">
+            <div class="col-md-6">
+                <a href="{% url 'maquinarias:crear_pauta_mantenimiento' %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-plus-square me-1"></i>Nueva Pauta
+                </a>
+            </div>
+            <div class="col-md-6 text-end">
+                <span class="small text-muted">
+                    <i class="bi bi-truck me-1"></i>
+                    <strong id="totalModelos">0</strong> modelos de equipo
+                </span>
+            </div>
+        </div>
+        
+        <!-- Filtros y búsqueda -->
+        <div class="row mb-3 align-items-center">
+            <div class="col-md-2">
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label mb-0 small">Mostrar:</label>
+                    <select class="form-select form-select-sm" id="perPageSelect" style="width: auto;">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span class="small text-muted">registros</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" 
+                           placeholder="Buscar por modelo...">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="tipoFilter">
+                    <option value="">Todos los tipos</option>
+                    {% for tipo in tipos_equipo %}
+                    <option value="{{ tipo.tipoEquipo_id }}">{{ tipo.tipoEquipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="marcaFilter">
+                    <option value="">Todas las marcas</option>
+                    {% for marca in marcas %}
+                    <option value="{{ marca.marcaEquipo_id }}">{{ marca.marcaEquipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="modeloFilter">
+                    <option value="">Todos los modelos</option>
+                    {% for modelo in modelos %}
+                    <option value="{{ modelo.modeloEquipo_id }}">{{ modelo.modeloEquipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-sm btn-secondary w-100" onclick="limpiarFiltros()" title="Limpiar filtros">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Tabla de modelos con pautas -->
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-bordered rrhh-table align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="sortable" data-column="modelo" style="cursor: pointer;">
+                            Modelo <i class="bi bi-arrow-down-up ms-1"></i>
+                        </th>
+                        <th class="sortable" data-column="tipo" style="cursor: pointer;">
+                            Tipo <i class="bi bi-arrow-down-up ms-1"></i>
+                        </th>
+                        <th class="sortable" data-column="marca" style="cursor: pointer;">
+                            Marca <i class="bi bi-arrow-down-up ms-1"></i>
+                        </th>
+                        <th class="text-center sortable" data-column="pautas" style="cursor: pointer;">
+                            Pautas <i class="bi bi-arrow-down-up ms-1"></i>
+                        </th>
+                        <th class="text-center" style="width: 100px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="modelosTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <span class="ms-2">Cargando modelos...</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación -->
+        <div class="row mt-3 align-items-center">
+            <div class="col-md-6">
+                <span class="small text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Mostrando <strong id="registroInicio">0</strong> a <strong id="registroFin">0</strong> de <strong id="totalRegistros">0</strong> registros
+                </span>
+            </div>
+            <div class="col-md-6">
+                <nav>
+                    <ul class="pagination pagination-sm justify-content-end mb-0" id="pagination">
+                        <!-- Se llena dinámicamente -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extrajs %}
+<script src="{% static 'maquinarias/js/lista_pautas_mantenimiento.js' %}"></script>
+{% endblock %}
+

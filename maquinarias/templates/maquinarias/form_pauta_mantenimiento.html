@@ -1,0 +1,231 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}{% if es_edicion %}Editar{% else %}Nueva{% endif %} Pauta de Mantenimiento{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}?v=2.0">
+<link rel="stylesheet" href="{% static 'maquinarias/css/form_pauta.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-clipboard-check me-2"></i>{% if es_edicion %}Editar{% else %}Nueva{% endif %} Pauta de Mantenimiento
+        </h5>
+    </div>
+    
+    <div class="card-body p-4">
+        <!-- Botón volver -->
+        <div class="mb-3">
+            <a href="{% url 'maquinarias:lista_pautas_mantenimiento' %}" class="btn btn-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Volver a Lista
+            </a>
+        </div>
+
+        <form id="formPautaMantenimiento">
+            {% if es_edicion %}
+            <input type="hidden" id="pauta_id" value="{{ pauta.pauta_id }}">
+            {% endif %}
+            
+            <!-- Información básica de la pauta -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span>Información de la Pauta</span>
+                </div>
+                <div class="form-section-body">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label for="nombre" class="form-label">Nombre de la Pauta <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nombre" required
+                                   value="{% if es_edicion %}{{ pauta.nombre }}{% endif %}"
+                                   placeholder="Ej: MANTENIMIENTO 500 HORAS">
+                        </div>
+                        
+                        <div class="col-md-12 mt-2">
+                            <label for="descripcion" class="form-label">Descripción</label>
+                            <textarea class="form-control" id="descripcion" rows="3"
+                                      placeholder="Descripción opcional de la pauta">{% if es_edicion %}{{ pauta.descripcion }}{% endif %}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selección de modelo de equipo -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-truck me-2"></i>
+                    <span>Modelo de Equipo</span>
+                </div>
+                <div class="form-section-body">
+                    {% if modelo_preseleccionado or es_edicion %}
+                    <!-- Modelo pre-seleccionado (solo lectura) -->
+                    <div class="card border-primary mb-3">
+                        <div class="card-body py-2">
+                            <div class="row small">
+                                <div class="col-md-4">
+                                    <strong>Tipo:</strong>
+                                    <span class="badge bg-secondary">{% if es_edicion %}{{ pauta.modeloEquipo_id.tipoEquipo_id.siglaEquipo }}{% else %}{{ modelo_preseleccionado.tipoEquipo_id.siglaEquipo }}{% endif %}</span>
+                                    {% if es_edicion %}{{ pauta.modeloEquipo_id.tipoEquipo_id.tipoEquipo }}{% else %}{{ modelo_preseleccionado.tipoEquipo_id.tipoEquipo }}{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Marca:</strong> {% if es_edicion %}{{ pauta.modeloEquipo_id.marcaEquipo_id.marcaEquipo }}{% else %}{{ modelo_preseleccionado.marcaEquipo_id.marcaEquipo }}{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Modelo:</strong> {% if es_edicion %}{{ pauta.modeloEquipo_id.modeloEquipo }}{% else %}{{ modelo_preseleccionado.modeloEquipo }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="modeloEquipo_id" value="{% if es_edicion %}{{ pauta.modeloEquipo_id.modeloEquipo_id }}{% else %}{{ modelo_preseleccionado.modeloEquipo_id }}{% endif %}">
+                    {% else %}
+                    <!-- Selección normal con cascada -->
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label for="tipo_equipo_id" class="form-label">Tipo de Equipo <span class="text-danger">*</span></label>
+                            <select class="form-select" id="tipo_equipo_id" required>
+                                <option value="">Seleccione un tipo</option>
+                                {% for tipo in tipos_equipo %}
+                                <option value="{{ tipo.tipoEquipo_id }}">{{ tipo.tipoEquipo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="marca_equipo_id" class="form-label">Marca <span class="text-danger">*</span></label>
+                            <select class="form-select" id="marca_equipo_id" required disabled>
+                                <option value="">Seleccione una marca</option>
+                                {% for marca in marcas %}
+                                <option value="{{ marca.marcaEquipo_id }}">{{ marca.marcaEquipo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="modeloEquipo_id" class="form-label">Modelo <span class="text-danger">*</span></label>
+                            <select class="form-select" id="modeloEquipo_id" required disabled>
+                                <option value="">Seleccione un modelo</option>
+                                {% for modelo in modelos %}
+                                <option value="{{ modelo.modeloEquipo_id }}"
+                                        data-tipo="{{ modelo.tipoEquipo_id.tipoEquipo_id }}"
+                                        data-marca="{{ modelo.marcaEquipo_id.marcaEquipo_id }}">
+                                    {{ modelo.modeloEquipo }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Items de la pauta (Secciones con tipos de reparación) -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-list-check me-2"></i>
+                    <span>Items de la Pauta</span>
+                </div>
+                <div class="form-section-body">
+                    <div id="itemsContainer">
+                        {% if es_edicion %}
+                            {% for item in items %}
+                            <!-- Los items existentes se cargarán dinámicamente con JavaScript -->
+                            {% endfor %}
+                        {% endif %}
+                        <p class="text-muted small" id="noItemsMessage">No hay items agregados. Haga clic en "Agregar Item" para comenzar.</p>
+                    </div>
+                    
+                    <!-- Botón agregar item al final -->
+                    <div class="mt-3 text-center">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="agregarItem()">
+                            <i class="bi bi-plus-circle me-1"></i>Agregar Item
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="mt-4">
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'maquinarias:lista_pautas_mantenimiento' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i>Guardar Pauta
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Template para un item de pauta (hidden) -->
+<template id="itemPautaTemplate">
+    <div class="item-pauta" data-item-index="">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Item <span class="item-number"></span></h6>
+            <button type="button" class="btn btn-danger btn-sm" onclick="eliminarItem(this)">
+                <i class="bi bi-trash-fill"></i> Eliminar
+            </button>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Sección <span class="text-danger">*</span></label>
+                <select class="form-select seccion-select" onchange="cargarTiposReparacionItem(this)" required>
+                    <option value="">Seleccione una sección</option>
+                    {% for seccion in secciones %}
+                    <option value="{{ seccion.seccion_id }}">{{ seccion.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-8 mb-3">
+                <label class="form-label">Tipos de Reparación <span class="text-danger">*</span></label>
+                <div class="tipos-reparacion-list">
+                    <p class="text-muted small mb-0">Seleccione primero una sección</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block extrajs %}
+<script>
+    // Datos de tipos de reparación
+    window.tiposReparacion = [
+        {% for tipo in tipos_reparacion %}
+        {
+            tipoReparacion_id: {{ tipo.tipoReparacion_id }},
+            nombre: "{{ tipo.nombre|escapejs }}",
+            seccion_id: {{ tipo.seccion_id.seccion_id }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Datos para edición
+    {% if es_edicion %}
+    window.esEdicion = true;
+    window.itemsExistentes = [
+        {% for item in items %}
+        {
+            seccion_id: {{ item.seccion_id.seccion_id }},
+            tipos_reparacion_ids: [
+                {% for tipo in item.tipos_reparacion.all %}
+                {{ tipo.tipoReparacion_id }}{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    {% else %}
+    window.esEdicion = false;
+    {% endif %}
+</script>
+<script src="{% static 'maquinarias/js/form_pauta_mantenimiento.js' %}"></script>
+{% endblock %}
+

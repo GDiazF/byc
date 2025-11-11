@@ -145,10 +145,10 @@
                         </div>
                         
                         <div class="col-md-4">
-                            <label for="odometro" class="form-label">Odómetro <span class="text-danger">*</span></label>
+                            <label for="odometro" class="form-label">Odómetro</label>
                             <div class="input-group">
                                 <input type="number" class="form-control" id="odometro" 
-                                       required {% if es_edicion %}value="{{ equipo.odometro }}"{% endif %} min="0" placeholder="0">
+                                       {% if es_edicion %}value="{{ equipo.odometro }}"{% endif %} min="0" placeholder="0">
                                 <span class="input-group-text">km</span>
                             </div>
                         </div>
@@ -182,6 +182,7 @@
 {% endblock %}
 
 {% block extrajs %}
+<script src="{% static 'js/textoFormateador.js' %}"></script>
 <script>
     // Datos iniciales desde el servidor
     {% if es_edicion %}
@@ -196,5 +197,29 @@
     {% endif %}
 </script>
 <script src="{% static 'maquinarias/js/form_equipo.js' %}"></script>
+<script>
+    // Validaciones adicionales para números negativos
+    document.addEventListener('DOMContentLoaded', function() {
+        const camposNumericos = ['horometro', 'odometro', 'horometroSuperEstructural'];
+        
+        camposNumericos.forEach(campo => {
+            const input = document.getElementById(campo);
+            if (input) {
+                input.addEventListener('input', function() {
+                    if (this.value && parseFloat(this.value) < 0) {
+                        this.value = 0;
+                    }
+                });
+                
+                input.addEventListener('keypress', function(e) {
+                    // Prevenir signo negativo
+                    if (e.key === '-') {
+                        e.preventDefault();
+                    }
+                });
+            }
+        });
+    });
+</script>
 {% endblock %}
 

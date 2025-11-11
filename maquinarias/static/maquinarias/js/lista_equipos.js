@@ -68,7 +68,7 @@ function renderizarEquipos(equipos) {
     if (equipos.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="text-center py-5">
+                <td colspan="8" class="text-center py-5">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
                     <p class="text-muted mt-2">No se encontraron equipos activos</p>
                 </td>
@@ -88,27 +88,11 @@ function renderizarEquipos(equipos) {
             <td>${equipo.modeloEquipo.nombre}</td>
             <td>${equipo.empresa.nombre}</td>
             <td class="text-center">
-                <a href="/maquinarias/equipos/${equipo.equipo_id}/ficha-tecnica/" 
-                   class="btn btn-sm btn-warning" 
-                   title="Ver Ficha Técnica">
-                    <i class="bi bi-file-earmark-text"></i>
-                </a>
-            </td>
-            <td class="text-center">
                 <a href="/maquinarias/equipos/${equipo.equipo_id}/documentacion/" 
                    class="btn btn-sm btn-primary" 
                    title="Ver Documentación">
                     <i class="bi bi-folder"></i>
                 </a>
-            </td>
-            <td class="text-center">
-                <div class="form-check form-switch d-inline-block">
-                    <input class="form-check-input" type="checkbox" 
-                           style="cursor: pointer;"
-                           ${equipo.activo ? 'checked' : ''} 
-                           onchange="toggleActivo(${equipo.equipo_id}, '${equipo.nombreEquipo}', ${equipo.activo})"
-                           title="${equipo.activo ? 'Desactivar equipo' : 'Activar equipo'}">
-                </div>
             </td>
             <td class="text-center">
                 <div class="btn-group btn-group-sm" role="group">
@@ -122,6 +106,15 @@ function renderizarEquipos(equipos) {
                             title="Eliminar">
                         <i class="bi bi-trash-fill"></i>
                     </button>
+                </div>
+            </td>
+            <td class="text-center">
+                <div class="form-check form-switch d-inline-block">
+                    <input class="form-check-input" type="checkbox" 
+                           style="cursor: pointer;"
+                           ${equipo.activo ? 'checked' : ''} 
+                           onchange="toggleActivo(${equipo.equipo_id}, '${equipo.nombreEquipo}', ${equipo.activo})"
+                           title="${equipo.activo ? 'Desactivar equipo' : 'Activar equipo'}">
                 </div>
             </td>
         </tr>
@@ -302,9 +295,8 @@ function ejecutarToggleActivo(equipoId, modal) {
     });
 }
 
-// Mostrar notificación estilo toast
+// Mostrar notificación estilo alert
 function showNotification(message, type = 'success') {
-    // Crear contenedor de alertas si no existe
     let container = document.querySelector('.messages-container');
     if (!container) {
         container = document.createElement('div');
@@ -313,31 +305,27 @@ function showNotification(message, type = 'success') {
         document.body.appendChild(container);
     }
     
-    // Determinar clase de Bootstrap según tipo
     const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-    const icon = type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill';
+    const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
     
-    // Crear el alert
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show alert-permanent`;
     alertDiv.setAttribute('role', 'alert');
     alertDiv.style.marginBottom = '10px';
     alertDiv.innerHTML = `
         <i class="bi bi-${icon} me-2"></i>
-        <strong>${message}</strong>
+        ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     
-    // Agregar al contenedor
     container.appendChild(alertDiv);
     
-    // Auto-cerrar después de 4 segundos
     setTimeout(() => {
         alertDiv.classList.remove('show');
         setTimeout(() => {
             alertDiv.remove();
         }, 150);
-    }, 4000);
+    }, 3000);
 }
 
 // Mostrar mensaje de éxito
