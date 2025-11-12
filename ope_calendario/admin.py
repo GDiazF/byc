@@ -3,7 +3,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from .models import (
-    Estado, EstadoFuente, Turno, TurnoBloque, Faena, AsignacionFaena, EstadoManual
+    Estado, EstadoFuente, Turno, TurnoBloque, Faena, AsignacionFaena, EstadoManual, HistorialFaena
 )
 
 # ============================================================================
@@ -253,6 +253,45 @@ class EstadoManualAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('personal', 'estado')
+
+@admin.register(HistorialFaena)
+class HistorialFaenaAdmin(admin.ModelAdmin):
+    list_display = ['faena', 'fecha_hora', 'accion', 'usuario', 'personal', 'descripcion_corta']
+    list_filter = ['accion', 'fecha_hora', 'faena']
+    search_fields = ['faena__codigo', 'faena__nombre', 'descripcion', 'personal__nombre', 'personal__apepat']
+    date_hierarchy = 'fecha_hora'
+    ordering = ['-fecha_hora']
+    readonly_fields = ['fecha_hora', 'faena', 'usuario', 'accion', 'personal', 'descripcion', 'datos_previos', 'datos_nuevos']
+    
+    fieldsets = (
+        ('Información del Registro', {
+            'fields': ('faena', 'fecha_hora', 'usuario', 'accion')
+        }),
+        ('Detalles', {
+            'fields': ('personal', 'descripcion')
+        }),
+        ('Datos Técnicos', {
+            'fields': ('datos_previos', 'datos_nuevos'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def descripcion_corta(self, obj):
+        if obj.descripcion:
+            return obj.descripcion[:80] + "..." if len(obj.descripcion) > 80 else obj.descripcion
+        return "-"
+    descripcion_corta.short_description = "Descripción"
+    
+    def has_add_permission(self, request):
+        # No permitir crear manualmente desde admin (se crea automáticamente)
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        # No permitir eliminar historial (auditoría)
+        return False
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('faena', 'usuario', 'personal')
 
 # ============================================================================
 # PERSONALIZACIÓN DEL SITE ADMIN

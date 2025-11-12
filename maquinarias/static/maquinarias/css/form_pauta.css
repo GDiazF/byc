@@ -18,3 +18,11 @@
     margin-bottom: 5px;
 }
 
+/* Estilos para acordeones de pautas */
+#accordionPautas .accordion-button {
+    font-size: 0.875rem;
+}
+
+#accordionPautas .accordion-button strong {
+    font-weight: 600;
+}

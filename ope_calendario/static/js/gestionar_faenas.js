@@ -96,6 +96,52 @@ function esFaenaActiva(faena) {
     return fechaFin >= hoy;
 }
 
+// Verificar si una faena es próxima (aún no ha comenzado)
+function esFaenaProxima(faena) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    // Si no tiene fecha de inicio, no se considera próxima
+    if (!faena.fecha_inicio) {
+        return false;
+    }
+    
+    const fechaInicio = new Date(faena.fecha_inicio + 'T00:00:00');
+    fechaInicio.setHours(0, 0, 0, 0);
+    
+    // Es próxima si la fecha de inicio es posterior a hoy
+    return fechaInicio > hoy;
+}
+
+// Verificar si una faena está realmente activa (empezó pero no terminó)
+function esFaenaEnCurso(faena) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    // Si no tiene fecha de inicio, se considera en curso
+    if (!faena.fecha_inicio) {
+        return true;
+    }
+    
+    const fechaInicio = new Date(faena.fecha_inicio + 'T00:00:00');
+    fechaInicio.setHours(0, 0, 0, 0);
+    
+    // Debe haber comenzado o comenzar hoy
+    if (fechaInicio > hoy) {
+        return false;
+    }
+    
+    // Si no tiene fecha de fin, está en curso
+    if (!faena.fecha_fin) {
+        return true;
+    }
+    
+    // Verificar que no haya terminado
+    const fechaFin = new Date(faena.fecha_fin + 'T00:00:00');
+    fechaFin.setHours(0, 0, 0, 0);
+    return fechaFin >= hoy;
+}
+
 // Calcular duración de una faena en días
 function calcularDuracionFaena(faena) {
     if (!faena.fecha_inicio || !faena.fecha_fin) {
@@ -139,7 +185,7 @@ function obtenerEstadoFaena(faena) {
     // Si la faena aún no ha empezado
     if (fechaInicio > hoy) {
         const diasParaInicio = Math.round((fechaInicio - hoy) / (1000 * 60 * 60 * 24));
-        return `<span class="badge" style="${badgeEstilo} background-color: #fd7e14; color: white;">Próxima</span> <span class="badge bg-secondary" style="${badgeDiasEstilo}" title="Inicia en ${diasParaInicio} día${diasParaInicio !== 1 ? 's' : ''}">En ${diasParaInicio}d</span>`;
+        return `<span class="badge" style="${badgeEstilo} background-color: #fd7e14; color: white;">Próxima</span> <span class="badge bg-secondary" style="${badgeDiasEstilo}" title="Inicia en ${diasParaInicio} día${diasParaInicio !== 1 ? 's' : ''}">Inicia en ${diasParaInicio}d</span>`;
     }
     
     // Si no tiene fecha de fin, está activa indefinidamente
@@ -155,20 +201,11 @@ function obtenerEstadoFaena(faena) {
     if (diasRestantes < 0) {
         return `<span class="badge bg-secondary" style="${badgeEstilo}">Finalizada</span>`;
     } else if (diasRestantes === 0) {
-        // Hoy es el último día (CRÍTICO)
-        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-danger" style="${badgeDiasEstilo}" title="¡URGENTE! Último día">Hoy</span>`;
-    } else if (diasRestantes >= 1 && diasRestantes <= 3) {
-        // Rojo: 1-3 días (CRÍTICO)
-        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-danger" style="${badgeDiasEstilo}" title="¡URGENTE! Finaliza en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}">${diasRestantes}d</span>`;
-    } else if (diasRestantes >= 4 && diasRestantes <= 14) {
-        // Amarillo: 4-14 días (ALERTA)
-        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-warning text-dark" style="${badgeDiasEstilo}" title="Finaliza en ${diasRestantes} días">${diasRestantes}d</span>`;
-    } else if (diasRestantes >= 15 && diasRestantes <= 29) {
-        // Azul: 15-29 días (PLANIFICAR)
-        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-primary" style="${badgeDiasEstilo}" title="Finaliza en ${diasRestantes} días">${diasRestantes}d</span>`;
+        // Hoy es el último día
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-secondary" style="${badgeDiasEstilo}" title="Último día">Finaliza hoy</span>`;
     } else {
-        // Gris: 30+ días (SIN URGENCIA)
-        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-secondary" style="${badgeDiasEstilo}" title="Finaliza en ${diasRestantes} días">${diasRestantes}d</span>`;
+        // Todos los días restantes en gris
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span> <span class="badge bg-secondary" style="${badgeDiasEstilo}" title="Quedan ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}">Quedan ${diasRestantes}d</span>`;
     }
 }
 
@@ -188,9 +225,6 @@ function renderizarFaenaCard(faena, esActiva = true) {
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-sm btn-secondary" onclick="editarFaena(${faena.id})" title="Editar">
                                 <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="confirmarEliminarFaena(${faena.id})" title="Eliminar">
-                                <i class="bi bi-trash"></i>
                             </button>
                         </div>
                     </div>
@@ -222,6 +256,9 @@ function renderizarFaenaCard(faena, esActiva = true) {
                         <button class="btn btn-sm btn-dark" onclick="verDetallesFaena(${faena.id})">
                             <i class="bi bi-eye me-1"></i>Detalle
                         </button>
+                        <a href="/calendario/faenas/${faena.id}/historial/" class="btn btn-sm btn-info">
+                            <i class="bi bi-clock-history me-1"></i>Historial
+                        </a>
                     </div>
                 </div>
             </div>
@@ -254,11 +291,11 @@ function renderizarFaenaFila(faena, esActiva = true) {
                     <button class="btn btn-sm btn-primary" onclick="verDetallesFaena(${faena.id})" title="Ver Detalle">
                         <i class="bi bi-eye"></i>
                     </button>
+                    <a href="/calendario/faenas/${faena.id}/historial/" class="btn btn-sm btn-info" title="Ver Historial">
+                        <i class="bi bi-clock-history"></i>
+                    </a>
                     <button class="btn btn-sm btn-secondary" onclick="editarFaena(${faena.id})" title="Editar">
                         <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="confirmarEliminarFaena(${faena.id})" title="Eliminar">
-                        <i class="bi bi-trash"></i>
                     </button>
                 </div>
             </td>
@@ -273,50 +310,73 @@ function renderizarFaenas() {
         faenas = [];
     }
     
-    // Separar faenas activas y finalizadas
-    const faenasActivas = faenas.filter(f => esFaenaActiva(f));
+    // Separar faenas en tres categorías
+    const faenasProximas = faenas.filter(f => esFaenaProxima(f));
+    const faenasEnCurso = faenas.filter(f => esFaenaEnCurso(f));
     const faenasFinalizadas = faenas.filter(f => !esFaenaActiva(f));
     
     console.log('Total faenas:', faenas.length);
-    console.log('Faenas activas:', faenasActivas.length);
+    console.log('Faenas próximas:', faenasProximas.length);
+    console.log('Faenas en curso:', faenasEnCurso.length);
     console.log('Faenas finalizadas:', faenasFinalizadas.length);
     
     // Actualizar badges de tabs
-    document.getElementById('badgeActivas').textContent = faenasActivas.length;
+    document.getElementById('badgeProximas').textContent = faenasProximas.length;
+    document.getElementById('badgeActivas').textContent = faenasEnCurso.length;
     document.getElementById('badgeFinalizadas').textContent = faenasFinalizadas.length;
     
     // Actualizar cards de estadísticas
-    document.getElementById('totalFaenas').textContent = faenas.length;
-    document.getElementById('faenasActivas').textContent = faenasActivas.length;
+    document.getElementById('faenasProximas').textContent = faenasProximas.length;
+    document.getElementById('faenasActivas').textContent = faenasEnCurso.length;
+    document.getElementById('faenasFinalizadas').textContent = faenasFinalizadas.length;
     
-    // Renderizar faenas activas
-    renderizarSeccion(faenasActivas, 'Activas', true);
+    // Renderizar faenas próximas
+    renderizarSeccion(faenasProximas, 'Proximas', true, 'proxima');
+    
+    // Renderizar faenas activas (en curso)
+    renderizarSeccion(faenasEnCurso, 'Activas', true, 'activa');
     
     // Renderizar faenas finalizadas
-    renderizarSeccion(faenasFinalizadas, 'Finalizadas', false);
+    renderizarSeccion(faenasFinalizadas, 'Finalizadas', false, 'finalizada');
 }
 
-// Renderizar una sección (activas o finalizadas)
-function renderizarSeccion(faenasLista, tipo, esActiva) {
+// Renderizar una sección (próximas, activas o finalizadas)
+function renderizarSeccion(faenasLista, tipo, esActiva, estadoTexto = 'activa') {
     const cardsContainer = document.getElementById(`faenas${tipo}Cards`);
     const tablaBody = document.getElementById(`faenas${tipo}TablaBody`);
+    
+    // Definir mensajes según el tipo
+    let mensajeTipo = '';
+    switch(estadoTexto) {
+        case 'proxima':
+            mensajeTipo = 'próximas';
+            break;
+        case 'activa':
+            mensajeTipo = 'activas';
+            break;
+        case 'finalizada':
+            mensajeTipo = 'finalizadas';
+            break;
+        default:
+            mensajeTipo = estadoTexto;
+    }
     
     if (faenasLista.length === 0) {
         const mensajeVacio = `
             <div class="col-12">
                 <div class="alert alert-info text-center">
                     <i class="bi bi-info-circle me-2"></i>
-                    No hay faenas ${esActiva ? 'activas' : 'finalizadas'}.
-                    ${esActiva ? 'Crea una nueva faena para comenzar.' : ''}
+                    No hay faenas ${mensajeTipo}.
+                    ${esActiva && estadoTexto === 'activa' ? 'Crea una nueva faena para comenzar.' : ''}
                 </div>
             </div>
         `;
         cardsContainer.innerHTML = mensajeVacio;
         tablaBody.innerHTML = `
             <tr>
-                <td colspan="${esActiva ? '7' : '7'}" class="text-center text-muted py-4">
+                <td colspan="8" class="text-center text-muted py-4">
                     <i class="bi bi-inbox fs-1"></i>
-                    <p class="mt-2">No hay faenas ${esActiva ? 'activas' : 'finalizadas'}</p>
+                    <p class="mt-2">No hay faenas ${mensajeTipo}</p>
                 </td>
             </tr>
         `;

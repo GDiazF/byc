@@ -48,48 +48,6 @@
     </div>
 </div>
 
-<!-- Modal de Confirmación para ELIMINAR -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteModalLabel">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Eliminación de Personal
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <p class="text-danger fw-bold mb-3">
-                        <i class="bi bi-exclamation-octagon me-2"></i>
-                        ¡ADVERTENCIA! ¿Está seguro que desea ELIMINAR PERMANENTEMENTE a este trabajador?
-                    </p>
-                </div>
-                <p class="mb-2"><strong>Esta acción es IRREVERSIBLE:</strong></p>
-                <ul class="mb-3">
-                    <li>🗑️ <strong>Se eliminará TODA la información del personal</strong></li>
-                    <li>🗑️ Se borrarán todos sus documentos y registros</li>
-                    <li>🗑️ Se eliminarán licencias, exámenes y certificaciones</li>
-                    <li>🗑️ <strong>NO SE PODRÁ RECUPERAR la información</strong></li>
-                </ul>
-                <div class="bg-warning bg-opacity-25 border border-warning p-3 rounded mb-0">
-                    <p class="text-dark mb-0">
-                        <i class="bi bi-lightbulb-fill me-2"></i>
-                        <strong>Recomendación:</strong> Si solo desea ocultar temporalmente al personal, 
-                        desactívelo en la columna de estado.
-                    </p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-danger" id="deleteButton">
-                    <i class="bi bi-trash3 me-1"></i>Sí, Eliminar Permanentemente
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Modal de Éxito -->
 <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -188,7 +146,6 @@
                         <th class="sortable" data-column="empresa" style="cursor: pointer;">
                             Empresa <i class="bi bi-arrow-down-up ms-1"></i>
                         </th>
-                        <th style="width: 100px;">Documentación</th>
                         <th style="width: 120px;">Acciones</th>
                         <th style="width: 80px;">Estado</th>
                     </tr>

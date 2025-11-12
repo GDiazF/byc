@@ -1,7 +1,6 @@
 // Variables globales
 let paginaActual = 1;
 let tamanoPagina = 25;
-let equipoIdEliminar = null;
 
 // Cargar equipos al iniciar
 document.addEventListener('DOMContentLoaded', function() {
@@ -88,24 +87,17 @@ function renderizarEquipos(equipos) {
             <td>${equipo.modeloEquipo.nombre}</td>
             <td>${equipo.empresa.nombre}</td>
             <td class="text-center">
-                <a href="/maquinarias/equipos/${equipo.equipo_id}/documentacion/" 
-                   class="btn btn-sm btn-primary" 
-                   title="Ver Documentación">
-                    <i class="bi bi-folder"></i>
-                </a>
-            </td>
-            <td class="text-center">
                 <div class="btn-group btn-group-sm" role="group">
+                    <a href="/maquinarias/equipos/${equipo.equipo_id}/documentacion/" 
+                       class="btn btn-sm btn-primary" 
+                       title="Ver Documentación">
+                        <i class="bi bi-folder"></i>
+                    </a>
                     <a href="/maquinarias/equipos/${equipo.equipo_id}/editar/" 
                        class="btn btn-sm btn-secondary" 
                        title="Editar">
                         <i class="bi bi-pencil"></i>
                     </a>
-                    <button class="btn btn-sm btn-danger" 
-                            onclick="mostrarModalEliminar(${equipo.equipo_id}, '${equipo.nombreEquipo}')"
-                            title="Eliminar">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
                 </div>
             </td>
             <td class="text-center">
@@ -212,43 +204,6 @@ function limpiarFiltros() {
     document.getElementById('marcaFilter').value = '';
     paginaActual = 1;
     cargarEquipos();
-}
-
-// Mostrar modal eliminar
-function mostrarModalEliminar(equipoId, nombreEquipo) {
-    equipoIdEliminar = equipoId;
-    document.getElementById('equipoEliminarNombre').textContent = nombreEquipo;
-    
-    const modal = new bootstrap.Modal(document.getElementById('confirmarEliminarModal'));
-    modal.show();
-    
-    document.getElementById('btnConfirmarEliminar').onclick = function() {
-        eliminarEquipo(equipoId);
-    };
-}
-
-// Eliminar equipo
-function eliminarEquipo(equipoId) {
-    fetch(`/maquinarias/api/equipos/${equipoId}/eliminar/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            mostrarExito(data.message);
-            bootstrap.Modal.getInstance(document.getElementById('confirmarEliminarModal')).hide();
-            cargarEquipos();
-        } else {
-            mostrarError(data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        mostrarError('Error de conexión al eliminar el equipo');
-    });
 }
 
 // Toggle activo/inactivo

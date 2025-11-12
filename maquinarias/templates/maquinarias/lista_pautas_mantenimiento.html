@@ -17,14 +17,9 @@
     </div>
     
     <div class="card-body p-4">
-        <!-- Botón Nueva Pauta -->
+        <!-- Contador de modelos -->
         <div class="row mb-3 align-items-center">
-            <div class="col-md-6">
-                <a href="{% url 'maquinarias:crear_pauta_mantenimiento' %}" class="btn btn-success btn-sm">
-                    <i class="bi bi-plus-square me-1"></i>Nueva Pauta
-                </a>
-            </div>
-            <div class="col-md-6 text-end">
+            <div class="col-12">
                 <span class="small text-muted">
                     <i class="bi bi-truck me-1"></i>
                     <strong id="totalModelos">0</strong> modelos de equipo
@@ -38,8 +33,8 @@
                 <div class="d-flex align-items-center gap-2">
                     <label class="form-label mb-0 small">Mostrar:</label>
                     <select class="form-select form-select-sm" id="perPageSelect" style="width: auto;">
-                        <option value="10">10</option>
-                        <option value="25" selected>25</option>
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>

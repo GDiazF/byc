@@ -12,7 +12,7 @@ import json
 import hashlib
 from .models import (
     Estado, EstadoFuente, Turno, TurnoBloque, 
-    Faena, AsignacionFaena, EstadoManual
+    Faena, AsignacionFaena, EstadoManual, HistorialFaena
 )
 from rrhh_personal.models import Personal
 
@@ -1174,6 +1174,22 @@ def crear_asignacion(request):
             activo=activo
         )
         
+        # Registrar en historial
+        HistorialFaena.registrar(
+            faena=faena,
+            accion='PERSONAL_ASIGNADO',
+            descripcion=f"{personal.nombre} {personal.apepat} asignado con turno {turno.nombre} del {fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y') if fecha_fin else 'indefinido'}",
+            usuario=request.user if request.user.is_authenticated else None,
+            personal=personal,
+            datos_nuevos={
+                'personal_id': personal.personal_id,
+                'personal_nombre': f"{personal.nombre} {personal.apepat} {personal.apemat}",
+                'turno': turno.nombre,
+                'fecha_inicio': fecha_inicio.isoformat(),
+                'fecha_fin': fecha_fin.isoformat() if fecha_fin else None
+            }
+        )
+        
         # Invalidar caché del calendario
         invalidar_cache_calendario()
         
@@ -1251,6 +1267,13 @@ def actualizar_asignacion(request):
                 'error': f'Las fechas se solapan con otra asignación existente. Revisa las fechas de las asignaciones actuales.'
             }, status=400)
         
+        # Guardar datos anteriores para historial
+        datos_anteriores = {
+            'turno': asignacion.turno.nombre,
+            'fecha_inicio': asignacion.fecha_inicio.isoformat() if asignacion.fecha_inicio else None,
+            'fecha_fin': asignacion.fecha_fin.isoformat() if asignacion.fecha_fin else None
+        }
+        
         # Actualizar asignación
         asignacion.faena = faena
         asignacion.turno = turno
@@ -1260,6 +1283,21 @@ def actualizar_asignacion(request):
         asignacion.observaciones = observaciones
         asignacion.activo = activo
         asignacion.save()
+        
+        # Registrar en historial
+        HistorialFaena.registrar(
+            faena=faena,
+            accion='ASIGNACION_MODIFICADA',
+            descripcion=f"Asignación de {asignacion.personal.nombre} {asignacion.personal.apepat} modificada. Turno: {turno.nombre}",
+            usuario=request.user if request.user.is_authenticated else None,
+            personal=asignacion.personal,
+            datos_previos=datos_anteriores,
+            datos_nuevos={
+                'turno': turno.nombre,
+                'fecha_inicio': fecha_inicio,
+                'fecha_fin': fecha_fin
+            }
+        )
         
         # Invalidar caché del calendario
         invalidar_cache_calendario()
@@ -1287,7 +1325,29 @@ def eliminar_asignacion(request):
             return JsonResponse({'error': 'ID de asignación requerido'}, status=400)
         
         try:
-            asignacion = AsignacionFaena.objects.get(id=asignacion_id)
+            asignacion = AsignacionFaena.objects.select_related('personal', 'faena', 'turno').get(id=asignacion_id)
+            
+            # Guardar datos antes de eliminar para el historial
+            datos_asignacion = {
+                'personal_id': asignacion.personal.personal_id,
+                'personal_nombre': f"{asignacion.personal.nombre} {asignacion.personal.apepat} {asignacion.personal.apemat}",
+                'turno': asignacion.turno.nombre,
+                'fecha_inicio': asignacion.fecha_inicio.isoformat(),
+                'fecha_fin': asignacion.fecha_fin.isoformat() if asignacion.fecha_fin else None
+            }
+            personal_eliminado = asignacion.personal
+            faena_ref = asignacion.faena
+            
+            # Registrar en historial ANTES de eliminar
+            HistorialFaena.registrar(
+                faena=faena_ref,
+                accion='PERSONAL_ELIMINADO',
+                descripcion=f"{personal_eliminado.nombre} {personal_eliminado.apepat} eliminado de la faena. Turno: {asignacion.turno.nombre}",
+                usuario=request.user if request.user.is_authenticated else None,
+                personal=personal_eliminado,
+                datos_previos=datos_asignacion
+            )
+            
             asignacion.delete()
             
             # Invalidar caché del calendario
@@ -1713,6 +1773,21 @@ def crear_faena(request):
             activo=True
         )
         
+        # Registrar en historial
+        HistorialFaena.registrar(
+            faena=faena,
+            accion='FAENA_CREADA',
+            descripcion=f"Faena '{faena.nombre}' creada del {fecha_inicio_date.strftime('%d/%m/%Y')} al {fecha_fin_date.strftime('%d/%m/%Y')}",
+            usuario=request.user if request.user.is_authenticated else None,
+            datos_nuevos={
+                'codigo': codigo,
+                'nombre': nombre,
+                'fecha_inicio': fecha_inicio,
+                'fecha_fin': fecha_fin,
+                'descripcion': descripcion
+            }
+        )
+        
         return JsonResponse({
             'success': True,
             'message': 'Faena creada exitosamente',
@@ -1775,7 +1850,14 @@ def actualizar_faena(request):
         if nueva_fecha_fin < nueva_fecha_inicio:
             return JsonResponse({'error': 'La fecha de fin debe ser posterior a la fecha de inicio'}, status=400)
         
-        # Guardar fechas antiguas para comparación
+        # Guardar datos anteriores para comparación e historial
+        datos_anteriores = {
+            'codigo': faena.codigo,
+            'nombre': faena.nombre,
+            'fecha_inicio': faena.fecha_inicio.isoformat() if faena.fecha_inicio else None,
+            'fecha_fin': faena.fecha_fin.isoformat() if faena.fecha_fin else None,
+            'descripcion': faena.descripcion
+        }
         fecha_inicio_anterior = faena.fecha_inicio
         fecha_fin_anterior = faena.fecha_fin
         
@@ -1788,6 +1870,22 @@ def actualizar_faena(request):
         faena.fecha_fin = nueva_fecha_fin
         faena.activo = activo
         faena.save()
+        
+        # Registrar en historial
+        HistorialFaena.registrar(
+            faena=faena,
+            accion='FAENA_MODIFICADA',
+            descripcion=f"Faena modificada. Fechas: {nueva_fecha_inicio.strftime('%d/%m/%Y')} → {nueva_fecha_fin.strftime('%d/%m/%Y')}",
+            usuario=request.user if request.user.is_authenticated else None,
+            datos_previos=datos_anteriores,
+            datos_nuevos={
+                'codigo': codigo,
+                'nombre': nombre,
+                'fecha_inicio': fecha_inicio,
+                'fecha_fin': fecha_fin,
+                'descripcion': descripcion
+            }
+        )
         
         # LÓGICA INTELIGENTE: Actualizar asignaciones que coincidan exactamente con las fechas anteriores
         asignaciones_actualizadas = 0
@@ -1976,6 +2074,29 @@ def eliminar_faena(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required
+def ver_historial_faena(request, faena_id):
+    """Vista para ver el historial completo de una faena"""
+    try:
+        faena = Faena.objects.get(id=faena_id)
+        historial = HistorialFaena.objects.filter(faena=faena).select_related(
+            'usuario', 'personal'
+        ).order_by('-fecha_hora')
+        
+        context = {
+            'faena': faena,
+            'historial': historial,
+        }
+        
+        return render(request, 'calendario/historial_faena.html', context)
+        
+    except Faena.DoesNotExist:
+        from django.contrib import messages
+        from django.shortcuts import redirect
+        messages.error(request, 'Faena no encontrada')
+        return redirect('calendario:gestionar_faenas')
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def crear_asignacion_masiva(request):
@@ -2061,6 +2182,23 @@ def crear_asignacion_masiva(request):
                     activo=activo
                 )
                 asignaciones_creadas.append(asignacion)
+                
+                # Registrar en historial
+                from .models import HistorialFaena
+                HistorialFaena.registrar(
+                    faena=faena,
+                    accion='PERSONAL_ASIGNADO',
+                    descripcion=f"{personal_obj.nombre} {personal_obj.apepat} asignado con turno {turno.nombre} del {fecha_inicio_date.strftime('%d/%m/%Y')} al {fecha_fin_date.strftime('%d/%m/%Y') if fecha_fin_date else 'indefinido'}",
+                    usuario=request.user if request.user.is_authenticated else None,
+                    personal=personal_obj,
+                    datos_nuevos={
+                        'personal_id': personal_obj.personal_id,
+                        'personal_nombre': f"{personal_obj.nombre} {personal_obj.apepat} {personal_obj.apemat}",
+                        'turno': turno.nombre,
+                        'fecha_inicio': fecha_inicio_date.isoformat(),
+                        'fecha_fin': fecha_fin_date.isoformat() if fecha_fin_date else None
+                    }
+                )
                 
             except Personal.DoesNotExist:
                 errores.append(f"Trabajador ID {personal_id}: No encontrado")

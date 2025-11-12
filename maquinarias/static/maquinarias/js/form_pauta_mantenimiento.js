@@ -45,6 +45,10 @@ document.addEventListener('DOMContentLoaded', function() {
         window.itemsExistentes.forEach(item => {
             agregarItem(item.seccion_id, item.tipos_reparacion_ids);
         });
+        // Actualizar secciones disponibles después de cargar todos los items
+        setTimeout(() => {
+            actualizarSeccionesDisponibles();
+        }, 100);
     }
 });
 
@@ -145,12 +149,48 @@ function agregarItem(seccionIdInicial = null, tiposIdsIniciales = []) {
         const tiposContainer = itemAgregado.querySelector('.tipos-reparacion-list');
         cargarTiposReparacionParaSeccion(seccionIdInicial, tiposContainer, tiposIdsIniciales);
     }
+    
+    // Actualizar disponibilidad de secciones en todos los selects
+    actualizarSeccionesDisponibles();
+}
+
+// Actualizar secciones disponibles en todos los selects
+function actualizarSeccionesDisponibles() {
+    // Obtener todas las secciones ya seleccionadas
+    const seccionesSeleccionadas = [];
+    document.querySelectorAll('.seccion-select').forEach(select => {
+        if (select.value) {
+            seccionesSeleccionadas.push(select.value);
+        }
+    });
+    
+    // Actualizar cada select
+    document.querySelectorAll('.seccion-select').forEach(select => {
+        const valorActual = select.value;
+        
+        // Recorrer todas las opciones
+        Array.from(select.options).forEach(option => {
+            if (!option.value) return; // Ignorar opción vacía
+            
+            // Ocultar si está seleccionada en otro select (pero no en este)
+            if (seccionesSeleccionadas.includes(option.value) && option.value !== valorActual) {
+                option.style.display = 'none';
+                option.disabled = true;
+            } else {
+                option.style.display = '';
+                option.disabled = false;
+            }
+        });
+    });
 }
 
 // Eliminar un item
 function eliminarItem(button) {
     const itemDiv = button.closest('.item-pauta');
     itemDiv.remove();
+    
+    // Actualizar secciones disponibles después de eliminar
+    actualizarSeccionesDisponibles();
     
     // Renumerar items
     renumerarItems();
@@ -181,10 +221,15 @@ function cargarTiposReparacionItem(selectElement) {
     
     if (!seccionId) {
         tiposContainer.innerHTML = '<p class="text-muted small mb-0">Seleccione primero una sección</p>';
+        // Actualizar disponibilidad de secciones
+        actualizarSeccionesDisponibles();
         return;
     }
     
     cargarTiposReparacionParaSeccion(seccionId, tiposContainer);
+    
+    // Actualizar disponibilidad de secciones en todos los selects
+    actualizarSeccionesDisponibles();
 }
 
 // Cargar tipos de reparación para una sección

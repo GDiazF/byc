@@ -1,6 +1,6 @@
 // Variables globales
 let paginaActual = 1;
-let tamanoPagina = 25;
+let tamanoPagina = 10;
 let pautaIdAccion = null;
 let modeloActual = null;
 let ordenActual = '';

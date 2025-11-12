@@ -12,9 +12,8 @@ function setupRegionComunaHandlers(regionSelectId = 'id_region_id', comunaSelect
         return;
     }
 
-    regionSelect.addEventListener('change', async function() {
-        const regionId = this.value;
-        
+    // Función para cargar comunas
+    async function cargarComunas(regionId, comunaPreseleccionada = null) {
         if (!regionId) {
             comunaSelect.innerHTML = '<option value="">---------</option>';
             return;
@@ -30,7 +29,8 @@ function setupRegionComunaHandlers(regionSelectId = 'id_region_id', comunaSelect
             let options = '<option value="">---------</option>';
             
             data.comunas.forEach(comuna => {
-                options += `<option value="${comuna.id}">${comuna.nombre}</option>`;
+                const selected = comunaPreseleccionada && comuna.id == comunaPreseleccionada ? ' selected' : '';
+                options += `<option value="${comuna.id}"${selected}>${comuna.nombre}</option>`;
             });
             
             comunaSelect.innerHTML = options;
@@ -38,5 +38,16 @@ function setupRegionComunaHandlers(regionSelectId = 'id_region_id', comunaSelect
             console.error('Error:', error);
             alert('Error al cargar las comunas');
         }
+    }
+
+    // Cargar comunas al cambiar la región
+    regionSelect.addEventListener('change', async function() {
+        await cargarComunas(this.value);
     });
+
+    // Si hay una región preseleccionada al cargar la página (modo edición), cargar sus comunas
+    if (regionSelect.value) {
+        const comunaPreseleccionada = comunaSelect.value;
+        cargarComunas(regionSelect.value, comunaPreseleccionada);
+    }
 } 

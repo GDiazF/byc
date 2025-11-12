@@ -63,8 +63,16 @@ function renderizarTablaPersonal() {
     const filtroCargo = document.getElementById('filtroCargo').value;
     const filtroEmpresa = document.getElementById('filtroEmpresa').value;
     
+    // Obtener IDs de personal ya asignado a ESTA faena
+    const idsAsignadosEstaFaena = faena.asignaciones ? faena.asignaciones.map(a => a.personal.id) : [];
+    
     // Filtrar personal
     personalFiltrado = personal.filter(p => {
+        // NO mostrar personal ya asignado a ESTA faena
+        if (idsAsignadosEstaFaena.includes(p.id)) {
+            return false;
+        }
+        
         // Búsqueda
         const nombreCompleto = p.nombre_completo.toLowerCase();
         const rut = p.rut.toLowerCase();
@@ -2211,12 +2219,12 @@ function llenarTablaManual() {
     const tbody = document.getElementById('personalManualTableBody');
     if (!tbody || !personal) return;
     
-    // Filtrar y ordenar
+    // NO filtrar personal asignado - en turno manual SÍ pueden asignar múltiples veces
     let personalFiltrado = personal;
     
     // Aplicar ordenamiento
     if (ordenManual.columna) {
-        personalFiltrado = [...personal].sort((a, b) => {
+        personalFiltrado = [...personalFiltrado].sort((a, b) => {
             let valorA, valorB;
             
             switch(ordenManual.columna) {
@@ -2387,6 +2395,8 @@ function filtrarPersonalManual() {
     const search = document.getElementById('searchManualInput').value.toLowerCase();
     const filtroCargo = document.getElementById('filtroCargoManual').value;
     const filtroEmpresa = document.getElementById('filtroEmpresaManual').value;
+    
+    // NO excluir personal asignado - en turno manual pueden tener múltiples asignaciones
     
     // Filtrar el array de personal
     const personalFiltrado = personal.filter(p => {

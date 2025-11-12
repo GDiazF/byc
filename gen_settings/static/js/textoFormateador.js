@@ -1,9 +1,10 @@
 /**
  * Función para convertir texto a mayúsculas, eliminar tildes y símbolos
  * @param {string} texto - El texto a formatear
+ * @param {boolean} aplicarTrim - Si debe aplicar trim (solo al terminar de escribir)
  * @returns {string} - El texto formateado
  */
-function formatearTexto(texto) {
+function formatearTexto(texto, aplicarTrim = false) {
     // Convertir a mayúsculas
     texto = texto.toUpperCase();
     
@@ -20,8 +21,10 @@ function formatearTexto(texto) {
     // Eliminar símbolos y caracteres especiales (mantener letras, números y espacios)
     texto = texto.replace(/[^A-Z0-9\s]/g, '');
     
-    // Eliminar espacios al inicio y al final
-    texto = texto.trim();
+    // Eliminar espacios al inicio y al final (solo si aplicarTrim es true)
+    if (aplicarTrim) {
+        texto = texto.trim();
+    }
     
     return texto;
 }
@@ -31,18 +34,18 @@ function formatearTexto(texto) {
  * @param {HTMLElement} elemento - El elemento de entrada a formatear
  */
 function aplicarFormateo(elemento) {
-    // Aplicar formateo al perder el foco
+    // Aplicar formateo al perder el foco (CON trim)
     elemento.addEventListener('blur', function() {
-        this.value = formatearTexto(this.value);
+        this.value = formatearTexto(this.value, true);
     });
     
-    // Aplicar formateo mientras se escribe
+    // Aplicar formateo mientras se escribe (SIN trim para permitir espacios)
     elemento.addEventListener('input', function() {
         // Guardar la posición del cursor
         const posicionCursor = this.selectionStart;
         
-        // Formatear el texto
-        const textoFormateado = formatearTexto(this.value);
+        // Formatear el texto sin trim (permite espacios intermedios)
+        const textoFormateado = formatearTexto(this.value, false);
         
         // Si el texto cambió, actualizar el valor
         if (this.value !== textoFormateado) {

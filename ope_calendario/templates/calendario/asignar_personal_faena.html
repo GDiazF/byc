@@ -26,18 +26,18 @@ initData(
 <!-- Card Principal -->
 <div class="card mb-3">
     <div class="card-header bg-dark text-white">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
-                <i class="bi bi-person-plus-fill me-2"></i>Asignar Personal a: <span class="badge bg-light text-dark ms-2">{{ faena_codigo }}</span>
-            </h5>
-            <div>
-                <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-sm btn-light">
-                    <i class="bi bi-arrow-left me-1"></i>Volver
-                </a>
-            </div>
-        </div>
+        <h5 class="mb-0">
+            <i class="bi bi-person-plus-fill me-2"></i>Asignar Personal a: <span class="badge bg-light text-dark ms-2">{{ faena_codigo }}</span>
+        </h5>
     </div>
     <div class="card-body">
+        <!-- Botón volver -->
+        <div class="mb-3">
+            <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-sm btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+        
         <!-- Información de la faena -->
         <div class="card bg-light border-primary mb-3">
             <div class="card-body py-2">
@@ -90,8 +90,8 @@ initData(
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="estados-manuales-tab" data-bs-toggle="tab" data-bs-target="#estados-manuales" 
                         type="button" role="tab" aria-controls="estados-manuales" aria-selected="false">
-                    <i class="bi bi-wrench me-2"></i>Estados Manuales
-                    <span class="badge bg-warning text-dark ms-2">{{ total_estados_manuales }}</span>
+                    <i class="bi bi-wrench me-2"></i>Personal Asignado (Manual)
+                    <span class="badge bg-primary ms-2">{{ total_estados_manuales }}</span>
                 </button>
             </li>
         </ul>
@@ -616,15 +616,15 @@ initData(
                                     <td class="small">{% if item.estado.personal.infolaboral_set.first %}{{ item.estado.personal.infolaboral_set.first.cargo_id.cargo }}{% else %}-{% endif %}</td>
                                     <td class="small">{% if item.estado.personal.infolaboral_set.first %}{{ item.estado.personal.infolaboral_set.first.empresa_id.nomFantasia }}{% else %}-{% endif %}</td>
                                     <td>
-                                        <span class="badge" style="background-color: {{ item.estado.estado.color }}; color: white; font-size: 0.75rem;">
+                                        <span class="badge bg-primary">
                                             {{ item.estado.estado.nombre }}
                                         </span>
                                     </td>
                                     <td class="small">{{ item.estado.fecha_inicio|date:"d-m-Y" }}</td>
                                     <td class="small">{{ item.estado.fecha_fin|date:"d-m-Y" }}</td>
-                                    <td class="text-center">
-                                        <span class="badge bg-secondary" style="font-size: 0.75rem;">
-                                            {{ item.dias_duracion }} día{% if item.dias_duracion != 1 %}s{% endif %}
+                                    <td class="text-center small">
+                                        <span class="badge bg-secondary">
+                                            {{ item.dias_duracion }}d
                                         </span>
                                     </td>
                                     <td class="text-center">

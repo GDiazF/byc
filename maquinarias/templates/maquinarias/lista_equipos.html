@@ -87,14 +87,13 @@
                         <th style="width: 15%;">Marca</th>
                         <th style="width: 15%;">Modelo</th>
                         <th style="width: 15%;">Empresa</th>
-                        <th style="width: 8%;" class="text-center">Documentación</th>
                         <th style="width: 10%;" class="text-center">Acciones</th>
                         <th style="width: 8%;" class="text-center">Estado</th>
                     </tr>
                 </thead>
                 <tbody id="equiposTableBody">
                     <tr>
-                        <td colspan="8" class="text-center py-5">
+                        <td colspan="7" class="text-center py-5">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Cargando...</span>
                             </div>
@@ -165,30 +164,6 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-warning" id="btnConfirmarDesactivar">
                     <i class="bi bi-toggle-off me-1"></i>Sí, Desactivar Equipo
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Confirmar Eliminación -->
-<div class="modal fade" id="confirmarEliminarModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Eliminación
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>¿Está seguro que desea eliminar el equipo <strong id="equipoEliminarNombre"></strong>?</p>
-                <p class="text-danger mb-0"><small>Esta acción no se puede deshacer.</small></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-danger" id="btnConfirmarEliminar">
-                    <i class="bi bi-trash me-1"></i>Eliminar
                 </button>
             </div>
         </div>

@@ -12,14 +12,9 @@
 
 <div class="card">
     <div class="card-header bg-dark text-white">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
-                <i class="bi bi-pencil-square me-2"></i>Editar Personal
-            </h5>
-            <a href="{% url 'table_personal' %}" class="btn btn-sm btn-light">
-                <i class="bi bi-arrow-left me-1"></i>Volver
-            </a>
-        </div>
+        <h5 class="mb-0">
+            <i class="bi bi-pencil-square me-2"></i>Editar Personal
+        </h5>
     </div>
     <div class="card-body">
         <ul class="nav nav-tabs mb-3" id="personalTabs" role="tablist">
@@ -152,9 +147,9 @@
 
                     <!-- Botones -->
                     <div class="row mt-3">
-                        <div class="col-12 d-flex justify-content-end gap-2">
+                        <div class="col-12 d-flex justify-content-between">
                             <a href="{% url 'table_personal' %}" class="btn btn-secondary">
-                                <i class="bi bi-x-circle me-1"></i>Cancelar
+                                <i class="bi bi-arrow-left me-1"></i>Volver
                             </a>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save me-1"></i>Guardar Cambios
@@ -220,9 +215,9 @@
 
                     <!-- Botones -->
                     <div class="row mt-3">
-                        <div class="col-12 d-flex justify-content-end gap-2">
+                        <div class="col-12 d-flex justify-content-between">
                             <a href="{% url 'table_personal' %}" class="btn btn-secondary">
-                                <i class="bi bi-x-circle me-1"></i>Cancelar
+                                <i class="bi bi-arrow-left me-1"></i>Volver
                             </a>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save me-1"></i>Guardar Cambios

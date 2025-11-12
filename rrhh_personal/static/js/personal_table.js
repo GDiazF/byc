@@ -11,7 +11,6 @@ let registrosPorPagina = 10;
 let ordenActual = { columna: 'nombre', direccion: 'asc' };
 let currentToggle = null;
 let originalState = false;
-let personalIdToDelete = null;
 
 // ============================================================================
 // INICIALIZACIÓN
@@ -58,7 +57,6 @@ function inicializarEventListeners() {
     
     // Modales
     document.getElementById('confirmButton').addEventListener('click', confirmarDesactivacion);
-    document.getElementById('deleteButton').addEventListener('click', confirmarEliminacion);
     
     // Limpiar al cerrar modal de confirmación
     document.getElementById('confirmModal').addEventListener('hidden.bs.modal', function() {
@@ -68,11 +66,6 @@ function inicializarEventListeners() {
         currentToggle = null;
         originalState = false;
         changeConfirmed = false;
-    });
-    
-    // Limpiar al cerrar modal de eliminación
-    document.getElementById('deleteModal').addEventListener('hidden.bs.modal', function() {
-        personalIdToDelete = null;
     });
 }
 
@@ -122,7 +115,7 @@ function renderizarTabla() {
     if (personalFiltrado.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center py-4">
+                <td colspan="7" class="text-center py-4">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
                     <p class="text-muted mt-2">No se encontraron registros con los filtros aplicados</p>
                 </td>
@@ -152,20 +145,14 @@ function renderizarTabla() {
             <td>${p.cargo}</td>
             <td>${p.departamento}</td>
             <td>${p.empresa}</td>
-            <td>
-                <a href="/users/personal/${p.id}/documentation/" class="btn btn-warning btn-sm" title="Ver documentación">
-                    <i class="bi bi-file-earmark-text"></i>
-                </a>
-            </td>
-            <td>
-                <div class="btn-group btn-group-sm">
-                    <a href="/users/personal/${p.id}/update/" class="btn btn-primary btn-sm" title="Editar">
-                        <i class="bi bi-pencil-square"></i>
+            <td class="text-center">
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="/users/personal/${p.id}/documentation/" class="btn btn-sm btn-primary" title="Ver Documentación">
+                        <i class="bi bi-folder"></i>
                     </a>
-                    <button type="button" class="btn btn-danger btn-sm" 
-                            onclick="abrirModalEliminar(${p.id})" title="Eliminar">
-                        <i class="bi bi-trash3"></i>
-                    </button>
+                    <a href="/users/personal/${p.id}/update/" class="btn btn-sm btn-secondary" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                    </a>
                 </div>
             </td>
             <td class="text-center">
@@ -392,36 +379,6 @@ function confirmarDesactivacion() {
         alert('Error al cambiar el estado del personal');
         currentToggle.checked = originalState;
     });
-}
-
-// ============================================================================
-// ELIMINACIÓN
-// ============================================================================
-
-function abrirModalEliminar(personalId) {
-    personalIdToDelete = personalId;
-    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    modal.show();
-}
-
-function confirmarEliminacion() {
-    if (!personalIdToDelete) return;
-    
-    // Crear formulario para el POST
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/users/personal/${personalIdToDelete}/delete/`;
-    
-    // Agregar CSRF token
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = 'csrfmiddlewaretoken';
-    csrfInput.value = window.csrfToken;
-    form.appendChild(csrfInput);
-    
-    // Agregar al DOM y enviar
-    document.body.appendChild(form);
-    form.submit();
 }
 
 // ============================================================================

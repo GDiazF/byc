@@ -304,6 +304,90 @@ class AsignacionFaena(models.Model):
         return None
 
 
+class HistorialFaena(models.Model):
+    """
+    Registra todos los cambios y acciones realizadas en una faena.
+    Permite auditoría completa de asignaciones, modificaciones y eliminaciones.
+    """
+    ACCION_CHOICES = [
+        ('FAENA_CREADA', 'Faena Creada'),
+        ('FAENA_MODIFICADA', 'Faena Modificada'),
+        ('PERSONAL_ASIGNADO', 'Personal Asignado'),
+        ('PERSONAL_ELIMINADO', 'Personal Eliminado'),
+        ('ASIGNACION_MODIFICADA', 'Asignación Modificada'),
+        ('TURNO_MODIFICADO', 'Turno Modificado'),
+        ('FECHA_MODIFICADA', 'Fecha Modificada'),
+    ]
+    
+    faena = models.ForeignKey(
+        Faena, 
+        on_delete=models.CASCADE, 
+        related_name="historial",
+        db_index=True
+    )
+    fecha_hora = models.DateTimeField(auto_now_add=True, db_index=True)
+    usuario = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Usuario que realizó la acción"
+    )
+    accion = models.CharField(
+        max_length=50,
+        choices=ACCION_CHOICES,
+        help_text="Tipo de acción realizada"
+    )
+    personal = models.ForeignKey(
+        "rrhh_personal.Personal",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="historial_faenas",
+        help_text="Personal involucrado en la acción (si aplica)"
+    )
+    descripcion = models.TextField(
+        help_text="Descripción detallada del cambio"
+    )
+    datos_previos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado anterior antes del cambio (JSON)"
+    )
+    datos_nuevos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado nuevo después del cambio (JSON)"
+    )
+    
+    class Meta:
+        ordering = ["-fecha_hora"]
+        verbose_name = "Historial de Faena"
+        verbose_name_plural = "Historial de Faenas"
+        indexes = [
+            models.Index(fields=["faena", "-fecha_hora"]),
+            models.Index(fields=["usuario", "-fecha_hora"]),
+        ]
+    
+    def __str__(self):
+        return f"{self.faena.codigo} - {self.get_accion_display()} - {self.fecha_hora.strftime('%d/%m/%Y %H:%M')}"
+    
+    @classmethod
+    def registrar(cls, faena, accion, descripcion, usuario=None, personal=None, datos_previos=None, datos_nuevos=None):
+        """
+        Método helper para registrar fácilmente un evento en el historial.
+        """
+        return cls.objects.create(
+            faena=faena,
+            accion=accion,
+            descripcion=descripcion,
+            usuario=usuario,
+            personal=personal,
+            datos_previos=datos_previos,
+            datos_nuevos=datos_nuevos
+        )
+
+
 #4 ESTADOS MANUALES
 
 class EstadoManual(models.Model):

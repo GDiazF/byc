@@ -29,7 +29,43 @@ var turnos = {{ turnos_json|safe }};
     <div class="card-body">
         <!-- Estadísticas Compactas -->
         <div class="row g-2 mb-3">
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-lg">
+                <div class="stat-card-compact bg-primary">
+                    <i class="bi bi-people-fill"></i>
+                    <div class="stat-info">
+                        <div class="stat-number">{{ total_personal }}</div>
+                        <div class="stat-text">Personal Total</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg">
+                <div class="stat-card-compact" style="background-color: #fd7e14; color: white;">
+                    <i class="bi bi-clock-fill"></i>
+                    <div class="stat-info">
+                        <div class="stat-number" id="faenasProximas">0</div>
+                        <div class="stat-text">Faenas Próximas</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg">
+                <div class="stat-card-compact bg-success">
+                    <i class="bi bi-play-circle-fill"></i>
+                    <div class="stat-info">
+                        <div class="stat-number" id="faenasActivas">0</div>
+                        <div class="stat-text">Faenas Activas</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg">
+                <div class="stat-card-compact bg-secondary">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <div class="stat-info">
+                        <div class="stat-number" id="faenasFinalizadas">0</div>
+                        <div class="stat-text">Faenas Finalizadas</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg">
                 <a href="{% url 'calendario:calendario_mensual' %}" class="stat-card-compact bg-dark text-decoration-none">
                     <i class="bi bi-calendar3"></i>
                     <div class="stat-info">
@@ -38,40 +74,13 @@ var turnos = {{ turnos_json|safe }};
                     </div>
                 </a>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="stat-card-compact bg-primary">
-                    <i class="bi bi-buildings-fill"></i>
-                    <div class="stat-info">
-                        <div class="stat-number" id="faenasActivas">0</div>
-                        <div class="stat-text">Faenas Activas</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="stat-card-compact bg-secondary">
-                    <i class="bi bi-buildings"></i>
-                    <div class="stat-info">
-                        <div class="stat-number" id="totalFaenas">0</div>
-                        <div class="stat-text">Faenas Totales</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="stat-card-compact bg-success">
-                    <i class="bi bi-people-fill"></i>
-                    <div class="stat-info">
-                        <div class="stat-number">{{ total_personal }}</div>
-                        <div class="stat-text">Personal Total</div>
-                    </div>
-                </div>
-            </div>
         </div>
         
         <hr>
         
         <!-- Sistema de Pestañas -->
         <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
-            <button class="btn btn-success" onclick="mostrarModalNuevaFaena()">
+            <button class="btn btn-success btn-sm" onclick="mostrarModalNuevaFaena()">
                 <i class="bi bi-plus-circle me-1"></i>Nueva Faena
             </button>
             
@@ -108,6 +117,13 @@ var turnos = {{ turnos_json|safe }};
         <!-- Tabs Navigation -->
         <ul class="nav nav-tabs mb-3" id="faenasTabs" role="tablist">
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="proximas-tab" data-bs-toggle="tab" data-bs-target="#proximas" 
+                        type="button" role="tab" aria-controls="proximas" aria-selected="false">
+                    <i class="bi bi-clock me-2"></i>Faenas Próximas
+                    <span class="badge ms-2" style="background-color: #fd7e14; color: white;" id="badgeProximas">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="activas-tab" data-bs-toggle="tab" data-bs-target="#activas" 
                         type="button" role="tab" aria-controls="activas" aria-selected="true">
                     <i class="bi bi-play-circle me-2"></i>Faenas Activas
@@ -125,6 +141,36 @@ var turnos = {{ turnos_json|safe }};
         
         <!-- Tabs Content -->
         <div class="tab-content" id="faenasTabsContent">
+            <!-- Faenas Próximas -->
+            <div class="tab-pane fade" id="proximas" role="tabpanel" aria-labelledby="proximas-tab">
+                <!-- Vista Cards -->
+                <div class="row g-2 vista-cards d-none" id="faenasProximasCards">
+                    <!-- Se llena con JavaScript -->
+                </div>
+                <!-- Vista Tabla -->
+                <div class="vista-tabla" id="faenasProximasTabla">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Faena</th>
+                                    <th>Descripción</th>
+                                    <th>Fecha Inicio</th>
+                                    <th>Fecha Fin</th>
+                                    <th class="text-center">Personal</th>
+                                    <th>Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="faenasProximasTablaBody">
+                                <!-- Se llena con JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Faenas Activas -->
             <div class="tab-pane fade show active" id="activas" role="tabpanel" aria-labelledby="activas-tab">
                 <!-- Vista Cards -->
@@ -246,53 +292,6 @@ var turnos = {{ turnos_json|safe }};
                     </button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Confirmar Eliminar Faena -->
-<div class="modal fade" id="modalConfirmarEliminarFaena" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Eliminación de Faena
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-3">¿Está seguro que desea eliminar la faena <strong id="confirmarEliminarFaena_nombre"></strong>?</p>
-                
-                <!-- Mensaje si tiene personal asignado -->
-                <div id="advertenciaPersonalAsignado" style="display: none;">
-                    <div class="card border-warning bg-warning bg-opacity-10 mb-0">
-                        <div class="card-body py-2">
-                            <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
-                            <strong>¡Atención!</strong> Esta faena tiene <strong id="totalPersonalAsignado">0</strong> trabajador(es) asignado(s).
-                            <br><br>
-                            Al eliminar la faena, también se eliminarán <strong>todas sus asignaciones</strong>.
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Mensaje si NO tiene personal -->
-                <div id="sinPersonalAsignado" style="display: none;">
-                    <div class="card border-info bg-info bg-opacity-10 mb-0">
-                        <div class="card-body py-2">
-                            <i class="bi bi-info-circle text-info me-2"></i>
-                            Esta faena no tiene personal asignado y puede eliminarse sin problemas.
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle me-1"></i>Cancelar
-                </button>
-                <button type="button" class="btn btn-danger" id="btnConfirmarEliminarFaena">
-                    <i class="bi bi-trash me-1"></i>Eliminar Faena
-                </button>
-            </div>
         </div>
     </div>
 </div>
