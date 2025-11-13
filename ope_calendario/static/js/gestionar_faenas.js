@@ -73,6 +73,34 @@ function formatearFechaChilena(fecha) {
     }
 }
 
+// Convertir fecha chilena (dd-mm-yyyy) a objeto Date
+function parsearFechaChilena(fechaChilena) {
+    if (!fechaChilena) return null;
+    
+    try {
+        // Si ya es un formato ISO (yyyy-mm-dd)
+        if (fechaChilena.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const fecha = new Date(fechaChilena + 'T00:00:00');
+            fecha.setHours(0, 0, 0, 0);
+            return fecha;
+        }
+        
+        // Si es formato chileno (dd-mm-yyyy)
+        const partes = fechaChilena.split('-');
+        if (partes.length === 3) {
+            const [dia, mes, anio] = partes;
+            const fecha = new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
+            fecha.setHours(0, 0, 0, 0);
+            return fecha;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Error parseando fecha chilena:', error);
+        return null;
+    }
+}
+
 // Verificar si una faena está activa o finalizada
 function esFaenaActiva(faena) {
     const hoy = new Date();
@@ -84,15 +112,15 @@ function esFaenaActiva(faena) {
         if (!faena.fecha_inicio) {
             return true;
         }
-        const fechaInicio = new Date(faena.fecha_inicio + 'T00:00:00');
-        fechaInicio.setHours(0, 0, 0, 0);
+        const fechaInicio = parsearFechaChilena(faena.fecha_inicio);
+        if (!fechaInicio) return false;
         // Si ya empezó o empieza hoy, es activa
         return fechaInicio <= hoy;
     }
     
     // Si tiene fecha de fin, verificar que no haya terminado
-    const fechaFin = new Date(faena.fecha_fin + 'T00:00:00');
-    fechaFin.setHours(0, 0, 0, 0);
+    const fechaFin = parsearFechaChilena(faena.fecha_fin);
+    if (!fechaFin) return false;
     return fechaFin >= hoy;
 }
 
@@ -106,8 +134,8 @@ function esFaenaProxima(faena) {
         return false;
     }
     
-    const fechaInicio = new Date(faena.fecha_inicio + 'T00:00:00');
-    fechaInicio.setHours(0, 0, 0, 0);
+    const fechaInicio = parsearFechaChilena(faena.fecha_inicio);
+    if (!fechaInicio) return false;
     
     // Es próxima si la fecha de inicio es posterior a hoy
     return fechaInicio > hoy;
@@ -123,8 +151,8 @@ function esFaenaEnCurso(faena) {
         return true;
     }
     
-    const fechaInicio = new Date(faena.fecha_inicio + 'T00:00:00');
-    fechaInicio.setHours(0, 0, 0, 0);
+    const fechaInicio = parsearFechaChilena(faena.fecha_inicio);
+    if (!fechaInicio) return false;
     
     // Debe haber comenzado o comenzar hoy
     if (fechaInicio > hoy) {
@@ -137,8 +165,8 @@ function esFaenaEnCurso(faena) {
     }
     
     // Verificar que no haya terminado
-    const fechaFin = new Date(faena.fecha_fin + 'T00:00:00');
-    fechaFin.setHours(0, 0, 0, 0);
+    const fechaFin = parsearFechaChilena(faena.fecha_fin);
+    if (!fechaFin) return false;
     return fechaFin >= hoy;
 }
 
@@ -147,10 +175,13 @@ function calcularDuracionFaena(faena) {
     if (!faena.fecha_inicio || !faena.fecha_fin) {
         return 'N/A';
     }
-    const inicio = new Date(faena.fecha_inicio + 'T00:00:00');
-    inicio.setHours(0, 0, 0, 0);
-    const fin = new Date(faena.fecha_fin + 'T00:00:00');
-    fin.setHours(0, 0, 0, 0);
+    const inicio = parsearFechaChilena(faena.fecha_inicio);
+    const fin = parsearFechaChilena(faena.fecha_fin);
+    
+    if (!inicio || !fin) {
+        return 'N/A';
+    }
+    
     const dias = Math.round((fin - inicio) / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir ambos días
     
     if (dias < 30) {
@@ -179,8 +210,10 @@ function obtenerEstadoFaena(faena) {
         return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span>`;
     }
     
-    const fechaInicio = new Date(faena.fecha_inicio + 'T00:00:00');
-    fechaInicio.setHours(0, 0, 0, 0);
+    const fechaInicio = parsearFechaChilena(faena.fecha_inicio);
+    if (!fechaInicio) {
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span>`;
+    }
     
     // Si la faena aún no ha empezado
     if (fechaInicio > hoy) {
@@ -193,8 +226,11 @@ function obtenerEstadoFaena(faena) {
         return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span>`;
     }
     
-    const fechaFin = new Date(faena.fecha_fin + 'T00:00:00');
-    fechaFin.setHours(0, 0, 0, 0);
+    const fechaFin = parsearFechaChilena(faena.fecha_fin);
+    if (!fechaFin) {
+        return `<span class="badge bg-success" style="${badgeEstilo}">Activa</span>`;
+    }
+    
     const diasRestantes = Math.round((fechaFin - hoy) / (1000 * 60 * 60 * 24));
     
     // Si ya finalizó
@@ -434,8 +470,17 @@ function editarFaena(faenaId) {
     document.getElementById('faena_id').value = faena.id;
     document.getElementById('codigo_faena').value = faena.codigo || '';
     document.getElementById('nombre_faena').value = faena.nombre;
-    document.getElementById('fecha_inicio_faena').value = faena.fecha_inicio || '';
-    document.getElementById('fecha_fin_faena').value = faena.fecha_fin || '';
+    
+    // Establecer fechas usando el componente global
+    if (window.DatePickerChile) {
+        if (faena.fecha_inicio) {
+            DatePickerChile.setValor('fecha_inicio_faena', faena.fecha_inicio);
+        }
+        if (faena.fecha_fin) {
+            DatePickerChile.setValor('fecha_fin_faena', faena.fecha_fin);
+        }
+    }
+    
     document.getElementById('descripcion_faena').value = faena.descripcion;
     
     // Limpiar alertas del modal
@@ -452,6 +497,7 @@ async function guardarFaena(event) {
     const faenaId = document.getElementById('faena_id').value;
     const codigo = document.getElementById('codigo_faena').value.trim().toUpperCase();
     const nombre = document.getElementById('nombre_faena').value.trim();
+    // Obtener fechas ISO del input oculto tipo date
     const fechaInicio = document.getElementById('fecha_inicio_faena').value;
     const fechaFin = document.getElementById('fecha_fin_faena').value;
     const descripcion = document.getElementById('descripcion_faena').value.trim();
@@ -484,8 +530,8 @@ async function guardarFaena(event) {
     
     const url = faenaId ? '/calendario/api/actualizar-faena/' : '/calendario/api/crear-faena/';
     const data = faenaId ? 
-        { faena_id: parseInt(faenaId), codigo, nombre, ubicacion: '', descripcion, fecha_inicio: fechaInicio || null, fecha_fin: fechaFin || null } :
-        { codigo, nombre, ubicacion: '', descripcion, fecha_inicio: fechaInicio || null, fecha_fin: fechaFin || null };
+        { faena_id: parseInt(faenaId), codigo, nombre, ubicacion: '', descripcion, fecha_inicio: fechaInicio, fecha_fin: fechaFin } :
+        { codigo, nombre, ubicacion: '', descripcion, fecha_inicio: fechaInicio, fecha_fin: fechaFin };
     
     try {
         const response = await fetch(url, {
@@ -882,4 +928,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Renderizar faenas
     renderizarFaenas();
+    
+    // Los date pickers se inicializan automáticamente con el componente global
 });

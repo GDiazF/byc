@@ -1,6 +1,7 @@
 from django import forms
 from .models import *
 from datetime import date
+from gen_settings.widgets import DateInputChileno
 
 
 #formulario para la creacion de personas
@@ -63,7 +64,7 @@ class PersonalCreationForm(forms.ModelForm):
             'apepat': forms.TextInput(attrs={'type': 'text', 'class': 'form-control'}),
             'apemat': forms.TextInput(attrs={'type': 'text', 'class': 'form-control'}),
             'direccion': forms.TextInput(attrs={'type': 'text', 'class': 'form-control'}),
-            'fechanac' : forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fechanac' : DateInputChileno(),
             'correo': forms.EmailInput(attrs={'type': 'email', 'class': 'form-control'}),
             'curriculum': forms.FileInput(attrs={
                 'class': 'form-control',
@@ -163,7 +164,7 @@ class InfoLaboralPersonalForm(forms.ModelForm):
         model = InfoLaboral
         fields = ['empresa_id', 'depto_id', 'cargo_id', 'fechacontrata']
         widgets = {
-            'fechacontrata' : forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fechacontrata' : DateInputChileno(),
         }
 
         labels = {'fechacontrata' : 'Fecha Contrata'}
@@ -183,14 +184,8 @@ class LicenciasPersonal(forms.ModelForm):
         model = LicenciaPorPersonal
         fields = ['tipos', 'fechaEmision', 'fechaVencimiento', 'rutaDoc', 'observacion']
         widgets = {
-            'fechaEmision': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control'
-            }),
-            'fechaVencimiento': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control'
-            }),
+            'fechaEmision': DateInputChileno(),
+            'fechaVencimiento': DateInputChileno(),
             'rutaDoc': forms.FileInput(attrs={
                 'class': 'form-control',
                 'accept': '.pdf'
@@ -249,14 +244,8 @@ class LicenciasInternasPersonal(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Ej: Faena Los Bronces'
             }),
-            'fechaEmision': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control'
-            }),
-            'fechaVencimiento': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control'
-            }),
+            'fechaEmision': DateInputChileno(),
+            'fechaVencimiento': DateInputChileno(),
             'rutaDoc': forms.FileInput(attrs={
                 'class': 'form-control',
                 'accept': '.pdf'
@@ -306,8 +295,8 @@ class CertificacionPersonal(forms.ModelForm):
         model = Certificacion
         fields = ['proveedor_id', 'tipoCertificacion_id', 'fechaEmision', 'fechaVencimiento', 'rutaDoc', 'observacion']
         widgets = {
-            'fechaEmision': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'fechaVencimiento': forms.DateInput(attrs={'type':'date', 'class': 'form-control'}),
+            'fechaEmision': DateInputChileno(),
+            'fechaVencimiento': DateInputChileno(),
             'rutaDoc': forms.FileInput(attrs={'accept': '.pdf', 'class': 'form-control'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
         }
@@ -355,8 +344,8 @@ class ExamenPersonal(forms.ModelForm):
         model = Examen
         fields = ['tipoEx_id','resultadoEx_id', 'proveedor_id','fechaEmision','fechaVencimiento', 'rutaDoc', 'observacion']
         widgets = {
-            'fechaEmision' : forms.DateInput(attrs={'type':'date', 'class': 'form-control'}),
-            'fechaVencimiento' : forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fechaEmision' : DateInputChileno(),
+            'fechaVencimiento' : DateInputChileno(),
             'rutaDoc' : forms.FileInput(attrs={'accept': '.pdf', 'class': 'form-control'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
         }
@@ -400,7 +389,7 @@ class AusentismoForm(forms.ModelForm):
         model = Ausentismo
         fields = ['tipoausen_id', 'fechaini', 'dias_ausentismo', 'observacion']
         widgets = {
-            'fechaini': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'required': 'required'}),
+            'fechaini': DateInputChileno(attrs={'required': 'required'}),
             'dias_ausentismo': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'required': 'required'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
@@ -483,7 +472,7 @@ class LicenciaMedicaPorPersonalForm(forms.ModelForm):
         model = LicenciaMedicaPorPersonal
         fields = ['tipoLicenciaMedica_id', 'fechaEmision', 'dias_licencia', 'observacion']
         widgets = {
-            'fechaEmision': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'required': 'required'}),
+            'fechaEmision': DateInputChileno(attrs={'required': 'required'}),
             'dias_licencia': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'required': 'required'}),
             'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }

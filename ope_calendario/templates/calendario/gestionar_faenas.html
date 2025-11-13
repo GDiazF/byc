@@ -268,13 +268,15 @@ var turnos = {{ turnos_json|safe }};
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="fecha_inicio_faena" class="form-label">Fecha de Inicio *</label>
-                                <input type="date" class="form-control" id="fecha_inicio_faena" required>
+                                <input type="text" class="form-control fecha-chile-picker" id="fecha_inicio_faena" 
+                                       name="fecha_inicio_faena" placeholder="DD-MM-YYYY" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="fecha_fin_faena" class="form-label">Fecha de Fin *</label>
-                                <input type="date" class="form-control" id="fecha_fin_faena" required>
+                                <input type="text" class="form-control fecha-chile-picker" id="fecha_fin_faena" 
+                                       name="fecha_fin_faena" placeholder="DD-MM-YYYY" required>
                             </div>
                         </div>
                     </div>

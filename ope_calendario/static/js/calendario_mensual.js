@@ -1167,8 +1167,18 @@ function editarAsignacion(personalId, asignacionId) {
     const fechaInicio = asignacion.fecha_inicio.split('T')[0];
     const fechaFin = asignacion.fecha_fin ? asignacion.fecha_fin.split('T')[0] : '';
     
-    document.getElementById('fechaInicio').value = fechaInicio;
-    document.getElementById('fechaFin').value = fechaFin;
+    // Establecer fechas usando el componente date picker chileno
+    if (window.DatePickerChile) {
+        DatePickerChile.setValor('fechaInicio', fechaInicio);
+        if (fechaFin) {
+            DatePickerChile.setValor('fechaFin', fechaFin);
+        } else {
+            DatePickerChile.limpiar('fechaFin');
+        }
+    } else {
+        document.getElementById('fechaInicio').value = fechaInicio;
+        document.getElementById('fechaFin').value = fechaFin;
+    }
     document.getElementById('observaciones').value = asignacion.observaciones || '';
     // Campo "activo" eliminado - ya no es necesario
     
@@ -1281,12 +1291,13 @@ function setupModalEvents() {
 function precargarFechasFaena(faenaId) {
     if (!faenaId) {
         // Si no hay faena seleccionada, limpiar fechas
-        document.getElementById('fechaInicio').value = '';
-        document.getElementById('fechaFin').value = '';
-        document.getElementById('fechaInicio').removeAttribute('min');
-        document.getElementById('fechaInicio').removeAttribute('max');
-        document.getElementById('fechaFin').removeAttribute('min');
-        document.getElementById('fechaFin').removeAttribute('max');
+        if (window.DatePickerChile) {
+            DatePickerChile.limpiar('fechaInicio');
+            DatePickerChile.limpiar('fechaFin');
+        } else {
+            document.getElementById('fechaInicio').value = '';
+            document.getElementById('fechaFin').value = '';
+        }
         return;
     }
     
@@ -1297,20 +1308,14 @@ function precargarFechasFaena(faenaId) {
     const asignacionId = document.getElementById('asignacionId').value;
     const shouldPrecarga = !asignacionId; // Solo precargar en modo "nueva asignación"
     
-    // Configurar min/max siempre (para validación)
-    if (faena.fecha_inicio) {
-        document.getElementById('fechaInicio').setAttribute('min', faena.fecha_inicio);
-        if (shouldPrecarga) {
-            document.getElementById('fechaInicio').value = faena.fecha_inicio;
+    // Precargar fechas si corresponde
+    if (shouldPrecarga) {
+        if (faena.fecha_inicio && window.DatePickerChile) {
+            DatePickerChile.setValor('fechaInicio', faena.fecha_inicio);
         }
-    }
-    
-    if (faena.fecha_fin) {
-        document.getElementById('fechaInicio').setAttribute('max', faena.fecha_fin);
-        document.getElementById('fechaFin').setAttribute('min', faena.fecha_inicio || '');
-        document.getElementById('fechaFin').setAttribute('max', faena.fecha_fin);
-        if (shouldPrecarga) {
-            document.getElementById('fechaFin').value = faena.fecha_fin;
+        
+        if (faena.fecha_fin && window.DatePickerChile) {
+            DatePickerChile.setValor('fechaFin', faena.fecha_fin);
         }
     }
     

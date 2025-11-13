@@ -133,16 +133,14 @@ initData(
                         
                         <div class="col-md-2">
                             <label for="fecha_inicio" class="form-label small mb-1">Fecha Inicio *</label>
-                            <input type="date" class="form-control form-control-sm" id="fecha_inicio" required
-                                   {% if faena.fecha_inicio %}min="{{ faena.fecha_inicio|date:'Y-m-d' }}"{% endif %}
-                                   {% if faena.fecha_fin %}max="{{ faena.fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                            <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fecha_inicio" required
+                                   placeholder="DD-MM-YYYY">
                         </div>
                         
                         <div class="col-md-2">
                             <label for="fecha_fin" class="form-label small mb-1">Fecha Fin</label>
-                            <input type="date" class="form-control form-control-sm" id="fecha_fin"
-                                   {% if faena.fecha_inicio %}min="{{ faena.fecha_inicio|date:'Y-m-d' }}"{% endif %}
-                                   {% if faena.fecha_fin %}max="{{ faena.fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                            <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fecha_fin"
+                                   placeholder="DD-MM-YYYY">
                         </div>
                         
                         <div class="col-md-3">
@@ -295,16 +293,14 @@ initData(
                             
                             <div class="col-md-3">
                                 <label class="form-label small fw-bold">Fecha Inicio *</label>
-                                <input type="date" class="form-control form-control-sm" id="fechaInicioManual" required
-                                       {% if faena.fecha_inicio %}min="{{ faena.fecha_inicio|date:'Y-m-d' }}"{% endif %}
-                                       {% if faena.fecha_fin %}max="{{ faena.fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                                <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fechaInicioManual" required
+                                       placeholder="DD-MM-YYYY">
                             </div>
                             
                             <div class="col-md-3">
                                 <label class="form-label small fw-bold">Fecha Fin *</label>
-                                <input type="date" class="form-control form-control-sm" id="fechaFinManual" required
-                                       {% if faena.fecha_inicio %}min="{{ faena.fecha_inicio|date:'Y-m-d' }}"{% endif %}
-                                       {% if faena.fecha_fin %}max="{{ faena.fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                                <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fechaFinManual" required
+                                       placeholder="DD-MM-YYYY">
                             </div>
                             
                             <div class="col-md-3">
@@ -735,17 +731,15 @@ initData(
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="editAsig_fechaInicio" class="form-label">Fecha Inicio *</label>
-                                <input type="date" class="form-control" id="editAsig_fechaInicio" required
-                                       {% if faena_fecha_inicio %}min="{{ faena_fecha_inicio|date:'Y-m-d' }}"{% endif %}
-                                       {% if faena_fecha_fin %}max="{{ faena_fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                                <input type="text" class="form-control fecha-chile-picker" id="editAsig_fechaInicio" required
+                                       placeholder="DD-MM-YYYY">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="editAsig_fechaFin" class="form-label">Fecha Fin</label>
-                                <input type="date" class="form-control" id="editAsig_fechaFin"
-                                       {% if faena_fecha_inicio %}min="{{ faena_fecha_inicio|date:'Y-m-d' }}"{% endif %}
-                                       {% if faena_fecha_fin %}max="{{ faena_fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                                <input type="text" class="form-control fecha-chile-picker" id="editAsig_fechaFin"
+                                       placeholder="DD-MM-YYYY">
                             </div>
                         </div>
                     </div>

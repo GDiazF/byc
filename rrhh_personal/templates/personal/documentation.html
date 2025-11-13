@@ -430,8 +430,8 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                         <span class="badge bg-primary me-1">{{ tipo.tipoLicencia }}</span>
                                     {% endfor %}
                                 </td>
-                                <td class="text-center">{{ licencia.fechaEmision }}</td>
-                                <td class="text-center">{{ licencia.fechaVencimiento }}</td>
+                                <td class="text-center">{{ licencia.fechaEmision|date:"d-m-Y" }}</td>
+                                <td class="text-center">{{ licencia.fechaVencimiento|date:"d-m-Y" }}</td>
                                 <td class="text-center">
                                     {% load tz %}
                                     {% now "Y-m-d" as today %}
@@ -497,8 +497,8 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                 </td>
                                 <td class="text-center">{{ licencia.numero_licencia|default:"-" }}</td>
                                 <td>{{ licencia.empresa_emisora|default:"-" }}</td>
-                                <td class="text-center">{{ licencia.fechaEmision }}</td>
-                                <td class="text-center">{{ licencia.fechaVencimiento }}</td>
+                                <td class="text-center">{{ licencia.fechaEmision|date:"d-m-Y" }}</td>
+                                <td class="text-center">{{ licencia.fechaVencimiento|date:"d-m-Y" }}</td>
                                 <td class="text-center">
                                     {% if licencia.esta_activa %}
                                         <span class="badge bg-success">Vigente</span>
@@ -560,8 +560,8 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                     <i class="bi bi-patch-check me-2"></i>{{ certificacion.tipoCertificacion_id }}
                                 </td>
                                 <td>{{ certificacion.proveedor_id }}</td>
-                                <td class="text-center">{{ certificacion.fechaEmision }}</td>
-                                <td class="text-center">{{ certificacion.fechaVencimiento }}</td>
+                                <td class="text-center">{{ certificacion.fechaEmision|date:"d-m-Y" }}</td>
+                                <td class="text-center">{{ certificacion.fechaVencimiento|date:"d-m-Y" }}</td>
                                 <td class="text-center">
                                     {% load tz %}
                                     {% now "Y-m-d" as today %}
@@ -635,8 +635,8 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                                     {% endif %}
                                 </td>
                                 <td>{{ examen.proveedor_id }}</td>
-                                <td class="text-center">{{ examen.fechaEmision }}</td>
-                                <td class="text-center">{{ examen.fechaVencimiento }}</td>
+                                <td class="text-center">{{ examen.fechaEmision|date:"d-m-Y" }}</td>
+                                <td class="text-center">{{ examen.fechaVencimiento|date:"d-m-Y" }}</td>
                                 <td class="text-center">
                                     {% load tz %}
                                     {% now "Y-m-d" as today %}
@@ -990,7 +990,7 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                     </div>
                     <div class="mb-3">
                         <label for="fechaVencimientoCarnet" class="form-label">Fecha de Vencimiento del Carnet *</label>
-                        <input type="date" class="form-control" id="fechaVencimientoCarnet" name="fecha_vencimiento" value="{{ personal.fecha_vencimiento_carnet|date:'Y-m-d' }}" required>
+                        <input type="text" class="form-control fecha-chile-picker" id="fechaVencimientoCarnet" name="fecha_vencimiento" value="{{ personal.fecha_vencimiento_carnet|date:'Y-m-d' }}" required placeholder="DD-MM-YYYY">
                         <small class="form-text text-muted">Fecha en que vence el carnet de identidad</small>
                     </div>
                 </div>

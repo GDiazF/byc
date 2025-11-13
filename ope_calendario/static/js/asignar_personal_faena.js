@@ -749,8 +749,14 @@ function editarAsignacionDirecta(asignacionId) {
     }
     
     // Llenar fechas y observaciones
-    document.getElementById('editAsig_fechaInicio').value = asignacion.fecha_inicio;
-    document.getElementById('editAsig_fechaFin').value = asignacion.fecha_fin || '';
+    if (window.DatePickerChile) {
+        DatePickerChile.setValor('editAsig_fechaInicio', asignacion.fecha_inicio);
+        if (asignacion.fecha_fin) {
+            DatePickerChile.setValor('editAsig_fechaFin', asignacion.fecha_fin);
+        } else {
+            DatePickerChile.limpiar('editAsig_fechaFin');
+        }
+    }
     document.getElementById('editAsig_obs').value = asignacion.observaciones || '';
     
     // Abrir modal
@@ -975,35 +981,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Pre-llenar fechas de la faena y forzar atributos min/max desde JavaScript
-    const inputInicioAsignar = document.getElementById('fecha_inicio');
-    const inputFinAsignar = document.getElementById('fecha_fin');
-    const inputInicioManual = document.getElementById('fechaInicioManual');
-    const inputFinManual = document.getElementById('fechaFinManual');
-    
-    if (faenaFechaInicio) {
-        // Asignar Personal - valor y atributos
-        inputInicioAsignar.value = faenaFechaInicio;
-        inputInicioAsignar.setAttribute('min', faenaFechaInicio);
-        inputFinAsignar.setAttribute('min', faenaFechaInicio);
-        
-        // Asignar Turno Manual - valor y atributos
-        inputInicioManual.value = faenaFechaInicio;
-        inputInicioManual.setAttribute('min', faenaFechaInicio);
-        inputFinManual.setAttribute('min', faenaFechaInicio);
-    }
-    
-    if (faenaFechaFin) {
-        // Asignar Personal - valor y atributos
-        inputFinAsignar.value = faenaFechaFin;
-        inputInicioAsignar.setAttribute('max', faenaFechaFin);
-        inputFinAsignar.setAttribute('max', faenaFechaFin);
-        
-        // Asignar Turno Manual - valor y atributos
-        inputFinManual.value = faenaFechaFin;
-        inputInicioManual.setAttribute('max', faenaFechaFin);
-        inputFinManual.setAttribute('max', faenaFechaFin);
-    }
+    // Pre-llenar fechas de la faena usando el componente DatePickerChile
+    // Esperar a que los date pickers estén completamente inicializados
+    setTimeout(() => {
+        if (window.DatePickerChile) {
+            if (faenaFechaInicio) {
+                // Asignar Personal
+                DatePickerChile.setValor('fecha_inicio', faenaFechaInicio);
+                
+                // Asignar Turno Manual
+                DatePickerChile.setValor('fechaInicioManual', faenaFechaInicio);
+            }
+            
+            if (faenaFechaFin) {
+                // Asignar Personal
+                DatePickerChile.setValor('fecha_fin', faenaFechaFin);
+                
+                // Asignar Turno Manual
+                DatePickerChile.setValor('fechaFinManual', faenaFechaFin);
+            }
+        }
+    }, 500);
     
     // Event listeners - resetear paginación cuando se filtran datos
     document.getElementById('searchInput').addEventListener('input', function() {

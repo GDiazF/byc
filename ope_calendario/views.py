@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
@@ -1605,13 +1605,16 @@ def gestionar_faenas(request):
         'asignaciones__bloque_inicio'
     ).order_by('nombre')
     
-    # Obtener todo el personal activo para asignar
+    # Obtener todo el personal activo para asignar (optimizado)
     personal = Personal.objects.filter(activo=True).select_related(
         'sexo_id', 'estcivil_id'
     ).prefetch_related(
         'infolaboral_set__cargo_id',
         'infolaboral_set__empresa_id',
-        'asignaciones_faena__faena'
+        Prefetch(
+            'asignaciones_faena',
+            queryset=AsignacionFaena.objects.filter(activo=True).select_related('faena')
+        )
     ).order_by('apepat', 'apemat', 'nombre')
     
     # Obtener turnos disponibles
@@ -1619,13 +1622,52 @@ def gestionar_faenas(request):
         'bloques__estado'
     ).order_by('nombre')
     
-    # Preparar datos para JSON
+    # Preparar datos para JSON (optimizado)
     faenas_data = []
     for faena in faenas:
         asignaciones_activas = faena.asignaciones.filter(
             activo=True,
-            personal__activo=True  # Filtrar solo personal activo
-        ).select_related('personal', 'turno', 'bloque_inicio')
+            personal__activo=True
+        ).select_related(
+            'personal',
+            'turno',
+            'bloque_inicio__estado'
+        ).prefetch_related(
+            'personal__infolaboral_set__cargo_id',
+            'personal__infolaboral_set__empresa_id'
+        )
+        
+        # Pre-contar para evitar count() en cada iteración
+        total_personal = len(asignaciones_activas)
+        
+        asignaciones_list = []
+        for asig in asignaciones_activas:
+            # Obtener info laboral de forma eficiente
+            info_laboral = asig.personal.infolaboral_set.first() if hasattr(asig.personal, 'infolaboral_set') else None
+            cargo = info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'Sin cargo'
+            
+            asignaciones_list.append({
+                'id': asig.id,
+                'personal': {
+                    'id': asig.personal.personal_id,
+                    'nombre': f"{asig.personal.nombre} {asig.personal.apepat} {asig.personal.apemat}",
+                    'rut': f"{asig.personal.rut}-{asig.personal.dvrut}",
+                    'cargo': cargo
+                },
+                'turno': {
+                    'id': asig.turno.id,
+                    'nombre': asig.turno.nombre
+                },
+                'fecha_inicio': asig.fecha_inicio.isoformat(),
+                'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None,
+                'bloque_inicio': {
+                    'id': asig.bloque_inicio.id,
+                    'orden': asig.bloque_inicio.orden,
+                    'estado_nombre': asig.bloque_inicio.estado.nombre
+                } if asig.bloque_inicio else None,
+                'observaciones': asig.observaciones or '',
+                'activo': asig.activo
+            })
         
         faenas_data.append({
             'id': faena.id,
@@ -1636,54 +1678,31 @@ def gestionar_faenas(request):
             'fecha_inicio': faena.fecha_inicio.isoformat() if faena.fecha_inicio else None,
             'fecha_fin': faena.fecha_fin.isoformat() if faena.fecha_fin else None,
             'activo': faena.activo,
-            'total_personal': asignaciones_activas.count(),
-            'asignaciones': [
-                {
-                    'id': asig.id,
-                    'personal': {
-                        'id': asig.personal.personal_id,
-                        'nombre': f"{asig.personal.nombre} {asig.personal.apepat} {asig.personal.apemat}",
-                        'rut': f"{asig.personal.rut}-{asig.personal.dvrut}",
-                        'cargo': asig.personal.infolaboral_set.first().cargo_id.cargo if asig.personal.infolaboral_set.exists() else 'Sin cargo'
-                    },
-                    'turno': {
-                        'id': asig.turno.id,
-                        'nombre': asig.turno.nombre
-                    },
-                    'fecha_inicio': asig.fecha_inicio.isoformat(),
-                    'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None,
-                    'bloque_inicio': {
-                        'id': asig.bloque_inicio.id,
-                        'orden': asig.bloque_inicio.orden,
-                        'estado_nombre': asig.bloque_inicio.estado.nombre
-                    } if asig.bloque_inicio else None,
-                    'observaciones': asig.observaciones or '',
-                    'activo': asig.activo
-                } for asig in asignaciones_activas
-            ]
+            'total_personal': total_personal,
+            'asignaciones': asignaciones_list
         })
     
-    # Preparar personal para JSON
+    # Preparar personal para JSON (optimizado)
     personal_data = []
     for p in personal:
-        # Verificar si ya tiene asignaciones activas
-        tiene_asignacion = p.asignaciones_faena.filter(
-            activo=True,
-            fecha_fin__isnull=True
-        ).exists() or p.asignaciones_faena.filter(
-            activo=True,
-            fecha_fin__gte=date.today()
-        ).exists()
+        # Obtener info laboral una sola vez (ya viene en prefetch)
+        info_laboral = p.infolaboral_set.first()
+        cargo = info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'Sin cargo'
+        empresa = info_laboral.empresa_id.razonSocial if info_laboral and info_laboral.empresa_id else 'Sin empresa'
+        
+        # Obtener asignaciones activas (ya viene en prefetch)
+        asignaciones_activas = [a for a in p.asignaciones_faena.all() if a.activo and (not a.fecha_fin or a.fecha_fin >= date.today())]
+        tiene_asignacion = len(asignaciones_activas) > 0
         
         personal_data.append({
             'id': p.personal_id,
             'nombre_completo': f"{p.nombre} {p.apepat} {p.apemat}",
             'rut': f"{p.rut}-{p.dvrut}",
-            'cargo': p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo',
-            'empresa': p.infolaboral_set.first().empresa_id.razonSocial if p.infolaboral_set.exists() else 'Sin empresa',
+            'cargo': cargo,
+            'empresa': empresa,
             'tiene_asignacion': tiene_asignacion,
             'asignacion_actual': {
-                'faena': p.asignaciones_faena.filter(activo=True).first().faena.nombre if p.asignaciones_faena.filter(activo=True).exists() else None
+                'faena': asignaciones_activas[0].faena.nombre if asignaciones_activas else None
             } if tiene_asignacion else None
         })
     

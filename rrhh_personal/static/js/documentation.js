@@ -615,13 +615,6 @@ async function editLicense(licenseId) {
             // Cambiar título
             document.querySelector('#addLicenseModal .modal-title').textContent = 'Editar Licencia de Conducir';
             
-            // Llenar campos
-            const fechaEmision = form.querySelector('[name="fechaEmision"]');
-            const fechaVencimiento = form.querySelector('[name="fechaVencimiento"]');
-            
-            if (fechaEmision) fechaEmision.value = data.license_data.fecha_emision;
-            if (fechaVencimiento) fechaVencimiento.value = data.license_data.fecha_vencimiento;
-            
             // Seleccionar tipos (checkboxes)
             form.querySelectorAll('[name="tipos"]').forEach(checkbox => {
                 checkbox.checked = data.license_data.tipos.includes(parseInt(checkbox.value));
@@ -634,7 +627,40 @@ async function editLicense(licenseId) {
             addHiddenId(form, 'license_id', licenseId);
             
             // Mostrar modal
-            new bootstrap.Modal(document.getElementById('addLicenseModal')).show();
+            const modalElement = document.getElementById('addLicenseModal');
+            const modalLicense = new bootstrap.Modal(modalElement);
+            
+            // Usar evento 'shown.bs.modal' para mejor timing
+            const handleModalShown = () => {
+                if (window.DatePickerChile) {
+                    DatePickerChile.inicializar();
+                    
+                    setTimeout(() => {
+                        const modal = document.getElementById('addLicenseModal');
+                        const inputEmision = modal.querySelector('[name="fechaEmision"]');
+                        const inputVencimiento = modal.querySelector('[name="fechaVencimiento"]');
+                        
+                        if (inputEmision && data.license_data.fecha_emision) {
+                            const wrapperEmision = inputEmision.closest('[data-datepicker-chile-wrapper]');
+                            if (wrapperEmision && wrapperEmision._datePickerChile) {
+                                wrapperEmision._datePickerChile.setValue(data.license_data.fecha_emision);
+                            }
+                        }
+                        
+                        if (inputVencimiento && data.license_data.fecha_vencimiento) {
+                            const wrapperVencimiento = inputVencimiento.closest('[data-datepicker-chile-wrapper]');
+                            if (wrapperVencimiento && wrapperVencimiento._datePickerChile) {
+                                wrapperVencimiento._datePickerChile.setValue(data.license_data.fecha_vencimiento);
+                            }
+                        }
+                    }, 50);
+                }
+                
+                modalElement.removeEventListener('shown.bs.modal', handleModalShown);
+            };
+            
+            modalElement.addEventListener('shown.bs.modal', handleModalShown);
+            modalLicense.show();
         } else {
             alert('Error al cargar los datos: ' + data.message);
         }
@@ -667,8 +693,6 @@ async function editInternalLicense(licenseId) {
             form.querySelector('[name="tipoLicenciaInterna_id"]').value = data.license_data.tipo_id;
             form.querySelector('[name="numero_licencia"]').value = data.license_data.numero || '';
             form.querySelector('[name="empresa_emisora"]').value = data.license_data.empresa || '';
-            form.querySelector('[name="fechaEmision"]').value = data.license_data.fecha_emision;
-            form.querySelector('[name="fechaVencimiento"]').value = data.license_data.fecha_vencimiento;
             form.querySelector('[name="observacion"]').value = data.license_data.observacion || '';
             
             handleExistingDocument(form, data.license_data);
@@ -678,7 +702,42 @@ async function editInternalLicense(licenseId) {
             const hiddenCheck = form.querySelector('[name="internal_license_id"]');
             console.log('[EDIT INTERNAL] Hidden field:', hiddenCheck ? hiddenCheck.value : 'NO ENCONTRADO');
             
-            new bootstrap.Modal(document.getElementById('addInternalLicenseModal')).show();
+            const modalElement = document.getElementById('addInternalLicenseModal');
+            const modalInternal = new bootstrap.Modal(modalElement);
+            
+            // Usar evento 'shown.bs.modal' en lugar de setTimeout para mejor timing
+            const handleModalShown = () => {
+                if (window.DatePickerChile) {
+                    DatePickerChile.inicializar();
+                    
+                    // Pequeño delay para asegurar que los pickers estén listos
+                    setTimeout(() => {
+                        const modal = document.getElementById('addInternalLicenseModal');
+                        const inputEmision = modal.querySelector('[name="fechaEmision"]');
+                        const inputVencimiento = modal.querySelector('[name="fechaVencimiento"]');
+                        
+                        if (inputEmision && data.license_data.fecha_emision) {
+                            const wrapperEmision = inputEmision.closest('[data-datepicker-chile-wrapper]');
+                            if (wrapperEmision && wrapperEmision._datePickerChile) {
+                                wrapperEmision._datePickerChile.setValue(data.license_data.fecha_emision);
+                            }
+                        }
+                        
+                        if (inputVencimiento && data.license_data.fecha_vencimiento) {
+                            const wrapperVencimiento = inputVencimiento.closest('[data-datepicker-chile-wrapper]');
+                            if (wrapperVencimiento && wrapperVencimiento._datePickerChile) {
+                                wrapperVencimiento._datePickerChile.setValue(data.license_data.fecha_vencimiento);
+                            }
+                        }
+                    }, 50);
+                }
+                
+                // Remover el listener después de usarlo (solo se ejecuta una vez)
+                modalElement.removeEventListener('shown.bs.modal', handleModalShown);
+            };
+            
+            modalElement.addEventListener('shown.bs.modal', handleModalShown);
+            modalInternal.show();
         } else {
             alert('Error al cargar los datos: ' + data.message);
         }
@@ -708,13 +767,44 @@ async function editCertification(certId) {
             
             form.querySelector('[name="tipoCertificacion_id"]').value = data.cert_data.tipo_id;
             form.querySelector('[name="proveedor_id"]').value = data.cert_data.proveedor_id;
-            form.querySelector('[name="fechaEmision"]').value = data.cert_data.fecha_emision;
-            form.querySelector('[name="fechaVencimiento"]').value = data.cert_data.fecha_vencimiento;
             
             handleExistingDocument(form, data.cert_data);
             addHiddenId(form, 'cert_id', certId);
             
-            new bootstrap.Modal(document.getElementById('addCertificationModal')).show();
+            const modalElement = document.getElementById('addCertificationModal');
+            const modalCert = new bootstrap.Modal(modalElement);
+            
+            // Usar evento 'shown.bs.modal' para mejor timing
+            const handleModalShown = () => {
+                if (window.DatePickerChile) {
+                    DatePickerChile.inicializar();
+                    
+                    setTimeout(() => {
+                        const modal = document.getElementById('addCertificationModal');
+                        const inputEmision = modal.querySelector('[name="fechaEmision"]');
+                        const inputVencimiento = modal.querySelector('[name="fechaVencimiento"]');
+                        
+                        if (inputEmision && data.cert_data.fecha_emision) {
+                            const wrapperEmision = inputEmision.closest('[data-datepicker-chile-wrapper]');
+                            if (wrapperEmision && wrapperEmision._datePickerChile) {
+                                wrapperEmision._datePickerChile.setValue(data.cert_data.fecha_emision);
+                            }
+                        }
+                        
+                        if (inputVencimiento && data.cert_data.fecha_vencimiento) {
+                            const wrapperVencimiento = inputVencimiento.closest('[data-datepicker-chile-wrapper]');
+                            if (wrapperVencimiento && wrapperVencimiento._datePickerChile) {
+                                wrapperVencimiento._datePickerChile.setValue(data.cert_data.fecha_vencimiento);
+                            }
+                        }
+                    }, 50);
+                }
+                
+                modalElement.removeEventListener('shown.bs.modal', handleModalShown);
+            };
+            
+            modalElement.addEventListener('shown.bs.modal', handleModalShown);
+            modalCert.show();
         } else {
             alert('Error: ' + data.message);
         }
@@ -745,13 +835,44 @@ async function editExam(examId) {
             form.querySelector('[name="tipoEx_id"]').value = data.exam_data.tipo_id;
             form.querySelector('[name="resultadoEx_id"]').value = data.exam_data.resultado_id;
             form.querySelector('[name="proveedor_id"]').value = data.exam_data.proveedor_id;
-            form.querySelector('[name="fechaEmision"]').value = data.exam_data.fecha_emision;
-            form.querySelector('[name="fechaVencimiento"]').value = data.exam_data.fecha_vencimiento;
             
             handleExistingDocument(form, data.exam_data);
             addHiddenId(form, 'exam_id', examId);
             
-            new bootstrap.Modal(document.getElementById('addExamModal')).show();
+            const modalElement = document.getElementById('addExamModal');
+            const modalExam = new bootstrap.Modal(modalElement);
+            
+            // Usar evento 'shown.bs.modal' para mejor timing
+            const handleModalShown = () => {
+                if (window.DatePickerChile) {
+                    DatePickerChile.inicializar();
+                    
+                    setTimeout(() => {
+                        const modal = document.getElementById('addExamModal');
+                        const inputEmision = modal.querySelector('[name="fechaEmision"]');
+                        const inputVencimiento = modal.querySelector('[name="fechaVencimiento"]');
+                        
+                        if (inputEmision && data.exam_data.fecha_emision) {
+                            const wrapperEmision = inputEmision.closest('[data-datepicker-chile-wrapper]');
+                            if (wrapperEmision && wrapperEmision._datePickerChile) {
+                                wrapperEmision._datePickerChile.setValue(data.exam_data.fecha_emision);
+                            }
+                        }
+                        
+                        if (inputVencimiento && data.exam_data.fecha_vencimiento) {
+                            const wrapperVencimiento = inputVencimiento.closest('[data-datepicker-chile-wrapper]');
+                            if (wrapperVencimiento && wrapperVencimiento._datePickerChile) {
+                                wrapperVencimiento._datePickerChile.setValue(data.exam_data.fecha_vencimiento);
+                            }
+                        }
+                    }, 50);
+                }
+                
+                modalElement.removeEventListener('shown.bs.modal', handleModalShown);
+            };
+            
+            modalElement.addEventListener('shown.bs.modal', handleModalShown);
+            modalExam.show();
         } else {
             alert('Error: ' + data.message);
         }
@@ -1109,8 +1230,8 @@ function createRowElement(type, data) {
                     <i class="bi bi-card-text me-2"></i>
                     ${clasesBadges}
                 </td>
-                <td class="text-center">${data.fecha_emision || ''}</td>
-                <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td class="text-center">${data.fecha_emision ? window.DatePickerChile.convertirISOAChileno(data.fecha_emision) : ''}</td>
+                <td class="text-center">${data.fecha_vencimiento ? window.DatePickerChile.convertirISOAChileno(data.fecha_vencimiento) : ''}</td>
                 <td class="text-center">
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
@@ -1133,8 +1254,8 @@ function createRowElement(type, data) {
                 </td>
                 <td class="text-center">${data.numero || '-'}</td>
                 <td>${data.empresa || '-'}</td>
-                <td class="text-center">${data.fecha_emision || ''}</td>
-                <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td class="text-center">${data.fecha_emision ? window.DatePickerChile.convertirISOAChileno(data.fecha_emision) : ''}</td>
+                <td class="text-center">${data.fecha_vencimiento ? window.DatePickerChile.convertirISOAChileno(data.fecha_vencimiento) : ''}</td>
                 <td class="text-center">
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
@@ -1168,8 +1289,8 @@ function createRowElement(type, data) {
                     ${data.resultado && data.resultado !== '-' ? `<span class="badge ${resultadoBadgeClass}">${data.resultado}</span>` : '<span class="text-muted">-</span>'}
                 </td>
                 <td>${data.proveedor || ''}</td>
-                <td class="text-center">${data.fecha_emision || ''}</td>
-                <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td class="text-center">${data.fecha_emision ? window.DatePickerChile.convertirISOAChileno(data.fecha_emision) : ''}</td>
+                <td class="text-center">${data.fecha_vencimiento ? window.DatePickerChile.convertirISOAChileno(data.fecha_vencimiento) : ''}</td>
                 <td class="text-center">
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
@@ -1191,8 +1312,8 @@ function createRowElement(type, data) {
                     <i class="bi bi-patch-check me-2"></i>${data.tipo || ''}
                 </td>
                 <td>${data.proveedor || ''}</td>
-                <td class="text-center">${data.fecha_emision || ''}</td>
-                <td class="text-center">${data.fecha_vencimiento || ''}</td>
+                <td class="text-center">${data.fecha_emision ? window.DatePickerChile.convertirISOAChileno(data.fecha_emision) : ''}</td>
+                <td class="text-center">${data.fecha_vencimiento ? window.DatePickerChile.convertirISOAChileno(data.fecha_vencimiento) : ''}</td>
                 <td class="text-center">
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
