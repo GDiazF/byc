@@ -98,7 +98,7 @@
                     </div>
                     <div class="col-md-1 text-end">
                         <label class="form-label small">&nbsp;</label>
-                        <button class="btn btn-sm btn-secondary" onclick="limpiarFiltros()">
+                        <button class="btn btn-sm btn-secondary" id="btnLimpiarFiltros">
                             <i class="bi bi-x-circle me-1"></i>Limpiar
                         </button>
                     </div>
@@ -109,19 +109,20 @@
                     <table class="table table-sm table-hover table-bordered rrhh-table" id="ordenesTable">
                         <thead class="table-dark">
                             <tr>
-                                <th style="width: 10%;">Folio</th>
-                                <th style="width: 15%;">Equipo</th>
-                                <th style="width: 12%;">Empresa</th>
-                                <th style="width: 10%;">Tipo Mant.</th>
-                                <th style="width: 10%;">Estado OT</th>
-                                <th style="width: 10%;">Estado Equipo</th>
-                                <th style="width: 10%;">Fecha Fin</th>
-                                <th style="width: 15%;" class="text-center">Acciones</th>
+                                <th class="table-col-8">Folio</th>
+                                <th class="table-col-12">Equipo</th>
+                                <th class="table-col-10">Empresa</th>
+                                <th class="table-col-8">Tipo Mant.</th>
+                                <th class="table-col-8">Estado OT</th>
+                                <th class="table-col-8">Estado Equipo</th>
+                                <th class="table-col-8">Fecha Fin</th>
+                                <th class="table-col-12 text-center">Acciones</th>
+                                <th class="table-col-8 text-center">PDF</th>
                             </tr>
                         </thead>
                         <tbody id="ordenesTableBody">
                             <tr>
-                                <td colspan="8" class="text-center py-5">
+                                <td colspan="9" class="text-center py-5">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Cargando...</span>
                                     </div>
@@ -174,7 +175,7 @@
                     </div>
                     <div class="col-md-3 text-end">
                         <label class="form-label small">&nbsp;</label>
-                        <button class="btn btn-sm btn-secondary" onclick="limpiarFiltrosFinalizadas()">
+                        <button class="btn btn-sm btn-secondary" id="btnLimpiarFiltrosFinalizadas">
                             <i class="bi bi-x-circle me-1"></i>Limpiar
                         </button>
                     </div>
@@ -185,22 +186,24 @@
                     <table class="table table-sm table-hover table-bordered rrhh-table" id="ordenesTableFinalizadas">
                         <thead class="table-dark">
                             <tr>
-                                <th style="width: 12%;">Folio</th>
-                                <th style="width: 18%;">Equipo</th>
-                                <th style="width: 15%;">Empresa</th>
-                                <th style="width: 12%;">Tipo Mant.</th>
-                                <th style="width: 12%;">Estado OT</th>
-                                <th style="width: 12%;">Estado Equipo</th>
-                                <th style="width: 19%;">Fecha Fin</th>
+                                <th class="table-col-10">Folio</th>
+                                <th class="table-col-15">Equipo</th>
+                                <th class="table-col-12">Empresa</th>
+                                <th class="table-col-10">Tipo Mant.</th>
+                                <th class="table-col-10">Estado OT</th>
+                                <th class="table-col-10">Estado Equipo</th>
+                                <th class="table-col-10">Fecha Fin</th>
+                                <th class="table-col-13 text-center">Acciones</th>
+                                <th class="table-col-10 text-center">PDF</th>
                             </tr>
                         </thead>
                         <tbody id="ordenesTableBodyFinalizadas">
                             <tr>
-                                <td colspan="7" class="text-center py-5">
+                                <td colspan="9" class="text-center py-5">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Cargando...</span>
                                     </div>
-                                    <p class="mt-2 text-muted">Cargando ordenes de trabajo...</p>
+                                    <p class="mt-2 text-muted">Cargando ordenes finalizadas...</p>
                                 </td>
                             </tr>
                         </tbody>
@@ -214,7 +217,7 @@
             <div class="col-md-6">
                 <div class="d-flex align-items-center gap-2">
                     <label class="form-label mb-0 small">Mostrar:</label>
-                    <select class="form-select form-select-sm" id="pageSizeSelect" style="width: auto;" onchange="cambiarTamanoPagina()">
+                    <select class="form-select form-select-sm" id="pageSizeSelect">
                         <option value="10">10</option>
                         <option value="25" selected>25</option>
                         <option value="50">50</option>
@@ -248,11 +251,51 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="modalDetalleOTBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Cargando...</span>
+                <!-- Pestañas -->
+                <ul class="nav nav-tabs mb-3" id="detalleOTTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-informacion" data-bs-toggle="tab" data-bs-target="#panel-informacion" type="button" role="tab">
+                            <i class="bi bi-info-circle me-1"></i>Información
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-observaciones" data-bs-toggle="tab" data-bs-target="#panel-observaciones" type="button" role="tab">
+                            <i class="bi bi-chat-left-text me-1"></i>Observaciones
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-historial" data-bs-toggle="tab" data-bs-target="#panel-historial" type="button" role="tab">
+                            <i class="bi bi-clock-history me-1"></i>Historial
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- Contenido de las pestañas -->
+                <div class="tab-content" id="detalleOTTabContent">
+                    <div class="tab-pane fade show active" id="panel-informacion" role="tabpanel">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Cargando detalles...</p>
+                        </div>
                     </div>
-                    <p class="mt-2 text-muted">Cargando detalles...</p>
+                    <div class="tab-pane fade" id="panel-observaciones" role="tabpanel">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Cargando observaciones...</p>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="panel-historial" role="tabpanel">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Cargando historial...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -271,6 +314,7 @@
     window.csrfToken = "{{ csrf_token }}";
     window.apiListarOrdenes = "{% url 'maquinarias:api_listar_ordenes_trabajo' %}";
     window.apiDetalleOT = "{% url 'maquinarias:api_detalle_ot' 0 %}";
+    window.apiHistorialOT = "{% url 'maquinarias:api_historial_ot' 0 %}";
 </script>
 <script src="{% static 'maquinarias/js/lista_ordenes_trabajo.js' %}"></script>
 {% endblock %}

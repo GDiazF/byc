@@ -208,20 +208,17 @@ class PautaMantenimientoPreventivo(models.Model):
 
 
 class ItemPauta(models.Model):
-    """Relación entre una pauta, una sección y sus tipos de reparación"""
+    """
+    Relación entre una pauta, una sección y sus tipos de reparación.
+    
+    NOTA: Los estados de las secciones NO se guardan aquí, sino en ItemSeccionOT
+    (específico de cada OT). Cada OT tiene sus propios estados independientes.
+    """
     itemPauta_id = models.AutoField(primary_key=True, null=False, blank=False)
     pauta_id = models.ForeignKey(PautaMantenimientoPreventivo, on_delete=models.CASCADE, db_column='pauta_id', related_name='items', null=False, blank=False)
     seccion_id = models.ForeignKey(Seccion, on_delete=models.CASCADE, db_column='seccion_id', related_name='items_pauta', null=False, blank=False)
     tipos_reparacion = models.ManyToManyField(TipoReparacion, related_name='items_pauta')
-    estado_seccion_id = models.ForeignKey(
-        EstadoOT,
-        on_delete=models.CASCADE,
-        db_column='estado_seccion_id',
-        null=True,
-        blank=True,
-        related_name='items_pauta',
-        verbose_name='Estado de la Sección'
-    )
+    # NOTA: estado_seccion_id fue eliminado - los estados se guardan en ItemSeccionOT (por OT)
     
     class Meta:
         db_table = 'maquinarias_itempauta'

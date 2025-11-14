@@ -42,6 +42,97 @@ document.addEventListener('DOMContentLoaded', function() {
         modeloEquipoSelect.addEventListener('change', filtrarEquipos);
     }
     
+    const equipoSelect = document.getElementById('equipo_id');
+    if (equipoSelect) {
+        equipoSelect.addEventListener('change', cargarDatosEquipo);
+    }
+    
+    const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');
+    if (tipoMantenimientoSelect) {
+        tipoMantenimientoSelect.addEventListener('change', cambiarTipoMantenimiento);
+    }
+    
+    // Event listeners para radio buttons de corresponde_pauta
+    const correspondePautaSi = document.getElementById('corresponde_pauta_si');
+    const correspondePautaNo = document.getElementById('corresponde_pauta_no');
+    if (correspondePautaSi) {
+        correspondePautaSi.addEventListener('change', cambiarCorrespondePauta);
+    }
+    if (correspondePautaNo) {
+        correspondePautaNo.addEventListener('change', cambiarCorrespondePauta);
+    }
+    
+    // Event listener para select de pauta
+    const pautaSelect = document.getElementById('pauta_id');
+    if (pautaSelect) {
+        pautaSelect.addEventListener('change', function(e) {
+            const pautaId = e.target.value;
+            if (pautaId) {
+                cargarSeccionesPauta(pautaId);
+            } else {
+                // Si no hay pauta seleccionada, ocultar secciones
+                const seccionesPautaContainer = document.getElementById('seccionesPautaContainer');
+                if (seccionesPautaContainer) {
+                    seccionesPautaContainer.style.display = 'none';
+                }
+            }
+        });
+    }
+    
+    // Event listener para botón agregar item sección
+    const btnAgregarItemSeccion = document.getElementById('btnAgregarItemSeccion');
+    if (btnAgregarItemSeccion) {
+        btnAgregarItemSeccion.addEventListener('click', agregarItemSeccion);
+    }
+    
+    // Event listener para botón agregar observación
+    const btnAgregarObservacion = document.getElementById('btnAgregarObservacion');
+    if (btnAgregarObservacion) {
+        btnAgregarObservacion.addEventListener('click', agregarObservacion);
+    }
+    
+    // Event listener para select all personal
+    const selectAllPersonal = document.getElementById('selectAllPersonal');
+    if (selectAllPersonal) {
+        selectAllPersonal.addEventListener('change', toggleSeleccionarTodoPersonal);
+    }
+    
+    // Event listeners delegados para elementos dinámicos (items de secciones)
+    const itemsSeccionesContainer = document.getElementById('itemsSeccionesContainer');
+    if (itemsSeccionesContainer) {
+        // Delegar eventos para selects de sección
+        itemsSeccionesContainer.addEventListener('change', function(e) {
+            if (e.target.classList.contains('seccion-select')) {
+                cargarTiposReparacionItem(e.target);
+            }
+        });
+        
+        // Delegar eventos para selects de estado
+        itemsSeccionesContainer.addEventListener('change', function(e) {
+            if (e.target.classList.contains('estado-seccion-select')) {
+                actualizarEstadoSeccion(e.target);
+            }
+        });
+        
+        // Delegar eventos para botones de eliminar
+        itemsSeccionesContainer.addEventListener('click', function(e) {
+            if (e.target.closest('.btnEliminarItemSeccion')) {
+                eliminarItemSeccion(e.target.closest('.btnEliminarItemSeccion'));
+            }
+        });
+    }
+    
+    // Event listener delegado para quitar personal seleccionado (badges)
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('btn-close') && e.target.closest('#personalSeleccionadoBadges')) {
+            const badge = e.target.closest('.badge');
+            const personalId = parseInt(badge.dataset.personalId);
+            if (personalId) {
+                quitarPersonalSeleccionado(personalId);
+            }
+        }
+    });
+    
     // Event listeners para filtros de personal (solo si existen)
     const personalSearch = document.getElementById('personalSearch');
     if (personalSearch) {
@@ -53,17 +144,12 @@ document.addEventListener('DOMContentLoaded', function() {
         personalEmpresaFilter.addEventListener('change', cargarPersonal);
     }
     
-    const personalCargoFilter = document.getElementById('personalCargoFilter');
-    if (personalCargoFilter) {
-        personalCargoFilter.addEventListener('change', cargarPersonal);
-    }
+    // Los filtros de cargo y departamento están deshabilitados (solo MAQUINARIAS y MECÁNICO)
+    // No se agregan event listeners para estos campos ya que están deshabilitados y se preseleccionan automáticamente
     
-    const personalDeptoFilter = document.getElementById('personalDeptoFilter');
-    if (personalDeptoFilter) {
-        personalDeptoFilter.addEventListener('change', function() {
-            cargarCargosPorDepto(this.value);
-            cargarPersonal();
-        });
+    // Inicializar date pickers chilenos
+    if (typeof DatePickerChile !== 'undefined') {
+        DatePickerChile.inicializar();
     }
     
     // Si es edición, cargar datos existentes
@@ -313,6 +399,12 @@ function cambiarCorrespondePauta() {
         selectPautaContainer.style.display = 'none';
         seccionesPautaContainer.style.display = 'none';
         seccionReparaciones.style.display = 'block';
+        // Limpiar items de secciones si había algo de preventivo con pauta
+        const itemsContainer = document.getElementById('itemsSeccionesContainer');
+        if (itemsContainer) {
+            itemsContainer.innerHTML = '<p class="text-muted small" id="noItemsMessage">No hay items agregados. Haga clic en "Agregar Item" para comenzar.</p>';
+            itemSeccionIndex = 0; // Reiniciar contador
+        }
     } else {
         selectPautaContainer.style.display = 'none';
         seccionesPautaContainer.style.display = 'none';
@@ -389,7 +481,22 @@ function cargarPautasPorModelo(modeloId) {
 
 // Cargar secciones de la pauta seleccionada
 function cargarSeccionesPauta(pautaIdParam = null) {
-    const pautaId = pautaIdParam || document.getElementById('pauta_id')?.value;
+    // Asegurarse de que pautaIdParam sea un número o string válido, no un objeto Event
+    let pautaId = null;
+    if (pautaIdParam) {
+        // Si es un objeto Event, obtener el value del target
+        if (pautaIdParam instanceof Event) {
+            pautaId = pautaIdParam.target?.value;
+        } else {
+            pautaId = pautaIdParam;
+        }
+    }
+    
+    // Si aún no tenemos pautaId, intentar obtenerlo del select
+    if (!pautaId) {
+        const pautaSelect = document.getElementById('pauta_id');
+        pautaId = pautaSelect?.value;
+    }
     
     // Buscar el contenedor - puede estar en diferentes lugares según el modo
     let seccionesPautaContainer = document.getElementById('seccionesPautaContainer');
@@ -446,7 +553,12 @@ function cargarSeccionesPauta(pautaIdParam = null) {
                 seccionesPautaList.innerHTML = '';
                 
                 data.items.forEach((item, index) => {
-                    const estadoActual = item.estado_seccion_id || null;
+                    // Si no hay estado (nueva OT), usar Pendiente por defecto
+                    let estadoActual = item.estado_seccion_id || null;
+                    if (!estadoActual && window.estadosOT) {
+                        const estadoPendiente = window.estadosOT.find(e => e.nombre.toLowerCase() === 'pendiente');
+                        estadoActual = estadoPendiente ? estadoPendiente.estadoOT_id : null;
+                    }
                     const estadoNombre = item.estado_seccion_nombre || 'Sin estado';
                     
                     const itemDiv = document.createElement('div');
@@ -501,7 +613,7 @@ function cargarSeccionesPauta(pautaIdParam = null) {
 // PERSONAL A ASIGNAR (CON TABLA Y FILTROS)
 // ============================================================================
 
-// Cargar departamentos
+// Cargar departamentos y preseleccionar MAQUINARIAS
 function cargarDepartamentos() {
     const deptoSelect = document.getElementById('personalDeptoFilter');
     if (!deptoSelect) {
@@ -514,13 +626,31 @@ function cargarDepartamentos() {
         .then(data => {
             if (data.success) {
                 departamentosDisponibles = data.departamentos;
-                deptoSelect.innerHTML = '<option value="">Todos</option>';
+                deptoSelect.innerHTML = '';
+                
+                // Buscar y preseleccionar MAQUINARIAS
+                let deptoMaquinariasId = null;
                 data.departamentos.forEach(depto => {
                     const option = document.createElement('option');
                     option.value = depto.depto_id;
                     option.textContent = depto.depto;
                     deptoSelect.appendChild(option);
+                    
+                    // Buscar MAQUINARIAS (case insensitive)
+                    if (depto.depto.toUpperCase() === 'MAQUINARIAS') {
+                        deptoMaquinariasId = depto.depto_id;
+                    }
                 });
+                
+                // Preseleccionar MAQUINARIAS y deshabilitar el select
+                if (deptoMaquinariasId) {
+                    deptoSelect.value = deptoMaquinariasId;
+                    deptoSelect.disabled = true;
+                    deptoSelect.classList.add('bg-light');
+                    
+                    // Cargar cargos para MAQUINARIAS
+                    cargarCargosPorDepto(deptoMaquinariasId);
+                }
             }
         })
         .catch(error => {
@@ -528,7 +658,7 @@ function cargarDepartamentos() {
         });
 }
 
-// Cargar cargos por departamento
+// Cargar cargos por departamento y preseleccionar MECÁNICO
 function cargarCargosPorDepto(deptoId) {
     const cargoSelect = document.getElementById('personalCargoFilter');
     if (!cargoSelect) {
@@ -545,13 +675,31 @@ function cargarCargosPorDepto(deptoId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                cargoSelect.innerHTML = '<option value="">Todos</option>';
+                cargoSelect.innerHTML = '';
+                
+                // Buscar y preseleccionar MECÁNICO
+                let cargoMecanicoId = null;
                 data.cargos.forEach(cargo => {
                     const option = document.createElement('option');
                     option.value = cargo.cargo_id;
                     option.textContent = cargo.cargo;
                     cargoSelect.appendChild(option);
+                    
+                    // Buscar MECÁNICO (case insensitive)
+                    if (cargo.cargo.toUpperCase() === 'MECÁNICO' || cargo.cargo.toUpperCase() === 'MECANICO') {
+                        cargoMecanicoId = cargo.cargo_id;
+                    }
                 });
+                
+                // Preseleccionar MECÁNICO y deshabilitar el select
+                if (cargoMecanicoId) {
+                    cargoSelect.value = cargoMecanicoId;
+                    cargoSelect.disabled = true;
+                    cargoSelect.classList.add('bg-light');
+                }
+                
+                // Cargar personal después de preseleccionar los filtros
+                cargarPersonal();
             }
         })
         .catch(error => {
@@ -574,14 +722,12 @@ function cargarPersonal() {
     
     const search = searchElement.value;
     const empresaId = empresaFilter.value;
-    const cargoId = cargoFilter.value;
-    const deptoId = deptoFilter.value;
+    // cargoId y deptoId se ignoran - el backend siempre filtra por MAQUINARIAS y MECÁNICO
     
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     if (empresaId) params.append('empresa_id', empresaId);
-    if (cargoId) params.append('cargo_id', cargoId);
-    if (deptoId) params.append('depto_id', deptoId);
+    // No enviar cargo_id ni depto_id - el backend siempre filtra por MAQUINARIAS y MECÁNICO
     
     fetch(`${window.apiPersonalMaquinarias}?${params}`)
         .then(response => response.json())
@@ -694,11 +840,9 @@ function actualizarPersonalSeleccionado() {
     });
     
     badges.innerHTML = personalSeleccionadoInfo.map(p => `
-        <span class="badge bg-primary">
+        <span class="badge bg-primary" data-personal-id="${p.personal_id}">
             ${p.nombre_completo}
-            <button type="button" class="btn-close btn-close-white ms-1" 
-                    onclick="quitarPersonalSeleccionado(${p.personal_id})" 
-                    style="font-size: 0.6rem;"></button>
+            <button type="button" class="btn-close btn-close-white ms-1"></button>
         </span>
     `).join('');
 }
@@ -738,35 +882,49 @@ function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], est
         noItemsMessage.style.display = 'none';
     }
     
+    // Obtener número de items actuales para numeración correcta
+    const itemsActuales = container.querySelectorAll('.item-seccion').length;
+    const nuevoIndice = itemsActuales + 1;
+    
     // Clonar template
     const clone = template.content.cloneNode(true);
     const itemDiv = clone.querySelector('.item-seccion');
     
-    // Asignar índice
-    itemSeccionIndex++;
-    itemDiv.dataset.itemIndex = itemSeccionIndex;
-    itemDiv.querySelector('.item-number').textContent = itemSeccionIndex;
+    // Asignar índice basado en la cantidad actual de items
+    itemSeccionIndex = nuevoIndice;
+    itemDiv.dataset.itemIndex = nuevoIndice;
+    itemDiv.querySelector('.item-number').textContent = nuevoIndice;
     
     // Agregar al DOM primero
     container.appendChild(clone);
     
+    // Obtener el item agregado del DOM
+    const itemAgregado = container.querySelector(`[data-item-index="${nuevoIndice}"]`);
+    if (!itemAgregado) return;
+    
+    // Preseleccionar estado "Pendiente" por defecto si no se proporciona uno inicial
+    const estadoSelect = itemAgregado.querySelector('.estado-seccion-select');
+    if (estadoSelect && window.estadosOT) {
+        if (estadoInicial) {
+            // Si se proporciona un estado inicial, usarlo
+            estadoSelect.value = estadoInicial;
+        } else {
+            // Si no hay estado inicial, preseleccionar "Pendiente"
+            const estadoPendiente = window.estadosOT.find(e => e.nombre.toLowerCase() === 'pendiente');
+            if (estadoPendiente) {
+                estadoSelect.value = estadoPendiente.estadoOT_id;
+            }
+        }
+    }
+    
     // Si es un item existente, pre-seleccionar sección DESPUÉS de agregar al DOM
     if (seccionIdInicial) {
-        const itemAgregado = container.querySelector(`[data-item-index="${itemSeccionIndex}"]`);
-        if (!itemAgregado) return;
-        
         const seccionSelect = itemAgregado.querySelector('.seccion-select');
         seccionSelect.value = seccionIdInicial;
         
         // Cargar tipos de reparación y pre-seleccionar
         const tiposContainer = itemAgregado.querySelector('.tipos-reparacion-list');
         cargarTiposReparacionParaSeccion(seccionIdInicial, tiposContainer, tiposIdsIniciales);
-        
-        // Establecer estado
-        const estadoSelect = itemAgregado.querySelector('.estado-seccion-select');
-        if (estadoSelect && estadoInicial) {
-            estadoSelect.value = estadoInicial;
-        }
     }
 }
 
@@ -814,11 +972,29 @@ function eliminarItemSeccion(button) {
     const itemDiv = button.closest('.item-seccion');
     itemDiv.remove();
     
-    // Si no quedan items, mostrar mensaje
+    // Renumerar items después de eliminar
+    renumerarItemsSecciones();
+    
+    // Si no quedan items, mostrar mensaje y reiniciar contador
     const container = document.getElementById('itemsSeccionesContainer');
     if (container.children.length === 0) {
         container.innerHTML = '<p class="text-muted small" id="noItemsMessage">No hay items agregados. Haga clic en "Agregar Item" para comenzar.</p>';
+        itemSeccionIndex = 0; // Reiniciar contador cuando no hay items
     }
+}
+
+// Renumerar items de secciones después de eliminar
+function renumerarItemsSecciones() {
+    const items = document.querySelectorAll('.item-seccion');
+    items.forEach((item, index) => {
+        const itemNumber = item.querySelector('.item-number');
+        if (itemNumber) {
+            itemNumber.textContent = index + 1;
+        }
+        item.dataset.itemIndex = index + 1;
+    });
+    // Actualizar el contador global al último número usado
+    itemSeccionIndex = items.length;
 }
 
 // Actualizar estado de sección
@@ -856,6 +1032,30 @@ function cargarDatosEdicion() {
                             if (equipoSelect && data.equipo_id) {
                                 equipoSelect.value = data.equipo_id;
                                 cargarDatosEquipo();
+                                
+                                // Después de cargar datos del equipo, sobrescribir con valores de la OT si existen
+                                setTimeout(() => {
+                                    if (data.horometro !== null && data.horometro !== undefined) {
+                                        const horometroInput = document.getElementById('horometro');
+                                        if (horometroInput) {
+                                            horometroInput.value = data.horometro || '';
+                                        }
+                                    }
+                                    
+                                    if (data.odometro !== null && data.odometro !== undefined) {
+                                        const odometroInput = document.getElementById('odometro');
+                                        if (odometroInput) {
+                                            odometroInput.value = data.odometro || '';
+                                        }
+                                    }
+                                    
+                                    if (data.horometro_superestructura !== null && data.horometro_superestructura !== undefined) {
+                                        const horometroSuperInput = document.getElementById('horometro_superestructura');
+                                        if (horometroSuperInput) {
+                                            horometroSuperInput.value = data.horometro_superestructura || '';
+                                        }
+                                    }
+                                }, 100);
                             }
                         }, 500);
                     }
@@ -882,7 +1082,44 @@ function cargarDatosEdicion() {
         estadoEquipoSelect.value = data.estado_equipo_id;
     }
     
-    // Cargar personal seleccionado (solo si existe la tabla - no existe en modo edición)
+    // Precargar fecha_fin si existe
+    if (data.fecha_fin && typeof DatePickerChile !== 'undefined') {
+        setTimeout(() => {
+            DatePickerChile.setValor('fecha_fin_edicion', data.fecha_fin);
+        }, 100);
+    }
+    
+    // Precargar horómetros y odómetro si existen
+    // En modo edición, precargar directamente ya que no existe el select de equipo
+    // En modo creación, se precargan después de cargarDatosEquipo() (ver más arriba)
+    setTimeout(() => {
+        // Horómetro: puede ser número (incluyendo 0) o null/undefined
+        if (data.horometro !== null && data.horometro !== undefined) {
+            const horometroInput = document.getElementById('horometro');
+            if (horometroInput) {
+                horometroInput.value = data.horometro.toString();
+            }
+        }
+        
+        // Odómetro: puede ser número (incluyendo 0) o null/undefined
+        if (data.odometro !== null && data.odometro !== undefined) {
+            const odometroInput = document.getElementById('odometro');
+            if (odometroInput) {
+                odometroInput.value = data.odometro.toString();
+            }
+        }
+        
+        // Horómetro superestructura: puede ser número (incluyendo 0) o null/undefined
+        if (data.horometro_superestructura !== null && data.horometro_superestructura !== undefined) {
+            const horometroSuperInput = document.getElementById('horometro_superestructura');
+            if (horometroSuperInput) {
+                horometroSuperInput.value = data.horometro_superestructura.toString();
+            }
+        }
+    }, 200);
+    
+    // Cargar personal seleccionado (también en modo edición)
+    // Reducir timeout para mejorar la experiencia del usuario
     setTimeout(() => {
         if (data.personal_asignado) {
             personalSeleccionados = [...data.personal_asignado];
@@ -891,7 +1128,7 @@ function cargarDatosEdicion() {
                 cargarPersonal();
             }
         }
-    }, 1000);
+    }, 200);
     
     // Cargar secciones en modo edición - función auxiliar
     function cargarSeccionesEdicion() {
@@ -1038,11 +1275,37 @@ function guardarOrdenTrabajo(event) {
     
     // Si es edición, solo actualizar estados y fecha_fin
     if (window.esEdicion) {
+        // Obtener fecha_fin usando DatePickerChile si está disponible
+        let fechaFin = null;
+        const fechaFinInput = document.getElementById('fecha_fin_edicion');
+        if (fechaFinInput) {
+            if (typeof DatePickerChile !== 'undefined') {
+                fechaFin = DatePickerChile.getValor('fecha_fin_edicion');
+            } else {
+                // Fallback: buscar el input hidden real
+                const hiddenInput = document.getElementById('fecha_fin_edicion');
+                if (hiddenInput) {
+                    fechaFin = hiddenInput.value || null;
+                }
+            }
+        }
+        
+        // Validar fecha fin vs fecha inicio (si ambas están presentes)
+        if (fechaFin && window.otData && window.otData.fecha_inicio) {
+            const fechaInicio = new Date(window.otData.fecha_inicio);
+            const fechaFinDate = new Date(fechaFin);
+            if (fechaFinDate < fechaInicio) {
+                alert('La fecha de fin no puede ser anterior a la fecha de inicio');
+                return;
+            }
+        }
+        
         const formData = {
             ot_id: document.getElementById('ot_id').value,
             estado_ot_id: document.getElementById('estado_ot_id').value,
             estado_equipo_id: document.getElementById('estado_equipo_id').value,
-            fecha_fin: document.getElementById('fecha_fin_edicion')?.value || null
+            fecha_fin: fechaFin,
+            personal_asignado: personalSeleccionados  // Incluir personal asignado
         };
         
         // Recolectar estados de secciones de pauta
@@ -1134,12 +1397,37 @@ function guardarOrdenTrabajo(event) {
     const estadoPendiente = window.estadosOT.find(e => e.nombre.toLowerCase() === 'pendiente');
     const estadoPendienteId = estadoPendiente ? estadoPendiente.estadoOT_id : null;
     
+    // Obtener fechas usando DatePickerChile si está disponible
+    let fechaInicio = null;
+    let fechaFin = null;
+    
+    if (typeof DatePickerChile !== 'undefined') {
+        fechaInicio = DatePickerChile.getValor('fecha_inicio');
+        fechaFin = DatePickerChile.getValor('fecha_fin');
+    } else {
+        // Fallback: buscar los inputs hidden reales
+        const fechaInicioInput = document.getElementById('fecha_inicio');
+        const fechaFinInput = document.getElementById('fecha_fin');
+        if (fechaInicioInput) fechaInicio = fechaInicioInput.value || null;
+        if (fechaFinInput) fechaFin = fechaFinInput.value || null;
+    }
+    
+    // Validar que fecha_fin no sea antes de fecha_inicio
+    if (fechaInicio && fechaFin) {
+        const fechaInicioDate = new Date(fechaInicio);
+        const fechaFinDate = new Date(fechaFin);
+        if (fechaFinDate < fechaInicioDate) {
+            alert('La fecha de fin no puede ser anterior a la fecha de inicio');
+            return;
+        }
+    }
+    
     // Recolectar datos del formulario
     const formData = {
         ot_id: null,
         equipo_id: equipoId,
-        fecha_inicio: document.getElementById('fecha_inicio').value,
-        fecha_fin: document.getElementById('fecha_fin').value,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
         tipo_mantenimiento_id: tipoMantenimientoId,
         estado_ot_id: estadoPendienteId,  // Siempre PENDIENTE en creación
         estado_equipo_id: document.getElementById('estado_equipo_id').value,
@@ -1196,8 +1484,11 @@ function guardarOrdenTrabajo(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Orden de trabajo guardada exitosamente');
-            window.location.href = '/maquinarias/ordenes-trabajo/';
+            mostrarNotificacion('Orden de trabajo guardada exitosamente', 'success');
+            // Redirigir a la lista después de 1.5 segundos
+            setTimeout(() => {
+                window.location.replace('/maquinarias/ordenes-trabajo/');
+            }, 1500);
         } else {
             alert('Error al guardar: ' + data.message);
         }

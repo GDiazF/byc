@@ -50,6 +50,23 @@ document.addEventListener('DOMContentLoaded', function() {
             cargarOrdenes();
         });
     }
+    
+    // Event listeners para botones de limpiar filtros
+    const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
+    if (btnLimpiarFiltros) {
+        btnLimpiarFiltros.addEventListener('click', limpiarFiltros);
+    }
+    
+    const btnLimpiarFiltrosFinalizadas = document.getElementById('btnLimpiarFiltrosFinalizadas');
+    if (btnLimpiarFiltrosFinalizadas) {
+        btnLimpiarFiltrosFinalizadas.addEventListener('click', limpiarFiltrosFinalizadas);
+    }
+    
+    // Event listener para cambiar tamaño de página
+    const pageSizeSelect = document.getElementById('pageSizeSelect');
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', cambiarTamanoPagina);
+    }
 });
 
 // Función debounce para búsqueda
@@ -156,7 +173,7 @@ function renderizarOrdenes(ordenes) {
     if (ordenes.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center py-5">
+                <td colspan="9" class="text-center py-5">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
                     <p class="text-muted mt-2">No se encontraron ordenes de trabajo</p>
                 </td>
@@ -215,6 +232,14 @@ function renderizarOrdenes(ordenes) {
                         </a>`
                     }
                 </td>
+                <td class="text-center">
+                    <a href="/maquinarias/ordenes-trabajo/${ot.ot_id}/pdf/" 
+                       class="btn btn-danger btn-sm" 
+                       title="Descargar PDF"
+                       target="_blank">
+                        <i class="bi bi-file-pdf"></i> PDF
+                    </a>
+                </td>
             </tr>
         `;
     }).join('');
@@ -228,7 +253,7 @@ function renderizarOrdenesFinalizadas(ordenes) {
     if (ordenes.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center py-5">
+                <td colspan="9" class="text-center py-5">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
                     <p class="text-muted mt-2">No se encontraron ordenes finalizadas</p>
                 </td>
@@ -272,6 +297,22 @@ function renderizarOrdenesFinalizadas(ordenes) {
                 <td>${estadoOTBadge}</td>
                 <td>${estadoEquipoBadge}</td>
                 <td>${fechaFin}</td>
+                <td class="text-center">
+                    <button type="button" 
+                        class="btn btn-info btn-sm" 
+                        onclick="verDetalleOT(${ot.ot_id})"
+                        title="Ver Detalle">
+                        <i class="bi bi-eye"></i> Ver
+                    </button>
+                </td>
+                <td class="text-center">
+                    <a href="/maquinarias/ordenes-trabajo/${ot.ot_id}/pdf/" 
+                       class="btn btn-danger btn-sm" 
+                       title="Descargar PDF"
+                       target="_blank">
+                        <i class="bi bi-file-pdf"></i> PDF
+                    </a>
+                </td>
             </tr>
         `;
     }).join('');
@@ -395,10 +436,13 @@ function limpiarFiltrosFinalizadas() {
 // Ver detalle de OT (modal)
 function verDetalleOT(ot_id) {
     const modal = new bootstrap.Modal(document.getElementById('modalDetalleOT'));
-    const modalBody = document.getElementById('modalDetalleOTBody');
+    const modalTitle = document.getElementById('modalDetalleOTLabel');
+    const panelInformacion = document.getElementById('panel-informacion');
+    const panelObservaciones = document.getElementById('panel-observaciones');
+    const panelHistorial = document.getElementById('panel-historial');
     
-    // Mostrar loading
-    modalBody.innerHTML = `
+    // Mostrar loading en todas las pestañas
+    panelInformacion.innerHTML = `
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Cargando...</span>
@@ -406,18 +450,48 @@ function verDetalleOT(ot_id) {
             <p class="mt-2 text-muted">Cargando detalles...</p>
         </div>
     `;
+    panelObservaciones.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando observaciones...</p>
+        </div>
+    `;
+    panelHistorial.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando historial...</p>
+        </div>
+    `;
+    
+    // Activar primera pestaña
+    const tabInformacion = document.getElementById('tab-informacion');
+    if (tabInformacion) {
+        const bsTab = new bootstrap.Tab(tabInformacion);
+        bsTab.show();
+    }
     
     modal.show();
     
-    // Obtener detalles
-    const url = window.apiDetalleOT.replace('0', ot_id);
-    fetch(url)
+    // Obtener detalles de la OT
+    const urlDetalle = window.apiDetalleOT.replace('0', ot_id);
+    fetch(urlDetalle)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                renderizarDetalleOT(data.ot, modalBody);
+                // Actualizar título del modal
+                modalTitle.innerHTML = `<i class="bi bi-clipboard-data me-2"></i>Detalle - ${data.ot.folio}`;
+                
+                // Renderizar información general (sin observaciones ni historial)
+                renderizarDetalleOT(data.ot, panelInformacion);
+                
+                // Renderizar observaciones
+                renderizarObservacionesOT(data.ot, panelObservaciones);
             } else {
-                modalBody.innerHTML = `
+                panelInformacion.innerHTML = `
                     <div class="alert alert-danger">
                         <i class="bi bi-exclamation-triangle me-2"></i>
                         Error al cargar detalles: ${data.message}
@@ -427,13 +501,278 @@ function verDetalleOT(ot_id) {
         })
         .catch(error => {
             console.error('Error:', error);
-            modalBody.innerHTML = `
+            panelInformacion.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="bi bi-exclamation-triangle me-2"></i>
                     Error de conexión al cargar detalles
                 </div>
             `;
         });
+    
+    // Obtener historial de la OT
+    const urlHistorial = window.apiHistorialOT.replace('0', ot_id);
+    fetch(urlHistorial)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderizarHistorialOT(data, panelHistorial, null);
+            } else {
+                panelHistorial.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Error al cargar historial: ${data.message}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            panelHistorial.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Error de conexión al cargar historial
+                </div>
+            `;
+        });
+}
+
+// Renderizar observaciones de OT
+function renderizarObservacionesOT(ot, container) {
+    const historialObservacionesHTML = ot.historial_observaciones && ot.historial_observaciones.length > 0
+        ? ot.historial_observaciones.map(obs => `
+            <div class="card mb-2 border">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <strong class="text-primary"><i class="bi bi-person-circle me-1"></i>${obs.usuario}</strong>
+                        </div>
+                        <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${formatearFechaChilena(obs.fecha)}</small>
+                    </div>
+                    <p class="mb-0">${obs.observacion}</p>
+                </div>
+            </div>
+        `).join('')
+        : '<div class="alert alert-info mb-0"><i class="bi bi-info-circle me-2"></i>No hay observaciones registradas</div>';
+    
+    container.innerHTML = `
+        <div class="card border">
+            <div class="card-body">
+                ${historialObservacionesHTML}
+            </div>
+        </div>
+    `;
+}
+
+// Renderizar historial de OT en el modal
+function renderizarHistorialOT(data, modalBody, modalTitle) {
+    const ot = data.ot;
+    const historial = data.historial;
+    
+    // Actualizar título del modal solo si se proporciona
+    if (modalTitle) {
+        modalTitle.innerHTML = `<i class="bi bi-clock-history me-2"></i>Historial - ${ot.folio}`;
+    }
+    
+    // Historial compacto pero con detalles
+    let infoHTML = '';
+    if (historial && historial.length > 0) {
+        infoHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">
+                    <i class="bi bi-list-ul me-1"></i>Historial de Cambios
+                </h6>
+                <span class="badge bg-secondary">${historial.length}</span>
+            </div>
+            <div class="timeline">
+        `;
+        
+        historial.forEach((evento, index) => {
+            const icono = getIconoAccion(evento.accion);
+            const badgeColor = getBadgeColorAccion(evento.accion);
+            const borderColor = getBorderLeftColorAccion(evento.accion);
+            
+            let datosHTML = '';
+            if (evento.datos_previos || evento.datos_nuevos) {
+                datosHTML = '<div class="mt-2 pt-2 border-top small">';
+                
+                // Datos previos
+                if (evento.datos_previos) {
+                    let valorAnterior = '';
+                    let labelAnterior = '';
+                    
+                    if (evento.datos_previos.estado_ot_nombre) {
+                        valorAnterior = evento.datos_previos.estado_ot_nombre;
+                        labelAnterior = 'Estado OT';
+                    } else if (evento.datos_previos.estado_equipo_nombre) {
+                        valorAnterior = evento.datos_previos.estado_equipo_nombre;
+                        labelAnterior = 'Estado Equipo';
+                    } else if (evento.datos_previos.estado_seccion_nombre) {
+                        valorAnterior = evento.datos_previos.estado_seccion_nombre;
+                        labelAnterior = 'Estado Sección';
+                        if (evento.datos_previos.seccion_nombre) {
+                            labelAnterior += ` (${evento.datos_previos.seccion_nombre})`;
+                        }
+                    } else if (evento.datos_previos.fecha_fin) {
+                        valorAnterior = evento.datos_previos.fecha_fin;
+                        labelAnterior = 'Fecha Fin';
+                    }
+                    
+                    if (valorAnterior) {
+                        datosHTML += `
+                            <span class="text-muted">Antes:</span> 
+                            <span class="badge bg-light text-dark border me-1">${labelAnterior}</span>
+                            <span class="text-danger">${valorAnterior}</span>
+                        `;
+                    }
+                }
+                
+                // Datos nuevos
+                if (evento.datos_nuevos) {
+                    let valorNuevo = '';
+                    let labelNuevo = '';
+                    
+                    if (evento.datos_nuevos.estado_ot_nombre) {
+                        valorNuevo = evento.datos_nuevos.estado_ot_nombre;
+                        labelNuevo = 'Estado OT';
+                    } else if (evento.datos_nuevos.estado_equipo_nombre) {
+                        valorNuevo = evento.datos_nuevos.estado_equipo_nombre;
+                        labelNuevo = 'Estado Equipo';
+                    } else if (evento.datos_nuevos.estado_seccion_nombre) {
+                        valorNuevo = evento.datos_nuevos.estado_seccion_nombre;
+                        labelNuevo = 'Estado Sección';
+                        if (evento.datos_nuevos.seccion_nombre) {
+                            labelNuevo += ` (${evento.datos_nuevos.seccion_nombre})`;
+                        }
+                    } else if (evento.datos_nuevos.fecha_fin) {
+                        valorNuevo = evento.datos_nuevos.fecha_fin;
+                        labelNuevo = 'Fecha Fin';
+                    }
+                    
+                    if (valorNuevo) {
+                        if (datosHTML.includes('Antes:')) {
+                            datosHTML += ' → ';
+                        }
+                        datosHTML += `
+                            <span class="text-muted">Después:</span> 
+                            <span class="badge bg-light text-dark border me-1">${labelNuevo}</span>
+                            <span class="text-success">${valorNuevo}</span>
+                        `;
+                    }
+                }
+                
+                datosHTML += '</div>';
+            }
+            
+            infoHTML += `
+                <div class="timeline-item mb-2" style="position: relative; padding-left: 30px;">
+                    <div class="card" style="border-left: 3px solid ${borderColor};">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="d-flex align-items-start flex-grow-1">
+                                    <div class="me-2 mt-1">
+                                        ${icono}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <span class="badge ${badgeColor} mb-1">${evento.accion_display}</span>
+                                        <p class="mb-1 small">${evento.descripcion}</p>
+                                        ${datosHTML}
+                                        <small class="text-muted">
+                                            <i class="bi bi-person me-1"></i>${evento.usuario_nombre}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="text-end ms-2" style="min-width: 100px; flex-shrink: 0;">
+                                    <small class="text-muted d-block">${evento.fecha}</small>
+                                    <small class="text-muted">${evento.hora}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        infoHTML += '</div>';
+    } else {
+        infoHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No hay registros en el historial de esta orden de trabajo.
+            </div>
+        `;
+    }
+    
+    modalBody.innerHTML = infoHTML;
+}
+
+// Funciones helper para iconos y colores según acción
+function getIconoAccion(accion) {
+    const iconos = {
+        'OT_CREADA': '<i class="bi bi-plus-circle-fill text-success fs-5"></i>',
+        'OT_MODIFICADA': '<i class="bi bi-pencil-fill text-primary fs-5"></i>',
+        'ESTADO_OT_CAMBIADO': '<i class="bi bi-arrow-repeat text-info fs-5"></i>',
+        'ESTADO_EQUIPO_CAMBIADO': '<i class="bi bi-gear-fill text-warning fs-5"></i>',
+        'ESTADO_SECCION_CAMBIADO': '<i class="bi bi-diagram-3-fill text-secondary fs-5"></i>',
+        'FECHA_INICIO_CAMBIADA': '<i class="bi bi-calendar-event-fill text-primary fs-5"></i>',
+        'FECHA_FIN_CAMBIADA': '<i class="bi bi-calendar-event-fill text-primary fs-5"></i>',
+        'PERSONAL_ASIGNADO': '<i class="bi bi-person-plus-fill text-success fs-5"></i>',
+        'PERSONAL_ELIMINADO': '<i class="bi bi-person-dash-fill text-danger fs-5"></i>',
+        'OBSERVACION_AGREGADA': '<i class="bi bi-chat-left-text-fill text-info fs-5"></i>'
+    };
+    return iconos[accion] || '<i class="bi bi-info-circle-fill text-secondary fs-5"></i>';
+}
+
+function getBadgeColorAccion(accion) {
+    const colores = {
+        'OT_CREADA': 'bg-success',
+        'OT_MODIFICADA': 'bg-primary',
+        'ESTADO_OT_CAMBIADO': 'bg-info',
+        'ESTADO_EQUIPO_CAMBIADO': 'bg-warning text-dark',
+        'ESTADO_SECCION_CAMBIADO': 'bg-secondary',
+        'FECHA_INICIO_CAMBIADA': 'bg-primary',
+        'FECHA_FIN_CAMBIADA': 'bg-primary',
+        'PERSONAL_ASIGNADO': 'bg-success',
+        'PERSONAL_ELIMINADO': 'bg-danger',
+        'OBSERVACION_AGREGADA': 'bg-info'
+    };
+    return colores[accion] || 'bg-secondary';
+}
+
+function getBorderColorAccion(index) {
+    const colores = ['border-primary', 'border-secondary', 'border-info', 'border-warning', 'border-success'];
+    return colores[index % colores.length];
+}
+
+function getBackgroundColorAccion(accion) {
+    const colores = {
+        'OT_CREADA': 'bg-light',
+        'OT_MODIFICADA': '',
+        'ESTADO_OT_CAMBIADO': 'bg-light bg-opacity-50',
+        'ESTADO_EQUIPO_CAMBIADO': 'bg-light bg-opacity-50',
+        'ESTADO_SECCION_CAMBIADO': 'bg-light bg-opacity-50',
+        'FECHA_INICIO_CAMBIADA': '',
+        'FECHA_FIN_CAMBIADA': '',
+        'PERSONAL_ASIGNADO': 'bg-light',
+        'PERSONAL_ELIMINADO': 'bg-light bg-opacity-50',
+        'OBSERVACION_AGREGADA': 'bg-light'
+    };
+    return colores[accion] || '';
+}
+
+function getBorderLeftColorAccion(accion) {
+    const colores = {
+        'OT_CREADA': '#198754',
+        'OT_MODIFICADA': '#0d6efd',
+        'ESTADO_OT_CAMBIADO': '#0dcaf0',
+        'ESTADO_EQUIPO_CAMBIADO': '#ffc107',
+        'ESTADO_SECCION_CAMBIADO': '#6c757d',
+        'FECHA_INICIO_CAMBIADA': '#0d6efd',
+        'FECHA_FIN_CAMBIADA': '#0d6efd',
+        'PERSONAL_ASIGNADO': '#198754',
+        'PERSONAL_ELIMINADO': '#dc3545',
+        'OBSERVACION_AGREGADA': '#0dcaf0'
+    };
+    return colores[accion] || '#6c757d';
 }
 
 // Función helper para formatear fechas en formato chileno
@@ -681,28 +1020,6 @@ function renderizarDetalleOT(ot, container) {
             </div>
         </div>
         
-        <div class="row mt-3">
-            <div class="col-md-6">
-                <div class="card border">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0 fw-bold"><i class="bi bi-chat-left-text me-2 text-primary"></i>Observaciones</h6>
-                    </div>
-                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                        ${historialObservacionesHTML}
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card border">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-primary"></i>Historial de Cambios</h6>
-                    </div>
-                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                        ${historialCambiosHTML}
-                    </div>
-                </div>
-            </div>
-        </div>
     `;
 }
 

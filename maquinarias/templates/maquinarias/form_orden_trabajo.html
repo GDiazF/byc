@@ -64,7 +64,7 @@
                     <div class="row g-2">
                         <div class="col-md-3">
                             <label for="empresa_id" class="form-label">Empresa <span class="text-danger">*</span></label>
-                            <select class="form-select" id="empresa_id" required onchange="filtrarEquipos()">
+                            <select class="form-select" id="empresa_id" required>
                                 <option value="">Seleccione empresa...</option>
                                 {% for empresa in empresas %}
                                 <option value="{{ empresa.id }}">{{ empresa.nomFantasia }}</option>
@@ -74,7 +74,7 @@
                         
                         <div class="col-md-3">
                             <label for="tipo_equipo_id" class="form-label">Tipo de Equipo</label>
-                            <select class="form-select" id="tipo_equipo_id" onchange="filtrarMarcasPorTipo()">
+                            <select class="form-select" id="tipo_equipo_id">
                                 <option value="">Todos</option>
                                 {% for tipo in tipos_equipo %}
                                 <option value="{{ tipo.tipoEquipo_id }}">{{ tipo.tipoEquipo }}</option>
@@ -84,21 +84,21 @@
                         
                         <div class="col-md-3">
                             <label for="marca_equipo_id" class="form-label">Marca</label>
-                            <select class="form-select" id="marca_equipo_id" onchange="filtrarModelosPorTipoYMarca()" disabled>
+                            <select class="form-select" id="marca_equipo_id" disabled>
                                 <option value="">Primero seleccione tipo...</option>
                             </select>
                         </div>
                         
                         <div class="col-md-3">
                             <label for="modelo_equipo_id" class="form-label">Modelo</label>
-                            <select class="form-select" id="modelo_equipo_id" onchange="filtrarEquipos()" disabled>
+                            <select class="form-select" id="modelo_equipo_id" disabled>
                                 <option value="">Primero seleccione marca...</option>
                             </select>
                         </div>
                         
                         <div class="col-md-3">
                             <label for="equipo_id" class="form-label">Equipo <span class="text-danger">*</span></label>
-                            <select class="form-select" id="equipo_id" required onchange="cargarDatosEquipo()" disabled>
+                            <select class="form-select" id="equipo_id" required disabled>
                                 <option value="">Primero seleccione modelo...</option>
                             </select>
                         </div>
@@ -142,17 +142,17 @@
                     <div class="row g-2">
                         <div class="col-md-4">
                             <label for="fecha_inicio" class="form-label">Fecha de Inicio</label>
-                            <input type="date" class="form-control" id="fecha_inicio">
+                            <input type="text" class="form-control fecha-chile-picker" id="fecha_inicio" placeholder="DD-MM-YYYY">
                         </div>
                         
                         <div class="col-md-4">
                             <label for="fecha_fin" class="form-label">Fecha de Fin</label>
-                            <input type="date" class="form-control" id="fecha_fin">
+                            <input type="text" class="form-control fecha-chile-picker" id="fecha_fin" placeholder="DD-MM-YYYY">
                         </div>
                         
                         <div class="col-md-4">
                             <label for="tipo_mantenimiento_id" class="form-label">Tipo de Mantenimiento <span class="text-danger">*</span></label>
-                            <select class="form-select" id="tipo_mantenimiento_id" required onchange="cambiarTipoMantenimiento()">
+                            <select class="form-select" id="tipo_mantenimiento_id" required>
                                 <option value="">Seleccione...</option>
                                 {% for tipo in tipos_mantenimiento %}
                                 <option value="{{ tipo.tipoMantenimiento_id }}">{{ tipo.nombre }}</option>
@@ -164,7 +164,7 @@
             </div>
 
             <!-- Sección: Mantenimiento Preventivo (solo si es preventivo) -->
-            <div class="form-section" id="seccionPreventivo" style="display: none;">
+            <div class="form-section hidden-section" id="seccionPreventivo">
                 <div class="form-section-header">
                     <i class="bi bi-shield-check me-2"></i>
                     <span>Mantenimiento Preventivo</span>
@@ -174,25 +174,25 @@
                         <div class="col-md-12">
                             <label class="form-label">¿Corresponde a una pauta de mantenimiento? <span class="text-danger">*</span></label>
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="corresponde_pauta" id="corresponde_pauta_si" value="si" onchange="cambiarCorrespondePauta()">
+                                <input class="form-check-input" type="radio" name="corresponde_pauta" id="corresponde_pauta_si" value="si">
                                 <label class="form-check-label" for="corresponde_pauta_si">Sí</label>
                             </div>
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="corresponde_pauta" id="corresponde_pauta_no" value="no" onchange="cambiarCorrespondePauta()">
+                                <input class="form-check-input" type="radio" name="corresponde_pauta" id="corresponde_pauta_no" value="no">
                                 <label class="form-check-label" for="corresponde_pauta_no">No</label>
                             </div>
                         </div>
                         
                         <!-- Select de pautas (solo si corresponde_pauta = sí) -->
-                        <div class="col-md-12" id="selectPautaContainer" style="display: none;">
+                        <div class="col-md-12 hidden-section" id="selectPautaContainer">
                             <label for="pauta_id" class="form-label">Pauta de Mantenimiento <span class="text-danger">*</span></label>
-                            <select class="form-select" id="pauta_id" onchange="cargarSeccionesPauta()">
+                            <select class="form-select" id="pauta_id">
                                 <option value="">Seleccione una pauta...</option>
                             </select>
                         </div>
                         
                         <!-- Secciones de la pauta seleccionada -->
-                        <div class="col-md-12" id="seccionesPautaContainer" style="display: none;">
+                        <div class="col-md-12 hidden-section" id="seccionesPautaContainer">
                             <label class="form-label">Secciones de la Pauta:</label>
                             <div id="seccionesPautaList">
                                 <!-- Se llena dinámicamente -->
@@ -203,7 +203,7 @@
             </div>
 
             <!-- Sección: Secciones y Tipos de Reparación (si NO es pauta o es correctivo) -->
-            <div class="form-section" id="seccionReparaciones" style="display: none;">
+            <div class="form-section hidden-section" id="seccionReparaciones">
                 <div class="form-section-header">
                     <i class="bi bi-list-check me-2"></i>
                     <span>Secciones y Tipos de Reparación</span>
@@ -214,22 +214,23 @@
                     </div>
                     
                     <div class="mt-3 text-center">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="agregarItemSeccion()">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnAgregarItemSeccion">
                             <i class="bi bi-plus-circle me-1"></i>Agregar Item
                         </button>
                     </div>
                 </div>
             </div>
-
-            <!-- Sección: Personal a Asignar -->
+            {% endif %}
+            
+            <!-- Sección: Personal a Asignar (también en modo edición) -->
             <div class="form-section">
                 <div class="form-section-header">
                     <i class="bi bi-people me-2"></i>
-                    <span>Personal a Asignar</span>
+                    <span>{% if es_edicion %}Personal Asignado{% else %}Personal a Asignar{% endif %}</span>
                 </div>
                 <div class="form-section-body">
                     <!-- Personal seleccionado -->
-                    <div class="mb-3" id="personalSeleccionadoContainer" style="display: none;">
+                    <div class="mb-3 personal-selected-container" id="personalSeleccionadoContainer">
                         <label class="form-label">Personal Seleccionado:</label>
                         <div class="d-flex flex-wrap gap-2" id="personalSeleccionadoBadges">
                             <!-- Se llena dinámicamente -->
@@ -253,32 +254,34 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small">Cargo</label>
-                            <select class="form-select form-select-sm" id="personalCargoFilter">
-                                <option value="">Todos</option>
+                            <label class="form-label small">Cargo <span class="text-muted">(Fijo)</span></label>
+                            <select class="form-select form-select-sm bg-light" id="personalCargoFilter" disabled>
+                                <option value="">Cargando...</option>
                             </select>
+                            <small class="text-muted">Solo se muestran mecánicos</small>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small">Departamento</label>
-                            <select class="form-select form-select-sm" id="personalDeptoFilter">
-                                <option value="">Todos</option>
+                            <label class="form-label small">Departamento <span class="text-muted">(Fijo)</span></label>
+                            <select class="form-select form-select-sm bg-light" id="personalDeptoFilter" disabled>
+                                <option value="">Cargando...</option>
                             </select>
+                            <small class="text-muted">Solo se muestran de Maquinarias</small>
                         </div>
                     </div>
                     
                     <!-- Tabla de personal -->
-                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <div class="table-responsive personal-table-responsive">
                         <table class="table table-sm table-hover table-bordered">
                             <thead class="table-dark sticky-top">
                                 <tr>
-                                    <th style="width: 5%;" class="text-center">
-                                        <input type="checkbox" id="selectAllPersonal" onchange="toggleSeleccionarTodoPersonal()">
+                                    <th class="table-col-5 text-center">
+                                        <input type="checkbox" id="selectAllPersonal">
                                     </th>
-                                    <th style="width: 20%;">Nombre</th>
-                                    <th style="width: 12%;">RUT</th>
-                                    <th style="width: 20%;">Cargo</th>
-                                    <th style="width: 20%;">Departamento</th>
-                                    <th style="width: 23%;">Empresa</th>
+                                    <th class="table-col-20">Nombre</th>
+                                    <th class="table-col-12">RUT</th>
+                                    <th class="table-col-20">Cargo</th>
+                                    <th class="table-col-20">Departamento</th>
+                                    <th class="table-col-23">Empresa</th>
                                 </tr>
                             </thead>
                             <tbody id="personalTableBody">
@@ -295,7 +298,8 @@
                     </div>
                 </div>
             </div>
-            {% else %}
+            
+            {% if es_edicion %}
             <!-- En modo edición, mostrar información de solo lectura -->
             <div class="form-section">
                 <div class="form-section-header">
@@ -318,7 +322,7 @@
                         </div>
                         <div class="col-md-3">
                             <label for="fecha_fin_edicion" class="form-label">Fecha de Fin</label>
-                            <input type="date" class="form-control" id="fecha_fin_edicion" value="{% if ot.fecha_fin %}{{ ot.fecha_fin|date:'Y-m-d' }}{% endif %}">
+                            <input type="text" class="form-control fecha-chile-picker" id="fecha_fin_edicion" placeholder="DD-MM-YYYY" {% if ot.fecha_fin %}value="{{ ot.fecha_fin|date:'Y-m-d' }}"{% endif %}>
                         </div>
                     </div>
                 </div>
@@ -403,7 +407,7 @@
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <label class="form-label">Historial de Observaciones</label>
-                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa;">
+                            <div class="border rounded p-3 historial-observaciones">
                                 <div id="historialObservaciones">
                                     {% for obs in historial_observaciones %}
                                     <div class="mb-3 pb-3 border-bottom">
@@ -423,7 +427,7 @@
                             <label for="nuevaObservacion" class="form-label">Agregar Nueva Observación <span class="text-danger">*</span></label>
                             <textarea class="form-control" id="nuevaObservacion" rows="3" 
                                       placeholder="Ingrese una nueva observación..."></textarea>
-                            <button type="button" class="btn btn-primary btn-sm mt-2" onclick="agregarObservacion()">
+                            <button type="button" class="btn btn-primary btn-sm mt-2" id="btnAgregarObservacion">
                                 <i class="bi bi-plus-circle me-1"></i>Agregar Observación
                             </button>
                         </div>
@@ -462,13 +466,13 @@
         <div class="d-flex justify-content-between align-items-start mb-3 border-bottom pb-2">
             <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Item <span class="item-number"></span></h6>
             <div class="d-flex gap-2">
-                <select class="form-select form-select-sm estado-seccion-select" style="width: auto;" onchange="actualizarEstadoSeccion(this)">
+                <select class="form-select form-select-sm estado-seccion-select estado-seccion-select-auto">
                     <option value="">Seleccione estado...</option>
                     {% for estado in estados_ot %}
                     <option value="{{ estado.estadoOT_id }}">{{ estado.nombre }}</option>
                     {% endfor %}
                 </select>
-                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarItemSeccion(this)">
+                <button type="button" class="btn btn-danger btn-sm btnEliminarItemSeccion">
                     <i class="bi bi-trash-fill"></i> Eliminar
                 </button>
             </div>
@@ -477,7 +481,7 @@
         <div class="row">
             <div class="col-md-4 mb-3">
                 <label class="form-label">Sección <span class="text-danger">*</span></label>
-                <select class="form-select seccion-select" onchange="cargarTiposReparacionItem(this)" required>
+                <select class="form-select seccion-select" required>
                     <option value="">Seleccione una sección</option>
                     {% for seccion in secciones %}
                     <option value="{{ seccion.seccion_id }}">{{ seccion.nombre }}</option>
@@ -582,6 +586,11 @@
         pauta_id: {% if ot.pauta_id %}{{ ot.pauta_id.pauta_id }}{% else %}null{% endif %},
         estado_ot_id: {% if ot.estado_ot_id %}{{ ot.estado_ot_id.estadoOT_id }}{% else %}null{% endif %},
         estado_equipo_id: {% if ot.estado_equipo_id %}{{ ot.estado_equipo_id.estadoEquipo_id }}{% else %}null{% endif %},
+        fecha_inicio: {% if ot.fecha_inicio %}"{{ ot.fecha_inicio|date:'Y-m-d' }}"{% else %}null{% endif %},
+        fecha_fin: {% if ot.fecha_fin %}"{{ ot.fecha_fin|date:'Y-m-d' }}"{% else %}null{% endif %},
+        horometro: {% if ot.equipo_id.horometro %}{{ ot.equipo_id.horometro }}{% else %}null{% endif %},
+        odometro: {% if ot.equipo_id.odometro %}{{ ot.equipo_id.odometro }}{% else %}null{% endif %},
+        horometro_superestructura: {% if ot.equipo_id.horometroSuperEstructural %}{{ ot.equipo_id.horometroSuperEstructural }}{% else %}null{% endif %},
         personal_asignado: [
             {% for p in ot.personal_asignado.all %}
             {{ p.personal_id }}{% if not forloop.last %},{% endif %}

@@ -63,6 +63,7 @@ urlpatterns = [
     path('ordenes-trabajo/', views.lista_ordenes_trabajo, name='lista_ordenes_trabajo'),
     path('ordenes-trabajo/crear/', views.crear_orden_trabajo, name='crear_orden_trabajo'),
     path('ordenes-trabajo/<int:ot_id>/editar/', views.editar_orden_trabajo, name='editar_orden_trabajo'),
+    path('ordenes-trabajo/<int:ot_id>/pdf/', views.generar_pdf_ot, name='generar_pdf_ot'),
     
     # APIs para Orden de Trabajo
     path('api/ordenes-trabajo/', views.api_listar_ordenes_trabajo, name='api_listar_ordenes_trabajo'),
@@ -74,6 +75,7 @@ urlpatterns = [
     path('api/modelos-por-tipo-marca/', views.api_modelos_por_tipo_marca, name='api_modelos_por_tipo_marca'),
     path('api/pautas/<int:pauta_id>/detalle-ot/', views.api_detalle_pauta_ot, name='api_detalle_pauta_ot'),
     path('api/detalle-ot/<int:ot_id>/', views.api_detalle_ot, name='api_detalle_ot'),
+    path('api/ordenes-trabajo/<int:ot_id>/historial/', views.api_historial_ot, name='api_historial_ot'),
     path('api/cargos-por-depto/', views.api_cargos_por_depto, name='api_cargos_por_depto'),
     path('api/departamentos/', views.api_departamentos, name='api_departamentos'),
 ]

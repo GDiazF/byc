@@ -62,25 +62,43 @@ function cargarModelos() {
     });
     
     fetch(`/maquinarias/api/pautas-mantenimiento/?${params}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 renderizarModelos(data.modelos);
                 renderizarPaginacion(data);
                 actualizarEstadisticas(data.total, data);
             } else {
-                mostrarError('Error al cargar modelos: ' + data.message);
+                mostrarError('Error al cargar modelos: ' + (data.message || 'Error desconocido'));
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            mostrarError('Error de conexión al cargar modelos');
+            console.error('Error al cargar modelos:', error);
+            mostrarError('Error de conexión al cargar modelos: ' + error.message);
         });
 }
 
 // Renderizar tabla de modelos
 function renderizarModelos(modelos) {
     const tbody = document.getElementById('modelosTableBody');
+    
+    if (!modelos || !Array.isArray(modelos)) {
+        console.error('Error: modelos no es un array válido', modelos);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-5">
+                    <i class="bi bi-exclamation-triangle fs-1 text-danger"></i>
+                    <p class="text-danger mt-2">Error al cargar modelos: datos inválidos</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
     
     if (modelos.length === 0) {
         tbody.innerHTML = `
@@ -94,30 +112,56 @@ function renderizarModelos(modelos) {
         return;
     }
     
-    tbody.innerHTML = modelos.map(modelo => `
-        <tr>
-            <td><strong>${modelo.modeloEquipo.nombre}</strong></td>
-            <td>
-                <span class="badge bg-secondary">${modelo.tipoEquipo.sigla}</span>
-                <span class="ms-1">${modelo.tipoEquipo.nombre}</span>
-            </td>
-            <td>${modelo.marcaEquipo.nombre}</td>
-            <td class="text-center">
-                <a href="/maquinarias/pautas-mantenimiento/modelo/${modelo.modeloEquipo.modeloEquipo_id}/" 
-                   class="btn btn-sm btn-primary" 
-                   title="Ver pautas">
-                    <i class="bi bi-eye"></i> ${modelo.total_pautas}
-                </a>
-            </td>
-            <td class="text-center">
-                <a href="/maquinarias/pautas-mantenimiento/crear/?modelo=${modelo.modeloEquipo.modeloEquipo_id}" 
-                   class="btn btn-sm btn-success" 
-                   title="Nueva pauta para este modelo">
-                    <i class="bi bi-plus-circle"></i>
-                </a>
-            </td>
-        </tr>
-    `).join('');
+    try {
+        tbody.innerHTML = modelos.map(modelo => {
+            // Validar que el modelo tenga la estructura esperada
+            if (!modelo.modeloEquipo || !modelo.tipoEquipo || !modelo.marcaEquipo) {
+                console.error('Error: modelo con estructura inválida', modelo);
+                return `
+                    <tr>
+                        <td colspan="5" class="text-danger">
+                            Error: datos del modelo incompletos
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            return `
+                <tr>
+                    <td><strong>${modelo.modeloEquipo.nombre || 'N/A'}</strong></td>
+                    <td>
+                        <span class="badge bg-secondary">${modelo.tipoEquipo.sigla || 'N/A'}</span>
+                        <span class="ms-1">${modelo.tipoEquipo.nombre || 'N/A'}</span>
+                    </td>
+                    <td>${modelo.marcaEquipo.nombre || 'N/A'}</td>
+                    <td class="text-center">
+                        <a href="/maquinarias/pautas-mantenimiento/modelo/${modelo.modeloEquipo.modeloEquipo_id}/" 
+                           class="btn btn-sm btn-primary" 
+                           title="Ver pautas">
+                            <i class="bi bi-eye"></i> ${modelo.total_pautas || 0}
+                        </a>
+                    </td>
+                    <td class="text-center">
+                        <a href="/maquinarias/pautas-mantenimiento/crear/?modelo=${modelo.modeloEquipo.modeloEquipo_id}" 
+                           class="btn btn-sm btn-success" 
+                           title="Nueva pauta para este modelo">
+                            <i class="bi bi-plus-circle"></i>
+                        </a>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error al renderizar modelos:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-5">
+                    <i class="bi bi-exclamation-triangle fs-1 text-danger"></i>
+                    <p class="text-danger mt-2">Error al renderizar modelos: ${error.message}</p>
+                </td>
+            </tr>
+        `;
+    }
 }
 
 // Renderizar paginación

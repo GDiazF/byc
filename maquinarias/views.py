@@ -1,11 +1,24 @@
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.contrib import messages
+from django.conf import settings
 import json
+import os
+
+# Para generar PDFs
+try:
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
 
 from .models import (
     Equipo, TipoEquipo, MarcaEquipo, ModeloEquipo, Seccion, TipoReparacion, 
@@ -2203,7 +2216,7 @@ def api_guardar_orden_trabajo(request):
                 HistorialOT.registrar(
                     ot=ot,
                     accion='ESTADO_OT_CAMBIADO',
-                    descripcion=f"Estado de OT cambiado de '{estado_ot_anterior.nombre if estado_ot_anterior else "N/A"}' a '{estado_ot.nombre}'",
+                    descripcion=f"Estado de OT cambiado de '{estado_ot_anterior.nombre if estado_ot_anterior else 'N/A'}' a '{estado_ot.nombre}'",
                     usuario=request.user if request.user.is_authenticated else None,
                     datos_previos={'estado_ot_id': estado_ot_anterior.estadoOT_id if estado_ot_anterior else None, 'estado_ot_nombre': estado_ot_anterior.nombre if estado_ot_anterior else None},
                     datos_nuevos={'estado_ot_id': estado_ot.estadoOT_id, 'estado_ot_nombre': estado_ot.nombre}
@@ -2223,7 +2236,7 @@ def api_guardar_orden_trabajo(request):
                 HistorialOT.registrar(
                     ot=ot,
                     accion='ESTADO_EQUIPO_CAMBIADO',
-                    descripcion=f"Estado de equipo cambiado de '{estado_equipo_anterior.nombre if estado_equipo_anterior else "N/A"}' a '{estado_equipo.nombre}'",
+                    descripcion=f"Estado de equipo cambiado de '{estado_equipo_anterior.nombre if estado_equipo_anterior else 'N/A'}' a '{estado_equipo.nombre}'",
                     usuario=request.user if request.user.is_authenticated else None,
                     datos_previos={'estado_equipo_id': estado_equipo_anterior.estadoEquipo_id if estado_equipo_anterior else None, 'estado_equipo_nombre': estado_equipo_anterior.nombre if estado_equipo_anterior else None},
                     datos_nuevos={'estado_equipo_id': estado_equipo.estadoEquipo_id, 'estado_equipo_nombre': estado_equipo.nombre}
@@ -2741,3 +2754,441 @@ def api_detalle_ot(request, ot_id):
             'success': False,
             'message': f'Error al obtener detalle de OT: {str(e)}'
         }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_historial_ot(request, ot_id):
+    """API para obtener el historial completo de una OT en formato JSON"""
+    try:
+        ot = get_object_or_404(OrdenTrabajo, ot_id=ot_id)
+        
+        historial_data = []
+        for cambio in HistorialOT.objects.filter(ot=ot).select_related('usuario', 'personal').order_by('-fecha_hora'):
+            historial_data.append({
+                'fecha_hora': cambio.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),
+                'fecha_hora_formateada': cambio.fecha_hora.strftime('%d/%m/%Y %H:%M'),
+                'usuario': cambio.usuario.username if cambio.usuario else 'Sistema',
+                'usuario_nombre': f"{cambio.usuario.first_name} {cambio.usuario.last_name}".strip() if cambio.usuario and (cambio.usuario.first_name or cambio.usuario.last_name) else (cambio.usuario.username if cambio.usuario else 'Sistema'),
+                'accion': cambio.accion,
+                'accion_display': cambio.get_accion_display(),
+                'descripcion': cambio.descripcion,
+                'personal': {
+                    'personal_id': cambio.personal.personal_id,
+                    'nombre_completo': f"{cambio.personal.nombre} {cambio.personal.apepat} {cambio.personal.apemat}",
+                    'rut': f"{cambio.personal.rut}-{cambio.personal.dvrut}"
+                } if cambio.personal else None,
+                'datos_previos': cambio.datos_previos,
+                'datos_nuevos': cambio.datos_nuevos
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'historial': historial_data,
+            'total': len(historial_data)
+        })
+        
+    except OrdenTrabajo.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Orden de trabajo no encontrada'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error al obtener historial: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def generar_pdf_ot(request, ot_id):
+    """Generar PDF de una Orden de Trabajo"""
+    if not REPORTLAB_AVAILABLE:
+        messages.error(request, 'La librería reportlab no está instalada. Por favor, instálela con: pip install reportlab')
+        return redirect('maquinarias:lista_ordenes_trabajo')
+    
+    try:
+        # Obtener la OT con todas las relaciones necesarias
+        ot = get_object_or_404(
+            OrdenTrabajo.objects.select_related(
+                'equipo_id', 'equipo_id__modeloEquipo_id', 'equipo_id__modeloEquipo_id__tipoEquipo_id',
+                'equipo_id__modeloEquipo_id__marcaEquipo_id', 'empresa_id', 'pauta_id',
+                'tipo_mantenimiento_id', 'estado_ot_id', 'estado_equipo_id'
+            ).prefetch_related(
+                'personal_asignado', 
+                'items_secciones__seccion_id', 
+                'items_secciones__tipos_reparacion', 
+                'items_secciones__estado_seccion_id'
+            ),
+            ot_id=ot_id
+        )
+        
+        # Crear respuesta HTTP con tipo PDF
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="OT_{ot.folio}.pdf"'
+        
+        # Crear el documento PDF
+        doc = SimpleDocTemplate(response, pagesize=A4, 
+                              rightMargin=2*cm, leftMargin=2*cm, 
+                              topMargin=2*cm, bottomMargin=2*cm)
+        
+        # Contenedor para los elementos del PDF
+        elements = []
+        
+        # Estilos
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            textColor=colors.HexColor('#212529'),
+            spaceAfter=15,
+            spaceBefore=10,
+            alignment=1  # Centrado
+        )
+        
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=11,
+            textColor=colors.HexColor('#212529'),
+            spaceAfter=8,
+            spaceBefore=10,
+            fontName='Helvetica-Bold'
+        )
+        
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.black,
+            leading=11
+        )
+        
+        label_style = ParagraphStyle(
+            'CustomLabel',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.black,
+            fontName='Helvetica-Bold',
+            leading=11
+        )
+        
+        label_style_white = ParagraphStyle(
+            'CustomLabelWhite',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.white,
+            fontName='Helvetica-Bold',
+            leading=11
+        )
+        
+        # Logo (si existe)
+        logo_path = None
+        # Buscar el logo en diferentes ubicaciones posibles
+        base_dir = str(settings.BASE_DIR)
+        
+        # Ruta principal: main_home/static/img/logoGruas.png
+        ruta_principal = os.path.join(base_dir, 'main_home', 'static', 'img', 'logoGruas.png')
+        ruta_principal_abs = os.path.abspath(ruta_principal)
+        
+        if os.path.exists(ruta_principal_abs) and os.path.isfile(ruta_principal_abs):
+            logo_path = ruta_principal_abs
+        else:
+            # Rutas alternativas
+            posibles_rutas = [
+                os.path.join(base_dir, 'static', 'img', 'logoGruas.png'),
+            ]
+            
+            if settings.STATICFILES_DIRS:
+                for static_dir in settings.STATICFILES_DIRS:
+                    static_dir_str = str(static_dir) if not isinstance(static_dir, str) else static_dir
+                    posibles_rutas.append(os.path.join(static_dir_str, 'img', 'logoGruas.png'))
+                    posibles_rutas.append(os.path.join(static_dir_str, 'main_home', 'static', 'img', 'logoGruas.png'))
+            
+            if settings.STATIC_ROOT:
+                static_root_str = str(settings.STATIC_ROOT) if not isinstance(settings.STATIC_ROOT, str) else settings.STATIC_ROOT
+                posibles_rutas.append(os.path.join(static_root_str, 'img', 'logoGruas.png'))
+            
+            # Buscar la primera ruta que exista
+            for ruta in posibles_rutas:
+                ruta_normalizada = os.path.normpath(ruta)
+                ruta_absoluta = os.path.abspath(ruta_normalizada)
+                if os.path.exists(ruta_absoluta) and os.path.isfile(ruta_absoluta):
+                    logo_path = ruta_absoluta
+                    break
+        
+        # Crear tabla con logo y título
+        header_data = []
+        if logo_path and os.path.exists(logo_path) and os.path.isfile(logo_path):
+            try:
+                # Obtener dimensiones originales de la imagen para mantener proporción
+                try:
+                    from PIL import Image as PILImage
+                    with PILImage.open(logo_path) as img:
+                        img_width, img_height = img.size
+                        # Calcular tamaño manteniendo proporción (ancho máximo 3.5cm)
+                        max_width = 3.5 * cm
+                        aspect_ratio = img_height / img_width
+                        logo_width = max_width
+                        logo_height = max_width * aspect_ratio
+                except ImportError:
+                    # Si PIL no está disponible, usar tamaño por defecto
+                    logo_width = 3.5 * cm
+                    logo_height = None
+                except Exception:
+                    # Si hay error leyendo la imagen, usar tamaño por defecto
+                    logo_width = 3.5 * cm
+                    logo_height = None
+                
+                # Crear imagen con dimensiones calculadas
+                if logo_height:
+                    logo = Image(logo_path, width=logo_width, height=logo_height)
+                else:
+                    logo = Image(logo_path, width=logo_width)
+                
+                # Logo arriba a la izquierda, título abajo centrado
+                header_data = [
+                    [logo],  # Primera fila: logo a la izquierda
+                    [Paragraph(f"<b>ORDEN DE TRABAJO N° {ot.folio}</b>", title_style)]  # Segunda fila: título centrado
+                ]
+                header_table = Table(header_data, colWidths=[16*cm])
+                header_table.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),  # Logo a la izquierda
+                    ('ALIGN', (0, 1), (0, 1), 'CENTER'),  # Título centrado
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('BOTTOMPADDING', (0, 0), (0, 0), 5),  # Padding inferior en logo
+                    ('TOPPADDING', (0, 0), (0, 0), 0),  # Sin padding superior en logo
+                    ('BOTTOMPADDING', (0, 1), (0, 1), 5),  # Padding inferior en título
+                    ('TOPPADDING', (0, 1), (0, 1), 5),  # Padding superior en título
+                ]))
+                elements.append(header_table)
+            except Exception as e:
+                # Si hay error con el logo, solo mostrar título
+                # En producción, podrías loggear el error: import logging; logging.error(f"Error cargando logo: {e}")
+                elements.append(Paragraph(f"<b>ORDEN DE TRABAJO N° {ot.folio}</b>", title_style))
+        else:
+            elements.append(Paragraph(f"<b>ORDEN DE TRABAJO N° {ot.folio}</b>", title_style))
+        
+        elements.append(Spacer(1, 0.3*cm))
+        
+        # Información de la empresa
+        empresa_data = [
+            [Paragraph('<b>Empresa:</b>', label_style), Paragraph(ot.empresa_id.nomFantasia, normal_style)],
+            [Paragraph('<b>RUT:</b>', label_style), Paragraph(f"{ot.empresa_id.rut}-{ot.empresa_id.dv}", normal_style)],
+            [Paragraph('<b>Dirección:</b>', label_style), Paragraph(ot.empresa_id.direccion, normal_style)],
+        ]
+        empresa_table = Table(empresa_data, colWidths=[3.5*cm, 12.5*cm])
+        empresa_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f8f9fa')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ]))
+        elements.append(empresa_table)
+        elements.append(Spacer(1, 0.3*cm))
+        
+        # Información del equipo
+        elements.append(Paragraph("INFORMACIÓN DEL EQUIPO", heading_style))
+        equipo_data = [
+            [Paragraph('<b>Equipo:</b>', label_style), Paragraph(ot.equipo_id.nombreEquipo, normal_style)],
+            [Paragraph('<b>Código Interno:</b>', label_style), Paragraph(ot.equipo_id.codigoInterno or 'N/A', normal_style)],
+            [Paragraph('<b>Tipo:</b>', label_style), Paragraph(ot.equipo_id.modeloEquipo_id.tipoEquipo_id.tipoEquipo if ot.equipo_id.modeloEquipo_id and ot.equipo_id.modeloEquipo_id.tipoEquipo_id else 'N/A', normal_style)],
+            [Paragraph('<b>Marca:</b>', label_style), Paragraph(ot.equipo_id.modeloEquipo_id.marcaEquipo_id.marcaEquipo if ot.equipo_id.modeloEquipo_id and ot.equipo_id.modeloEquipo_id.marcaEquipo_id else 'N/A', normal_style)],
+            [Paragraph('<b>Modelo:</b>', label_style), Paragraph(ot.equipo_id.modeloEquipo_id.modeloEquipo if ot.equipo_id.modeloEquipo_id else 'N/A', normal_style)],
+            [Paragraph('<b>Horómetro:</b>', label_style), Paragraph(str(ot.horometro) if ot.horometro else 'N/A', normal_style)],
+            [Paragraph('<b>Odómetro:</b>', label_style), Paragraph(str(ot.odometro) if ot.odometro else 'N/A', normal_style)],
+            [Paragraph('<b>Horómetro Superestructura:</b>', label_style), Paragraph(str(ot.horometro_superestructura) if ot.horometro_superestructura else 'N/A', normal_style)],
+        ]
+        equipo_table = Table(equipo_data, colWidths=[5*cm, 11*cm])
+        equipo_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f8f9fa')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ]))
+        elements.append(equipo_table)
+        elements.append(Spacer(1, 0.3*cm))
+        
+        # Información de la OT
+        elements.append(Paragraph("INFORMACIÓN DE LA ORDEN DE TRABAJO", heading_style))
+        ot_data = [
+            [Paragraph('<b>Folio:</b>', label_style), Paragraph(ot.folio, normal_style)],
+            [Paragraph('<b>Tipo de Mantenimiento:</b>', label_style), Paragraph(ot.tipo_mantenimiento_id.nombre if ot.tipo_mantenimiento_id else 'N/A', normal_style)],
+            [Paragraph('<b>Estado OT:</b>', label_style), Paragraph(ot.estado_ot_id.nombre if ot.estado_ot_id else 'N/A', normal_style)],
+            [Paragraph('<b>Estado Equipo:</b>', label_style), Paragraph(ot.estado_equipo_id.nombre if ot.estado_equipo_id else 'N/A', normal_style)],
+            [Paragraph('<b>Fecha de Creación:</b>', label_style), Paragraph(ot.fecha_creacion.strftime('%d/%m/%Y %H:%M') if ot.fecha_creacion else 'N/A', normal_style)],
+            [Paragraph('<b>Fecha de Inicio:</b>', label_style), Paragraph(ot.fecha_inicio.strftime('%d/%m/%Y') if ot.fecha_inicio else 'N/A', normal_style)],
+            [Paragraph('<b>Fecha de Fin:</b>', label_style), Paragraph(ot.fecha_fin.strftime('%d/%m/%Y') if ot.fecha_fin else 'N/A', normal_style)],
+        ]
+        if ot.corresponde_pauta and ot.pauta_id:
+            ot_data.append([Paragraph('<b>Pauta de Mantenimiento:</b>', label_style), Paragraph(ot.pauta_id.nombre, normal_style)])
+        
+        ot_table = Table(ot_data, colWidths=[5*cm, 11*cm])
+        ot_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f8f9fa')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ]))
+        elements.append(ot_table)
+        elements.append(Spacer(1, 0.3*cm))
+        
+        # Personal asignado
+        personal_asignado = ot.personal_asignado.all()
+        if personal_asignado:
+            elements.append(Paragraph("PERSONAL ASIGNADO", heading_style))
+            personal_headers = [[Paragraph('<b>Nombre Completo</b>', label_style_white), Paragraph('<b>RUT</b>', label_style_white), Paragraph('<b>Cargo</b>', label_style_white)]]
+            personal_rows = []
+            for p in personal_asignado:
+                info_laboral = InfoLaboral.objects.filter(personal_id=p).first()
+                cargo_nombre = info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'Sin cargo'
+                personal_rows.append([
+                    Paragraph(f"{p.nombre} {p.apepat} {p.apemat}", normal_style),
+                    Paragraph(f"{p.rut}-{p.dvrut}", normal_style),
+                    Paragraph(cargo_nombre, normal_style)
+                ])
+            
+            personal_table_data = personal_headers + personal_rows
+            personal_table = Table(personal_table_data, colWidths=[7*cm, 4*cm, 5*cm])
+            personal_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#212529')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('FONTSIZE', (0, 0), (-1, 0), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                ('TOPPADDING', (0, 0), (-1, 0), 8),
+                ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+                ('TOPPADDING', (0, 1), (-1, -1), 5),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ]))
+            elements.append(personal_table)
+            elements.append(Spacer(1, 0.3*cm))
+        
+        # Secciones y tipos de reparación
+        if ot.corresponde_pauta and ot.pauta_id:
+            # Secciones de pauta
+            elements.append(Paragraph("SECCIONES Y TIPOS DE REPARACIÓN", heading_style))
+            items_pauta = ItemPauta.objects.filter(pauta_id=ot.pauta_id).select_related('seccion_id').prefetch_related('tipos_reparacion')
+            secciones_headers = [[Paragraph('<b>Sección</b>', label_style_white), Paragraph('<b>Tipos de Reparación</b>', label_style_white), Paragraph('<b>Estado</b>', label_style_white)]]
+            secciones_rows = []
+            for item in items_pauta:
+                item_seccion_ot = ItemSeccionOT.objects.filter(ot_id=ot, seccion_id=item.seccion_id).first()
+                estado_actual = item_seccion_ot.estado_seccion_id.nombre if item_seccion_ot and item_seccion_ot.estado_seccion_id else 'Pendiente'
+                tipos_reparacion_list = [tr.nombre for tr in item.tipos_reparacion.all()]
+                if tipos_reparacion_list:
+                    tipos_reparacion_html = '<br/>'.join([f'• {tr}' for tr in tipos_reparacion_list])
+                else:
+                    tipos_reparacion_html = 'N/A'
+                secciones_rows.append([
+                    Paragraph(item.seccion_id.nombre, normal_style),
+                    Paragraph(tipos_reparacion_html, normal_style),
+                    Paragraph(estado_actual, normal_style)
+                ])
+            
+            if secciones_rows:
+                secciones_table_data = secciones_headers + secciones_rows
+                secciones_table = Table(secciones_table_data, colWidths=[4.5*cm, 9*cm, 2.5*cm])
+                secciones_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#212529')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 9),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                    ('TOPPADDING', (0, 0), (-1, 0), 8),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                    ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                    ('FONTSIZE', (0, 1), (-1, -1), 9),
+                    ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+                    ('TOPPADDING', (0, 1), (-1, -1), 5),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+                ]))
+                elements.append(secciones_table)
+                elements.append(Spacer(1, 0.3*cm))
+        else:
+            # Secciones manuales
+            items_secciones = ItemSeccionOT.objects.filter(ot_id=ot).select_related('seccion_id', 'estado_seccion_id').prefetch_related('tipos_reparacion')
+            if items_secciones.exists():
+                elements.append(Paragraph("SECCIONES Y TIPOS DE REPARACIÓN", heading_style))
+                secciones_headers = [[Paragraph('<b>Sección</b>', label_style_white), Paragraph('<b>Tipos de Reparación</b>', label_style_white), Paragraph('<b>Estado</b>', label_style_white)]]
+                secciones_rows = []
+                for item in items_secciones:
+                    tipos_reparacion_list = [tr.nombre for tr in item.tipos_reparacion.all()]
+                    if tipos_reparacion_list:
+                        tipos_reparacion_html = '<br/>'.join([f'• {tr}' for tr in tipos_reparacion_list])
+                    else:
+                        tipos_reparacion_html = 'N/A'
+                    estado_actual = item.estado_seccion_id.nombre if item.estado_seccion_id else 'Pendiente'
+                    secciones_rows.append([
+                        Paragraph(item.seccion_id.nombre, normal_style),
+                        Paragraph(tipos_reparacion_html, normal_style),
+                        Paragraph(estado_actual, normal_style)
+                    ])
+                
+                secciones_table_data = secciones_headers + secciones_rows
+                secciones_table = Table(secciones_table_data, colWidths=[4.5*cm, 9*cm, 2.5*cm])
+                secciones_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#212529')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 9),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                    ('TOPPADDING', (0, 0), (-1, 0), 8),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                    ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                    ('FONTSIZE', (0, 1), (-1, -1), 9),
+                    ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+                    ('TOPPADDING', (0, 1), (-1, -1), 5),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+                ]))
+                elements.append(secciones_table)
+                elements.append(Spacer(1, 0.3*cm))
+        
+        # Observaciones
+        if ot.observaciones:
+            elements.append(Paragraph("OBSERVACIONES", heading_style))
+            observaciones_para = Paragraph(ot.observaciones.replace('\n', '<br/>'), normal_style)
+            elements.append(observaciones_para)
+            elements.append(Spacer(1, 0.3*cm))
+        
+        # Construir el PDF
+        doc.build(elements)
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f'Error al generar PDF: {str(e)}')
+        return redirect('maquinarias:lista_ordenes_trabajo')

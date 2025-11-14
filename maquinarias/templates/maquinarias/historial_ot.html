@@ -1,0 +1,213 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Historial - {{ ot.folio }}{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
+<style>
+    .timeline-item {
+        position: relative;
+        padding-left: 30px;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #dee2e6;
+    }
+    .timeline-item:last-child::before {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-clock-history me-2"></i>Historial de Orden de Trabajo - {{ ot.folio }}
+        </h5>
+    </div>
+    
+    <div class="card-body p-4">
+        <!-- Botón volver -->
+        <div class="mb-3">
+            <a href="{% url 'maquinarias:lista_ordenes_trabajo' %}" class="btn btn-sm btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+        
+        <!-- Información de la OT -->
+        <div class="card border-primary mb-4">
+            <div class="card-body py-2">
+                <div class="row small">
+                    <div class="col-md-6">
+                        <strong>Folio:</strong> {{ ot.folio }}<br>
+                        <strong>Equipo:</strong> {{ ot.equipo_id.nombreEquipo }}<br>
+                        <strong>Empresa:</strong> {{ ot.empresa_id.nomFantasia }}<br>
+                        {% if ot.tipo_mantenimiento_id %}
+                        <strong>Tipo Mantenimiento:</strong> {{ ot.tipo_mantenimiento_id.nombre }}<br>
+                        {% endif %}
+                        {% if ot.fecha_inicio %}
+                        <strong>Fecha Inicio:</strong> {{ ot.fecha_inicio|date:"d-m-Y" }}<br>
+                        {% endif %}
+                        {% if ot.fecha_fin %}
+                        <strong>Fecha Fin:</strong> {{ ot.fecha_fin|date:"d-m-Y" }}<br>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 text-end">
+                        {% if ot.estado_ot_id %}
+                        <span class="badge bg-primary mb-1">
+                            Estado OT: {{ ot.estado_ot_id.nombre }}
+                        </span><br>
+                        {% endif %}
+                        {% if ot.estado_equipo_id %}
+                        <span class="badge bg-info">
+                            Estado Equipo: {{ ot.estado_equipo_id.nombre }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if historial %}
+        <!-- Línea de tiempo del historial -->
+        <div class="row">
+            <div class="col-12">
+                <h6 class="mb-3">
+                    <i class="bi bi-list-ul me-2"></i>Historial de Cambios ({{ historial.count }} registros)
+                </h6>
+                
+                <div class="timeline">
+                    {% for evento in historial %}
+                    <div class="timeline-item mb-3">
+                        <div class="card {% cycle 'border-primary' 'border-secondary' 'border-info' 'border-warning' 'border-success' %}">
+                            <div class="card-body py-2">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="d-flex align-items-start">
+                                            <div class="me-3">
+                                                {% if evento.accion == 'OT_CREADA' %}
+                                                <i class="bi bi-plus-circle-fill text-success fs-5"></i>
+                                                {% elif evento.accion == 'OT_MODIFICADA' %}
+                                                <i class="bi bi-pencil-fill text-primary fs-5"></i>
+                                                {% elif evento.accion == 'ESTADO_OT_CAMBIADO' %}
+                                                <i class="bi bi-arrow-repeat text-info fs-5"></i>
+                                                {% elif evento.accion == 'ESTADO_EQUIPO_CAMBIADO' %}
+                                                <i class="bi bi-gear-fill text-warning fs-5"></i>
+                                                {% elif evento.accion == 'ESTADO_SECCION_CAMBIADO' %}
+                                                <i class="bi bi-diagram-3-fill text-secondary fs-5"></i>
+                                                {% elif evento.accion == 'FECHA_INICIO_CAMBIADA' or evento.accion == 'FECHA_FIN_CAMBIADA' %}
+                                                <i class="bi bi-calendar-event-fill text-primary fs-5"></i>
+                                                {% elif evento.accion == 'PERSONAL_ASIGNADO' %}
+                                                <i class="bi bi-person-plus-fill text-success fs-5"></i>
+                                                {% elif evento.accion == 'PERSONAL_ELIMINADO' %}
+                                                <i class="bi bi-person-dash-fill text-danger fs-5"></i>
+                                                {% elif evento.accion == 'OBSERVACION_AGREGADA' %}
+                                                <i class="bi bi-chat-left-text-fill text-info fs-5"></i>
+                                                {% else %}
+                                                <i class="bi bi-info-circle-fill text-secondary fs-5"></i>
+                                                {% endif %}
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1">
+                                                    <span class="badge 
+                                                        {% if evento.accion == 'OT_CREADA' %}bg-success
+                                                        {% elif evento.accion == 'OT_MODIFICADA' %}bg-primary
+                                                        {% elif evento.accion == 'ESTADO_OT_CAMBIADO' %}bg-info
+                                                        {% elif evento.accion == 'ESTADO_EQUIPO_CAMBIADO' %}bg-warning text-dark
+                                                        {% elif evento.accion == 'ESTADO_SECCION_CAMBIADO' %}bg-secondary
+                                                        {% elif evento.accion == 'FECHA_INICIO_CAMBIADA' or evento.accion == 'FECHA_FIN_CAMBIADA' %}bg-primary
+                                                        {% elif evento.accion == 'PERSONAL_ASIGNADO' %}bg-success
+                                                        {% elif evento.accion == 'PERSONAL_ELIMINADO' %}bg-danger
+                                                        {% elif evento.accion == 'OBSERVACION_AGREGADA' %}bg-info
+                                                        {% else %}bg-secondary
+                                                        {% endif %}">
+                                                        {{ evento.get_accion_display }}
+                                                    </span>
+                                                </h6>
+                                                <p class="mb-1 small">{{ evento.descripcion }}</p>
+                                                
+                                                {% if evento.datos_previos or evento.datos_nuevos %}
+                                                <div class="mt-2">
+                                                    {% if evento.datos_previos %}
+                                                    <small class="text-muted">
+                                                        <strong>Antes:</strong> 
+                                                        {% if evento.datos_previos.estado_ot_nombre %}
+                                                            Estado OT: {{ evento.datos_previos.estado_ot_nombre }}
+                                                        {% elif evento.datos_previos.estado_equipo_nombre %}
+                                                            Estado Equipo: {{ evento.datos_previos.estado_equipo_nombre }}
+                                                        {% elif evento.datos_previos.estado_seccion_nombre %}
+                                                            Estado Sección: {{ evento.datos_previos.estado_seccion_nombre }}
+                                                        {% elif evento.datos_previos.fecha_fin %}
+                                                            Fecha Fin: {{ evento.datos_previos.fecha_fin }}
+                                                        {% else %}
+                                                            {{ evento.datos_previos }}
+                                                        {% endif %}
+                                                    </small>
+                                                    {% endif %}
+                                                    {% if evento.datos_previos and evento.datos_nuevos %}
+                                                    <br>
+                                                    {% endif %}
+                                                    {% if evento.datos_nuevos %}
+                                                    <small class="text-success">
+                                                        <strong>Después:</strong> 
+                                                        {% if evento.datos_nuevos.estado_ot_nombre %}
+                                                            Estado OT: {{ evento.datos_nuevos.estado_ot_nombre }}
+                                                        {% elif evento.datos_nuevos.estado_equipo_nombre %}
+                                                            Estado Equipo: {{ evento.datos_nuevos.estado_equipo_nombre }}
+                                                        {% elif evento.datos_nuevos.estado_seccion_nombre %}
+                                                            Estado Sección: {{ evento.datos_nuevos.estado_seccion_nombre }}
+                                                        {% elif evento.datos_nuevos.fecha_fin %}
+                                                            Fecha Fin: {{ evento.datos_nuevos.fecha_fin }}
+                                                        {% else %}
+                                                            {{ evento.datos_nuevos }}
+                                                        {% endif %}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if evento.usuario %}
+                                                <p class="mb-0 text-muted small mt-1">
+                                                    <i class="bi bi-person-circle me-1"></i>
+                                                    Por: {{ evento.usuario.get_full_name|default:evento.usuario.username }}
+                                                </p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar me-1"></i>
+                                            {{ evento.fecha_hora|date:"d/m/Y" }}
+                                        </small>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock me-1"></i>
+                                            {{ evento.fecha_hora|date:"H:i" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No hay registros en el historial de esta orden de trabajo.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
