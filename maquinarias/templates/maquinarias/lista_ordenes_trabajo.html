@@ -1,0 +1,276 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Ordenes de Trabajo{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
+<link rel="stylesheet" href="{% static 'maquinarias/css/lista_ordenes_trabajo.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-clipboard-data me-2"></i>Ordenes de Trabajo
+        </h5>
+    </div>
+    
+    <div class="card-body p-4">
+        <!-- Botón Nueva OT -->
+        <div class="row mb-3 align-items-center">
+            <div class="col-md-6">
+                <a href="{% url 'maquinarias:crear_orden_trabajo' %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-plus-square me-1"></i>Nueva Orden de Trabajo
+                </a>
+            </div>
+            <div class="col-md-6 text-end">
+                <span class="small text-muted">
+                    <i class="bi bi-clipboard-data me-1"></i>
+                    <strong id="totalOrdenes">0</strong> ordenes encontradas
+                </span>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-3" id="tabsOrdenes" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-activas" data-bs-toggle="tab" data-bs-target="#panel-activas" type="button" role="tab" aria-controls="panel-activas" aria-selected="true">
+                    <i class="bi bi-clock-history me-1"></i>Activas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-finalizadas" data-bs-toggle="tab" data-bs-target="#panel-finalizadas" type="button" role="tab" aria-controls="panel-finalizadas" aria-selected="false">
+                    <i class="bi bi-check-circle me-1"></i>Finalizadas
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Tab Panels -->
+        <div class="tab-content" id="tabContentOrdenes">
+            <!-- Panel Activas -->
+            <div class="tab-pane fade show active" id="panel-activas" role="tabpanel" aria-labelledby="tab-activas">
+                <!-- Filtros y búsqueda -->
+                <div class="row mb-3 align-items-center">
+                    <div class="col-md-3">
+                        <label class="form-label small">Buscar</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInput" 
+                                   placeholder="Folio, equipo...">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Empresa</label>
+                        <select class="form-select form-select-sm" id="empresaFilter">
+                            <option value="">Todas</option>
+                            {% for empresa in empresas %}
+                            <option value="{{ empresa.id }}">{{ empresa.nomFantasia }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Tipo Equipo</label>
+                        <select class="form-select form-select-sm" id="tipoEquipoFilter">
+                            <option value="">Todos</option>
+                            {% for tipo in tipos_equipo %}
+                            <option value="{{ tipo.tipoEquipo_id }}">{{ tipo.tipoEquipo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Estado OT</label>
+                        <select class="form-select form-select-sm" id="estadoOTFilter">
+                            <option value="">Todos</option>
+                            {% for estado in estados_ot %}
+                            <option value="{{ estado.estadoOT_id }}">{{ estado.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Tipo Mantenimiento</label>
+                        <select class="form-select form-select-sm" id="tipoMantenimientoFilter">
+                            <option value="">Todos</option>
+                            {% for tipo in tipos_mantenimiento %}
+                            <option value="{{ tipo.tipoMantenimiento_id }}">{{ tipo.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <label class="form-label small">&nbsp;</label>
+                        <button class="btn btn-sm btn-secondary" onclick="limpiarFiltros()">
+                            <i class="bi bi-x-circle me-1"></i>Limpiar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tabla de ordenes -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered rrhh-table" id="ordenesTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 10%;">Folio</th>
+                                <th style="width: 15%;">Equipo</th>
+                                <th style="width: 12%;">Empresa</th>
+                                <th style="width: 10%;">Tipo Mant.</th>
+                                <th style="width: 10%;">Estado OT</th>
+                                <th style="width: 10%;">Estado Equipo</th>
+                                <th style="width: 10%;">Fecha Fin</th>
+                                <th style="width: 15%;" class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordenesTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Cargando ordenes de trabajo...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Panel Finalizadas -->
+            <div class="tab-pane fade" id="panel-finalizadas" role="tabpanel" aria-labelledby="tab-finalizadas">
+                <!-- Filtros y búsqueda -->
+                <div class="row mb-3 align-items-center">
+                    <div class="col-md-3">
+                        <label class="form-label small">Buscar</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInputFinalizadas" 
+                                   placeholder="Folio, equipo...">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Empresa</label>
+                        <select class="form-select form-select-sm" id="empresaFilterFinalizadas">
+                            <option value="">Todas</option>
+                            {% for empresa in empresas %}
+                            <option value="{{ empresa.id }}">{{ empresa.nomFantasia }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Tipo Equipo</label>
+                        <select class="form-select form-select-sm" id="tipoEquipoFilterFinalizadas">
+                            <option value="">Todos</option>
+                            {% for tipo in tipos_equipo %}
+                            <option value="{{ tipo.tipoEquipo_id }}">{{ tipo.tipoEquipo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Tipo Mantenimiento</label>
+                        <select class="form-select form-select-sm" id="tipoMantenimientoFilterFinalizadas">
+                            <option value="">Todos</option>
+                            {% for tipo in tipos_mantenimiento %}
+                            <option value="{{ tipo.tipoMantenimiento_id }}">{{ tipo.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <label class="form-label small">&nbsp;</label>
+                        <button class="btn btn-sm btn-secondary" onclick="limpiarFiltrosFinalizadas()">
+                            <i class="bi bi-x-circle me-1"></i>Limpiar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tabla de ordenes finalizadas -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered rrhh-table" id="ordenesTableFinalizadas">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 12%;">Folio</th>
+                                <th style="width: 18%;">Equipo</th>
+                                <th style="width: 15%;">Empresa</th>
+                                <th style="width: 12%;">Tipo Mant.</th>
+                                <th style="width: 12%;">Estado OT</th>
+                                <th style="width: 12%;">Estado Equipo</th>
+                                <th style="width: 19%;">Fecha Fin</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordenesTableBodyFinalizadas">
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Cargando ordenes de trabajo...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paginación -->
+        <div class="row mt-3 align-items-center">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label mb-0 small">Mostrar:</label>
+                    <select class="form-select form-select-sm" id="pageSizeSelect" style="width: auto;" onchange="cambiarTamanoPagina()">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span class="small text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Mostrando <strong id="registroInicio">0</strong> a <strong id="registroFin">0</strong> de <strong id="totalRegistros">0</strong> registros
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <nav>
+                    <ul class="pagination pagination-sm justify-content-end mb-0" id="paginacion">
+                        <!-- Se llena con JavaScript -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle OT -->
+<div class="modal fade" id="modalDetalleOT" tabindex="-1" aria-labelledby="modalDetalleOTLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalDetalleOTLabel">
+                    <i class="bi bi-clipboard-data me-2"></i>Detalle de Orden de Trabajo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalDetalleOTBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando detalles...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extrajs %}
+<script>
+    window.csrfToken = "{{ csrf_token }}";
+    window.apiListarOrdenes = "{% url 'maquinarias:api_listar_ordenes_trabajo' %}";
+    window.apiDetalleOT = "{% url 'maquinarias:api_detalle_ot' 0 %}";
+</script>
+<script src="{% static 'maquinarias/js/lista_ordenes_trabajo.js' %}"></script>
+{% endblock %}

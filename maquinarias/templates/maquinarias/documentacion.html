@@ -4,7 +4,40 @@
 {% block title %}Documentación - {{ equipo.nombreEquipo }}{% endblock %}
 
 {% block extrastyles %}
-<link rel="stylesheet" href="{% static 'css/form_styles.css' %}?v=2.0">
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}?v=4.0">
+<link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
+<style>
+    .documento-form-container {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    .fecha-vencimiento-group {
+        display: none;
+    }
+    .fecha-vencimiento-group.show {
+        display: block;
+    }
+    .estado-badge {
+        font-size: 0.75rem;
+        min-width: 80px;
+        display: inline-block;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block extrajs %}
+<script>
+    window.EQUIPO_ID = {{ equipo.equipo_id }};
+    window.SUBIR_DOCUMENTO_URL = '{% url "maquinarias:api_subir_documento_maquinaria" equipo.equipo_id %}';
+    window.DOCUMENTOS_URL = '{% url "maquinarias:api_documentos_equipo" equipo.equipo_id %}';
+    window.ELIMINAR_DOCUMENTO_URL = '{% url "maquinarias:api_eliminar_documento_maquinaria" 0 %}';
+    window.HISTORIAL_URL = '{% url "maquinarias:api_historial_documentos_equipo" equipo.equipo_id %}';
+</script>
+<script src="{% static 'maquinarias/js/documentacion.js' %}?v=1.0"></script>
 {% endblock %}
 
 {% block content %}
@@ -24,64 +57,141 @@
         <!-- Información del Equipo -->
         <div class="row mb-3">
             <div class="col-md-12">
-                <div class="alert alert-light border">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <strong class="text-muted small">Equipo:</strong>
-                            <p class="mb-0 fw-bold">{{ equipo.nombreEquipo }}</p>
-                        </div>
-                        <div class="col-md-3">
-                            <strong class="text-muted small">Tipo:</strong>
-                            <p class="mb-0">
-                                <span class="badge bg-secondary">{{ equipo.modeloEquipo_id.tipoEquipo_id.siglaEquipo }}</span>
-                                {{ equipo.modeloEquipo_id.tipoEquipo_id.tipoEquipo }}
-                            </p>
-                        </div>
-                        <div class="col-md-3">
-                            <strong class="text-muted small">Marca/Modelo:</strong>
-                            <p class="mb-0">{{ equipo.modeloEquipo_id.marcaEquipo_id.marcaEquipo }} {{ equipo.modeloEquipo_id.modeloEquipo }}</p>
-                        </div>
-                        <div class="col-md-3">
-                            <strong class="text-muted small">Empresa:</strong>
-                            <p class="mb-0">{{ equipo.empresa_id.nomFantasia }}</p>
+                <div class="card border">
+                    <div class="card-body bg-light py-2 px-3">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong class="text-muted" style="font-size: 0.75rem;">Equipo:</strong>
+                                <p class="mb-0 fw-bold" style="font-size: 0.9rem;">{{ equipo.nombreEquipo }}</p>
+                            </div>
+                            <div class="col-md-3">
+                                <strong class="text-muted" style="font-size: 0.75rem;">Tipo:</strong>
+                                <p class="mb-0" style="font-size: 0.9rem;">
+                                    <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ equipo.modeloEquipo_id.tipoEquipo_id.siglaEquipo }}</span>
+                                    {{ equipo.modeloEquipo_id.tipoEquipo_id.tipoEquipo }}
+                                </p>
+                            </div>
+                            <div class="col-md-3">
+                                <strong class="text-muted" style="font-size: 0.75rem;">Marca/Modelo:</strong>
+                                <p class="mb-0" style="font-size: 0.9rem;">{{ equipo.modeloEquipo_id.marcaEquipo_id.marcaEquipo }} {{ equipo.modeloEquipo_id.modeloEquipo }}</p>
+                            </div>
+                            <div class="col-md-3">
+                                <strong class="text-muted" style="font-size: 0.75rem;">Empresa:</strong>
+                                <p class="mb-0" style="font-size: 0.9rem;">{{ equipo.empresa_id.nomFantasia }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Sección de Documentos -->
+        <!-- Formulario para Subir Documento -->
+        <div class="documento-form-container">
+            <h6 class="mb-3">
+                <i class="bi bi-upload me-2"></i>Subir Nuevo Documento
+            </h6>
+            <form id="formSubirDocumento" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="tipoDocumentoSelect" class="form-label">Tipo de Documento <span class="text-danger">*</span></label>
+                        <select class="form-select" id="tipoDocumentoSelect" name="tipo_documento_id" required>
+                            <option value="">-- Seleccione un tipo --</option>
+                            {% for tipo in tipos_documentos %}
+                            <option value="{{ tipo.tipoDocumento_id }}" 
+                                    data-requiere-fecha="{{ tipo.requiere_fecha_vencimiento|yesno:'true,false' }}">
+                                {{ tipo.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="archivoInput" class="form-label">Archivo PDF <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="archivoInput" name="archivo" accept=".pdf" required>
+                        <small class="form-text text-muted">Solo archivos PDF</small>
+                    </div>
+                    <div class="col-md-4 mb-3 fecha-vencimiento-group" id="fechaVencimientoGroup">
+                        <label for="fechaVencimientoInput" class="form-label">Fecha de Vencimiento <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="fechaVencimientoInput" name="fecha_vencimiento">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="observacionesInput" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observacionesInput" name="observaciones" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-2"></i>Subir Documento
+                        </button>
+                        <button type="reset" class="btn btn-secondary ms-2" id="btnLimpiarForm">
+                            <i class="bi bi-x-circle me-2"></i>Limpiar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabla de Documentos Actuales -->
         <div class="form-section">
             <div class="form-section-header">
                 <i class="bi bi-files me-2"></i>
-                <span>Documentos del Equipo</span>
+                <span>Documentos Actuales</span>
             </div>
             <div class="form-section-body">
-                <div class="alert alert-info mb-3">
-                    <i class="bi bi-info-circle me-2"></i>
-                    <strong>Próximamente:</strong> Sistema de gestión de documentos del equipo (revisión técnica, permisos de circulación, seguros, manuales, certificaciones, etc.)
-                </div>
-                
-                <!-- Placeholder para tabla de documentos -->
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <thead class="table-light">
+                    <table class="table table-sm table-bordered rrhh-table" id="tablaDocumentos">
+                        <thead class="table-dark">
                             <tr>
-                                <th>Tipo de Documento</th>
-                                <th>Nombre</th>
-                                <th>Fecha Vencimiento</th>
-                                <th>Estado</th>
-                                <th class="text-center">Acciones</th>
+                                <th style="width: 25%;">Tipo de Documento</th>
+                                <th style="width: 20%;">Archivo</th>
+                                <th style="width: 15%;">Fecha de Vencimiento</th>
+                                <th style="width: 10%;">Estado</th>
+                                <th style="width: 15%;">Fecha de Subida</th>
+                                <th style="width: 15%;" class="text-center">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="documentosTbody">
                             <tr>
-                                <td colspan="5" class="text-center py-4 text-muted">
-                                    <i class="bi bi-folder-x fs-1"></i>
-                                    <p class="mt-2">No hay documentos registrados</p>
-                                    <button class="btn btn-sm btn-primary" disabled>
-                                        <i class="bi bi-plus-circle me-1"></i>Agregar Documento
-                                    </button>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="bi bi-hourglass-split fs-1"></i>
+                                    <p class="mt-2">Cargando documentos...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial de Documentos -->
+        <div class="form-section mt-4">
+            <div class="form-section-header">
+                <i class="bi bi-clock-history me-2"></i>
+                <span>Historial de Documentos</span>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" id="btnToggleHistorial">
+                    <i class="bi bi-chevron-down me-1"></i>Mostrar Historial
+                </button>
+            </div>
+            <div class="form-section-body" id="historialContainer" style="display: none;">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered rrhh-table" id="tablaHistorial">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 20%;">Tipo de Documento</th>
+                                <th style="width: 20%;">Archivo</th>
+                                <th style="width: 15%;">Fecha de Vencimiento</th>
+                                <th style="width: 15%;">Fecha de Subida Original</th>
+                                <th style="width: 15%;">Fecha de Reemplazo</th>
+                                <th style="width: 15%;" class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historialTbody">
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="bi bi-hourglass-split fs-1"></i>
+                                    <p class="mt-2">Cargando historial...</p>
                                 </td>
                             </tr>
                         </tbody>
@@ -91,5 +201,28 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
+<!-- Modal para confirmar eliminación -->
+<div class="modal fade" id="modalConfirmarEliminacion" tabindex="-1" aria-labelledby="modalConfirmarEliminacionLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="modalConfirmarEliminacionLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar este documento?</p>
+                <p class="text-muted small mb-0">El documento será movido al historial y no se perderá.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarEliminacion">
+                    <i class="bi bi-trash me-2"></i>Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

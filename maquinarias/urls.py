@@ -11,6 +11,13 @@ urlpatterns = [
     path('equipos/<int:equipo_id>/editar/', views.editar_equipo, name='editar_equipo'),
     path('equipos/<int:equipo_id>/documentacion/', views.documentacion_equipo, name='documentacion_equipo'),
     
+    # APIs para documentación de maquinarias
+    path('api/tipos-documentos/', views.api_tipos_documentos_maquinaria, name='api_tipos_documentos_maquinaria'),
+    path('api/equipos/<int:equipo_id>/documentos/', views.api_documentos_equipo, name='api_documentos_equipo'),
+    path('api/equipos/<int:equipo_id>/documentos/subir/', views.api_subir_documento_maquinaria, name='api_subir_documento_maquinaria'),
+    path('api/documentos/<int:documento_id>/eliminar/', views.api_eliminar_documento_maquinaria, name='api_eliminar_documento_maquinaria'),
+    path('api/equipos/<int:equipo_id>/documentos/historial/', views.api_historial_documentos_equipo, name='api_historial_documentos_equipo'),
+    
     # APIs para CRUD de equipos
     path('api/equipos/', views.api_listar_equipos, name='api_listar_equipos'),
     path('api/equipos/guardar/', views.api_guardar_equipo, name='api_guardar_equipo'),
@@ -51,5 +58,23 @@ urlpatterns = [
     path('api/pautas-mantenimiento/<int:pauta_id>/', views.api_detalle_pauta, name='api_detalle_pauta'),
     path('api/pautas-mantenimiento/<int:pauta_id>/toggle-activo/', views.api_toggle_activo_pauta, name='api_toggle_activo_pauta'),
     path('api/pautas-mantenimiento/<int:pauta_id>/eliminar/', views.api_eliminar_pauta, name='api_eliminar_pauta'),
+    
+    # Vistas para Orden de Trabajo
+    path('ordenes-trabajo/', views.lista_ordenes_trabajo, name='lista_ordenes_trabajo'),
+    path('ordenes-trabajo/crear/', views.crear_orden_trabajo, name='crear_orden_trabajo'),
+    path('ordenes-trabajo/<int:ot_id>/editar/', views.editar_orden_trabajo, name='editar_orden_trabajo'),
+    
+    # APIs para Orden de Trabajo
+    path('api/ordenes-trabajo/', views.api_listar_ordenes_trabajo, name='api_listar_ordenes_trabajo'),
+    path('api/ordenes-trabajo/guardar/', views.api_guardar_orden_trabajo, name='api_guardar_orden_trabajo'),
+    path('api/ordenes-trabajo/<int:ot_id>/observacion/', views.api_agregar_observacion_ot, name='api_agregar_observacion_ot'),
+    path('api/equipos-filtrados/', views.api_equipos_filtrados, name='api_equipos_filtrados'),
+    path('api/personal-maquinarias/', views.api_personal_maquinarias, name='api_personal_maquinarias'),
+    path('api/marcas-por-tipo/', views.api_marcas_por_tipo, name='api_marcas_por_tipo'),
+    path('api/modelos-por-tipo-marca/', views.api_modelos_por_tipo_marca, name='api_modelos_por_tipo_marca'),
+    path('api/pautas/<int:pauta_id>/detalle-ot/', views.api_detalle_pauta_ot, name='api_detalle_pauta_ot'),
+    path('api/detalle-ot/<int:ot_id>/', views.api_detalle_ot, name='api_detalle_ot'),
+    path('api/cargos-por-depto/', views.api_cargos_por_depto, name='api_cargos_por_depto'),
+    path('api/departamentos/', views.api_departamentos, name='api_departamentos'),
 ]
 

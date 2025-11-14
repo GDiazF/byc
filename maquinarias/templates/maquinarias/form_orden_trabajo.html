@@ -1,0 +1,612 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}{% if es_edicion %}Editar{% else %}Nueva{% endif %} Orden de Trabajo{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/form_styles.css' %}?v=2.0">
+<link rel="stylesheet" href="{% static 'maquinarias/css/form_orden_trabajo.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-clipboard-data me-2"></i>{% if es_edicion %}Editar{% else %}Nueva{% endif %} Orden de Trabajo
+        </h5>
+    </div>
+    
+    <div class="card-body p-4">
+        <!-- Botón volver -->
+        <div class="mb-3">
+            <a href="{% url 'maquinarias:lista_ordenes_trabajo' %}" class="btn btn-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Volver a Lista
+            </a>
+        </div>
+
+        <form id="formOrdenTrabajo">
+            {% if es_edicion %}
+            <input type="hidden" id="ot_id" value="{{ ot.ot_id }}">
+            <input type="hidden" id="folio" value="{{ ot.folio }}">
+            {% endif %}
+            
+            <!-- Sección: Selección de Equipo -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-tools me-2"></i>
+                    <span>{% if es_edicion %}Información del Equipo{% else %}Selección de Equipo{% endif %}</span>
+                </div>
+                <div class="form-section-body">
+                    {% if es_edicion %}
+                    <!-- En modo edición, mostrar solo información de solo lectura -->
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Empresa</label>
+                            <input type="text" class="form-control" value="{{ ot.empresa_id.nomFantasia }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Equipo</label>
+                            <input type="text" class="form-control" value="{{ ot.equipo_id.nombreEquipo }} - {{ ot.equipo_id.codigoInterno }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tipo de Mantenimiento</label>
+                            <input type="text" class="form-control" value="{{ ot.tipo_mantenimiento_id.nombre }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Personal Asignado</label>
+                            <input type="text" class="form-control" 
+                                   value="{% for p in ot.personal_asignado.all %}{{ p.nombre }} {{ p.apepat }}{% if not forloop.last %}, {% endif %}{% empty %}Ninguno{% endfor %}" 
+                                   readonly>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- En modo creación, mostrar selects editables -->
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label for="empresa_id" class="form-label">Empresa <span class="text-danger">*</span></label>
+                            <select class="form-select" id="empresa_id" required onchange="filtrarEquipos()">
+                                <option value="">Seleccione empresa...</option>
+                                {% for empresa in empresas %}
+                                <option value="{{ empresa.id }}">{{ empresa.nomFantasia }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="tipo_equipo_id" class="form-label">Tipo de Equipo</label>
+                            <select class="form-select" id="tipo_equipo_id" onchange="filtrarMarcasPorTipo()">
+                                <option value="">Todos</option>
+                                {% for tipo in tipos_equipo %}
+                                <option value="{{ tipo.tipoEquipo_id }}">{{ tipo.tipoEquipo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="marca_equipo_id" class="form-label">Marca</label>
+                            <select class="form-select" id="marca_equipo_id" onchange="filtrarModelosPorTipoYMarca()" disabled>
+                                <option value="">Primero seleccione tipo...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="modelo_equipo_id" class="form-label">Modelo</label>
+                            <select class="form-select" id="modelo_equipo_id" onchange="filtrarEquipos()" disabled>
+                                <option value="">Primero seleccione marca...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="equipo_id" class="form-label">Equipo <span class="text-danger">*</span></label>
+                            <select class="form-select" id="equipo_id" required onchange="cargarDatosEquipo()" disabled>
+                                <option value="">Primero seleccione modelo...</option>
+                            </select>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Sección: Datos del Equipo (Automáticos, no editables) -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span>Datos del Equipo (Automáticos)</span>
+                </div>
+                <div class="form-section-body">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Horómetro</label>
+                            <input type="text" class="form-control" id="horometro" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Odómetro</label>
+                            <input type="text" class="form-control" id="odometro" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Horómetro Superestructura</label>
+                            <input type="text" class="form-control" id="horometro_superestructura" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if not es_edicion %}
+            <!-- Sección: Información de la OT (solo en creación) -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-calendar-event me-2"></i>
+                    <span>Información de la Orden de Trabajo</span>
+                </div>
+                <div class="form-section-body">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label for="fecha_inicio" class="form-label">Fecha de Inicio</label>
+                            <input type="date" class="form-control" id="fecha_inicio">
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="fecha_fin" class="form-label">Fecha de Fin</label>
+                            <input type="date" class="form-control" id="fecha_fin">
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="tipo_mantenimiento_id" class="form-label">Tipo de Mantenimiento <span class="text-danger">*</span></label>
+                            <select class="form-select" id="tipo_mantenimiento_id" required onchange="cambiarTipoMantenimiento()">
+                                <option value="">Seleccione...</option>
+                                {% for tipo in tipos_mantenimiento %}
+                                <option value="{{ tipo.tipoMantenimiento_id }}">{{ tipo.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Mantenimiento Preventivo (solo si es preventivo) -->
+            <div class="form-section" id="seccionPreventivo" style="display: none;">
+                <div class="form-section-header">
+                    <i class="bi bi-shield-check me-2"></i>
+                    <span>Mantenimiento Preventivo</span>
+                </div>
+                <div class="form-section-body">
+                    <div class="row g-2">
+                        <div class="col-md-12">
+                            <label class="form-label">¿Corresponde a una pauta de mantenimiento? <span class="text-danger">*</span></label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="corresponde_pauta" id="corresponde_pauta_si" value="si" onchange="cambiarCorrespondePauta()">
+                                <label class="form-check-label" for="corresponde_pauta_si">Sí</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="corresponde_pauta" id="corresponde_pauta_no" value="no" onchange="cambiarCorrespondePauta()">
+                                <label class="form-check-label" for="corresponde_pauta_no">No</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Select de pautas (solo si corresponde_pauta = sí) -->
+                        <div class="col-md-12" id="selectPautaContainer" style="display: none;">
+                            <label for="pauta_id" class="form-label">Pauta de Mantenimiento <span class="text-danger">*</span></label>
+                            <select class="form-select" id="pauta_id" onchange="cargarSeccionesPauta()">
+                                <option value="">Seleccione una pauta...</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Secciones de la pauta seleccionada -->
+                        <div class="col-md-12" id="seccionesPautaContainer" style="display: none;">
+                            <label class="form-label">Secciones de la Pauta:</label>
+                            <div id="seccionesPautaList">
+                                <!-- Se llena dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Secciones y Tipos de Reparación (si NO es pauta o es correctivo) -->
+            <div class="form-section" id="seccionReparaciones" style="display: none;">
+                <div class="form-section-header">
+                    <i class="bi bi-list-check me-2"></i>
+                    <span>Secciones y Tipos de Reparación</span>
+                </div>
+                <div class="form-section-body">
+                    <div id="itemsSeccionesContainer">
+                        <p class="text-muted small" id="noItemsMessage">No hay items agregados. Haga clic en "Agregar Item" para comenzar.</p>
+                    </div>
+                    
+                    <div class="mt-3 text-center">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="agregarItemSeccion()">
+                            <i class="bi bi-plus-circle me-1"></i>Agregar Item
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Personal a Asignar -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-people me-2"></i>
+                    <span>Personal a Asignar</span>
+                </div>
+                <div class="form-section-body">
+                    <!-- Personal seleccionado -->
+                    <div class="mb-3" id="personalSeleccionadoContainer" style="display: none;">
+                        <label class="form-label">Personal Seleccionado:</label>
+                        <div class="d-flex flex-wrap gap-2" id="personalSeleccionadoBadges">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+                    
+                    <!-- Filtros de personal -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label small">Buscar</label>
+                            <input type="text" class="form-control form-control-sm" id="personalSearch" 
+                                   placeholder="Nombre, RUT...">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Empresa</label>
+                            <select class="form-select form-select-sm" id="personalEmpresaFilter">
+                                <option value="">Todas</option>
+                                {% for empresa in empresas %}
+                                <option value="{{ empresa.id }}">{{ empresa.nomFantasia }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Cargo</label>
+                            <select class="form-select form-select-sm" id="personalCargoFilter">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Departamento</label>
+                            <select class="form-select form-select-sm" id="personalDeptoFilter">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabla de personal -->
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover table-bordered">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th style="width: 5%;" class="text-center">
+                                        <input type="checkbox" id="selectAllPersonal" onchange="toggleSeleccionarTodoPersonal()">
+                                    </th>
+                                    <th style="width: 20%;">Nombre</th>
+                                    <th style="width: 12%;">RUT</th>
+                                    <th style="width: 20%;">Cargo</th>
+                                    <th style="width: 20%;">Departamento</th>
+                                    <th style="width: 23%;">Empresa</th>
+                                </tr>
+                            </thead>
+                            <tbody id="personalTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center py-3">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="text-muted small mb-0 mt-2">Cargando personal...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <!-- En modo edición, mostrar información de solo lectura -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-calendar-event me-2"></i>
+                    <span>Información de la Orden de Trabajo</span>
+                </div>
+                <div class="form-section-body">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Folio</label>
+                            <input type="text" class="form-control" value="{{ ot.folio }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha de Creación</label>
+                            <input type="text" class="form-control" value="{{ ot.fecha_creacion|date:'d/m/Y H:i' }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha de Inicio</label>
+                            <input type="text" class="form-control" value="{% if ot.fecha_inicio %}{{ ot.fecha_inicio|date:'d/m/Y' }}{% else %}No definida{% endif %}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="fecha_fin_edicion" class="form-label">Fecha de Fin</label>
+                            <input type="date" class="form-control" id="fecha_fin_edicion" value="{% if ot.fecha_fin %}{{ ot.fecha_fin|date:'Y-m-d' }}{% endif %}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mostrar secciones de la OT en modo edición -->
+            {% if ot.corresponde_pauta and ot.pauta_id %}
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-clipboard-check me-2"></i>
+                    <span>Secciones de la Pauta</span>
+                </div>
+                <div class="form-section-body">
+                    <div id="seccionesPautaContainer">
+                        <div id="seccionesPautaList">
+                            <!-- Se llena dinámicamente desde JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-list-check me-2"></i>
+                    <span>Secciones y Tipos de Reparación</span>
+                </div>
+                <div class="form-section-body">
+                    <div id="itemsSeccionesContainer">
+                        <!-- Se llena dinámicamente desde JavaScript -->
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <!-- Sección: Estados -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-flag me-2"></i>
+                    <span>Estados</span>
+                </div>
+                <div class="form-section-body">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label for="estado_ot_id" class="form-label">Estado de la OT <span class="text-danger">*</span></label>
+                            <select class="form-select" id="estado_ot_id" required>
+                                <option value="">Seleccione...</option>
+                                {% for estado in estados_ot %}
+                                <option value="{{ estado.estadoOT_id }}" 
+                                        {% if es_edicion and ot.estado_ot_id.estadoOT_id == estado.estadoOT_id %}selected{% elif not es_edicion and estado.nombre|lower == 'pendiente' %}selected{% endif %}>
+                                    {{ estado.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="estado_equipo_id" class="form-label">Estado del Equipo <span class="text-danger">*</span></label>
+                            <select class="form-select" id="estado_equipo_id" required>
+                                <option value="">Seleccione...</option>
+                                {% for estado in estados_equipo %}
+                                <option value="{{ estado.estadoEquipo_id }}" 
+                                        {% if es_edicion and ot.estado_equipo_id.estadoEquipo_id == estado.estadoEquipo_id %}selected{% endif %}>
+                                    {{ estado.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Observaciones -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-journal-text me-2"></i>
+                    <span>Observaciones</span>
+                </div>
+                <div class="form-section-body">
+                    {% if es_edicion %}
+                    <!-- En modo edición: mostrar historial y campo para nueva observación -->
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Historial de Observaciones</label>
+                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa;">
+                                <div id="historialObservaciones">
+                                    {% for obs in historial_observaciones %}
+                                    <div class="mb-3 pb-3 border-bottom">
+                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                            <strong class="text-primary">{{ obs.usuario.username|default:"Sistema" }}</strong>
+                                            <small class="text-muted">{{ obs.fecha|date:'d/m/Y H:i' }}</small>
+                                        </div>
+                                        <p class="mb-0">{{ obs.observacion }}</p>
+                                    </div>
+                                    {% empty %}
+                                    <p class="text-muted mb-0">No hay observaciones registradas.</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="nuevaObservacion" class="form-label">Agregar Nueva Observación <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="nuevaObservacion" rows="3" 
+                                      placeholder="Ingrese una nueva observación..."></textarea>
+                            <button type="button" class="btn btn-primary btn-sm mt-2" onclick="agregarObservacion()">
+                                <i class="bi bi-plus-circle me-1"></i>Agregar Observación
+                            </button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- En modo creación: campo simple -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label for="observaciones" class="form-label">Observaciones Generales</label>
+                            <textarea class="form-control" id="observaciones" rows="4" 
+                                      placeholder="Ingrese observaciones sobre la orden de trabajo..."></textarea>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="mt-4">
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'maquinarias:lista_ordenes_trabajo' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i>Guardar Orden de Trabajo
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Template para un item de sección (hidden) -->
+<template id="itemSeccionTemplate">
+    <div class="item-seccion" data-item-index="">
+        <div class="d-flex justify-content-between align-items-start mb-3 border-bottom pb-2">
+            <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Item <span class="item-number"></span></h6>
+            <div class="d-flex gap-2">
+                <select class="form-select form-select-sm estado-seccion-select" style="width: auto;" onchange="actualizarEstadoSeccion(this)">
+                    <option value="">Seleccione estado...</option>
+                    {% for estado in estados_ot %}
+                    <option value="{{ estado.estadoOT_id }}">{{ estado.nombre }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarItemSeccion(this)">
+                    <i class="bi bi-trash-fill"></i> Eliminar
+                </button>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Sección <span class="text-danger">*</span></label>
+                <select class="form-select seccion-select" onchange="cargarTiposReparacionItem(this)" required>
+                    <option value="">Seleccione una sección</option>
+                    {% for seccion in secciones %}
+                    <option value="{{ seccion.seccion_id }}">{{ seccion.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-8 mb-3">
+                <label class="form-label">Tipos de Reparación <span class="text-danger">*</span></label>
+                <div class="tipos-reparacion-list">
+                    <p class="text-muted small mb-0">Seleccione primero una sección</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block extrajs %}
+<script>
+    window.csrfToken = "{{ csrf_token }}";
+    window.apiEquiposFiltrados = "{% url 'maquinarias:api_equipos_filtrados' %}";
+    window.apiPersonalMaquinarias = "{% url 'maquinarias:api_personal_maquinarias' %}";
+    window.apiPautasPorModeloBase = "{% url 'maquinarias:api_pautas_por_modelo' 0 %}";
+    window.apiDetallePautaOT = "{% url 'maquinarias:api_detalle_pauta_ot' 0 %}";
+    window.apiMarcasPorTipo = "{% url 'maquinarias:api_marcas_por_tipo' %}";
+    window.apiModelosPorTipoMarca = "{% url 'maquinarias:api_modelos_por_tipo_marca' %}";
+    window.apiCargosPorDepto = "{% url 'maquinarias:api_cargos_por_depto' %}";
+    window.apiDepartamentos = "{% url 'maquinarias:api_departamentos' %}";
+    window.apiGuardarOT = "{% url 'maquinarias:api_guardar_orden_trabajo' %}";
+    {% if es_edicion %}
+    window.apiAgregarObservacionOT = "{% url 'maquinarias:api_agregar_observacion_ot' ot.ot_id %}";
+    {% endif %}
+    
+    // Datos de estados
+    window.estadosOT = [
+        {% for estado in estados_ot %}
+        {
+            estadoOT_id: {{ estado.estadoOT_id }},
+            nombre: "{{ estado.nombre|escapejs }}",
+            color: "{{ estado.color }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Datos de modelos para filtros en cascada
+    window.todosModelos = [
+        {% for modelo in modelos %}
+        {
+            modeloEquipo_id: {{ modelo.modeloEquipo_id }},
+            modeloEquipo: "{{ modelo.modeloEquipo|escapejs }}",
+            tipoEquipo_id: {{ modelo.tipoEquipo_id.tipoEquipo_id }},
+            marcaEquipo_id: {{ modelo.marcaEquipo_id.marcaEquipo_id }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Datos de marcas
+    window.todasMarcas = [
+        {% for marca in marcas %}
+        {
+            marcaEquipo_id: {{ marca.marcaEquipo_id }},
+            marcaEquipo: "{{ marca.marcaEquipo|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Datos de secciones
+    window.secciones = [
+        {% for seccion in secciones %}
+        {
+            seccion_id: {{ seccion.seccion_id }},
+            nombre: "{{ seccion.nombre|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Datos de tipos de reparación
+    window.tiposReparacion = [
+        {% for tipo in tipos_reparacion %}
+        {
+            tipoReparacion_id: {{ tipo.tipoReparacion_id }},
+            nombre: "{{ tipo.nombre|escapejs }}",
+            seccion_id: {{ tipo.seccion_id.seccion_id }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Datos para edición
+    {% if es_edicion %}
+    window.esEdicion = true;
+    window.otData = {
+        ot_id: {{ ot.ot_id }},
+        equipo_id: {{ ot.equipo_id.equipo_id }},
+        modelo_id: {{ ot.equipo_id.modeloEquipo_id.modeloEquipo_id }},
+        tipo_equipo_id: {{ ot.equipo_id.modeloEquipo_id.tipoEquipo_id.tipoEquipo_id }},
+        marca_equipo_id: {{ ot.equipo_id.modeloEquipo_id.marcaEquipo_id.marcaEquipo_id }},
+        tipo_mantenimiento_id: {% if ot.tipo_mantenimiento_id %}{{ ot.tipo_mantenimiento_id.tipoMantenimiento_id }}{% else %}null{% endif %},
+        tipo_mantenimiento_nombre: "{% if ot.tipo_mantenimiento_id %}{{ ot.tipo_mantenimiento_id.nombre|escapejs }}{% endif %}",
+        corresponde_pauta: {{ ot.corresponde_pauta|yesno:"true,false" }},
+        pauta_id: {% if ot.pauta_id %}{{ ot.pauta_id.pauta_id }}{% else %}null{% endif %},
+        estado_ot_id: {% if ot.estado_ot_id %}{{ ot.estado_ot_id.estadoOT_id }}{% else %}null{% endif %},
+        estado_equipo_id: {% if ot.estado_equipo_id %}{{ ot.estado_equipo_id.estadoEquipo_id }}{% else %}null{% endif %},
+        personal_asignado: [
+            {% for p in ot.personal_asignado.all %}
+            {{ p.personal_id }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        items_secciones: [
+            {% for item in items_secciones %}
+            {
+                itemSeccionOT_id: {{ item.itemSeccionOT_id }},
+                seccion_id: {{ item.seccion_id.seccion_id }},
+                tipos_reparacion_ids: [
+                    {% for tipo in item.tipos_reparacion.all %}
+                    {{ tipo.tipoReparacion_id }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                estado_seccion_id: {% if item.estado_seccion_id %}{{ item.estado_seccion_id.estadoOT_id }}{% else %}null{% endif %}
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ]
+    };
+    {% else %}
+    window.esEdicion = false;
+    window.otData = null;
+    {% endif %}
+</script>
+<script src="{% static 'maquinarias/js/form_orden_trabajo.js' %}"></script>
+{% endblock %}
+

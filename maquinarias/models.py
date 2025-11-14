@@ -1,7 +1,51 @@
 from django.db import models
 from gen_settings.models import Empresa
+from rrhh_personal.models import Personal
+from django.contrib.auth.models import User
+from datetime import datetime
+import os
+from django.core.files.storage import FileSystemStorage
 
 # Create your models here.
+
+# ============================================================================
+# FUNCIONES PARA RUTAS DE DOCUMENTOS DE MAQUINARIAS
+# ============================================================================
+
+def obtener_ruta_documento_maquinaria(instance, filename):
+    """
+    Función para determinar la ruta donde se guardarán los documentos de maquinarias.
+    La estructura será: Documentacion_Maquinarias/EQUIPO_ID/TIPO_DOCUMENTO/archivo
+    """
+    extension = os.path.splitext(filename)[1]
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    
+    # Usar el nombre de la clase para evitar referencias forward
+    class_name = instance.__class__.__name__
+    
+    if class_name == 'DocumentoMaquinaria':
+        equipo_id = instance.equipo_id.equipo_id
+        tipo_doc = instance.tipo_documento_id.nombre.replace(' ', '_').lower()
+        nombre_archivo = f"{tipo_doc}_{timestamp}{extension}"
+        return os.path.join('Documentacion_Maquinarias', str(equipo_id), tipo_doc, nombre_archivo)
+    elif class_name == 'HistorialDocumentoMaquinaria':
+        equipo_id = instance.equipo_id.equipo_id
+        tipo_doc = instance.tipo_documento_nombre.replace(' ', '_').lower()
+        nombre_archivo = f"{tipo_doc}_{timestamp}_historial{extension}"
+        return os.path.join('Documentacion_Maquinarias', str(equipo_id), 'Historial', tipo_doc, nombre_archivo)
+    
+    return os.path.join('Documentacion_Maquinarias', 'Otros', filename)
+
+
+class OverwriteStorage(FileSystemStorage):
+    """
+    Storage class para desarrollo local que sobrescribe archivos existentes
+    """
+    def get_available_name(self, name, max_length=None):
+        # Eliminar archivo existente si existe
+        if self.exists(name):
+            self.delete(name)
+        return name
 
 class TipoEquipo(models.Model):
     tipoEquipo_id = models.AutoField(primary_key=True, null=False, blank=False)
@@ -106,6 +150,25 @@ class Seccion(models.Model):
         return self.nombre
 
 
+class EstadoOT(models.Model):
+    """Estados de una Orden de Trabajo"""
+    estadoOT_id = models.AutoField(primary_key=True, null=False, blank=False)
+    nombre = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='Nombre')
+    descripcion = models.TextField(blank=True, null=True, verbose_name='Descripción')
+    color = models.CharField(max_length=20, default='secondary', verbose_name='Color (Bootstrap)')
+    activo = models.BooleanField(default=True, null=False, blank=False, verbose_name='Activo')
+    orden = models.IntegerField(default=0, verbose_name='Orden de Visualización')
+    
+    class Meta:
+        db_table = 'maquinarias_estadoot'
+        verbose_name = 'Estado de OT'
+        verbose_name_plural = 'Estados de OT'
+        ordering = ['orden', 'nombre']
+    
+    def __str__(self):
+        return self.nombre
+
+
 class TipoReparacion(models.Model):
     """Tipos de reparación para cada sección"""
     tipoReparacion_id = models.AutoField(primary_key=True, null=False, blank=False)
@@ -150,6 +213,15 @@ class ItemPauta(models.Model):
     pauta_id = models.ForeignKey(PautaMantenimientoPreventivo, on_delete=models.CASCADE, db_column='pauta_id', related_name='items', null=False, blank=False)
     seccion_id = models.ForeignKey(Seccion, on_delete=models.CASCADE, db_column='seccion_id', related_name='items_pauta', null=False, blank=False)
     tipos_reparacion = models.ManyToManyField(TipoReparacion, related_name='items_pauta')
+    estado_seccion_id = models.ForeignKey(
+        EstadoOT,
+        on_delete=models.CASCADE,
+        db_column='estado_seccion_id',
+        null=True,
+        blank=True,
+        related_name='items_pauta',
+        verbose_name='Estado de la Sección'
+    )
     
     class Meta:
         db_table = 'maquinarias_itempauta'
@@ -159,3 +231,476 @@ class ItemPauta(models.Model):
     
     def __str__(self):
         return f"{self.pauta_id.nombre} - {self.seccion_id.nombre}"
+
+
+# ============================================================================
+# MODELOS PARA DOCUMENTACIÓN DE MAQUINARIAS
+# ============================================================================
+
+class TipoDocumentoMaquinaria(models.Model):
+    """Tipos de documentos que puede tener una maquinaria (revisión técnica, seguro, permiso de circulación, etc.)"""
+    tipoDocumento_id = models.AutoField(primary_key=True, null=False, blank=False)
+    nombre = models.CharField(max_length=100, unique=True, null=False, blank=False, verbose_name='Nombre del Documento')
+    descripcion = models.TextField(blank=True, null=True, verbose_name='Descripción')
+    requiere_fecha_vencimiento = models.BooleanField(
+        default=False, 
+        null=False, 
+        blank=False,
+        verbose_name='Requiere Fecha de Vencimiento',
+        help_text='Si está marcado, este tipo de documento requerirá una fecha de vencimiento al subirlo'
+    )
+    activo = models.BooleanField(default=True, null=False, blank=False, verbose_name='Activo')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'maquinarias_tipodocumento'
+        verbose_name = 'Tipo de Documento de Maquinaria'
+        verbose_name_plural = 'Tipos de Documentos de Maquinaria'
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return self.nombre
+
+
+class DocumentoMaquinaria(models.Model):
+    """Documentos actuales de una maquinaria"""
+    documento_id = models.AutoField(primary_key=True, null=False, blank=False)
+    equipo_id = models.ForeignKey(
+        Equipo, 
+        on_delete=models.CASCADE, 
+        db_column='equipo_id', 
+        null=False, 
+        blank=False,
+        related_name='documentos'
+    )
+    tipo_documento_id = models.ForeignKey(
+        TipoDocumentoMaquinaria,
+        on_delete=models.CASCADE,
+        db_column='tipo_documento_id',
+        null=False,
+        blank=False,
+        related_name='documentos',
+        verbose_name='Tipo de Documento'
+    )
+    archivo = models.FileField(
+        upload_to=obtener_ruta_documento_maquinaria,
+        storage=OverwriteStorage(),
+        null=False,
+        blank=False,
+        verbose_name='Archivo'
+    )
+    fecha_vencimiento = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de Vencimiento',
+        help_text='Fecha en que vence el documento (si aplica)'
+    )
+    fecha_subida = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Subida')
+    observaciones = models.TextField(blank=True, null=True, verbose_name='Observaciones')
+    
+    class Meta:
+        db_table = 'maquinarias_documento'
+        verbose_name = 'Documento de Maquinaria'
+        verbose_name_plural = 'Documentos de Maquinaria'
+        # Un equipo solo puede tener un documento activo de cada tipo
+        unique_together = [['equipo_id', 'tipo_documento_id']]
+        ordering = ['tipo_documento_id__nombre']
+    
+    @property
+    def esta_vencido(self):
+        """Determina si el documento está vencido"""
+        from datetime import date
+        if not self.fecha_vencimiento:
+            return False
+        return self.fecha_vencimiento < date.today()
+    
+    @property
+    def esta_por_vencer(self):
+        """Determina si el documento está por vencer (menos de 30 días)"""
+        from datetime import date, timedelta
+        if not self.fecha_vencimiento:
+            return False
+        dias_restantes = (self.fecha_vencimiento - date.today()).days
+        return 0 <= dias_restantes <= 30
+    
+    def __str__(self):
+        return f"{self.tipo_documento_id.nombre} - {self.equipo_id.nombreEquipo}"
+
+
+class HistorialDocumentoMaquinaria(models.Model):
+    """Historial de documentos reemplazados de una maquinaria"""
+    historial_id = models.AutoField(primary_key=True, null=False, blank=False)
+    equipo_id = models.ForeignKey(
+        Equipo,
+        on_delete=models.CASCADE,
+        db_column='equipo_id',
+        null=False,
+        blank=False,
+        related_name='historial_documentos'
+    )
+    tipo_documento_id = models.ForeignKey(
+        TipoDocumentoMaquinaria,
+        on_delete=models.SET_NULL,
+        db_column='tipo_documento_id',
+        null=True,
+        blank=True,
+        related_name='historial',
+        verbose_name='Tipo de Documento'
+    )
+    tipo_documento_nombre = models.CharField(
+        max_length=100,
+        null=False,
+        blank=False,
+        verbose_name='Tipo de Documento (Nombre)',
+        help_text='Nombre del tipo de documento al momento de archivarlo'
+    )
+    archivo = models.FileField(
+        upload_to=obtener_ruta_documento_maquinaria,
+        null=False,
+        blank=False,
+        verbose_name='Archivo'
+    )
+    fecha_vencimiento = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de Vencimiento'
+    )
+    fecha_subida_original = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de Subida Original',
+        help_text='Fecha en que se subió originalmente este documento'
+    )
+    fecha_reemplazo = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Reemplazo',
+        help_text='Fecha en que este documento fue reemplazado'
+    )
+    observaciones = models.TextField(blank=True, null=True, verbose_name='Observaciones')
+    
+    class Meta:
+        db_table = 'maquinarias_historialdocumento'
+        verbose_name = 'Historial de Documento de Maquinaria'
+        verbose_name_plural = 'Historial de Documentos de Maquinaria'
+        ordering = ['-fecha_reemplazo']
+    
+    def __str__(self):
+        return f"{self.tipo_documento_nombre} - {self.equipo_id.nombreEquipo} (Historial)"
+
+
+# ============================================================================
+# MODELOS PARA ORDEN DE TRABAJO (OT)
+# ============================================================================
+
+class TipoMantenimiento(models.Model):
+    """Tipos de mantenimiento (Preventivo, Correctivo, etc.)"""
+    tipoMantenimiento_id = models.AutoField(primary_key=True, null=False, blank=False)
+    nombre = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='Nombre')
+    descripcion = models.TextField(blank=True, null=True, verbose_name='Descripción')
+    activo = models.BooleanField(default=True, null=False, blank=False, verbose_name='Activo')
+    
+    class Meta:
+        db_table = 'maquinarias_tipomantenimiento'
+        verbose_name = 'Tipo de Mantenimiento'
+        verbose_name_plural = 'Tipos de Mantenimiento'
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return self.nombre
+
+
+class EstadoEquipo(models.Model):
+    """Estados de un equipo durante una OT"""
+    estadoEquipo_id = models.AutoField(primary_key=True, null=False, blank=False)
+    nombre = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='Nombre')
+    descripcion = models.TextField(blank=True, null=True, verbose_name='Descripción')
+    color = models.CharField(max_length=20, default='secondary', verbose_name='Color (Bootstrap)')
+    activo = models.BooleanField(default=True, null=False, blank=False, verbose_name='Activo')
+    orden = models.IntegerField(default=0, verbose_name='Orden de Visualización')
+    
+    class Meta:
+        db_table = 'maquinarias_estadoequipo'
+        verbose_name = 'Estado de Equipo'
+        verbose_name_plural = 'Estados de Equipo'
+        ordering = ['orden', 'nombre']
+    
+    def __str__(self):
+        return self.nombre
+
+
+class OrdenTrabajo(models.Model):
+    """Orden de Trabajo para mantenimiento de equipos"""
+    
+    ot_id = models.AutoField(primary_key=True, null=False, blank=False)
+    folio = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='Folio')
+    equipo_id = models.ForeignKey(
+        Equipo,
+        on_delete=models.CASCADE,
+        db_column='equipo_id',
+        null=False,
+        blank=False,
+        related_name='ordenes_trabajo',
+        verbose_name='Equipo'
+    )
+    empresa_id = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        db_column='empresa_id',
+        null=False,
+        blank=False,
+        related_name='ordenes_trabajo',
+        verbose_name='Empresa'
+    )
+    
+    # Campos automáticos del equipo (no editables, se copian al crear)
+    horometro = models.IntegerField(null=True, blank=True, verbose_name='Horómetro')
+    odometro = models.IntegerField(null=True, blank=True, verbose_name='Odómetro')
+    horometro_superestructura = models.IntegerField(null=True, blank=True, verbose_name='Horómetro Superestructura')
+    
+    # Fechas
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Creación')
+    fecha_inicio = models.DateField(null=True, blank=True, verbose_name='Fecha de Inicio')
+    fecha_fin = models.DateField(null=True, blank=True, verbose_name='Fecha de Fin')
+    
+    # Tipo de mantenimiento (ForeignKey)
+    tipo_mantenimiento_id = models.ForeignKey(
+        TipoMantenimiento,
+        on_delete=models.CASCADE,
+        db_column='tipo_mantenimiento_id',
+        null=True,
+        blank=True,
+        related_name='ordenes_trabajo',
+        verbose_name='Tipo de Mantenimiento'
+    )
+    
+    # Si es preventivo, puede corresponder a una pauta
+    corresponde_pauta = models.BooleanField(
+        default=False,
+        null=False,
+        blank=False,
+        verbose_name='Corresponde a Pauta de Mantenimiento'
+    )
+    pauta_id = models.ForeignKey(
+        PautaMantenimientoPreventivo,
+        on_delete=models.SET_NULL,
+        db_column='pauta_id',
+        null=True,
+        blank=True,
+        related_name='ordenes_trabajo',
+        verbose_name='Pauta de Mantenimiento'
+    )
+    
+    # Estados (ForeignKeys)
+    estado_ot_id = models.ForeignKey(
+        EstadoOT,
+        on_delete=models.CASCADE,
+        db_column='estado_ot_id',
+        null=True,
+        blank=True,
+        related_name='ordenes_trabajo',
+        verbose_name='Estado de la OT'
+    )
+    estado_equipo_id = models.ForeignKey(
+        EstadoEquipo,
+        on_delete=models.CASCADE,
+        db_column='estado_equipo_id',
+        null=True,
+        blank=True,
+        related_name='ordenes_trabajo',
+        verbose_name='Estado del Equipo'
+    )
+    
+    # Personal asignado (muchos a muchos)
+    personal_asignado = models.ManyToManyField(
+        Personal,
+        related_name='ordenes_trabajo',
+        blank=True,
+        verbose_name='Personal Asignado'
+    )
+    
+    # Observaciones generales (bitácora principal)
+    observaciones = models.TextField(blank=True, null=True, verbose_name='Observaciones')
+    
+    class Meta:
+        db_table = 'maquinarias_ordentrabajo'
+        verbose_name = 'Orden de Trabajo'
+        verbose_name_plural = 'Ordenes de Trabajo'
+        ordering = ['-fecha_creacion']
+    
+    def __str__(self):
+        return f"OT-{self.folio} - {self.equipo_id.nombreEquipo}"
+    
+    def save(self, *args, **kwargs):
+        """Genera el folio automáticamente si no existe"""
+        if not self.folio:
+            # Generar folio único: OT-YYYYMMDD-HHMMSS
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            self.folio = f"OT-{timestamp}"
+        super().save(*args, **kwargs)
+
+
+class ItemSeccionOT(models.Model):
+    """Items de secciones y tipos de reparación para una OT (cuando NO es pauta)"""
+    
+    itemSeccionOT_id = models.AutoField(primary_key=True, null=False, blank=False)
+    ot_id = models.ForeignKey(
+        OrdenTrabajo,
+        on_delete=models.CASCADE,
+        db_column='ot_id',
+        null=False,
+        blank=False,
+        related_name='items_secciones',
+        verbose_name='Orden de Trabajo'
+    )
+    seccion_id = models.ForeignKey(
+        Seccion,
+        on_delete=models.CASCADE,
+        db_column='seccion_id',
+        null=False,
+        blank=False,
+        related_name='items_ot',
+        verbose_name='Sección'
+    )
+    tipos_reparacion = models.ManyToManyField(
+        TipoReparacion,
+        related_name='items_ot',
+        verbose_name='Tipos de Reparación'
+    )
+    estado_seccion_id = models.ForeignKey(
+        EstadoOT,
+        on_delete=models.CASCADE,
+        db_column='estado_seccion_id',
+        null=True,
+        blank=True,
+        related_name='items_secciones_ot',
+        verbose_name='Estado de la Sección'
+    )
+    
+    class Meta:
+        db_table = 'maquinarias_itemseccionot'
+        verbose_name = 'Item Sección OT'
+        verbose_name_plural = 'Items Secciones OT'
+        unique_together = [['ot_id', 'seccion_id']]
+        ordering = ['seccion_id__nombre']
+    
+    def __str__(self):
+        return f"{self.ot_id.folio} - {self.seccion_id.nombre}"
+
+
+class HistorialObservacionesOT(models.Model):
+    """Historial de observaciones (bitácora) de una OT"""
+    historial_id = models.AutoField(primary_key=True, null=False, blank=False)
+    ot_id = models.ForeignKey(
+        OrdenTrabajo,
+        on_delete=models.CASCADE,
+        db_column='ot_id',
+        null=False,
+        blank=False,
+        related_name='historial_observaciones',
+        verbose_name='Orden de Trabajo'
+    )
+    observacion = models.TextField(null=False, blank=False, verbose_name='Observación')
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='observaciones_ot',
+        verbose_name='Usuario'
+    )
+    fecha = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
+    
+    class Meta:
+        db_table = 'maquinarias_historialobservacionesot'
+        verbose_name = 'Historial de Observación OT'
+        verbose_name_plural = 'Historial de Observaciones OT'
+        ordering = ['-fecha']
+    
+    def __str__(self):
+        return f"{self.ot_id.folio} - {self.fecha.strftime('%Y-%m-%d %H:%M')}"
+
+
+class HistorialOT(models.Model):
+    """
+    Registra todos los cambios y acciones realizadas en una OT.
+    Permite auditoría completa de modificaciones y cambios de estado.
+    """
+    ACCION_CHOICES = [
+        ('OT_CREADA', 'OT Creada'),
+        ('OT_MODIFICADA', 'OT Modificada'),
+        ('ESTADO_OT_CAMBIADO', 'Estado OT Cambiado'),
+        ('ESTADO_EQUIPO_CAMBIADO', 'Estado Equipo Cambiado'),
+        ('ESTADO_SECCION_CAMBIADO', 'Estado Sección Cambiado'),
+        ('FECHA_INICIO_CAMBIADA', 'Fecha Inicio Cambiada'),
+        ('FECHA_FIN_CAMBIADA', 'Fecha Fin Cambiada'),
+        ('PERSONAL_ASIGNADO', 'Personal Asignado'),
+        ('PERSONAL_ELIMINADO', 'Personal Eliminado'),
+        ('OBSERVACION_AGREGADA', 'Observación Agregada'),
+    ]
+    
+    ot = models.ForeignKey(
+        OrdenTrabajo, 
+        on_delete=models.CASCADE, 
+        related_name="historial",
+        db_index=True,
+        verbose_name='Orden de Trabajo'
+    )
+    fecha_hora = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Fecha y Hora')
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Usuario que realizó la acción",
+        verbose_name='Usuario'
+    )
+    accion = models.CharField(
+        max_length=50,
+        choices=ACCION_CHOICES,
+        help_text="Tipo de acción realizada",
+        verbose_name='Acción'
+    )
+    descripcion = models.TextField(
+        help_text="Descripción detallada del cambio",
+        verbose_name='Descripción'
+    )
+    datos_previos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado anterior antes del cambio (JSON)",
+        verbose_name='Datos Previos'
+    )
+    datos_nuevos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado nuevo después del cambio (JSON)",
+        verbose_name='Datos Nuevos'
+    )
+    
+    class Meta:
+        ordering = ["-fecha_hora"]
+        verbose_name = "Historial de OT"
+        verbose_name_plural = "Historial de OTs"
+        db_table = 'maquinarias_historialot'
+        indexes = [
+            models.Index(fields=["ot", "-fecha_hora"]),
+            models.Index(fields=["usuario", "-fecha_hora"]),
+        ]
+    
+    def __str__(self):
+        return f"{self.ot.folio} - {self.get_accion_display()} - {self.fecha_hora.strftime('%d/%m/%Y %H:%M')}"
+    
+    @classmethod
+    def registrar(cls, ot, accion, descripcion, usuario=None, datos_previos=None, datos_nuevos=None):
+        """
+        Método helper para registrar fácilmente un evento en el historial.
+        """
+        return cls.objects.create(
+            ot=ot,
+            accion=accion,
+            descripcion=descripcion,
+            usuario=usuario,
+            datos_previos=datos_previos,
+            datos_nuevos=datos_nuevos
+        )

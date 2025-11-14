@@ -156,8 +156,10 @@
                     <li>❌ Se moverá a la lista de "Equipos Desactivados"</li>
                 </ul>
                 <p class="mb-2"><strong>Equipo a desactivar:</strong></p>
-                <div class="alert alert-light border mb-0">
-                    <strong id="equipoDesactivarNombre"></strong>
+                <div class="card border mb-0">
+                    <div class="card-body py-2 px-3 bg-light">
+                        <strong id="equipoDesactivarNombre" class="d-block"></strong>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -173,6 +175,9 @@
 {% endblock %}
 
 {% block extrajs %}
+<script>
+    window.csrfToken = "{{ csrf_token }}";
+</script>
 <script src="{% static 'maquinarias/js/lista_equipos.js' %}"></script>
 {% endblock %}
 

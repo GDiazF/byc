@@ -1,0 +1,13 @@
+/* Estilos específicos para lista de ordenes de trabajo */
+#ordenesTable {
+    font-size: 0.875rem;
+}
+
+#ordenesTable td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+

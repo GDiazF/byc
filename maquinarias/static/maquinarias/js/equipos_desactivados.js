@@ -3,6 +3,9 @@ let paginaActual = 1;
 let registrosPorPagina = 10;
 let equiposDesactivados = [];
 let equiposFiltrados = [];
+let currentToggle = null;
+let originalState = false;
+let changeConfirmed = false;
 
 // Cargar al iniciar
 document.addEventListener('DOMContentLoaded', function() {
@@ -12,6 +15,19 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('searchInput').addEventListener('input', debounce(filtrarEquipos, 300));
     document.getElementById('filtroTipo').addEventListener('change', filtrarEquipos);
     document.getElementById('filtroEmpresa').addEventListener('change', filtrarEquipos);
+    
+    // Configurar botón de confirmación del modal
+    document.getElementById('btnConfirmarActivar').addEventListener('click', confirmarActivacion);
+    
+    // Limpiar al cerrar modal de confirmación
+    document.getElementById('confirmActivarModal').addEventListener('hidden.bs.modal', function() {
+        if (currentToggle && !changeConfirmed) {
+            currentToggle.checked = originalState;
+        }
+        currentToggle = null;
+        originalState = false;
+        changeConfirmed = false;
+    });
 });
 
 // Debounce
@@ -106,8 +122,10 @@ function renderizarTabla() {
                 <div class="form-check form-switch d-inline-block">
                     <input class="form-check-input" type="checkbox" 
                            style="cursor: pointer;"
+                           data-equipo-id="${equipo.equipo_id}"
+                           data-nombre-equipo="${equipo.nombreEquipo.replace(/'/g, "\\'")}"
                            ${equipo.activo ? 'checked' : ''} 
-                           onchange="confirmarActivar(${equipo.equipo_id}, '${equipo.nombreEquipo}')"
+                           onchange="toggleEstadoEquipo(this)"
                            title="Activar equipo">
                 </div>
             </td>
@@ -190,41 +208,82 @@ function limpiarFiltros() {
     filtrarEquipos();
 }
 
-// Confirmar activación
-function confirmarActivar(equipoId, nombreEquipo) {
-    // Mostrar modal de confirmación
-    document.getElementById('equipoActivarNombre').textContent = nombreEquipo;
-    const modal = new bootstrap.Modal(document.getElementById('confirmActivarModal'));
-    modal.show();
+// ============================================================================
+// TOGGLE DE ESTADO (ACTIVAR)
+// ============================================================================
+
+function toggleEstadoEquipo(checkbox) {
+    currentToggle = checkbox;
+    originalState = !checkbox.checked;
+    changeConfirmed = false;
     
-    // Configurar botón de confirmación
-    document.getElementById('btnConfirmarActivar').onclick = function() {
-        activarEquipo(equipoId, modal);
-    };
+    // Revertir el cambio hasta que se confirme
+    checkbox.checked = originalState;
+    
+    // Actualizar nombre del equipo en el modal
+    const nombreEquipo = checkbox.dataset.nombreEquipo;
+    const nombreElement = document.getElementById('equipoActivarNombre');
+    if (nombreElement) {
+        nombreElement.textContent = nombreEquipo;
+    }
+    
+    // Cerrar cualquier instancia existente del modal primero
+    const modalElement = document.getElementById('confirmActivarModal');
+    if (!modalElement) {
+        console.error('Modal element not found');
+        return;
+    }
+    
+    const existingModal = bootstrap.Modal.getInstance(modalElement);
+    if (existingModal) {
+        existingModal.dispose();
+    }
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
 }
 
-// Activar equipo
-function activarEquipo(equipoId, modal) {
+function confirmarActivacion() {
+    if (!currentToggle) return;
+    
+    const equipoId = parseInt(currentToggle.dataset.equipoId);
+    
+    // Llamada AJAX para actualizar el estado
     fetch(`/maquinarias/api/equipos/${equipoId}/toggle-activo/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': window.csrfToken
         }
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            modal.hide();
-            showNotification(data.message, 'success');
+        if (data.status === 'success') {
+            changeConfirmed = true;
+            
+            // Cerrar modal de confirmación
+            const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmActivarModal'));
+            confirmModal.hide();
+            
+            // Mostrar mensaje de éxito
+            showNotification('Equipo activado correctamente', 'success');
+            
             // Recargar lista
             cargarEquiposDesactivados();
         } else {
-            showNotification(data.error, 'error');
+            const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmActivarModal'));
+            confirmModal.hide();
+            alert('Error: ' + (data.message || 'Error al cambiar el estado del equipo'));
+            currentToggle.checked = originalState;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('Error de conexión al activar el equipo', 'error');
+        const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmActivarModal'));
+        confirmModal.hide();
+        alert('Error al cambiar el estado del equipo');
+        currentToggle.checked = originalState;
     });
 }
 

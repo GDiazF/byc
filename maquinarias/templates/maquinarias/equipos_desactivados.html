@@ -155,8 +155,10 @@
                     <li>✓ Desaparecerá de esta lista de equipos desactivados</li>
                 </ul>
                 <p class="mb-2"><strong>Equipo a activar:</strong></p>
-                <div class="alert alert-light border mb-0">
-                    <strong id="equipoActivarNombre"></strong>
+                <div class="card border mb-0">
+                    <div class="card-body py-2 px-3 bg-light">
+                        <strong id="equipoActivarNombre" class="d-block"></strong>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -172,6 +174,9 @@
 {% endblock %}
 
 {% block extrajs %}
+<script>
+    window.csrfToken = "{{ csrf_token }}";
+</script>
 <script src="{% static 'maquinarias/js/equipos_desactivados.js' %}"></script>
 {% endblock %}
 
