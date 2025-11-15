@@ -25,13 +25,16 @@ from .models import (
     PautaMantenimientoPreventivo, ItemPauta, TipoDocumentoMaquinaria, 
     DocumentoMaquinaria, HistorialDocumentoMaquinaria,
     TipoMantenimiento, EstadoOT, EstadoEquipo,
-    OrdenTrabajo, ItemSeccionOT, HistorialObservacionesOT, HistorialOT
+    EstadoCalendarioEquipo, EstadoFuenteEquipo, EstadoManualEquipo,
+    OrdenTrabajo, ItemSeccionOT, HistorialObservacionesOT, HistorialOT,
+    obtener_estado_final_equipo_fecha
 )
 from gen_settings.models import Empresa
-from rrhh_personal.models import Personal, InfoLaboral, Cargo
+from rrhh_personal.models import Personal, InfoLaboral, Cargo, DeptoEmpresa
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+from calendar import monthrange
 
 
 def lista_equipos(request):
@@ -1594,6 +1597,288 @@ def lista_ordenes_trabajo(request):
     return render(request, 'maquinarias/lista_ordenes_trabajo.html', context)
 
 
+def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', tipo_filter='', search_query='', page=1, page_size=25):
+    """
+    Obtiene datos para el calendario de maquinarias con paginación.
+    ARQUITECTURA OPTIMIZADA: Obtiene todos los datos de una vez y calcula estados en memoria
+    ESCALABLE: O(1) - El tiempo no aumenta significativamente con más equipos
+    """
+    # Obtener rango de fechas del mes
+    _, ultimo_dia = monthrange(year, month)
+    fecha_inicio = date(year, month, 1)
+    fecha_fin = date(year, month, ultimo_dia)
+    
+    # Construir filtros para los equipos
+    equipos_query = Equipo.objects.filter(activo=True).select_related(
+        'modeloEquipo_id__tipoEquipo_id', 'modeloEquipo_id__marcaEquipo_id', 'empresa_id'
+    )
+    
+    # Aplicar filtros
+    if empresa_filter and empresa_filter.strip():
+        equipos_query = equipos_query.filter(empresa_id__nomFantasia__icontains=empresa_filter)
+    
+    if tipo_filter and tipo_filter.strip():
+        equipos_query = equipos_query.filter(modeloEquipo_id__tipoEquipo_id__tipoEquipo__icontains=tipo_filter)
+    
+    if search_query and search_query.strip():
+        equipos_query = equipos_query.filter(
+            Q(nombreEquipo__icontains=search_query) |
+            Q(codigoEquipo__icontains=search_query) |
+            Q(modeloEquipo_id__modeloEquipo__icontains=search_query)
+        )
+    
+    # Contar total antes de paginar
+    total_equipos = equipos_query.count()
+    
+    # Aplicar paginación
+    offset = (page - 1) * page_size
+    equipos_list = list(equipos_query.order_by('nombreEquipo')[offset:offset + page_size])
+    
+    # Obtener IDs de los equipos paginados
+    equipos_ids = [e.equipo_id for e in equipos_list]
+    
+    # Obtener TODOS los datos necesarios de UNA VEZ
+    
+    # 1. Obtener estados manuales de estos equipos en este mes
+    estados_manuales = EstadoManualEquipo.objects.filter(
+        equipo_id__in=equipos_ids,
+        fecha_inicio__lte=fecha_fin,
+        fecha_fin__gte=fecha_inicio
+    ).select_related('equipo', 'estado')
+    
+    # 2. Obtener todas las OT que afectan estos equipos en este mes
+    ordenes_trabajo = OrdenTrabajo.objects.filter(
+        equipo_id__in=equipos_ids
+    ).filter(
+        Q(fecha_inicio__lte=fecha_fin) & (
+            Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio)
+        )
+    ).select_related(
+        'equipo_id', 'estado_equipo_id'
+    )
+    
+    # 3. Obtener todos los mapeos de EstadoFuenteEquipo de una vez
+    # Crear un diccionario para acceso rápido: estado_equipo_id -> estado_calendario
+    mapeos_fuente = {}
+    fuentes = EstadoFuenteEquipo.objects.select_related('estado_calendario', 'estado_equipo').all()
+    for fuente in fuentes:
+        if fuente.estado_calendario.activo:
+            mapeos_fuente[fuente.estado_equipo.estadoEquipo_id] = fuente.estado_calendario
+    
+    # 4. Obtener estado predeterminado una sola vez
+    estado_predeterminado = EstadoCalendarioEquipo.objects.filter(
+        activo=True, es_predeterminado=True
+    ).first()
+    
+    # 5. Crear diccionarios para acceso rápido en memoria
+    estados_manuales_por_equipo = {}
+    for em in estados_manuales:
+        if em.equipo.equipo_id not in estados_manuales_por_equipo:
+            estados_manuales_por_equipo[em.equipo.equipo_id] = []
+        estados_manuales_por_equipo[em.equipo.equipo_id].append(em)
+    
+    ot_por_equipo = {}
+    for ot in ordenes_trabajo:
+        if ot.equipo_id.equipo_id not in ot_por_equipo:
+            ot_por_equipo[ot.equipo_id.equipo_id] = []
+        ot_por_equipo[ot.equipo_id.equipo_id].append(ot)
+    
+    # 6. Calcular estados en MEMORIA (sin consultas adicionales)
+    estados_calculados = {}
+    
+    for equipo in equipos_list:
+        equipo_id = equipo.equipo_id
+        estados_calculados[equipo_id] = {}
+        
+        for day in range(1, ultimo_dia + 1):
+            fecha_actual = date(year, month, day)
+            estados_del_dia = []
+            
+            # Revisar estados manuales primero (mayor prioridad)
+            if equipo_id in estados_manuales_por_equipo:
+                manuales_del_dia = [
+                    em for em in estados_manuales_por_equipo[equipo_id]
+                    if em.fecha_inicio <= fecha_actual <= em.fecha_fin
+                ]
+                if manuales_del_dia:
+                    # Ordenar por prioridad y tomar el más alto
+                    manuales_del_dia.sort(key=lambda x: x.estado.prioridad, reverse=True)
+                    bloqueantes = [em for em in manuales_del_dia if em.estado.es_bloqueante]
+                    if bloqueantes:
+                        estados_del_dia.append(bloqueantes[0].estado)
+                    else:
+                        estados_del_dia.append(manuales_del_dia[0].estado)
+            
+            # Si no hay estados manuales, revisar OT
+            if not estados_del_dia and equipo_id in ot_por_equipo:
+                ot_del_dia = []
+                for ot in ot_por_equipo[equipo_id]:
+                    if ot.fecha_inicio <= fecha_actual:
+                        if ot.fecha_fin is None or ot.fecha_fin >= fecha_actual:
+                            if ot.estado_equipo_id:
+                                # Buscar mapeo usando estadoEquipo_id como clave
+                                estado_calendario = mapeos_fuente.get(ot.estado_equipo_id.estadoEquipo_id)
+                                if estado_calendario:
+                                    ot_del_dia.append({
+                                        'estado': estado_calendario,
+                                        'prioridad': estado_calendario.prioridad
+                                    })
+                
+                if ot_del_dia:
+                    # Ordenar por prioridad
+                    ot_del_dia.sort(key=lambda x: x['prioridad'], reverse=True)
+                    bloqueantes_ot = [x for x in ot_del_dia if x['estado'].es_bloqueante]
+                    if bloqueantes_ot:
+                        estados_del_dia.append(bloqueantes_ot[0]['estado'])
+                    else:
+                        estados_del_dia.append(ot_del_dia[0]['estado'])
+            
+            # Si no hay nada, usar estado predeterminado
+            if not estados_del_dia and estado_predeterminado:
+                estados_del_dia.append(estado_predeterminado)
+            
+            estados_calculados[equipo_id][day] = estados_del_dia
+    
+    return {
+        'equipos': equipos_list,
+        'ordenes_trabajo': list(ordenes_trabajo),
+        'estados_calculados': estados_calculados,
+        'total_equipos': total_equipos,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'dias_mes': ultimo_dia
+    }
+
+
+@login_required
+def calendario_maquinarias(request):
+    """Vista para mostrar el calendario de maquinarias con órdenes de trabajo"""
+    
+    # Obtener parámetros de la URL o usar fecha actual
+    try:
+        year = int(request.GET.get('year', datetime.now().year))
+        month = int(request.GET.get('month', datetime.now().month))
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 25))
+    except (ValueError, TypeError):
+        year = datetime.now().year
+        month = datetime.now().month
+        page = 1
+        page_size = 25
+    
+    # Validar rango de fechas
+    if month < 1 or month > 12:
+        month = datetime.now().month
+    if year < 1900 or year > 2100:
+        year = datetime.now().year
+    
+    # Validar paginación
+    if page < 1:
+        page = 1
+    if page_size not in [25, 50, 100]:
+        page_size = 25
+    
+    # Obtener filtros
+    empresa_filter = request.GET.get('empresa', '')
+    tipo_filter = request.GET.get('tipo', '')
+    search_query = request.GET.get('search', '')
+    
+    # Obtener datos del calendario con paginación y optimización
+    calendario_data = obtener_calendario_maquinarias_optimizado(
+        year, month, empresa_filter, tipo_filter, search_query, page, page_size
+    )
+    
+    # Obtener rango de fechas del mes
+    _, ultimo_dia = monthrange(year, month)
+    fecha_inicio_mes = date(year, month, 1)
+    fecha_fin_mes = date(year, month, ultimo_dia)
+    
+    # Nombres de meses en español
+    month_names = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ]
+    
+    # Obtener empresas para filtros
+    empresas = Empresa.objects.all().order_by('nomFantasia')
+    
+    # Obtener estados OT para filtros
+    estados_ot = EstadoOT.objects.filter(activo=True).order_by('orden', 'nombre')
+    
+    # Obtener estados del calendario
+    estados_calendario = EstadoCalendarioEquipo.objects.filter(activo=True).order_by('-prioridad', 'nombre')
+    
+    # Preparar datos para JSON
+    from django.core.serializers.json import DjangoJSONEncoder
+    estados_calendario_json = [
+        {
+            'id': estado.id,
+            'nombre': estado.nombre,
+            'nombre_corto': estado.nombre_corto or estado.nombre[:3].upper(),
+            'color': estado.color,
+            'background_color': estado.background_color,
+            'prioridad': estado.prioridad,
+            'es_bloqueante': estado.es_bloqueante,
+            'es_predeterminado': estado.es_predeterminado
+        }
+        for estado in estados_calendario
+    ]
+    
+    # Obtener estado predeterminado
+    estado_predeterminado = EstadoCalendarioEquipo.objects.filter(es_predeterminado=True, activo=True).first()
+    estado_predeterminado_json = None
+    if estado_predeterminado:
+        estado_predeterminado_json = {
+            'id': estado_predeterminado.id,
+            'nombre': estado_predeterminado.nombre,
+            'nombre_corto': estado_predeterminado.nombre_corto or estado_predeterminado.nombre[:3].upper(),
+            'color': estado_predeterminado.color,
+            'background_color': estado_predeterminado.background_color
+        }
+    
+    # Preparar estados calculados para JSON (serializar)
+    estados_calculados_json = {}
+    for equipo_id, dias_estados in calendario_data['estados_calculados'].items():
+        estados_calculados_json[str(equipo_id)] = {}
+        for dia, estados_lista in dias_estados.items():
+            estados_serializados = []
+            for estado in estados_lista:
+                estados_serializados.append({
+                    'id': estado.id,
+                    'nombre': estado.nombre,
+                    'nombre_corto': estado.nombre_corto or estado.nombre[:3].upper(),
+                    'color': estado.color,
+                    'background_color': estado.background_color,
+                    'prioridad': estado.prioridad,
+                    'es_bloqueante': estado.es_bloqueante
+                })
+            estados_calculados_json[str(equipo_id)][str(dia)] = estados_serializados
+    
+    context = {
+        'current_year': year,
+        'current_month': month,
+        'current_month_name': month_names[month - 1],
+        'empresas': empresas,
+        'estados_ot': estados_ot,
+        'estados_calendario': estados_calendario,
+        'estados_calendario_json': json.dumps(estados_calendario_json, cls=DjangoJSONEncoder),
+        'estado_predeterminado_json': json.dumps(estado_predeterminado_json, cls=DjangoJSONEncoder) if estado_predeterminado_json else 'null',
+        'equipos': calendario_data['equipos'],
+        'ordenes_trabajo': calendario_data['ordenes_trabajo'],
+        'estados_calculados': calendario_data['estados_calculados'],
+        'estados_calculados_json': json.dumps(estados_calculados_json, cls=DjangoJSONEncoder),
+        'fecha_inicio_mes': fecha_inicio_mes,
+        'fecha_fin_mes': fecha_fin_mes,
+        'dias_mes': ultimo_dia,
+        'total_equipos': calendario_data['total_equipos'],
+        'current_page': page,
+        'page_size': page_size,
+        'total_pages': (calendario_data['total_equipos'] + page_size - 1) // page_size,
+    }
+    
+    return render(request, 'maquinarias/calendario_maquinarias.html', context)
+
+
 @login_required
 def crear_orden_trabajo(request):
     """Vista para crear una nueva orden de trabajo"""
@@ -1919,18 +2204,50 @@ def api_equipos_filtrados(request):
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_personal_maquinarias(request):
-    """API para obtener personal activo con su cargo, empresa y departamento (con filtros)"""
+    """API para obtener personal activo con su cargo, empresa y departamento (con filtros)
+    Siempre filtra automáticamente por departamento MAQUINARIAS y cargo MECÁNICO"""
     try:
         # Filtros
         search = request.GET.get('search', '').strip()
         empresa_id = request.GET.get('empresa_id', None)
-        cargo_id = request.GET.get('cargo_id', None)
-        depto_id = request.GET.get('depto_id', None)
         
-        # Query base
-        queryset = Personal.objects.filter(activo=True).prefetch_related('infolaboral_set__cargo_id', 'infolaboral_set__depto_id', 'infolaboral_set__empresa_id')
+        # Buscar departamento MAQUINARIAS (case insensitive)
+        depto_maquinarias = DeptoEmpresa.objects.filter(
+            depto__iexact='MAQUINARIAS'
+        ).first()
         
-        # Aplicar filtros
+        if not depto_maquinarias:
+            return JsonResponse({
+                'success': False,
+                'message': 'No se encontró el departamento MAQUINARIAS'
+            }, status=404)
+        
+        # Buscar cargo MECÁNICO o MECANICO (case insensitive)
+        cargo_mecanico = Cargo.objects.filter(
+            depto_id=depto_maquinarias
+        ).filter(
+            Q(cargo__iexact='MECÁNICO') | Q(cargo__iexact='MECANICO')
+        ).first()
+        
+        if not cargo_mecanico:
+            return JsonResponse({
+                'success': False,
+                'message': 'No se encontró el cargo MECÁNICO en el departamento MAQUINARIAS'
+            }, status=404)
+        
+        # Query base: filtrar por InfoLaboral con depto MAQUINARIAS y cargo MECÁNICO
+        info_laboral_ids = InfoLaboral.objects.filter(
+            depto_id=depto_maquinarias,
+            cargo_id=cargo_mecanico
+        ).values_list('personal_id', flat=True)
+        
+        # Query base de personal activo que tenga InfoLaboral con los filtros aplicados
+        queryset = Personal.objects.filter(
+            activo=True,
+            personal_id__in=info_laboral_ids
+        ).prefetch_related('infolaboral_set__cargo_id', 'infolaboral_set__depto_id', 'infolaboral_set__empresa_id')
+        
+        # Aplicar filtro de búsqueda
         if search:
             queryset = queryset.filter(
                 Q(nombre__icontains=search) |
@@ -1941,20 +2258,25 @@ def api_personal_maquinarias(request):
         
         personal = []
         for p in queryset:
-            info_laboral = InfoLaboral.objects.filter(personal_id=p).first()
-            cargo_nombre = info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'Sin cargo'
-            cargo_id_val = info_laboral.cargo_id.cargo_id if info_laboral and info_laboral.cargo_id else None
-            depto_nombre = info_laboral.depto_id.depto if info_laboral and info_laboral.depto_id else 'Sin departamento'
-            depto_id_val = info_laboral.depto_id.depto_id if info_laboral and info_laboral.depto_id else None
-            empresa_nombre = info_laboral.empresa_id.nomFantasia if info_laboral and info_laboral.empresa_id else 'Sin empresa'
-            empresa_id_val = info_laboral.empresa_id.id if info_laboral and info_laboral.empresa_id else None
+            # Obtener InfoLaboral que coincida con los filtros (MAQUINARIAS y MECÁNICO)
+            info_laboral = InfoLaboral.objects.filter(
+                personal_id=p,
+                depto_id=depto_maquinarias,
+                cargo_id=cargo_mecanico
+            ).first()
             
-            # Aplicar filtros adicionales
+            if not info_laboral:
+                continue
+            
+            cargo_nombre = info_laboral.cargo_id.cargo if info_laboral.cargo_id else 'Sin cargo'
+            cargo_id_val = info_laboral.cargo_id.cargo_id if info_laboral.cargo_id else None
+            depto_nombre = info_laboral.depto_id.depto if info_laboral.depto_id else 'Sin departamento'
+            depto_id_val = info_laboral.depto_id.depto_id if info_laboral.depto_id else None
+            empresa_nombre = info_laboral.empresa_id.nomFantasia if info_laboral.empresa_id else 'Sin empresa'
+            empresa_id_val = info_laboral.empresa_id.id if info_laboral.empresa_id else None
+            
+            # Aplicar filtro de empresa si se especifica
             if empresa_id and empresa_id_val != int(empresa_id):
-                continue
-            if cargo_id and cargo_id_val != int(cargo_id):
-                continue
-            if depto_id and depto_id_val != int(depto_id):
                 continue
             
             personal.append({
@@ -2827,10 +3149,10 @@ def generar_pdf_ot(request, ot_id):
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="OT_{ot.folio}.pdf"'
         
-        # Crear el documento PDF
+        # Crear el documento PDF (márgenes más pequeños para más espacio)
         doc = SimpleDocTemplate(response, pagesize=A4, 
-                              rightMargin=2*cm, leftMargin=2*cm, 
-                              topMargin=2*cm, bottomMargin=2*cm)
+                              rightMargin=1.5*cm, leftMargin=1.5*cm, 
+                              topMargin=1.5*cm, bottomMargin=1.5*cm)
         
         # Contenedor para los elementos del PDF
         elements = []
@@ -2840,47 +3162,51 @@ def generar_pdf_ot(request, ot_id):
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
-            fontSize=16,
+            fontSize=14,
             textColor=colors.HexColor('#212529'),
-            spaceAfter=15,
-            spaceBefore=10,
+            spaceAfter=8,
+            spaceBefore=5,
             alignment=1  # Centrado
         )
         
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
-            fontSize=11,
+            fontSize=10,
             textColor=colors.HexColor('#212529'),
-            spaceAfter=8,
-            spaceBefore=10,
-            fontName='Helvetica-Bold'
+            spaceAfter=4,
+            spaceBefore=6,
+            fontName='Helvetica-Bold',
+            alignment=0,  # LEFT alignment
+            leftIndent=0,  # Sin indentación, comienza desde el borde
+            rightIndent=0,
+            firstLineIndent=0
         )
         
         normal_style = ParagraphStyle(
             'CustomNormal',
             parent=styles['Normal'],
-            fontSize=9,
+            fontSize=8,
             textColor=colors.black,
-            leading=11
+            leading=9
         )
         
         label_style = ParagraphStyle(
             'CustomLabel',
             parent=styles['Normal'],
-            fontSize=9,
+            fontSize=8,
             textColor=colors.black,
             fontName='Helvetica-Bold',
-            leading=11
+            leading=9
         )
         
         label_style_white = ParagraphStyle(
             'CustomLabelWhite',
             parent=styles['Normal'],
-            fontSize=9,
+            fontSize=8,
             textColor=colors.white,
             fontName='Helvetica-Bold',
-            leading=11
+            leading=9
         )
         
         # Logo (si existe)
@@ -2957,10 +3283,10 @@ def generar_pdf_ot(request, ot_id):
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),  # Logo a la izquierda
                     ('ALIGN', (0, 1), (0, 1), 'CENTER'),  # Título centrado
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('BOTTOMPADDING', (0, 0), (0, 0), 5),  # Padding inferior en logo
+                    ('BOTTOMPADDING', (0, 0), (0, 0), 3),  # Padding inferior en logo
                     ('TOPPADDING', (0, 0), (0, 0), 0),  # Sin padding superior en logo
-                    ('BOTTOMPADDING', (0, 1), (0, 1), 5),  # Padding inferior en título
-                    ('TOPPADDING', (0, 1), (0, 1), 5),  # Padding superior en título
+                    ('BOTTOMPADDING', (0, 1), (0, 1), 3),  # Padding inferior en título
+                    ('TOPPADDING', (0, 1), (0, 1), 3),  # Padding superior en título
                 ]))
                 elements.append(header_table)
             except Exception as e:
@@ -2970,7 +3296,7 @@ def generar_pdf_ot(request, ot_id):
         else:
             elements.append(Paragraph(f"<b>ORDEN DE TRABAJO N° {ot.folio}</b>", title_style))
         
-        elements.append(Spacer(1, 0.3*cm))
+        elements.append(Spacer(1, 0.2*cm))
         
         # Información de la empresa
         empresa_data = [
@@ -2984,18 +3310,28 @@ def generar_pdf_ot(request, ot_id):
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('LEFTPADDING', (0, 0), (-1, -1), 5),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ]))
         elements.append(empresa_table)
-        elements.append(Spacer(1, 0.3*cm))
+        elements.append(Spacer(1, 0.2*cm))
         
         # Información del equipo
-        elements.append(Paragraph("INFORMACIÓN DEL EQUIPO", heading_style))
+        # Crear título como tabla para alinearlo con el borde de las tablas
+        titulo_equipo_data = [[Paragraph("INFORMACIÓN DEL EQUIPO", heading_style)]]
+        titulo_equipo_table = Table(titulo_equipo_data, colWidths=[16*cm])
+        titulo_equipo_table.setStyle(TableStyle([
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),  # Sin padding, desde el borde de la tabla
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        elements.append(titulo_equipo_table)
         equipo_data = [
             [Paragraph('<b>Equipo:</b>', label_style), Paragraph(ot.equipo_id.nombreEquipo, normal_style)],
             [Paragraph('<b>Código Interno:</b>', label_style), Paragraph(ot.equipo_id.codigoInterno or 'N/A', normal_style)],
@@ -3012,18 +3348,28 @@ def generar_pdf_ot(request, ot_id):
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('LEFTPADDING', (0, 0), (-1, -1), 5),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ]))
         elements.append(equipo_table)
-        elements.append(Spacer(1, 0.3*cm))
+        elements.append(Spacer(1, 0.2*cm))
         
         # Información de la OT
-        elements.append(Paragraph("INFORMACIÓN DE LA ORDEN DE TRABAJO", heading_style))
+        # Crear título como tabla para alinearlo con el borde de las tablas
+        titulo_ot_data = [[Paragraph("INFORMACIÓN DE LA ORDEN DE TRABAJO", heading_style)]]
+        titulo_ot_table = Table(titulo_ot_data, colWidths=[16*cm])
+        titulo_ot_table.setStyle(TableStyle([
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),  # Sin padding, desde el borde de la tabla
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        elements.append(titulo_ot_table)
         ot_data = [
             [Paragraph('<b>Folio:</b>', label_style), Paragraph(ot.folio, normal_style)],
             [Paragraph('<b>Tipo de Mantenimiento:</b>', label_style), Paragraph(ot.tipo_mantenimiento_id.nombre if ot.tipo_mantenimiento_id else 'N/A', normal_style)],
@@ -3042,20 +3388,30 @@ def generar_pdf_ot(request, ot_id):
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('LEFTPADDING', (0, 0), (-1, -1), 5),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ]))
         elements.append(ot_table)
-        elements.append(Spacer(1, 0.3*cm))
+        elements.append(Spacer(1, 0.2*cm))
         
         # Personal asignado
         personal_asignado = ot.personal_asignado.all()
         if personal_asignado:
-            elements.append(Paragraph("PERSONAL ASIGNADO", heading_style))
+            # Crear título como tabla para alinearlo con el borde de las tablas
+            titulo_personal_data = [[Paragraph("PERSONAL ASIGNADO", heading_style)]]
+            titulo_personal_table = Table(titulo_personal_data, colWidths=[16*cm])
+            titulo_personal_table.setStyle(TableStyle([
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),  # Sin padding, desde el borde de la tabla
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            elements.append(titulo_personal_table)
             personal_headers = [[Paragraph('<b>Nombre Completo</b>', label_style_white), Paragraph('<b>RUT</b>', label_style_white), Paragraph('<b>Cargo</b>', label_style_white)]]
             personal_rows = []
             for p in personal_asignado:
@@ -3074,26 +3430,36 @@ def generar_pdf_ot(request, ot_id):
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('FONTSIZE', (0, 0), (-1, 0), 9),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                ('TOPPADDING', (0, 0), (-1, 0), 8),
-                ('LEFTPADDING', (0, 0), (-1, -1), 5),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 5),
+                ('TOPPADDING', (0, 0), (-1, 0), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
                 ('BACKGROUND', (0, 1), (-1, -1), colors.white),
                 ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-                ('FONTSIZE', (0, 1), (-1, -1), 9),
-                ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
-                ('TOPPADDING', (0, 1), (-1, -1), 5),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 3),
+                ('TOPPADDING', (0, 1), (-1, -1), 3),
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
                 ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
             ]))
             elements.append(personal_table)
-            elements.append(Spacer(1, 0.3*cm))
+            elements.append(Spacer(1, 0.2*cm))
         
         # Secciones y tipos de reparación
         if ot.corresponde_pauta and ot.pauta_id:
             # Secciones de pauta
-            elements.append(Paragraph("SECCIONES Y TIPOS DE REPARACIÓN", heading_style))
+            # Crear título como tabla para alinearlo con el borde de las tablas
+            titulo_secciones_data = [[Paragraph("SECCIONES Y TIPOS DE REPARACIÓN", heading_style)]]
+            titulo_secciones_table = Table(titulo_secciones_data, colWidths=[16*cm])
+            titulo_secciones_table.setStyle(TableStyle([
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),  # Sin padding, desde el borde de la tabla
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            elements.append(titulo_secciones_table)
             items_pauta = ItemPauta.objects.filter(pauta_id=ot.pauta_id).select_related('seccion_id').prefetch_related('tipos_reparacion')
             secciones_headers = [[Paragraph('<b>Sección</b>', label_style_white), Paragraph('<b>Tipos de Reparación</b>', label_style_white), Paragraph('<b>Estado</b>', label_style_white)]]
             secciones_rows = []
@@ -3119,26 +3485,36 @@ def generar_pdf_ot(request, ot_id):
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                     ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                     ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 9),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                    ('TOPPADDING', (0, 0), (-1, 0), 8),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 5),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                    ('FONTSIZE', (0, 0), (-1, 0), 8),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 5),
+                    ('TOPPADDING', (0, 0), (-1, 0), 5),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 4),
                     ('BACKGROUND', (0, 1), (-1, -1), colors.white),
                     ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-                    ('FONTSIZE', (0, 1), (-1, -1), 9),
-                    ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
-                    ('TOPPADDING', (0, 1), (-1, -1), 5),
+                    ('FONTSIZE', (0, 1), (-1, -1), 8),
+                    ('BOTTOMPADDING', (0, 1), (-1, -1), 3),
+                    ('TOPPADDING', (0, 1), (-1, -1), 3),
                     ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
                     ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
                 ]))
                 elements.append(secciones_table)
-                elements.append(Spacer(1, 0.3*cm))
+                elements.append(Spacer(1, 0.2*cm))
         else:
             # Secciones manuales
             items_secciones = ItemSeccionOT.objects.filter(ot_id=ot).select_related('seccion_id', 'estado_seccion_id').prefetch_related('tipos_reparacion')
             if items_secciones.exists():
-                elements.append(Paragraph("SECCIONES Y TIPOS DE REPARACIÓN", heading_style))
+                # Crear título como tabla para alinearlo con el borde de las tablas
+                titulo_secciones_data = [[Paragraph("SECCIONES Y TIPOS DE REPARACIÓN", heading_style)]]
+                titulo_secciones_table = Table(titulo_secciones_data, colWidths=[16*cm])
+                titulo_secciones_table.setStyle(TableStyle([
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),  # Sin padding, desde el borde de la tabla
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ]))
+                elements.append(titulo_secciones_table)
                 secciones_headers = [[Paragraph('<b>Sección</b>', label_style_white), Paragraph('<b>Tipos de Reparación</b>', label_style_white), Paragraph('<b>Estado</b>', label_style_white)]]
                 secciones_rows = []
                 for item in items_secciones:
@@ -3161,28 +3537,38 @@ def generar_pdf_ot(request, ot_id):
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                     ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                     ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 9),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                    ('TOPPADDING', (0, 0), (-1, 0), 8),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 5),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                    ('FONTSIZE', (0, 0), (-1, 0), 8),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 5),
+                    ('TOPPADDING', (0, 0), (-1, 0), 5),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 4),
                     ('BACKGROUND', (0, 1), (-1, -1), colors.white),
                     ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-                    ('FONTSIZE', (0, 1), (-1, -1), 9),
-                    ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
-                    ('TOPPADDING', (0, 1), (-1, -1), 5),
+                    ('FONTSIZE', (0, 1), (-1, -1), 8),
+                    ('BOTTOMPADDING', (0, 1), (-1, -1), 3),
+                    ('TOPPADDING', (0, 1), (-1, -1), 3),
                     ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
                     ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
                 ]))
                 elements.append(secciones_table)
-                elements.append(Spacer(1, 0.3*cm))
+                elements.append(Spacer(1, 0.2*cm))
         
         # Observaciones
         if ot.observaciones:
-            elements.append(Paragraph("OBSERVACIONES", heading_style))
+            # Crear título como tabla para alinearlo con el borde de las tablas
+            titulo_observaciones_data = [[Paragraph("OBSERVACIONES", heading_style)]]
+            titulo_observaciones_table = Table(titulo_observaciones_data, colWidths=[16*cm])
+            titulo_observaciones_table.setStyle(TableStyle([
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),  # Sin padding, desde el borde de la tabla
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            elements.append(titulo_observaciones_table)
             observaciones_para = Paragraph(ot.observaciones.replace('\n', '<br/>'), normal_style)
             elements.append(observaciones_para)
-            elements.append(Spacer(1, 0.3*cm))
+            elements.append(Spacer(1, 0.2*cm))
         
         # Construir el PDF
         doc.build(elements)

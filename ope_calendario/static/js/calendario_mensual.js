@@ -238,9 +238,12 @@ function generateStatusLegend() {
     const estados = calendarioData.todos_estados_disponibles || [];
     console.log('Generando leyenda con', estados.length, 'estados');
     
+    // Limpiar todos los elementos de estado existentes, pero mantener el texto base
+    const itemsExistentes = legendContainer.querySelectorAll('.status-legend-item');
+    itemsExistentes.forEach(item => item.remove());
+    
     // Verificar si ya tiene el texto base
     const tieneTextoBase = legendContainer.innerHTML.includes('Estados:');
-    console.log('Contenedor tiene texto base:', tieneTextoBase);
     
     // Si no tiene el texto base, agregarlo
     if (!tieneTextoBase) {
@@ -251,6 +254,16 @@ function generateStatusLegend() {
     if (estados.length > 0) {
         estados.forEach(estado => {
             if (!estado || !estado.nombre) return;
+            
+            // Verificar si este estado ya existe para evitar duplicados
+            const estadoExiste = Array.from(legendContainer.querySelectorAll('.status-legend-item')).some(item => {
+                const small = item.querySelector('small');
+                return small && small.textContent.trim() === estado.nombre;
+            });
+            
+            if (estadoExiste) {
+                return; // Saltar si ya existe
+            }
             
             const nombre_corto = estado.nombre_corto || estado.nombre.substring(0, 2).toUpperCase();
             const background_color = estado.background_color || '#cccccc';

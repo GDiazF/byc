@@ -1,0 +1,376 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Calendarios{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="{% static 'css/calendario_mensual.css' %}">
+<style>
+    .tab-content {
+        padding-top: 1rem;
+    }
+    .calendar-nav-buttons {
+        display: flex;
+        gap: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-calendar3 me-2"></i>Calendarios - {{ current_month_name }} {{ current_year }}
+            </h5>
+            <div class="calendar-nav-buttons">
+                <button class="btn btn-sm btn-outline-light me-1" onclick="navigateCalendar('year', -1)">
+                    <i class="bi bi-chevron-double-left"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-light me-1" onclick="navigateCalendar('month', -1)">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <button class="btn btn-sm btn-light me-1" onclick="goToToday()">Hoy</button>
+                <button class="btn btn-sm btn-outline-light me-1" onclick="navigateCalendar('month', 1)">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-light" onclick="navigateCalendar('year', 1)">
+                    <i class="bi bi-chevron-double-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body p-3">
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-3" id="calendariosTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="operaciones-tab" data-bs-toggle="tab" data-bs-target="#operaciones" type="button" role="tab" aria-controls="operaciones" aria-selected="true">
+                    <i class="bi bi-calendar-check me-2"></i>Calendario de Operaciones
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="maquinarias-tab" data-bs-toggle="tab" data-bs-target="#maquinarias" type="button" role="tab" aria-controls="maquinarias" aria-selected="false">
+                    <i class="bi bi-gear me-2"></i>Calendario de Maquinarias
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Tab Content -->
+        <div class="tab-content" id="calendariosTabContent">
+            <!-- Tab: Calendario de Operaciones -->
+            <div class="tab-pane fade show active" id="operaciones" role="tabpanel" aria-labelledby="operaciones-tab">
+                <!-- Información de paginación y filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="bg-light border rounded px-3 py-2 mb-0">
+                            <small class="text-secondary">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Mostrando <strong class="text-dark" id="totalPersonalOperaciones">{{ total_personal }}</strong> trabajadores
+                                {% if total_pages > 1 %} - Página <strong class="text-dark">{{ current_page }}</strong> de <strong class="text-dark">{{ total_pages }}</strong>{% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-sm {% if page_size == 25 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(25)">25</button>
+                            <button class="btn btn-sm {% if page_size == 50 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(50)">50</button>
+                            <button class="btn btn-sm {% if page_size == 100 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(100)">100</button>
+                        </div>
+                        <small class="text-muted ms-2">por página</small>
+                    </div>
+                </div>
+                
+                <!-- Filtros y búsqueda -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInput" 
+                                   placeholder="Buscar por nombre o RUT..."
+                                   value="{{ request.GET.search|default:'' }}">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select form-select-sm" id="faenaFilter">
+                            <option value="">Faena: Todas</option>
+                            {% for faena in faenas %}
+                            <option value="{{ faena.nombre }}" {% if request.GET.faena == faena.nombre %}selected{% endif %}>
+                                {{ faena.nombre }}
+                            </option>
+                            {% endfor %}
+                            <option value="Sin asignar" {% if request.GET.faena == 'Sin asignar' %}selected{% endif %}>
+                                Sin asignar
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select form-select-sm" id="cargoFilter">
+                            <option value="">Cargo: Todos</option>
+                            {% for cargo in cargos %}
+                            <option value="{{ cargo }}" {% if request.GET.cargo == cargo %}selected{% endif %}>
+                                {{ cargo }}
+                            </option>
+                            {% endfor %}
+                            <option value="Sin cargo" {% if request.GET.cargo == 'Sin cargo' %}selected{% endif %}>
+                                Sin cargo
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="empresaFilter">
+                            <option value="">Empresa: Todas</option>
+                            {% for empresa in empresas %}
+                            {% if empresa %}
+                            <option value="{{ empresa }}" {% if request.GET.empresa == empresa %}selected{% endif %}>
+                                {{ empresa }}
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <button class="btn btn-sm btn-primary" onclick="clearFilters()" title="Limpiar filtros">
+                            <i class="bi bi-x-circle"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Leyenda de estados -->
+                <div class="alert alert-light border mb-3 p-2 alert-permanent">
+                    <div class="d-flex align-items-center flex-wrap" id="statusLegend">
+                        <small class="me-2 fw-bold">Estados:</small>
+                        {% if todos_estados %}
+                            {% for estado in todos_estados %}
+                            <div class="status-legend-item">
+                                <div class="status-legend-color" style="background-color: {{ estado.background_color }}; color: {{ estado.color }}; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600;">
+                                    {{ estado.nombre_corto|default:estado.nombre|slice:":3" }}
+                                </div>
+                                <small>{{ estado.nombre }}</small>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <small class="text-muted ms-2">No hay estados configurados</small>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Contenedor del calendario de operaciones -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm calendar-table" id="calendarTableOperaciones">
+                        <thead class="table-dark">
+                            <tr id="calendarHeaderOperaciones">
+                                <th class="sticky-col">Personal</th>
+                                <!-- Los días se generarán aquí -->
+                            </tr>
+                        </thead>
+                        <tbody id="calendarBodyOperaciones">
+                            <!-- Las filas se generarán aquí -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación -->
+                {% if total_pages > 1 %}
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <small class="text-muted">
+                            Mostrando {{ total_personal }} trabajadores
+                        </small>
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item {% if not has_previous %}disabled{% endif %}">
+                                <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ current_page|add:'-1' }}&page_size={{ page_size }}{% if request.GET.faena %}&faena={{ request.GET.faena }}{% endif %}{% if request.GET.cargo %}&cargo={{ request.GET.cargo }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                            {% for num in page_range %}
+                            <li class="page-item {% if num == current_page %}active{% endif %}">
+                                <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ num }}&page_size={{ page_size }}{% if request.GET.faena %}&faena={{ request.GET.faena }}{% endif %}{% if request.GET.cargo %}&cargo={{ request.GET.cargo }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                            <li class="page-item {% if not has_next %}disabled{% endif %}">
+                                <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ current_page|add:'1' }}&page_size={{ page_size }}{% if request.GET.faena %}&faena={{ request.GET.faena }}{% endif %}{% if request.GET.cargo %}&cargo={{ request.GET.cargo }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Tab: Calendario de Maquinarias -->
+            <div class="tab-pane fade" id="maquinarias" role="tabpanel" aria-labelledby="maquinarias-tab">
+                <!-- Filtros para calendario de maquinarias -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInputMaquinarias" 
+                                   placeholder="Buscar equipo...">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="empresaFilterMaquinarias">
+                            <option value="">Empresa: Todas</option>
+                            {% for empresa in empresas %}
+                            {% if empresa %}
+                            <option value="{{ empresa }}">
+                                {{ empresa }}
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="estadoFilterMaquinarias">
+                            <option value="">Estado OT: Todos</option>
+                            <!-- Se llenará dinámicamente -->
+                        </select>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <button class="btn btn-sm btn-primary" onclick="clearFiltersMaquinarias()" title="Limpiar filtros">
+                            <i class="bi bi-x-circle"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Contenedor del calendario de maquinarias -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm calendar-table" id="calendarTableMaquinarias">
+                        <thead class="table-dark">
+                            <tr id="calendarHeaderMaquinarias">
+                                <th class="sticky-col">Equipo</th>
+                                <!-- Los días se generarán aquí -->
+                            </tr>
+                        </thead>
+                        <tbody id="calendarBodyMaquinarias">
+                            <!-- Las filas se generarán aquí -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Bootstrap para información de estado (operaciones) -->
+<div class="modal fade" id="estadoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Información del Estado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <strong>Personal:</strong> <span id="modalPersonal"></span>
+                </div>
+                <div class="mb-2">
+                    <strong>Fecha:</span> <span id="modalFecha"></span>
+                </div>
+                <div class="mb-2">
+                    <strong>Estado:</strong> <span id="modalEstado"></span>
+                </div>
+                <div id="modalDetalles"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Bootstrap para información de OT (maquinarias) -->
+<div class="modal fade" id="otModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Información de Orden de Trabajo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="otModalBody">
+                <!-- Se llenará dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extrajs %}
+<script>
+    // Variables globales para calendario de operaciones (compatibles con calendario_mensual.js)
+    window.calendarioData = {{ calendario_operaciones|safe }};
+    window.currentYear = {{ current_year }};
+    window.currentMonth = {{ current_month }};
+    window.currentMonthName = '{{ current_month_name }}';
+    window.currentPage = {{ current_page }};
+    window.pageSize = {{ page_size }};
+    window.filtros = {{ filtros|safe }};
+    window.mesAnterior = {{ mes_anterior|safe }};
+    window.mesSiguiente = {{ mes_siguiente|safe }};
+    
+    // Variables adicionales para calendario de operaciones
+    window.calendarioOperaciones = {{ calendario_operaciones|safe }};
+    window.filtrosOperaciones = {{ filtros|safe }};
+    
+    // Datos de maquinarias
+    window.equipos = [
+        {% for equipo in equipos %}
+        {
+            'equipo_id': {{ equipo.equipo_id }},
+            'nombreEquipo': '{{ equipo.nombreEquipo }}',
+            'codigoInterno': '{{ equipo.codigoInterno }}',
+            'empresa': '{{ equipo.empresa_id.nomFantasia }}',
+            'empresa_id': {{ equipo.empresa_id.id }},
+            'tipoEquipo': '{{ equipo.modeloEquipo_id.tipoEquipo_id.tipoEquipo|default:"" }}',
+            'marcaEquipo': '{{ equipo.modeloEquipo_id.marcaEquipo_id.marcaEquipo|default:"" }}',
+            'modeloEquipo': '{{ equipo.modeloEquipo_id.modeloEquipo|default:"" }}'
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    window.ordenesTrabajo = [
+        {% for ot in ordenes_trabajo %}
+        {
+            'ot_id': {{ ot.ot_id }},
+            'folio': '{{ ot.folio }}',
+            'equipo_id': {{ ot.equipo_id.equipo_id }},
+            'equipo_nombre': '{{ ot.equipo_id.nombreEquipo }}',
+            'empresa': '{{ ot.empresa_id.nomFantasia }}',
+            'empresa_id': {{ ot.empresa_id.id }},
+            'tipo_mantenimiento': '{{ ot.tipo_mantenimiento_id.nombre|default:"" }}',
+            'estado_ot': '{{ ot.estado_ot_id.nombre|default:"" }}',
+            'estado_equipo': '{{ ot.estado_equipo_id.nombre|default:"" }}',
+            'fecha_inicio': {% if ot.fecha_inicio %}'{{ ot.fecha_inicio.isoformat }}'{% else %}null{% endif %},
+            'fecha_fin': {% if ot.fecha_fin %}'{{ ot.fecha_fin.isoformat }}'{% else %}null{% endif %},
+            'fecha_creacion': '{{ ot.fecha_creacion.isoformat }}',
+            'personal_asignado': [
+                {% for p in ot.personal_asignado.all %}
+                {
+                    'personal_id': {{ p.personal_id }},
+                    'nombre': '{{ p.nombre }} {{ p.apepat }} {{ p.apemat }}'
+                }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    window.fechaInicioMes = '{{ fecha_inicio_mes.isoformat }}';
+    window.fechaFinMes = '{{ fecha_fin_mes.isoformat }}';
+</script>
+<script src="{% static 'js/calendario_mensual.js' %}"></script>
+<script src="{% static 'maquinarias/js/calendario_maquinarias.js' %}"></script>
+{% endblock %}
+

@@ -4,7 +4,12 @@ from rrhh_personal.models import Personal
 from django.contrib.auth.models import User
 from datetime import datetime
 import os
+import re
 from django.core.files.storage import FileSystemStorage
+from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.db.models import Q, CheckConstraint
 
 # Create your models here.
 
@@ -426,6 +431,280 @@ class EstadoEquipo(models.Model):
         return self.nombre
 
 
+# ============================================================================
+# MODELOS PARA ESTADOS DINÁMICOS DEL CALENDARIO DE MAQUINARIAS
+# ============================================================================
+
+class EstadoCalendarioEquipo(models.Model):
+    """
+    Estado configurable para el calendario de maquinarias. Ejemplos: 'Disponible',
+    'En Mantenimiento', 'En Reparación', 'Fuera de Servicio', etc.
+    Similar al modelo Estado de operaciones pero para equipos.
+    """
+    nombre = models.CharField(max_length=100, unique=True, verbose_name='Nombre')
+    nombre_corto = models.CharField(
+        max_length=10, 
+        blank=True, 
+        null=True,
+        help_text="Nombre corto para mostrar en el calendario (ej: 'DISP' para 'Disponible')",
+        verbose_name='Nombre Corto'
+    )
+    color = models.CharField(
+        max_length=7,
+        default='#000000',
+        help_text="Color HEX para el texto del estado (ej: #0EA5E9)",
+        verbose_name='Color Texto'
+    )
+    background_color = models.CharField(
+        max_length=7,
+        default='#FFFFFF',
+        help_text="Color HEX para el fondo del estado (ej: #0EA5E9)",
+        verbose_name='Color Fondo'
+    )
+    prioridad = models.PositiveIntegerField(
+        default=10,
+        help_text="Mayor número => mayor prioridad si hay conflicto",
+        verbose_name='Prioridad'
+    )
+    es_bloqueante = models.BooleanField(
+        default=False,
+        help_text="Si es True, este estado siempre sobreescribe cualquier otro que coincida",
+        verbose_name='Es Bloqueante'
+    )
+    es_predeterminado = models.BooleanField(
+        default=False,
+        help_text="Si es True, este será el estado por defecto cuando no haya OT (Disponible)",
+        verbose_name='Es Predeterminado'
+    )
+    activo = models.BooleanField(default=True, verbose_name='Activo')
+
+    class Meta:
+        db_table = 'maquinarias_estadocalendarioequipo'
+        ordering = ["-activo", "-prioridad", "nombre"]
+        verbose_name = "Estado Calendario Equipo"
+        verbose_name_plural = "Estados Calendario Equipo"
+        constraints = [
+            CheckConstraint(
+                check=Q(es_predeterminado=False) | Q(es_predeterminado=True),
+                name='solo_un_estado_predeterminado_equipo'
+            )
+        ]
+
+    def clean(self):
+        """Validar que solo haya un estado predeterminado"""
+        if self.es_predeterminado:
+            # Verificar si ya existe otro estado predeterminado
+            otros_predeterminados = EstadoCalendarioEquipo.objects.filter(
+                es_predeterminado=True,
+                activo=True
+            ).exclude(pk=self.pk)
+            
+            if otros_predeterminados.exists():
+                raise ValidationError(
+                    'Ya existe otro estado marcado como predeterminado. '
+                    'Solo puede haber un estado predeterminado a la vez.'
+                )
+
+    def save(self, *args, **kwargs):
+        """Asegurar que solo haya un estado predeterminado"""
+        if self.es_predeterminado:
+            # Desmarcar otros estados predeterminados
+            EstadoCalendarioEquipo.objects.filter(
+                es_predeterminado=True
+            ).exclude(pk=self.pk).update(es_predeterminado=False)
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.nombre
+
+
+class EstadoFuenteEquipo(models.Model):
+    """
+    Mapea un EstadoCalendarioEquipo a una FUENTE EXTERNA de datos (OrdenTrabajo),
+    para poder consultar si el equipo está en ese estado por rangos de fechas.
+    
+    La fuente principal será OrdenTrabajo.estado_equipo_id, donde cada estado
+    de EstadoEquipo se mapea a un EstadoCalendarioEquipo.
+    """
+    estado_calendario = models.OneToOneField(
+        EstadoCalendarioEquipo, 
+        on_delete=models.CASCADE, 
+        related_name="fuente",
+        verbose_name='Estado Calendario'
+    )
+    estado_equipo = models.ForeignKey(
+        EstadoEquipo,
+        on_delete=models.CASCADE,
+        related_name='fuentes_calendario',
+        help_text="Estado de Equipo que se mapea a este estado del calendario",
+        verbose_name='Estado Equipo'
+    )
+    # Filtro extra opcional como JSON para casos especiales (ej: tipo_mantenimiento='Preventivo')
+    filtro_extra = models.JSONField(blank=True, null=True, verbose_name='Filtro Extra')
+
+    class Meta:
+        db_table = 'maquinarias_estadofuenteequipo'
+        verbose_name = "Fuente de Estado Equipo"
+        verbose_name_plural = "Fuentes de Estados Equipo"
+        unique_together = [['estado_calendario', 'estado_equipo']]
+
+    def __str__(self):
+        return f"Fuente({self.estado_calendario.nombre}) → {self.estado_equipo.nombre}"
+
+
+class EstadoManualEquipo(models.Model):
+    """
+    Permite asignar manualmente un estado a un equipo en un rango de fechas,
+    independientemente de las OT.
+    """
+    equipo = models.ForeignKey(
+        Equipo,
+        on_delete=models.CASCADE,
+        related_name='estados_manuales',
+        verbose_name='Equipo'
+    )
+    estado = models.ForeignKey(
+        EstadoCalendarioEquipo,
+        on_delete=models.CASCADE,
+        related_name='asignaciones_manuales',
+        verbose_name='Estado'
+    )
+    fecha_inicio = models.DateField(verbose_name='Fecha Inicio')
+    fecha_fin = models.DateField(verbose_name='Fecha Fin')
+    observaciones = models.TextField(blank=True, null=True, verbose_name='Observaciones')
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name='Fecha Creación')
+
+    class Meta:
+        db_table = 'maquinarias_estadomanualequipo'
+        verbose_name = "Estado Manual Equipo"
+        verbose_name_plural = "Estados Manuales Equipo"
+        ordering = ['-fecha_creacion']
+
+    def clean(self):
+        """Validar que fecha_fin sea mayor o igual a fecha_inicio"""
+        if self.fecha_fin < self.fecha_inicio:
+            raise ValidationError('La fecha de fin debe ser mayor o igual a la fecha de inicio.')
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.equipo.nombreEquipo} - {self.estado.nombre} ({self.fecha_inicio} a {self.fecha_fin})"
+
+
+# ============================================================================
+# FUNCIONES PARA CALCULAR ESTADOS DEL CALENDARIO DE MAQUINARIAS
+# ============================================================================
+
+def obtener_estado_final_equipo_fecha(equipo, fecha):
+    """
+    Calcula el estado final de un equipo en una fecha específica,
+    considerando todas las fuentes y prioridades.
+    
+    Orden de prioridad:
+    1. Estados manuales (más alta prioridad)
+    2. Estados de OT (basados en estado_equipo_id mapeado a EstadoCalendarioEquipo)
+    3. Estado predeterminado "Disponible" si no hay OT
+    
+    Retorna una lista de estados cuando hay conflictos de prioridad.
+    """
+    from django.db.models import Q
+    
+    # 1. Buscar estados manuales activos
+    estados_manuales = EstadoManualEquipo.objects.filter(
+        equipo=equipo,
+        fecha_inicio__lte=fecha,
+        fecha_fin__gte=fecha
+    ).select_related('estado').order_by('-estado__prioridad')
+    
+    if estados_manuales.exists():
+        # Si hay estados bloqueantes, retornar el de mayor prioridad
+        bloqueantes = [em for em in estados_manuales if em.estado.es_bloqueante]
+        if bloqueantes:
+            return [bloqueantes[0].estado]
+        # Si no hay bloqueantes, retornar el de mayor prioridad
+        return [estados_manuales.first().estado]
+    
+    # 2. Buscar estados de OT (basados en estado_equipo_id)
+    estados_ot = []
+    
+    # Buscar OT activas que incluyan esta fecha
+    ordenes_trabajo = OrdenTrabajo.objects.filter(
+        equipo_id=equipo
+    ).filter(
+        Q(fecha_inicio__lte=fecha) & (
+            Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha)
+        )
+    ).select_related('estado_equipo_id')
+    
+    for ot in ordenes_trabajo:
+        if ot.estado_equipo_id:
+            # Buscar el EstadoCalendarioEquipo mapeado a este EstadoEquipo
+            fuente = EstadoFuenteEquipo.objects.filter(
+                estado_equipo=ot.estado_equipo_id
+            ).select_related('estado_calendario').first()
+            
+            if fuente and fuente.estado_calendario.activo:
+                estados_ot.append(fuente.estado_calendario)
+            else:
+                # Si no hay mapeo, buscar un EstadoCalendarioEquipo con el mismo nombre
+                # (fallback para compatibilidad)
+                estado_calendario_directo = EstadoCalendarioEquipo.objects.filter(
+                    nombre__iexact=ot.estado_equipo_id.nombre,
+                    activo=True
+                ).first()
+                
+                if estado_calendario_directo:
+                    estados_ot.append(estado_calendario_directo)
+    
+    # 3. Resolver conflictos de prioridad
+    todos_estados = []
+    
+    # Agregar estados de OT
+    for estado in estados_ot:
+        todos_estados.append({
+            'estado': estado,
+            'tipo': 'ot',
+            'prioridad': estado.prioridad
+        })
+    
+    if not todos_estados:
+        # Si no hay OT, retornar estado predeterminado (Disponible)
+        try:
+            estado_predeterminado = EstadoCalendarioEquipo.objects.filter(
+                activo=True,
+                es_predeterminado=True
+            ).first()
+            
+            if estado_predeterminado:
+                return [estado_predeterminado]
+            
+            return []
+        except:
+            return []
+    
+    # Ordenar por prioridad (mayor número = mayor prioridad)
+    todos_estados.sort(key=lambda x: x['prioridad'], reverse=True)
+    
+    # Si hay estados bloqueantes, solo retornar el de mayor prioridad
+    bloqueantes = [x for x in todos_estados if x['estado'].es_bloqueante]
+    if bloqueantes:
+        return [bloqueantes[0]['estado']]
+    
+    # Obtener la prioridad más alta
+    prioridad_maxima = todos_estados[0]['prioridad']
+    
+    # Retornar todos los estados que tengan la prioridad más alta
+    estados_misma_prioridad = [
+        x['estado'] for x in todos_estados 
+        if x['prioridad'] == prioridad_maxima
+    ]
+    
+    return estados_misma_prioridad
+
+
 class OrdenTrabajo(models.Model):
     """Orden de Trabajo para mantenimiento de equipos"""
     
@@ -526,14 +805,41 @@ class OrdenTrabajo(models.Model):
         ordering = ['-fecha_creacion']
     
     def __str__(self):
-        return f"OT-{self.folio} - {self.equipo_id.nombreEquipo}"
+        # Si el folio ya tiene el prefijo OT-, mostrarlo tal cual, sino agregarlo
+        folio_display = self.folio if self.folio.startswith('OT-') else f"OT-{self.folio}"
+        return f"{folio_display} - {self.equipo_id.nombreEquipo}"
     
     def save(self, *args, **kwargs):
         """Genera el folio automáticamente si no existe"""
         if not self.folio:
-            # Generar folio único: OT-YYYYMMDD-HHMMSS
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.folio = f"OT-{timestamp}"
+            # Buscar el número más alto de los folios existentes con formato OT-{número}
+            ultimo_numero = 0
+            folios_existentes = OrdenTrabajo.objects.exclude(
+                pk=self.pk if self.pk else None
+            ).values_list('folio', flat=True)
+            
+            for folio in folios_existentes:
+                # Intentar extraer el número del folio (formato OT-{número})
+                match = re.match(r'^OT-(\d+)$', folio)
+                if match:
+                    numero = int(match.group(1))
+                    if numero > ultimo_numero:
+                        ultimo_numero = numero
+                # También considerar folios que sean solo números (para compatibilidad)
+                elif folio.isdigit():
+                    numero = int(folio)
+                    if numero > ultimo_numero:
+                        ultimo_numero = numero
+            
+            # Si no se encontró ningún número válido, usar el conteo total de OTs como respaldo
+            if ultimo_numero == 0:
+                ultimo_numero = OrdenTrabajo.objects.exclude(
+                    pk=self.pk if self.pk else None
+                ).count()
+            
+            # Generar el siguiente número con formato OT-{número}
+            siguiente_numero = ultimo_numero + 1
+            self.folio = f"OT-{siguiente_numero}"
         super().save(*args, **kwargs)
 
 

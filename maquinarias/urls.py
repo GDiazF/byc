@@ -59,6 +59,9 @@ urlpatterns = [
     path('api/pautas-mantenimiento/<int:pauta_id>/toggle-activo/', views.api_toggle_activo_pauta, name='api_toggle_activo_pauta'),
     path('api/pautas-mantenimiento/<int:pauta_id>/eliminar/', views.api_eliminar_pauta, name='api_eliminar_pauta'),
     
+    # Vista de calendario de maquinarias
+    path('calendario-maquinarias/', views.calendario_maquinarias, name='calendario_maquinarias'),
+    
     # Vistas para Orden de Trabajo
     path('ordenes-trabajo/', views.lista_ordenes_trabajo, name='lista_ordenes_trabajo'),
     path('ordenes-trabajo/crear/', views.crear_orden_trabajo, name='crear_orden_trabajo'),

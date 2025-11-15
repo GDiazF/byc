@@ -104,6 +104,8 @@ document.addEventListener('DOMContentLoaded', function() {
         itemsSeccionesContainer.addEventListener('change', function(e) {
             if (e.target.classList.contains('seccion-select')) {
                 cargarTiposReparacionItem(e.target);
+                // Actualizar disponibilidad de secciones después de cambiar selección
+                actualizarSeccionesDisponibles();
             }
         });
         
@@ -709,25 +711,27 @@ function cargarCargosPorDepto(deptoId) {
 
 // Cargar personal con filtros
 function cargarPersonal() {
-    // Verificar si los elementos existen (no existen en modo edición)
+    // Verificar si los elementos existen
     const searchElement = document.getElementById('personalSearch');
     const empresaFilter = document.getElementById('personalEmpresaFilter');
     const cargoFilter = document.getElementById('personalCargoFilter');
     const deptoFilter = document.getElementById('personalDeptoFilter');
     
     if (!searchElement || !empresaFilter || !cargoFilter || !deptoFilter) {
-        // Los elementos no existen (probablemente en modo edición)
+        // Los elementos no existen aún (puede pasar si se ejecuta antes de que el DOM esté listo)
+        console.warn('Elementos de filtro de personal no encontrados');
         return;
     }
     
     const search = searchElement.value;
     const empresaId = empresaFilter.value;
-    // cargoId y deptoId se ignoran - el backend siempre filtra por MAQUINARIAS y MECÁNICO
+    // El backend siempre filtra automáticamente por departamento MAQUINARIAS y cargo MECÁNICO
+    // No es necesario enviar cargo_id ni depto_id
     
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     if (empresaId) params.append('empresa_id', empresaId);
-    // No enviar cargo_id ni depto_id - el backend siempre filtra por MAQUINARIAS y MECÁNICO
+    // El backend aplica automáticamente los filtros de MAQUINARIAS y MECÁNICO
     
     fetch(`${window.apiPersonalMaquinarias}?${params}`)
         .then(response => response.json())
@@ -926,6 +930,9 @@ function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], est
         const tiposContainer = itemAgregado.querySelector('.tipos-reparacion-list');
         cargarTiposReparacionParaSeccion(seccionIdInicial, tiposContainer, tiposIdsIniciales);
     }
+    
+    // Actualizar disponibilidad de secciones en todos los selects
+    actualizarSeccionesDisponibles();
 }
 
 // Cargar tipos de reparación para una sección
@@ -981,6 +988,9 @@ function eliminarItemSeccion(button) {
         container.innerHTML = '<p class="text-muted small" id="noItemsMessage">No hay items agregados. Haga clic en "Agregar Item" para comenzar.</p>';
         itemSeccionIndex = 0; // Reiniciar contador cuando no hay items
     }
+    
+    // Actualizar disponibilidad de secciones después de eliminar
+    actualizarSeccionesDisponibles();
 }
 
 // Renumerar items de secciones después de eliminar
@@ -1000,6 +1010,36 @@ function renumerarItemsSecciones() {
 // Actualizar estado de sección
 function actualizarEstadoSeccion(selectElement) {
     // Solo actualizar visualmente, el valor se guarda en el submit
+}
+
+// Actualizar secciones disponibles en todos los selects (ocultar las ya seleccionadas)
+function actualizarSeccionesDisponibles() {
+    // Obtener todas las secciones ya seleccionadas
+    const seccionesSeleccionadas = [];
+    document.querySelectorAll('.seccion-select').forEach(select => {
+        if (select.value) {
+            seccionesSeleccionadas.push(select.value);
+        }
+    });
+    
+    // Actualizar cada select
+    document.querySelectorAll('.seccion-select').forEach(select => {
+        const valorActual = select.value;
+        
+        // Recorrer todas las opciones
+        Array.from(select.options).forEach(option => {
+            if (!option.value) return; // Ignorar opción vacía "Seleccione una sección"
+            
+            // Ocultar si está seleccionada en otro select (pero no en este)
+            if (seccionesSeleccionadas.includes(option.value) && option.value !== valorActual) {
+                option.style.display = 'none';
+                option.disabled = true;
+            } else {
+                option.style.display = '';
+                option.disabled = false;
+            }
+        });
+    });
 }
 
 // ============================================================================

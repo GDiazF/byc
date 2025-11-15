@@ -4,6 +4,7 @@ from .models import (
     Seccion, TipoReparacion, PautaMantenimientoPreventivo, ItemPauta,
     TipoDocumentoMaquinaria, DocumentoMaquinaria, HistorialDocumentoMaquinaria,
     TipoMantenimiento, EstadoOT, EstadoEquipo,
+    EstadoCalendarioEquipo, EstadoFuenteEquipo, EstadoManualEquipo,
     OrdenTrabajo, ItemSeccionOT, HistorialObservacionesOT, HistorialOT
 )
 
@@ -193,6 +194,44 @@ class EstadoEquipoAdmin(admin.ModelAdmin):
     list_filter = ('activo', 'color')
     search_fields = ('nombre', 'descripcion')
     ordering = ('orden', 'nombre')
+
+
+# ==================== MODELOS DE ESTADOS CALENDARIO ====================
+
+@admin.register(EstadoCalendarioEquipo)
+class EstadoCalendarioEquipoAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'nombre_corto', 'color', 'background_color', 'prioridad', 'es_bloqueante', 'es_predeterminado', 'activo')
+    list_filter = ('activo', 'es_bloqueante', 'es_predeterminado')
+    search_fields = ('nombre', 'nombre_corto')
+    ordering = ('-activo', '-prioridad', 'nombre')
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'nombre_corto', 'activo')
+        }),
+        ('Colores', {
+            'fields': ('color', 'background_color')
+        }),
+        ('Configuración', {
+            'fields': ('prioridad', 'es_bloqueante', 'es_predeterminado')
+        }),
+    )
+
+
+@admin.register(EstadoFuenteEquipo)
+class EstadoFuenteEquipoAdmin(admin.ModelAdmin):
+    list_display = ('estado_calendario', 'estado_equipo', 'filtro_extra')
+    list_filter = ('estado_calendario', 'estado_equipo')
+    search_fields = ('estado_calendario__nombre', 'estado_equipo__nombre')
+    ordering = ('estado_calendario', 'estado_equipo')
+
+
+@admin.register(EstadoManualEquipo)
+class EstadoManualEquipoAdmin(admin.ModelAdmin):
+    list_display = ('equipo', 'estado', 'fecha_inicio', 'fecha_fin', 'fecha_creacion')
+    list_filter = ('estado', 'fecha_inicio', 'fecha_fin')
+    search_fields = ('equipo__nombreEquipo', 'estado__nombre', 'observaciones')
+    date_hierarchy = 'fecha_inicio'
+    ordering = ('-fecha_creacion',)
 
 
 # ==================== MODELOS DE ORDEN DE TRABAJO ====================
