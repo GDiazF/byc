@@ -21,8 +21,28 @@ from django.contrib.auth.decorators import login_required
 import os
 from django.db import models
 from django.db.models import Q
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from .models import HistorialPersonal, HistorialDocumentoPersonal
 
 # Create your views here.
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def obtener_nombre_completo_usuario(usuario):
+    """Obtiene el nombre completo de un usuario o retorna el username"""
+    if not usuario:
+        return 'Sistema'
+    
+    # Intentar obtener nombre completo desde el modelo User
+    if hasattr(usuario, 'first_name') and hasattr(usuario, 'last_name'):
+        nombre_completo = f"{usuario.first_name} {usuario.last_name}".strip()
+        if nombre_completo:
+            return nombre_completo
+    
+    return usuario.username if usuario.username else 'Sistema'
 
 #vista para tabla de personal
 class PersonalListView(ListView, LoginRequiredMixin):
@@ -131,7 +151,10 @@ class PersonalCreateView(LoginRequiredMixin, CreateView):
         try:
             with transaction.atomic():
                 # Guardar el personal
-                self.object = form.save()
+                self.object = form.save(commit=False)
+                # Pasar usuario a la señal
+                self.object._current_user = self.request.user
+                self.object.save()
                 
                 # Guardar información laboral
                 info_laboral = labor_form.save(commit=False)
@@ -211,8 +234,11 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
                 return self.render_to_response(context)
 
     def form_valid(self, form):
-        response = super().form_valid(form)
-        return response
+        # Pasar usuario a la señal
+        self.object = form.save(commit=False)
+        self.object._current_user = self.request.user
+        self.object.save()
+        return redirect(self.get_success_url())
 
     def form_invalid(self, form):
         messages.error(self.request, 'Error al actualizar el personal. Por favor revise los datos ingresados.')
@@ -222,6 +248,8 @@ class PersonalDeleteView(LoginRequiredMixin, View):
     def post(self, request, pk):
         personal = get_object_or_404(Personal, pk=pk)
         try:
+            # Pasar usuario a la señal
+            personal._current_user = request.user
             personal.delete()
             messages.success(request, 'Personal eliminado exitosamente.')
         except Exception as e:
@@ -1554,6 +1582,101 @@ class PersonalDesactivadoListView(ListView, LoginRequiredMixin):
         return queryset.distinct()
 
 
+# ============================================================================
+# APIs PARA HISTORIAL DE PERSONAL
+# ============================================================================
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_historial_personal(request, personal_id):
+    """API para obtener el historial completo de un personal en formato JSON"""
+    try:
+        personal = get_object_or_404(Personal, personal_id=personal_id)
+        historial = HistorialPersonal.objects.filter(personal=personal).select_related(
+            'usuario'
+        ).order_by('-fecha_hora')
+        
+        # Preparar historial con nombre completo de usuario
+        historial_data = []
+        for evento in historial:
+            historial_data.append({
+                'id': evento.id,
+                'fecha_hora': evento.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),
+                'fecha_hora_formateada': evento.fecha_hora.strftime('%d/%m/%Y %H:%M'),
+                'usuario': evento.usuario.username if evento.usuario else 'Sistema',
+                'usuario_nombre': obtener_nombre_completo_usuario(evento.usuario),
+                'accion': evento.accion,
+                'accion_display': evento.get_accion_display(),
+                'descripcion': evento.descripcion,
+                'datos_previos': evento.datos_previos,
+                'datos_nuevos': evento.datos_nuevos
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'personal': {
+                'id': personal.personal_id,
+                'rut': f"{personal.rut}-{personal.dvrut}",
+                'nombre': f"{personal.nombre} {personal.apepat} {personal.apemat}"
+            },
+            'historial': historial_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error al obtener historial de personal: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_historial_documentos_personal(request, personal_id):
+    """API para obtener el historial de documentos de un personal en formato JSON"""
+    try:
+        personal = get_object_or_404(Personal, personal_id=personal_id)
+        historial = HistorialDocumentoPersonal.objects.filter(personal=personal).select_related(
+            'usuario'
+        ).order_by('-fecha_hora')
+        
+        # Preparar historial con nombre completo de usuario
+        historial_data = []
+        for evento in historial:
+            historial_data.append({
+                'id': evento.id,
+                'fecha_hora': evento.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),
+                'fecha_hora_formateada': evento.fecha_hora.strftime('%d/%m/%Y %H:%M'),
+                'usuario': evento.usuario.username if evento.usuario else 'Sistema',
+                'usuario_nombre': obtener_nombre_completo_usuario(evento.usuario),
+                'tipo_documento': evento.tipo_documento,
+                'tipo_documento_display': evento.get_tipo_documento_display() if hasattr(evento, 'get_tipo_documento_display') else evento.tipo_documento,
+                'accion': evento.accion,
+                'accion_display': evento.get_accion_display(),
+                'nombre_documento': evento.nombre_documento,
+                'campo_documento': evento.campo_documento,
+                'archivo_ruta': evento.archivo_ruta,
+                'descripcion': evento.descripcion,
+                'datos_previos': evento.datos_previos,
+                'datos_nuevos': evento.datos_nuevos
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'personal': {
+                'id': personal.personal_id,
+                'rut': f"{personal.rut}-{personal.dvrut}",
+                'nombre': f"{personal.nombre} {personal.apepat} {personal.apemat}"
+            },
+            'historial': historial_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error al obtener historial de documentos: {str(e)}'
+        }, status=500)
+
+
 @login_required
 @require_POST
 def toggle_personal_activo(request):
@@ -1564,6 +1687,8 @@ def toggle_personal_activo(request):
         
         personal = get_object_or_404(Personal, personal_id=personal_id)
         personal.activo = not personal.activo
+        # Pasar usuario a la señal
+        personal._current_user = request.user
         personal.save()
         
         estado_texto = "activado" if personal.activo else "desactivado"

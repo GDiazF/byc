@@ -106,59 +106,6 @@ initData(
             <!-- Se llena dinámicamente con JavaScript -->
         </div>
         
-        <!-- Card de Configuración de Asignación Masiva -->
-        <div class="card mb-3">
-            <div class="card-header bg-dark text-white py-2">
-                <h6 class="mb-0">
-                    <i class="bi bi-sliders me-2"></i>Configuración de Asignación
-                </h6>
-            </div>
-            <div class="card-body py-2">
-                <form id="formAsignacion" onsubmit="event.preventDefault(); asignarMasivo();">
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <label for="turno_id" class="form-label small mb-1">Turno *</label>
-                            <select class="form-select form-select-sm" id="turno_id" required>
-                                <option value="">Seleccione...</option>
-                            </select>
-                            <div id="turnoDescripcion" class="small"></div>
-                        </div>
-                        
-                        <div class="col-md-2" id="bloqueContainer" style="display: none;">
-                            <label for="bloque_inicio_id" class="form-label small mb-1">Bloque Inicio</label>
-                            <select class="form-select form-select-sm" id="bloque_inicio_id">
-                                <option value="">Desde inicio</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-2">
-                            <label for="fecha_inicio" class="form-label small mb-1">Fecha Inicio *</label>
-                            <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fecha_inicio" required
-                                   placeholder="DD-MM-YYYY">
-                        </div>
-                        
-                        <div class="col-md-2">
-                            <label for="fecha_fin" class="form-label small mb-1">Fecha Fin</label>
-                            <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fecha_fin"
-                                   placeholder="DD-MM-YYYY">
-                        </div>
-                        
-                        <div class="col-md-3">
-                            <label for="observaciones" class="form-label small mb-1">Observaciones</label>
-                            <input type="text" class="form-control form-control-sm" id="observaciones"
-                                      placeholder="Notas adicionales...">
-                        </div>
-                    </div>
-                    
-                    <div class="text-end mt-2">
-                        <button type="submit" class="btn btn-success btn-sm" id="btnAsignarMasivo" disabled>
-                            <i class="bi bi-check-circle me-1"></i>Asignar Personal Seleccionado
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
         <!-- Filtros y búsqueda -->
         <div class="row mb-3">
             <div class="col-md-3">
@@ -211,8 +158,8 @@ initData(
             <div class="d-flex align-items-center gap-2">
                 <label class="form-label mb-0 small">Mostrar:</label>
                 <select class="form-select form-select-sm" id="registrosPorPagina" style="width: auto;" onchange="cambiarRegistrosPorPagina()">
-                    <option value="10">10</option>
-                    <option value="25" selected>25</option>
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
                     <option value="50">50</option>
                     <option value="100">100</option>
                     <option value="9999">Todos</option>
@@ -241,7 +188,7 @@ initData(
                              Empresa <i class="bi bi-arrow-down-up ms-1"></i>
                          </th>
                          <th style="width: 10%;">Estado</th>
-                         <th style="width: 13%;">Faena Actual</th>
+                         <th style="width: 13%;">Asignación Actual</th>
                          <th style="width: 13%;">Período Asignación</th>
                      </tr>
                  </thead>
@@ -261,7 +208,70 @@ initData(
                     <!-- Se llena con JavaScript -->
                 </ul>
             </nav>
-                </div>
+        </div>
+        
+        <!-- Card de Configuración de Asignación Masiva (movido abajo) -->
+        <div class="card mt-3">
+            <div class="card-header bg-dark text-white py-2">
+                <h6 class="mb-0">
+                    <i class="bi bi-sliders me-2"></i>Configuración de Asignación
+                </h6>
+            </div>
+            <div class="card-body py-2">
+                <form id="formAsignacion" onsubmit="event.preventDefault(); asignarMasivo();">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label for="turno_id" class="form-label small mb-1">
+                                Turno * 
+                                <span class="ms-1" id="btnInfoTurno" 
+                                      style="vertical-align: baseline; line-height: 1; cursor: pointer;" 
+                                      data-bs-toggle="popover" 
+                                      data-bs-placement="top"
+                                      data-bs-trigger="click"
+                                      data-bs-html="true"
+                                      data-bs-content="Seleccione un turno para ver su información">
+                                    <i class="bi bi-info-circle text-primary" id="iconInfoTurno"></i>
+                                </span>
+                            </label>
+                            <select class="form-select form-select-sm" id="turno_id" required>
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2" id="bloqueContainer" style="display: none;">
+                            <label for="bloque_inicio_id" class="form-label small mb-1">Bloque Inicio</label>
+                            <select class="form-select form-select-sm" id="bloque_inicio_id">
+                                <option value="">Desde inicio</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="fecha_inicio" class="form-label small mb-1">Fecha Inicio *</label>
+                            <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fecha_inicio" required
+                                   placeholder="DD-MM-YYYY">
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="fecha_fin" class="form-label small mb-1">Fecha Fin</label>
+                            <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fecha_fin"
+                                   placeholder="DD-MM-YYYY">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="observaciones" class="form-label small mb-1">Observaciones</label>
+                            <input type="text" class="form-control form-control-sm" id="observaciones"
+                                      placeholder="Notas adicionales...">
+                        </div>
+                    </div>
+                    
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-success btn-sm" id="btnAsignarMasivo" disabled>
+                            <i class="bi bi-check-circle me-1"></i>Asignar Personal Seleccionado
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
             </div>
 
             <!-- Tab: Asignar Estado Manual -->
@@ -282,11 +292,31 @@ initData(
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold">Estado *</label>
+                                <label class="form-label small fw-bold">
+                                    Estado * 
+                                    <span class="ms-1" id="btnInfoEstadoManual" 
+                                          style="vertical-align: baseline; line-height: 1; cursor: pointer;" 
+                                          data-bs-toggle="popover" 
+                                          data-bs-placement="top"
+                                          data-bs-trigger="click"
+                                          data-bs-html="true"
+                                          data-bs-content="Seleccione un estado para ver su información">
+                                        <i class="bi bi-info-circle text-primary" id="iconInfoEstadoManual"></i>
+                                    </span>
+                                </label>
                                 <select class="form-select form-select-sm" id="estadoManualSelect" required>
                                     <option value="">Seleccione...</option>
                                     {% for estado in estados_disponibles %}
-                                    <option value="{{ estado.id }}">{{ estado.nombre }}</option>
+                                    <option value="{{ estado.id }}" 
+                                            data-nombre="{{ estado.nombre }}"
+                                            data-nombre-corto="{{ estado.nombre_corto|default:'' }}"
+                                            data-color="{{ estado.color }}"
+                                            data-background-color="{{ estado.background_color }}"
+                                            data-prioridad="{{ estado.prioridad }}"
+                                            data-bloqueante="{% if estado.es_bloqueante %}Sí{% else %}No{% endif %}"
+                                            data-predeterminado="{% if estado.es_predeterminado %}Sí{% else %}No{% endif %}">
+                                        {{ estado.nombre }}
+                                    </option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -305,7 +335,7 @@ initData(
                             
                             <div class="col-md-3">
                                 <label class="form-label small fw-bold">&nbsp;</label>
-                                <button type="button" class="btn btn-primary btn-sm w-100" id="btnAsignarManual" onclick="asignarEstadoManualTab()">
+                                <button type="button" class="btn btn-primary btn-sm w-100" id="btnAsignarManual" onclick="asignarEstadoManualTab()" disabled>
                                     <i class="bi bi-check-circle me-1"></i>Asignar
                                 </button>
                             </div>

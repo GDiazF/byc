@@ -565,134 +565,156 @@ function renderizarObservacionesOT(ot, container) {
 
 // Renderizar historial de OT en el modal
 function renderizarHistorialOT(data, modalBody, modalTitle) {
-    const ot = data.ot;
-    const historial = data.historial;
+    const historial = data.historial || [];
     
     // Actualizar título del modal solo si se proporciona
-    if (modalTitle) {
-        modalTitle.innerHTML = `<i class="bi bi-clock-history me-2"></i>Historial - ${ot.folio}`;
+    if (modalTitle && data.ot) {
+        modalTitle.innerHTML = `<i class="bi bi-clock-history me-2"></i>Historial - ${data.ot.folio}`;
     }
     
-    // Historial compacto pero con detalles
     let infoHTML = '';
-    if (historial && historial.length > 0) {
+    
+    if (historial.length > 0) {
+        // Tabla simple con filas expandibles (acordeón)
         infoHTML = `
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="mb-0">
                     <i class="bi bi-list-ul me-1"></i>Historial de Cambios
                 </h6>
-                <span class="badge bg-secondary">${historial.length}</span>
+                <span class="badge bg-secondary">${historial.length} registro(s)</span>
             </div>
-            <div class="timeline">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 5%;"></th>
+                            <th style="width: 15%;">Fecha y Hora</th>
+                            <th style="width: 15%;">Usuario</th>
+                            <th style="width: 20%;">Acción</th>
+                            <th style="width: 45%;">Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
         `;
         
         historial.forEach((evento, index) => {
-            const icono = getIconoAccion(evento.accion);
             const badgeColor = getBadgeColorAccion(evento.accion);
-            const borderColor = getBorderLeftColorAccion(evento.accion);
+            const rowId = `historial-row-${index}`;
+            const detailsId = `historial-details-${index}`;
             
-            let datosHTML = '';
-            if (evento.datos_previos || evento.datos_nuevos) {
-                datosHTML = '<div class="mt-2 pt-2 border-top small">';
+            // Generar detalles expandibles solo si hay información adicional que no esté en la descripción
+            let detallesHTML = '';
+            let tieneDetalles = false;
+            
+            // Solo mostrar detalles si hay información adicional relevante que no esté en la descripción
+            // La descripción ya contiene los cambios principales, así que solo mostramos:
+            // 1. Personal asignado (lista completa de nombres)
+            // 2. Información adicional que no esté en la descripción
+            
+            if (evento.personal && Array.isArray(evento.personal) && evento.personal.length > 0) {
+                // Personal asignado - mostrar lista completa si hay múltiples personas
+                const nombres = evento.personal.map(p => p.nombre_completo).join(', ');
+                detallesHTML = '<div class="small">';
+                detallesHTML += `<div class="mb-2"><strong>Personal asignado:</strong><ul class="mb-0 mt-1">`;
+                evento.personal.forEach(p => {
+                    detallesHTML += `<li>${p.nombre_completo}${p.rut ? ` (RUT: ${p.rut})` : ''}</li>`;
+                });
+                detallesHTML += '</ul></div>';
+                tieneDetalles = true;
+            }
+            
+            // Información adicional que no esté en la descripción (solo campos realmente útiles)
+            if (evento.datos_nuevos) {
+                const camposTecnicos = [
+                    'estado_ot_nombre', 'estado_equipo_nombre', 'estado_seccion_nombre',
+                    'seccion_nombre', 'fecha_fin', 'personal_ids',
+                    'estado_ot_id', 'estado_equipo_id', 'estado_seccion_id',
+                    'seccion_id', 'equipo_id', 'equipo_nombre', 'folio',
+                    'tipo_mantenimiento', 'estado_ot', 'estado_equipo'
+                ];
                 
-                // Datos previos
-                if (evento.datos_previos) {
-                    let valorAnterior = '';
-                    let labelAnterior = '';
-                    
-                    if (evento.datos_previos.estado_ot_nombre) {
-                        valorAnterior = evento.datos_previos.estado_ot_nombre;
-                        labelAnterior = 'Estado OT';
-                    } else if (evento.datos_previos.estado_equipo_nombre) {
-                        valorAnterior = evento.datos_previos.estado_equipo_nombre;
-                        labelAnterior = 'Estado Equipo';
-                    } else if (evento.datos_previos.estado_seccion_nombre) {
-                        valorAnterior = evento.datos_previos.estado_seccion_nombre;
-                        labelAnterior = 'Estado Sección';
-                        if (evento.datos_previos.seccion_nombre) {
-                            labelAnterior += ` (${evento.datos_previos.seccion_nombre})`;
-                        }
-                    } else if (evento.datos_previos.fecha_fin) {
-                        valorAnterior = evento.datos_previos.fecha_fin;
-                        labelAnterior = 'Fecha Fin';
+                const keys = Object.keys(evento.datos_nuevos).filter(k => 
+                    !camposTecnicos.includes(k) && 
+                    !k.endsWith('_id') &&
+                    evento.datos_nuevos[k] !== null && 
+                    evento.datos_nuevos[k] !== undefined &&
+                    evento.datos_nuevos[k] !== '' &&
+                    // Excluir información que ya está en la descripción
+                    !evento.descripcion.includes(k)
+                );
+                
+                if (keys.length > 0) {
+                    if (!tieneDetalles) {
+                        detallesHTML = '<div class="small">';
                     }
-                    
-                    if (valorAnterior) {
-                        datosHTML += `
-                            <span class="text-muted">Antes:</span> 
-                            <span class="badge bg-light text-dark border me-1">${labelAnterior}</span>
-                            <span class="text-danger">${valorAnterior}</span>
-                        `;
-                    }
+                    detallesHTML += '<div class="mt-2 pt-2 border-top"><strong>Información adicional:</strong><ul class="mb-0 mt-1">';
+                    keys.forEach(key => {
+                        const valor = evento.datos_nuevos[key];
+                        const nombreCampo = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        detallesHTML += `<li><strong>${nombreCampo}:</strong> ${valor}</li>`;
+                    });
+                    detallesHTML += '</ul></div>';
+                    tieneDetalles = true;
                 }
-                
-                // Datos nuevos
-                if (evento.datos_nuevos) {
-                    let valorNuevo = '';
-                    let labelNuevo = '';
-                    
-                    if (evento.datos_nuevos.estado_ot_nombre) {
-                        valorNuevo = evento.datos_nuevos.estado_ot_nombre;
-                        labelNuevo = 'Estado OT';
-                    } else if (evento.datos_nuevos.estado_equipo_nombre) {
-                        valorNuevo = evento.datos_nuevos.estado_equipo_nombre;
-                        labelNuevo = 'Estado Equipo';
-                    } else if (evento.datos_nuevos.estado_seccion_nombre) {
-                        valorNuevo = evento.datos_nuevos.estado_seccion_nombre;
-                        labelNuevo = 'Estado Sección';
-                        if (evento.datos_nuevos.seccion_nombre) {
-                            labelNuevo += ` (${evento.datos_nuevos.seccion_nombre})`;
-                        }
-                    } else if (evento.datos_nuevos.fecha_fin) {
-                        valorNuevo = evento.datos_nuevos.fecha_fin;
-                        labelNuevo = 'Fecha Fin';
-                    }
-                    
-                    if (valorNuevo) {
-                        if (datosHTML.includes('Antes:')) {
-                            datosHTML += ' → ';
-                        }
-                        datosHTML += `
-                            <span class="text-muted">Después:</span> 
-                            <span class="badge bg-light text-dark border me-1">${labelNuevo}</span>
-                            <span class="text-success">${valorNuevo}</span>
-                        `;
-                    }
-                }
-                
-                datosHTML += '</div>';
+            }
+            
+            if (tieneDetalles) {
+                detallesHTML += '</div>';
             }
             
             infoHTML += `
-                <div class="timeline-item mb-2" style="position: relative; padding-left: 30px;">
-                    <div class="card" style="border-left: 3px solid ${borderColor};">
-                        <div class="card-body py-2">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="d-flex align-items-start flex-grow-1">
-                                    <div class="me-2 mt-1">
-                                        ${icono}
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <span class="badge ${badgeColor} mb-1">${evento.accion_display}</span>
-                                        <p class="mb-1 small">${evento.descripcion}</p>
-                                        ${datosHTML}
-                                        <small class="text-muted">
-                                            <i class="bi bi-person me-1"></i>${evento.usuario_nombre}
-                                        </small>
-                                    </div>
-                                </div>
-                                <div class="text-end ms-2" style="min-width: 100px; flex-shrink: 0;">
-                                    <small class="text-muted d-block">${evento.fecha}</small>
-                                    <small class="text-muted">${evento.hora}</small>
-                                </div>
-                            </div>
+                <tr id="${rowId}" class="${tieneDetalles ? 'historial-row-clickable' : ''}" ${tieneDetalles ? `onclick="toggleHistorialDetails('${detailsId}')" style="cursor: pointer;"` : ''}>
+                    <td class="text-center" style="width: 5%;">
+                        ${tieneDetalles ? `<i class="bi bi-info-circle text-muted" style="font-size: 0.9rem;" title="Click para ver más detalles"></i>` : ''}
+                    </td>
+                    <td>
+                        <small class="text-muted">${evento.fecha_hora_formateada || evento.fecha_hora}</small>
+                    </td>
+                    <td>
+                        <small><i class="bi bi-person me-1"></i>${obtenerNombreUsuario(evento)}</small>
+                    </td>
+                    <td>
+                        <span class="badge ${badgeColor}">${evento.accion_display}</span>
+                    </td>
+                    <td>
+                        <small>${evento.descripcion || '-'}</small>
+                        ${tieneDetalles ? ' <span class="text-muted small">(click para más detalles)</span>' : ''}
+                    </td>
+                </tr>
+                ${tieneDetalles ? `
+                <tr id="${detailsId}" class="historial-details-row" style="display: none;">
+                    <td colspan="5" class="bg-light">
+                        <div class="p-3">
+                            ${detallesHTML}
                         </div>
-                    </div>
-                </div>
+                    </td>
+                </tr>
+                ` : ''}
             `;
         });
         
-        infoHTML += '</div>';
+        infoHTML += `
+                    </tbody>
+                </table>
+            </div>
+            <style>
+                .historial-row-clickable {
+                    transition: background-color 0.2s;
+                }
+                .historial-row-clickable:hover {
+                    background-color: #f8f9fa !important;
+                }
+                .historial-row-clickable:hover td {
+                    background-color: #f8f9fa !important;
+                }
+                .historial-details-row {
+                    background-color: #f8f9fa;
+                }
+                .historial-details-row td {
+                    border-top: none !important;
+                }
+            </style>
+        `;
     } else {
         infoHTML = `
             <div class="alert alert-info">
@@ -703,6 +725,31 @@ function renderizarHistorialOT(data, modalBody, modalTitle) {
     }
     
     modalBody.innerHTML = infoHTML;
+}
+
+// Función para obtener el nombre completo del usuario
+function obtenerNombreUsuario(evento) {
+    // Priorizar usuario_nombre (nombre completo), luego usuario (username), finalmente 'Sistema'
+    if (evento.usuario_nombre && evento.usuario_nombre.trim() && evento.usuario_nombre !== evento.usuario) {
+        return evento.usuario_nombre.trim();
+    }
+    if (evento.usuario && evento.usuario.trim() && evento.usuario !== 'Sistema') {
+        return evento.usuario.trim();
+    }
+    return 'Sistema';
+}
+
+// Función para expandir/colapsar detalles del historial
+function toggleHistorialDetails(detailsId) {
+    const detailsRow = document.getElementById(detailsId);
+    
+    if (detailsRow) {
+        if (detailsRow.style.display === 'none') {
+            detailsRow.style.display = '';
+        } else {
+            detailsRow.style.display = 'none';
+        }
+    }
 }
 
 // Funciones helper para iconos y colores según acción

@@ -114,6 +114,9 @@ function renderizarEquipos(equipos) {
                        title="Editar">
                         <i class="bi bi-pencil"></i>
                     </a>
+                    <button type="button" class="btn btn-sm btn-info" onclick="verHistorialEquipo(${equipo.equipo_id}, '${equipo.nombreEquipo.replace(/'/g, "\\'")}')" title="Ver Historial">
+                        <i class="bi bi-clock-history"></i>
+                    </button>
                 </div>
             </td>
             <td class="text-center">

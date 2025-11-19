@@ -172,12 +172,42 @@
     </div>
 </div>
 
+<!-- Modal Historial Equipo -->
+<div class="modal fade" id="modalHistorialEquipo" tabindex="-1" aria-labelledby="modalHistorialEquipoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalHistorialEquipoLabel">
+                    <i class="bi bi-clock-history me-2"></i>Historial de Equipo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalHistorialEquipoBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando historial...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extrajs %}
 <script>
     window.csrfToken = "{{ csrf_token }}";
+    // URL base para API de historial de equipos
+    var apiHistorialEquipoBase = "{% url 'maquinarias:api_historial_equipo' 0 %}";
 </script>
+<script src="{% static 'maquinarias/js/historial_equipo.js' %}"></script>
 <script src="{% static 'maquinarias/js/lista_equipos.js' %}"></script>
 {% endblock %}
 

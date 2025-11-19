@@ -12,7 +12,7 @@ let faenaFechaFin = null;
 
 // Variables de paginación
 let paginaActual = 1;
-let registrosPorPagina = 25;
+let registrosPorPagina = 10;
 let personalFiltrado = [];
 
 // ============================================================================
@@ -156,15 +156,38 @@ function renderizarTablaPersonal() {
         const isChecked = personalSeleccionados.includes(p.id);
         const estadoClass = p.tiene_asignacion ? 'bg-warning' : 'bg-success';
         const estadoText = p.tiene_asignacion ? 'Asignado' : 'Disponible';
-        const fechaAsignacion = p.asignacion_actual ? 
-            `${formatearFechaChilena(p.asignacion_actual.fecha_inicio) || ''} ${p.asignacion_actual.fecha_fin ? '→ ' + formatearFechaChilena(p.asignacion_actual.fecha_fin) : '→ Indefinido'}` : 
-            '-';
+        
+        // Determinar qué mostrar según el tipo de asignación
+        let asignacionTexto = '-';
+        let fechaAsignacion = '-';
+        
+        if (p.asignacion_actual) {
+            if (p.asignacion_actual.tipo === 'ot') {
+                // Es una OT
+                asignacionTexto = `OT: ${p.asignacion_actual.folio} - ${p.asignacion_actual.equipo || 'N/A'}`;
+                fechaAsignacion = `${formatearFechaChilena(p.asignacion_actual.fecha_inicio) || ''} ${p.asignacion_actual.fecha_fin ? '→ ' + formatearFechaChilena(p.asignacion_actual.fecha_fin) : '→ Indefinido'}`;
+            } else {
+                // Es una faena
+                asignacionTexto = p.asignacion_actual.faena || '-';
+                fechaAsignacion = `${formatearFechaChilena(p.asignacion_actual.fecha_inicio) || ''} ${p.asignacion_actual.fecha_fin ? '→ ' + formatearFechaChilena(p.asignacion_actual.fecha_fin) : '→ Indefinido'}`;
+            }
+        }
+        
+        // Deshabilitar checkbox si tiene asignación conflictiva
+        const tieneConflicto = p.tiene_asignacion;
+        const disabledAttr = tieneConflicto ? 'disabled' : '';
+        const titleAttr = tieneConflicto ? 
+            (p.asignacion_actual && p.asignacion_actual.tipo === 'ot' ? 
+                `No se puede asignar: Tiene OT asignada` : 
+                `No se puede asignar: Ya asignado a otra faena`) : 
+            '';
         
         return `
-            <tr class="${isChecked ? 'table-primary' : ''}">
+            <tr class="${isChecked ? 'table-primary' : ''} ${tieneConflicto ? 'table-secondary' : ''}">
                 <td class="text-center">
                     <input class="form-check-input personal-checkbox" type="checkbox" 
-                           value="${p.id}" ${isChecked ? 'checked' : ''}>
+                           value="${p.id}" ${isChecked ? 'checked' : ''} ${disabledAttr}
+                           title="${titleAttr}">
                 </td>
                 <td>
                     <a href="#" onclick="event.preventDefault(); showPersonalInfo(${p.id});" 
@@ -180,7 +203,7 @@ function renderizarTablaPersonal() {
                 <td>
                     <span class="badge ${estadoClass}">${estadoText}</span>
                 </td>
-                <td>${p.asignacion_actual ? p.asignacion_actual.faena : '-'}</td>
+                <td>${asignacionTexto}</td>
                 <td class="small">${fechaAsignacion}</td>
             </tr>
         `;
@@ -279,8 +302,9 @@ function cambiarRegistrosPorPagina() {
 
 // Actualizar contador
 function actualizarContador() {
-    const total = document.querySelectorAll('.personal-checkbox').length;
-    const seleccionados = document.querySelectorAll('.personal-checkbox:checked').length;
+    const total = document.querySelectorAll('.personal-checkbox:not(:disabled)').length;
+    // Solo contar checkboxes seleccionados que NO estén deshabilitados
+    const seleccionados = document.querySelectorAll('.personal-checkbox:checked:not(:disabled)').length;
     
     document.getElementById('totalPersonal').textContent = total;
     document.getElementById('totalSeleccionados').textContent = seleccionados;
@@ -297,6 +321,12 @@ function actualizarContador() {
 
 // Manejar checkbox
 function onCheckboxChange(checkbox) {
+    // Ignorar checkboxes deshabilitados
+    if (checkbox.disabled) {
+        checkbox.checked = false;
+        return;
+    }
+    
     const id = parseInt(checkbox.value);
     if (checkbox.checked) {
         if (!personalSeleccionados.includes(id)) {
@@ -310,16 +340,19 @@ function onCheckboxChange(checkbox) {
 
 // Seleccionar/deseleccionar todos visibles
 function toggleSeleccionarTodos() {
-    const checkboxes = document.querySelectorAll('.personal-checkbox');
+    // Solo considerar checkboxes que NO estén deshabilitados
+    const checkboxes = document.querySelectorAll('.personal-checkbox:not(:disabled)');
     const todosSeleccionados = Array.from(checkboxes).every(cb => cb.checked);
     
     personalSeleccionados = [];
     
     if (!todosSeleccionados) {
         checkboxes.forEach(cb => {
-            const id = parseInt(cb.value);
-            if (!personalSeleccionados.includes(id)) {
-                personalSeleccionados.push(id);
+            if (!cb.disabled) {
+                const id = parseInt(cb.value);
+                if (!personalSeleccionados.includes(id)) {
+                    personalSeleccionados.push(id);
+                }
             }
         });
     }
@@ -362,27 +395,73 @@ function onTurnoChange() {
     const turnoId = parseInt(document.getElementById('turno_id').value);
     const container = document.getElementById('bloqueContainer');
     const select = document.getElementById('bloque_inicio_id');
+    const btnInfoTurno = document.getElementById('btnInfoTurno');
+    
+    const iconInfoTurno = document.getElementById('iconInfoTurno');
     
     if (!turnoId) {
         container.style.display = 'none';
+        btnInfoTurno.setAttribute('data-bs-content', 'Seleccione un turno para ver su información');
+        iconInfoTurno.classList.remove('text-primary');
+        iconInfoTurno.classList.add('text-muted');
+        btnInfoTurno.style.cursor = 'not-allowed';
+        // Reinicializar popover
+        const popoverInstance = bootstrap.Popover.getInstance(btnInfoTurno);
+        if (popoverInstance) {
+            popoverInstance.dispose();
+        }
+        new bootstrap.Popover(btnInfoTurno, {
+            html: true,
+            placement: 'top',
+            trigger: 'click'
+        });
         return;
     }
     
     const turno = turnos.find(t => t.id === turnoId);
     if (!turno || !turno.bloques || turno.bloques.length === 0) {
         container.style.display = 'none';
+        btnInfoTurno.setAttribute('data-bs-content', 'Turno sin información disponible');
+        iconInfoTurno.classList.remove('text-primary');
+        iconInfoTurno.classList.add('text-muted');
+        btnInfoTurno.style.cursor = 'not-allowed';
+        // Reinicializar popover
+        const popoverInstance = bootstrap.Popover.getInstance(btnInfoTurno);
+        if (popoverInstance) {
+            popoverInstance.dispose();
+        }
+        new bootstrap.Popover(btnInfoTurno, {
+            html: true,
+            placement: 'top',
+            trigger: 'click'
+        });
         return;
     }
     
-    // Mostrar descripción del turno
-    const descripcionDiv = document.getElementById('turnoDescripcion');
-    let descripcionHTML = '<div class="alert alert-info small py-2 mb-3"><strong>Ciclo del turno:</strong><br>';
+    // Construir información del turno para el popover
+    let infoTurno = '<strong>Ciclo del turno:</strong><br>';
     turno.bloques.forEach(b => {
-        descripcionHTML += `Bloque ${b.orden}: ${b.estado.nombre} (${b.duracion_dias} días) → `;
+        infoTurno += `Bloque ${b.orden}: ${b.estado.nombre} (${b.duracion_dias} días) → `;
     });
-    descripcionHTML = descripcionHTML.slice(0, -4); // Quitar última flecha
-    descripcionHTML += `<br><strong>Total: ${turno.longitud_ciclo} días</strong></div>`;
-    descripcionDiv.innerHTML = descripcionHTML;
+    infoTurno = infoTurno.slice(0, -4); // Quitar última flecha
+    infoTurno += `<br><strong>Total: ${turno.longitud_ciclo} días</strong>`;
+    
+    // Habilitar visualmente y actualizar popover
+    btnInfoTurno.setAttribute('data-bs-content', infoTurno);
+    iconInfoTurno.classList.remove('text-muted');
+    iconInfoTurno.classList.add('text-primary');
+    btnInfoTurno.style.cursor = 'pointer';
+    
+    // Reinicializar popover con HTML
+    const popoverInstance = bootstrap.Popover.getInstance(btnInfoTurno);
+    if (popoverInstance) {
+        popoverInstance.dispose();
+    }
+    new bootstrap.Popover(btnInfoTurno, {
+        html: true,
+        placement: 'top',
+        trigger: 'click'
+    });
     
     container.style.display = 'block';
     select.innerHTML = '<option value="">Desde el inicio del ciclo</option>' +
@@ -391,6 +470,72 @@ function onTurnoChange() {
                 Iniciar en Bloque ${b.orden}: ${b.estado.nombre} (${b.duracion_dias} días)
             </option>
         `).join('');
+}
+
+// Al seleccionar estado manual, mostrar información
+function onEstadoManualChange() {
+    const estadoId = parseInt(document.getElementById('estadoManualSelect').value);
+    const btnInfoEstadoManual = document.getElementById('btnInfoEstadoManual');
+    const iconInfoEstadoManual = document.getElementById('iconInfoEstadoManual');
+    
+    if (!estadoId) {
+        btnInfoEstadoManual.setAttribute('data-bs-content', 'Seleccione un estado para ver su información');
+        iconInfoEstadoManual.classList.remove('text-primary');
+        iconInfoEstadoManual.classList.add('text-muted');
+        btnInfoEstadoManual.style.cursor = 'not-allowed';
+        // Reinicializar popover
+        const popoverInstance = bootstrap.Popover.getInstance(btnInfoEstadoManual);
+        if (popoverInstance) {
+            popoverInstance.dispose();
+        }
+        new bootstrap.Popover(btnInfoEstadoManual, {
+            html: true,
+            placement: 'top',
+            trigger: 'click'
+        });
+        return;
+    }
+    
+    // Obtener información del estado desde el option seleccionado
+    const selectEstado = document.getElementById('estadoManualSelect');
+    const optionSeleccionado = selectEstado.options[selectEstado.selectedIndex];
+    
+    const nombre = optionSeleccionado.getAttribute('data-nombre') || 'N/A';
+    const nombreCorto = optionSeleccionado.getAttribute('data-nombre-corto') || 'N/A';
+    const color = optionSeleccionado.getAttribute('data-color') || '#000000';
+    const backgroundColor = optionSeleccionado.getAttribute('data-background-color') || '#FFFFFF';
+    const prioridad = optionSeleccionado.getAttribute('data-prioridad') || '10';
+    const bloqueante = optionSeleccionado.getAttribute('data-bloqueante') || 'No';
+    const predeterminado = optionSeleccionado.getAttribute('data-predeterminado') || 'No';
+    
+    // Construir información del estado para el popover
+    let infoEstado = `<strong>Información del Estado:</strong><br>`;
+    infoEstado += `<strong>Nombre:</strong> ${nombre}<br>`;
+    if (nombreCorto && nombreCorto !== 'N/A') {
+        infoEstado += `<strong>Nombre corto:</strong> ${nombreCorto}<br>`;
+    }
+    infoEstado += `<strong>Prioridad:</strong> ${prioridad}<br>`;
+    infoEstado += `<strong>Es bloqueante:</strong> ${bloqueante}<br>`;
+    infoEstado += `<strong>Es predeterminado:</strong> ${predeterminado}<br>`;
+    infoEstado += `<strong>Color texto:</strong> <span style="color: ${color};">●</span> ${color}<br>`;
+    infoEstado += `<strong>Color fondo:</strong> <span style="background-color: ${backgroundColor}; padding: 2px 8px; border-radius: 3px;">&nbsp;&nbsp;</span> ${backgroundColor}`;
+    
+    // Habilitar visualmente y actualizar popover
+    btnInfoEstadoManual.setAttribute('data-bs-content', infoEstado);
+    iconInfoEstadoManual.classList.remove('text-muted');
+    iconInfoEstadoManual.classList.add('text-primary');
+    btnInfoEstadoManual.style.cursor = 'pointer';
+    
+    // Reinicializar popover con HTML
+    const popoverInstance = bootstrap.Popover.getInstance(btnInfoEstadoManual);
+    if (popoverInstance) {
+        popoverInstance.dispose();
+    }
+    new bootstrap.Popover(btnInfoEstadoManual, {
+        html: true,
+        placement: 'top',
+        trigger: 'click'
+    });
 }
 
 // ============================================================================
@@ -1022,9 +1167,37 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.getElementById('turno_id').addEventListener('change', onTurnoChange);
     
+    // Inicializar popover del botón de información del turno
+    const btnInfoTurno = document.getElementById('btnInfoTurno');
+    if (btnInfoTurno) {
+        new bootstrap.Popover(btnInfoTurno, {
+            html: true,
+            placement: 'top',
+            trigger: 'click'
+        });
+    }
+    
+    // Inicializar popover del botón de información del estado manual
+    const btnInfoEstadoManual = document.getElementById('btnInfoEstadoManual');
+    if (btnInfoEstadoManual) {
+        new bootstrap.Popover(btnInfoEstadoManual, {
+            html: true,
+            placement: 'top',
+            trigger: 'click'
+        });
+        
+        // Event listener para cuando cambie el select de estado
+        document.getElementById('estadoManualSelect').addEventListener('change', onEstadoManualChange);
+    }
+    
     // Checkboxes
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('personal-checkbox')) {
+            // No permitir cambiar checkboxes deshabilitados (con conflictos)
+            if (e.target.disabled) {
+                e.target.checked = false;
+                return;
+            }
             onCheckboxChange(e.target);
         }
     });
@@ -1939,17 +2112,20 @@ function toggleSelectAllAsignar() {
     const checkboxes = document.querySelectorAll('.personal-checkbox');
     
     checkboxes.forEach(checkbox => {
-        checkbox.checked = selectAll.checked;
-        const personalId = parseInt(checkbox.value);
-        
-        if (selectAll.checked) {
-            if (!personalSeleccionados.includes(personalId)) {
-                personalSeleccionados.push(personalId);
-            }
-        } else {
-            const index = personalSeleccionados.indexOf(personalId);
-            if (index > -1) {
-                personalSeleccionados.splice(index, 1);
+        // Solo seleccionar checkboxes que no estén deshabilitados (sin conflictos)
+        if (!checkbox.disabled) {
+            checkbox.checked = selectAll.checked;
+            const personalId = parseInt(checkbox.value);
+            
+            if (selectAll.checked) {
+                if (!personalSeleccionados.includes(personalId)) {
+                    personalSeleccionados.push(personalId);
+                }
+            } else {
+                const index = personalSeleccionados.indexOf(personalId);
+                if (index > -1) {
+                    personalSeleccionados.splice(index, 1);
+                }
             }
         }
     });
@@ -2354,13 +2530,11 @@ function cambiarRegistrosPorPaginaManual() {
 // Toggle select all manual
 function toggleSelectAllManual() {
     const selectAll = document.getElementById('selectAllManual');
-    const checkboxes = document.querySelectorAll('.personal-manual-checkbox');
-    const rows = document.querySelectorAll('#personalManualTableBody tr');
+    // Solo seleccionar checkboxes que NO estén deshabilitados
+    const checkboxes = document.querySelectorAll('.personal-manual-checkbox:not(:disabled)');
     
-    rows.forEach((row, index) => {
-        if (row.style.display !== 'none') {
-            checkboxes[index].checked = selectAll.checked;
-        }
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
     });
     
     actualizarResumenManual();
@@ -2368,11 +2542,13 @@ function toggleSelectAllManual() {
 
 // Actualizar resumen manual
 function actualizarResumenManual() {
-    const checkboxes = document.querySelectorAll('.personal-manual-checkbox:checked');
+    // Solo contar checkboxes seleccionados que NO estén deshabilitados
+    const checkboxes = document.querySelectorAll('.personal-manual-checkbox:checked:not(:disabled)');
     const cantidad = checkboxes.length;
     
     const cantidadElement = document.getElementById('cantidadSeleccionadosManual');
     const resumenElement = document.getElementById('resumenSeleccionManual');
+    const btnAsignarManual = document.getElementById('btnAsignarManual');
     
     // Validar que los elementos existan
     if (!cantidadElement || !resumenElement) {
@@ -2383,8 +2559,16 @@ function actualizarResumenManual() {
     if (cantidad > 0) {
         cantidadElement.textContent = cantidad;
         resumenElement.style.display = 'block';
+        // Habilitar botón solo si hay personal sin conflictos seleccionado
+        if (btnAsignarManual) {
+            btnAsignarManual.disabled = false;
+        }
     } else {
         resumenElement.style.display = 'none';
+        // Deshabilitar botón si no hay personal sin conflictos seleccionado
+        if (btnAsignarManual) {
+            btnAsignarManual.disabled = true;
+        }
     }
 }
 
@@ -2467,6 +2651,15 @@ function renderizarTablaManualFiltrada(personalFiltrado) {
         const periodo = p.asignacion_actual ?
             `${formatearFechaChilena(p.asignacion_actual.fecha_inicio)} → ${p.asignacion_actual.fecha_fin ? formatearFechaChilena(p.asignacion_actual.fecha_fin) : 'Indefinido'}` :
             '-';
+        
+        // Deshabilitar checkbox si tiene asignación conflictiva
+        const tieneConflicto = p.tiene_asignacion;
+        const disabledAttr = tieneConflicto ? 'disabled' : '';
+        const titleAttr = tieneConflicto ? 
+            (p.asignacion_actual && p.asignacion_actual.tipo === 'ot' ? 
+                `No se puede asignar: Tiene OT asignada` : 
+                `No se puede asignar: Ya asignado a otra faena`) : 
+            '';
             
         return `
             <tr data-personal-id="${p.id}"
@@ -2474,9 +2667,12 @@ function renderizarTablaManualFiltrada(personalFiltrado) {
                 data-rut="${p.rut}"
                 data-cargo="${p.cargo}"
                 data-empresa="${p.empresa}"
-                data-tiene-asignacion="${isAsignado}">
+                data-tiene-asignacion="${isAsignado}"
+                class="${tieneConflicto ? 'table-secondary' : ''}">
                 <td class="text-center">
-                    <input class="form-check-input personal-manual-checkbox" type="checkbox" value="${p.id}">
+                    <input class="form-check-input personal-manual-checkbox" type="checkbox" value="${p.id}"
+                           ${disabledAttr}
+                           title="${titleAttr}">
                 </td>
                 <td class="small">${p.nombre_completo}</td>
                 <td class="text-muted small">${p.rut}</td>
@@ -2499,8 +2695,17 @@ function renderizarTablaManualFiltrada(personalFiltrado) {
     
     // Agregar event listeners
     document.querySelectorAll('.personal-manual-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', actualizarResumenManual);
+        checkbox.addEventListener('change', function() {
+            // Si el checkbox está deshabilitado, no permitir seleccionarlo
+            if (this.disabled && this.checked) {
+                this.checked = false;
+            }
+            actualizarResumenManual();
+        });
     });
+    
+    // Actualizar resumen y estado del botón después de renderizar
+    actualizarResumenManual();
 }
 
 // Limpiar filtros manual
@@ -2873,14 +3078,14 @@ async function asignarEstadoManualTab() {
         return;
     }
     
-    // Obtener personal seleccionado
-    const checkboxes = document.querySelectorAll('.personal-manual-checkbox:checked');
+    // Obtener personal seleccionado (solo los que NO estén deshabilitados)
+    const checkboxes = document.querySelectorAll('.personal-manual-checkbox:checked:not(:disabled)');
     if (checkboxes.length === 0) {
-        mostrarModal('Error de Validación', 'Debe seleccionar al menos un trabajador para asignar.', 'error');
+        mostrarModal('Error de Validación', 'Debe seleccionar al menos un trabajador disponible para asignar.', 'error');
         return;
     }
     
-    const personalIds = Array.from(checkboxes).map(cb => cb.value);
+    const personalIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
     
     const data = {
         personal_ids: personalIds,

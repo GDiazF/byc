@@ -12,9 +12,10 @@ import json
 import hashlib
 from .models import (
     Estado, EstadoFuente, Turno, TurnoBloque, 
-    Faena, AsignacionFaena, EstadoManual, HistorialFaena
+    Faena, AsignacionFaena, AsignacionEquipoFaena, EstadoManual, HistorialFaena
 )
 from rrhh_personal.models import Personal
+from maquinarias.models import OrdenTrabajo, Equipo
 
 
 # Create your views here.
@@ -27,12 +28,12 @@ def calendario_mensual(request):
         year = int(request.GET.get('year', datetime.now().year))
         month = int(request.GET.get('month', datetime.now().month))
         page = int(request.GET.get('page', 1))
-        page_size = int(request.GET.get('page_size', 25))
+        page_size = int(request.GET.get('page_size', 10))
     except (ValueError, TypeError):
         year = datetime.now().year
         month = datetime.now().month
         page = 1
-        page_size = 25
+        page_size = 10
     
     # Validar rango de fechas
     if month < 1 or month > 12:
@@ -43,8 +44,8 @@ def calendario_mensual(request):
     # Validar paginación
     if page < 1:
         page = 1
-    if page_size not in [25, 50, 100]:
-        page_size = 25
+    if page_size not in [10, 25, 50, 100]:
+        page_size = 10
     
     # Obtener filtros
     faena_filter = request.GET.get('faena', '')
@@ -296,7 +297,7 @@ def calendario_mensual(request):
     
     return render(request, 'calendario/calendario_mensual.html', context)
 
-def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', empresa_filter='', search_query='', page=1, page_size=25):
+def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', empresa_filter='', search_query='', page=1, page_size=10):
     """
     Obtiene datos para el calendario con paginación.
     NUEVA ARQUITECTURA: Envía asignaciones al frontend, estados se calculan en JavaScript
@@ -1137,7 +1138,7 @@ def crear_asignacion(request):
         if fecha_fin:
             fecha_fin_date = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
         
-        # Buscar asignaciones que se solapen
+        # Buscar asignaciones a otras faenas que se solapen
         solapamiento_query = Q(personal=personal, activo=True)
         
         if fecha_fin_date:
@@ -1155,11 +1156,47 @@ def crear_asignacion(request):
                 (Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date))
             )
         
-        asignaciones_solapadas = AsignacionFaena.objects.filter(solapamiento_query)
+        asignaciones_solapadas = AsignacionFaena.objects.filter(solapamiento_query).select_related('faena')
         
         if asignaciones_solapadas.exists():
+            conflicto = asignaciones_solapadas.first()
+            fecha_fin_str = conflicto.fecha_fin.strftime('%d/%m/%Y') if conflicto.fecha_fin else 'Indefinido'
             return JsonResponse({
-                'error': f'Las fechas se solapan con una asignación existente. Revisa las fechas de las asignaciones actuales.'
+                'error': f'Las fechas se solapan con una asignación existente en la faena "{conflicto.faena.nombre}" '
+                         f'({conflicto.fecha_inicio.strftime("%d/%m/%Y")} → {fecha_fin_str}). '
+                         f'Revisa las fechas de las asignaciones actuales.'
+            }, status=400)
+        
+        # Verificar si tiene OT asignadas en fechas que interfieren
+        ot_conflictivas = OrdenTrabajo.objects.filter(
+            personal_asignado=personal
+        ).filter(
+            Q(fecha_inicio__isnull=False)
+        )
+        
+        # Verificar solapamiento de fechas con OT
+        if fecha_fin_date:
+            ot_conflictivas = ot_conflictivas.filter(
+                Q(fecha_inicio__lte=fecha_fin_date) & (
+                    Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date)
+                )
+            )
+        else:
+            ot_conflictivas = ot_conflictivas.filter(
+                Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date)
+            )
+        
+        ot_conflictivas = ot_conflictivas.select_related('equipo_id').order_by('-fecha_inicio')[:1]
+        
+        if ot_conflictivas.exists():
+            ot_conflicto = ot_conflictivas.first()
+            fecha_fin_ot = ot_conflicto.fecha_fin.strftime('%d/%m/%Y') if ot_conflicto.fecha_fin else 'Indefinido'
+            fecha_inicio_ot = ot_conflicto.fecha_inicio.strftime('%d/%m/%Y') if ot_conflicto.fecha_inicio else 'N/A'
+            equipo_nombre = ot_conflicto.equipo_id.nombreEquipo if ot_conflicto.equipo_id else 'N/A'
+            return JsonResponse({
+                'error': f'El trabajador tiene una OT asignada "{ot_conflicto.folio}" (Equipo: {equipo_nombre}) '
+                         f'que se solapa con las fechas de asignación ({fecha_inicio_ot} → {fecha_fin_ot}). '
+                         f'No se puede asignar a la faena en estas fechas.'
             }, status=400)
         
         # Crear nueva asignación
@@ -1173,6 +1210,9 @@ def crear_asignacion(request):
             observaciones=observaciones,
             activo=activo
         )
+        
+        # Marcar que el historial se registrará manualmente (evitar duplicado en señal)
+        asignacion._historial_registrado = True
         
         # Registrar en historial
         HistorialFaena.registrar(
@@ -1260,11 +1300,47 @@ def actualizar_asignacion(request):
                 (Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date))
             )
         
-        asignaciones_solapadas = AsignacionFaena.objects.filter(solapamiento_query)
+        asignaciones_solapadas = AsignacionFaena.objects.filter(solapamiento_query).select_related('faena')
         
         if asignaciones_solapadas.exists():
+            conflicto = asignaciones_solapadas.first()
+            fecha_fin_str = conflicto.fecha_fin.strftime('%d/%m/%Y') if conflicto.fecha_fin else 'Indefinido'
             return JsonResponse({
-                'error': f'Las fechas se solapan con otra asignación existente. Revisa las fechas de las asignaciones actuales.'
+                'error': f'Las fechas se solapan con otra asignación existente en la faena "{conflicto.faena.nombre}" '
+                         f'({conflicto.fecha_inicio.strftime("%d/%m/%Y")} → {fecha_fin_str}). '
+                         f'Revisa las fechas de las asignaciones actuales.'
+            }, status=400)
+        
+        # Verificar si tiene OT asignadas en fechas que interfieren
+        ot_conflictivas = OrdenTrabajo.objects.filter(
+            personal_asignado=asignacion.personal
+        ).filter(
+            Q(fecha_inicio__isnull=False)
+        )
+        
+        # Verificar solapamiento de fechas con OT
+        if fecha_fin_date:
+            ot_conflictivas = ot_conflictivas.filter(
+                Q(fecha_inicio__lte=fecha_fin_date) & (
+                    Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date)
+                )
+            )
+        else:
+            ot_conflictivas = ot_conflictivas.filter(
+                Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date)
+            )
+        
+        ot_conflictivas = ot_conflictivas.select_related('equipo_id').order_by('-fecha_inicio')[:1]
+        
+        if ot_conflictivas.exists():
+            ot_conflicto = ot_conflictivas.first()
+            fecha_fin_ot = ot_conflicto.fecha_fin.strftime('%d/%m/%Y') if ot_conflicto.fecha_fin else 'Indefinido'
+            fecha_inicio_ot = ot_conflicto.fecha_inicio.strftime('%d/%m/%Y') if ot_conflicto.fecha_inicio else 'N/A'
+            equipo_nombre = ot_conflicto.equipo_id.nombreEquipo if ot_conflicto.equipo_id else 'N/A'
+            return JsonResponse({
+                'error': f'El trabajador tiene una OT asignada "{ot_conflicto.folio}" (Equipo: {equipo_nombre}) '
+                         f'que se solapa con las fechas de asignación ({fecha_inicio_ot} → {fecha_fin_ot}). '
+                         f'No se puede asignar a la faena en estas fechas.'
             }, status=400)
         
         # Guardar datos anteriores para historial
@@ -1338,6 +1414,9 @@ def eliminar_asignacion(request):
             personal_eliminado = asignacion.personal
             faena_ref = asignacion.faena
             
+            # Marcar que el historial se registrará manualmente (evitar duplicado en señal)
+            asignacion._historial_registrado = True
+            
             # Registrar en historial ANTES de eliminar
             HistorialFaena.registrar(
                 faena=faena_ref,
@@ -1406,7 +1485,7 @@ def asignar_personal_faena(request, faena_id):
     empresas_set = set()
     
     for p in personal_list:
-        # Verificar asignación activa
+        # Verificar asignación activa a faena
         asignacion_activa = p.asignaciones_faena.filter(
             activo=True
         ).filter(
@@ -1418,7 +1497,7 @@ def asignar_personal_faena(request, faena_id):
         cargos_set.add(cargo)
         empresas_set.add(empresa)
         
-        # Verificar si la asignación interfiere con las fechas de esta faena
+        # Verificar si la asignación a faena interfiere con las fechas de esta faena
         tiene_asignacion_conflictiva = False
         asignacion_data = None
         
@@ -1448,11 +1527,60 @@ def asignar_personal_faena(request, faena_id):
             # Solo mostrar datos de asignación si hay conflicto
             if tiene_asignacion_conflictiva:
                 asignacion_data = {
+                    'tipo': 'faena',
                     'faena': asignacion_activa.faena.nombre,
                     'turno': asignacion_activa.turno.nombre,
                     'fecha_inicio': asignacion_activa.fecha_inicio.isoformat(),
                     'fecha_fin': asignacion_activa.fecha_fin.isoformat() if asignacion_activa.fecha_fin else None
                 }
+        
+        # Verificar si tiene OT asignadas en fechas que interfieren con la faena
+        tiene_ot_asignada = False
+        ot_data = None
+        
+        if faena.fecha_inicio:
+            # Obtener OT donde este personal está asignado y que interfieren con las fechas de la faena
+            faena_inicio = faena.fecha_inicio
+            faena_fin = faena.fecha_fin if faena.fecha_fin else None
+            
+            # Buscar OT que se solapen con las fechas de la faena
+            ot_asignadas = OrdenTrabajo.objects.filter(
+                personal_asignado=p
+            ).filter(
+                Q(fecha_inicio__isnull=False)
+            )
+            
+            # Verificar solapamiento de fechas
+            if faena_fin:
+                # Si la faena tiene fecha fin, verificar solapamiento completo
+                ot_asignadas = ot_asignadas.filter(
+                    Q(fecha_inicio__lte=faena_fin) & (
+                        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=faena_inicio)
+                    )
+                )
+            else:
+                # Si la faena no tiene fecha fin, solo verificar que la OT comience antes o no tenga fin
+                ot_asignadas = ot_asignadas.filter(
+                    Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=faena_inicio)
+                )
+            
+            ot_asignadas = ot_asignadas.select_related('equipo_id', 'estado_ot_id').order_by('-fecha_inicio')[:1]
+            
+            if ot_asignadas.exists():
+                ot = ot_asignadas.first()
+                tiene_ot_asignada = True
+                ot_data = {
+                    'tipo': 'ot',
+                    'folio': ot.folio,
+                    'equipo': ot.equipo_id.nombreEquipo if ot.equipo_id else 'N/A',
+                    'fecha_inicio': ot.fecha_inicio.isoformat() if ot.fecha_inicio else None,
+                    'fecha_fin': ot.fecha_fin.isoformat() if ot.fecha_fin else None
+                }
+        
+        # Si tiene OT asignada, mostrar esa información en lugar de la asignación a faena
+        if tiene_ot_asignada:
+            tiene_asignacion_conflictiva = True
+            asignacion_data = ot_data
         
         personal_data.append({
             'id': p.personal_id,
@@ -1592,6 +1720,530 @@ def asignar_personal_faena(request, faena_id):
     }
     
     return render(request, 'calendario/asignar_personal_faena.html', context)
+
+
+def asignar_equipos_faena(request, faena_id):
+    """Vista para asignar equipos a una faena específica - PÁGINA COMPLETA"""
+    from django.core.serializers.json import DjangoJSONEncoder
+    
+    # Obtener la faena
+    try:
+        faena = Faena.objects.get(id=faena_id, activo=True)
+    except Faena.DoesNotExist:
+        from django.contrib import messages
+        messages.error(request, 'Faena no encontrada')
+        return redirect('calendario:gestionar_faenas')
+    
+    # Obtener equipos activos con sus asignaciones
+    equipos_list = Equipo.objects.filter(activo=True).select_related(
+        'empresa_id', 'modeloEquipo_id__tipoEquipo_id', 'modeloEquipo_id__marcaEquipo_id'
+    ).prefetch_related(
+        'asignaciones_faena__faena'
+    ).order_by('codigoInterno', 'nombreEquipo')
+    
+    # Obtener otras faenas para filtro
+    otras_faenas = Faena.objects.filter(activo=True).exclude(id=faena_id).order_by('nombre')
+    
+    # Preparar datos de los equipos
+    equipos_data = []
+    empresas_set = set()
+    tipos_set = set()
+    
+    for eq in equipos_list:
+        # Verificar asignación activa a faena
+        asignacion_activa = eq.asignaciones_faena.filter(
+            activo=True
+        ).filter(
+            Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=date.today())
+        ).select_related('faena').first()
+        
+        empresa = eq.empresa_id.nomFantasia if eq.empresa_id else 'Sin empresa'
+        tipo = eq.modeloEquipo_id.tipoEquipo_id.tipoEquipo if eq.modeloEquipo_id and eq.modeloEquipo_id.tipoEquipo_id else 'Sin tipo'
+        empresas_set.add(empresa)
+        tipos_set.add(tipo)
+        
+        # Verificar si la asignación a faena interfiere con las fechas de esta faena
+        tiene_asignacion_conflictiva = False
+        asignacion_data = None
+        
+        if asignacion_activa and faena.fecha_inicio:
+            # Determinar el rango de fechas de la asignación
+            asig_inicio = asignacion_activa.fecha_inicio
+            asig_fin = asignacion_activa.fecha_fin if asignacion_activa.fecha_fin else faena.fecha_fin
+            
+            # Determinar el rango de fechas de la faena actual
+            faena_inicio = faena.fecha_inicio
+            faena_fin = faena.fecha_fin if faena.fecha_fin else asig_fin
+            
+            # Verificar si hay solapamiento de fechas
+            if asig_inicio and faena_inicio:
+                # Hay solapamiento si:
+                # - La asignación comienza antes de que termine la faena Y
+                # - La asignación termina después de que comience la faena
+                if asig_fin and faena_fin:
+                    tiene_asignacion_conflictiva = (asig_inicio <= faena_fin) and (asig_fin >= faena_inicio)
+                elif faena_fin:
+                    # Si la asignación no tiene fecha fin, solo verificar que comience antes de que termine la faena
+                    tiene_asignacion_conflictiva = asig_inicio <= faena_fin
+                else:
+                    # Si ninguna tiene fecha fin definida, hay conflicto si hay cualquier asignación
+                    tiene_asignacion_conflictiva = True
+            
+            # Solo mostrar datos de asignación si hay conflicto
+            if tiene_asignacion_conflictiva:
+                asignacion_data = {
+                    'tipo': 'faena',
+                    'faena': asignacion_activa.faena.nombre,
+                    'fecha_inicio': asignacion_activa.fecha_inicio.isoformat(),
+                    'fecha_fin': asignacion_activa.fecha_fin.isoformat() if asignacion_activa.fecha_fin else None
+                }
+        
+        # Verificar si tiene OT asignadas en fechas que interfieren con la faena
+        tiene_ot_asignada = False
+        ot_data = None
+        
+        if faena.fecha_inicio:
+            # Obtener OT donde este equipo está asignado y que interfieren con las fechas de la faena
+            faena_inicio = faena.fecha_inicio
+            faena_fin = faena.fecha_fin if faena.fecha_fin else None
+            
+            # Buscar OT que se solapen con las fechas de la faena
+            ot_asignadas = OrdenTrabajo.objects.filter(
+                equipo_id=eq
+            ).filter(
+                Q(fecha_inicio__isnull=False)
+            )
+            
+            # Verificar solapamiento de fechas
+            if faena_fin:
+                # Si la faena tiene fecha fin, verificar solapamiento completo
+                ot_asignadas = ot_asignadas.filter(
+                    Q(fecha_inicio__lte=faena_fin) & (
+                        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=faena_inicio)
+                    )
+                )
+            else:
+                # Si la faena no tiene fecha fin, solo verificar que la OT comience antes o no tenga fin
+                ot_asignadas = ot_asignadas.filter(
+                    Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=faena_inicio)
+                )
+            
+            ot_asignadas = ot_asignadas.select_related('estado_ot_id').order_by('-fecha_inicio')[:1]
+            
+            if ot_asignadas.exists():
+                ot = ot_asignadas.first()
+                tiene_ot_asignada = True
+                ot_data = {
+                    'tipo': 'ot',
+                    'folio': ot.folio,
+                    'fecha_inicio': ot.fecha_inicio.isoformat() if ot.fecha_inicio else None,
+                    'fecha_fin': ot.fecha_fin.isoformat() if ot.fecha_fin else None
+                }
+        
+        # Si tiene OT asignada, mostrar esa información en lugar de la asignación a faena
+        if tiene_ot_asignada:
+            tiene_asignacion_conflictiva = True
+            asignacion_data = ot_data
+        
+        equipos_data.append({
+            'id': eq.equipo_id,
+            'codigo_interno': eq.codigoInterno,
+            'nombre': eq.nombreEquipo,
+            'patente': eq.patente or '',
+            'empresa': empresa,
+            'tipo': tipo,
+            'modelo': eq.modeloEquipo_id.modeloEquipo if eq.modeloEquipo_id else 'N/A',
+            'marca': eq.modeloEquipo_id.marcaEquipo_id.marcaEquipo if eq.modeloEquipo_id and eq.modeloEquipo_id.marcaEquipo_id else 'N/A',
+            'tiene_asignacion': tiene_asignacion_conflictiva,
+            'asignacion_actual': asignacion_data
+        })
+    
+    # Obtener asignaciones activas de equipos a la faena
+    asignaciones_equipos = faena.asignaciones_equipos.filter(
+        activo=True,
+        equipo__activo=True
+    ).select_related('equipo__empresa_id', 'equipo__modeloEquipo_id__tipoEquipo_id', 'equipo__modeloEquipo_id__marcaEquipo_id')
+    
+    # Preparar datos de asignaciones
+    asignaciones_data = []
+    for asig in asignaciones_equipos:
+        asignaciones_data.append({
+            'id': asig.id,
+            'equipo': {
+                'id': asig.equipo.equipo_id,
+                'codigo_interno': asig.equipo.codigoInterno,
+                'nombre': asig.equipo.nombreEquipo,
+                'patente': asig.equipo.patente or '',
+                'empresa': asig.equipo.empresa_id.nomFantasia if asig.equipo.empresa_id else 'Sin empresa',
+                'tipo': asig.equipo.modeloEquipo_id.tipoEquipo_id.tipoEquipo if asig.equipo.modeloEquipo_id and asig.equipo.modeloEquipo_id.tipoEquipo_id else 'Sin tipo',
+                'modelo': asig.equipo.modeloEquipo_id.modeloEquipo if asig.equipo.modeloEquipo_id else 'N/A',
+                'marca': asig.equipo.modeloEquipo_id.marcaEquipo_id.marcaEquipo if asig.equipo.modeloEquipo_id and asig.equipo.modeloEquipo_id.marcaEquipo_id else 'N/A'
+            },
+            'fecha_inicio': asig.fecha_inicio.isoformat(),
+            'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None,
+            'observaciones': asig.observaciones or ''
+        })
+    
+    # Preparar datos de la faena
+    faena_data = {
+        'id': faena.id,
+        'nombre': faena.nombre,
+        'descripcion': faena.descripcion or '',
+        'asignaciones': asignaciones_data
+    }
+    
+    # Contar asignados actuales
+    total_asignados = len(asignaciones_data)
+    
+    # Calcular duración si tiene ambas fechas
+    duracion_dias = None
+    if faena.fecha_inicio and faena.fecha_fin:
+        duracion_dias = (faena.fecha_fin - faena.fecha_inicio).days + 1
+    
+    context = {
+        'faena_id': faena_id,
+        'faena_codigo': faena.codigo,
+        'faena_nombre': faena.nombre,
+        'faena_descripcion': faena.descripcion,
+        'faena_fecha_inicio': faena.fecha_inicio,
+        'faena_fecha_fin': faena.fecha_fin,
+        'faena_duracion_dias': duracion_dias,
+        'total_asignados': total_asignados,
+        'equipos_json': json.dumps(equipos_data, cls=DjangoJSONEncoder),
+        'faena_json': json.dumps(faena_data, cls=DjangoJSONEncoder),
+        'empresas_unicas': sorted(empresas_set),
+        'tipos_unicos': sorted(tipos_set),
+        'otras_faenas': otras_faenas,
+        'faena': faena,
+    }
+    
+    return render(request, 'calendario/asignar_equipos_faena.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def crear_asignacion_equipos(request):
+    """API para crear asignaciones de equipos a una faena"""
+    try:
+        data = json.loads(request.body)
+        
+        faena_id = data.get('faena_id')
+        equipos_ids = data.get('equipos_ids', [])
+        fecha_inicio = data.get('fecha_inicio')
+        fecha_fin = data.get('fecha_fin')
+        observaciones = data.get('observaciones', '')
+        
+        if not faena_id or not equipos_ids or not fecha_inicio:
+            return JsonResponse({'error': 'Faltan datos requeridos'}, status=400)
+        
+        try:
+            faena = Faena.objects.get(id=faena_id, activo=True)
+        except Faena.DoesNotExist:
+            return JsonResponse({'error': 'Faena no encontrada'}, status=404)
+        
+        # Validar y convertir fechas
+        from datetime import datetime
+        fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date() if fecha_fin else None
+        
+        if fecha_fin_obj and fecha_fin_obj < fecha_inicio_obj:
+            return JsonResponse({'error': 'La fecha de fin debe ser posterior a la fecha de inicio'}, status=400)
+        
+        # Verificar conflictos y crear asignaciones
+        asignaciones_creadas = 0
+        errores = []
+        
+        for equipo_id in equipos_ids:
+            try:
+                equipo = Equipo.objects.get(equipo_id=equipo_id, activo=True)
+            except Equipo.DoesNotExist:
+                errores.append(f'Equipo ID {equipo_id}: No encontrado')
+                continue
+            
+            # Verificar conflictos con otras asignaciones de faena
+            asignaciones_conflictivas = AsignacionEquipoFaena.objects.filter(
+                equipo=equipo,
+                activo=True
+            ).exclude(
+                faena=faena
+            ).filter(
+                fecha_inicio__lte=(fecha_fin_obj if fecha_fin_obj else fecha_inicio_obj)
+            ).filter(
+                Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_obj)
+            )
+            
+            if asignaciones_conflictivas.exists():
+                asignacion_conflicto = asignaciones_conflictivas.first()
+                fecha_fin_texto = asignacion_conflicto.fecha_fin.strftime('%d/%m/%Y') if asignacion_conflicto.fecha_fin else 'Indefinido'
+                errores.append(
+                    f"{equipo.nombreEquipo} ({equipo.codigoInterno}): "
+                    f"Ya asignado en faena '{asignacion_conflicto.faena.nombre}' "
+                    f"({asignacion_conflicto.fecha_inicio.strftime('%d/%m/%Y')} → {fecha_fin_texto})"
+                )
+                continue
+            
+            # Verificar conflictos con OT
+            ot_conflictivas = OrdenTrabajo.objects.filter(
+                equipo_id=equipo
+            ).filter(
+                Q(fecha_inicio__lte=(fecha_fin_obj if fecha_fin_obj else fecha_inicio_obj)) & (
+                    Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_obj)
+                )
+            )
+            
+            if ot_conflictivas.exists():
+                ot_conflicto = ot_conflictivas.first()
+                fecha_fin_ot = ot_conflicto.fecha_fin.strftime('%d/%m/%Y') if ot_conflicto.fecha_fin else 'Indefinido'
+                errores.append(
+                    f"{equipo.nombreEquipo} ({equipo.codigoInterno}): "
+                    f"Tiene OT asignada ({ot_conflicto.folio}) "
+                    f"({ot_conflicto.fecha_inicio.strftime('%d/%m/%Y') if ot_conflicto.fecha_inicio else 'N/A'} → {fecha_fin_ot})"
+                )
+                continue
+            
+            # Crear asignación
+            AsignacionEquipoFaena.objects.create(
+                equipo=equipo,
+                faena=faena,
+                fecha_inicio=fecha_inicio_obj,
+                fecha_fin=fecha_fin_obj,
+                observaciones=observaciones,
+                activo=True
+            )
+            
+            # Registrar en historial
+            HistorialFaena.registrar(
+                faena=faena,
+                accion='EQUIPO_ASIGNADO',
+                descripcion=f"Equipo {equipo.nombreEquipo} ({equipo.codigoInterno}) asignado. Fechas: {fecha_inicio_obj.strftime('%d/%m/%Y')} → {fecha_fin_obj.strftime('%d/%m/%Y') if fecha_fin_obj else 'Indefinida'}",
+                usuario=request.user if request.user.is_authenticated else None,
+                datos_nuevos={
+                    'equipo_id': equipo.equipo_id,
+                    'equipo_nombre': equipo.nombreEquipo,
+                    'equipo_codigo': equipo.codigoInterno,
+                    'fecha_inicio': fecha_inicio,
+                    'fecha_fin': fecha_fin
+                }
+            )
+            
+            asignaciones_creadas += 1
+        
+        # Invalidar caché del calendario
+        invalidar_cache_calendario()
+        
+        if len(errores) > 0 and asignaciones_creadas == 0:
+            return JsonResponse({
+                'success': False,
+                'error': 'No se pudo asignar ningún equipo',
+                'errores': errores
+            }, status=400)
+        
+        mensaje = f'{asignaciones_creadas} equipo(s) asignado(s) correctamente'
+        if errores:
+            mensaje += f'. {len(errores)} equipo(s) no se pudieron asignar por conflictos.'
+        
+        return JsonResponse({
+            'success': True,
+            'message': mensaje,
+            'asignaciones_creadas': asignaciones_creadas,
+            'errores': errores
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Datos JSON inválidos'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def eliminar_asignacion_equipo(request):
+    """API para eliminar una asignación de equipo a faena"""
+    try:
+        data = json.loads(request.body)
+        asignacion_id = data.get('asignacion_id')
+        
+        if not asignacion_id:
+            return JsonResponse({'error': 'ID de asignación requerido'}, status=400)
+        
+        try:
+            asignacion = AsignacionEquipoFaena.objects.get(id=asignacion_id, activo=True)
+        except AsignacionEquipoFaena.DoesNotExist:
+            return JsonResponse({'error': 'Asignación no encontrada'}, status=404)
+        
+        equipo = asignacion.equipo
+        faena = asignacion.faena
+        
+        # Registrar en historial antes de eliminar
+        HistorialFaena.registrar(
+            faena=faena,
+            accion='EQUIPO_ELIMINADO',
+            descripcion=f"Equipo {equipo.nombreEquipo} ({equipo.codigoInterno}) eliminado de la faena",
+            usuario=request.user if request.user.is_authenticated else None,
+            datos_previos={
+                'equipo_id': equipo.equipo_id,
+                'equipo_nombre': equipo.nombreEquipo,
+                'equipo_codigo': equipo.codigoInterno,
+                'fecha_inicio': asignacion.fecha_inicio.isoformat(),
+                'fecha_fin': asignacion.fecha_fin.isoformat() if asignacion.fecha_fin else None
+            }
+        )
+        
+        # Desactivar asignación (soft delete)
+        asignacion.activo = False
+        asignacion.save()
+        
+        # Invalidar caché del calendario
+        invalidar_cache_calendario()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Asignación eliminada correctamente'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Datos JSON inválidos'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def actualizar_asignacion_equipo(request):
+    """API para actualizar una asignación de equipo a faena existente"""
+    try:
+        data = json.loads(request.body)
+        
+        asignacion_id = data.get('asignacion_id')
+        faena_id = data.get('faena_id')
+        fecha_inicio = data.get('fecha_inicio')
+        fecha_fin = data.get('fecha_fin', None)
+        observaciones = data.get('observaciones', '')
+        
+        # Validaciones
+        if not all([asignacion_id, faena_id, fecha_inicio]):
+            return JsonResponse({'error': 'Faltan datos requeridos'}, status=400)
+        
+        try:
+            asignacion = AsignacionEquipoFaena.objects.get(id=asignacion_id, activo=True)
+            faena = Faena.objects.get(id=faena_id)
+        except (AsignacionEquipoFaena.DoesNotExist, Faena.DoesNotExist):
+            return JsonResponse({'error': 'Asignación o faena no encontrada'}, status=404)
+        
+        # Validar y convertir fechas
+        from datetime import datetime
+        fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        fecha_fin_obj = None
+        if fecha_fin:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+        
+        if fecha_fin_obj and fecha_fin_obj < fecha_inicio_obj:
+            return JsonResponse({'error': 'La fecha de fin debe ser posterior a la fecha de inicio'}, status=400)
+        
+        # Verificar solapamiento de fechas con otras asignaciones (excluyendo la actual)
+        from django.db.models import Q
+        
+        # Buscar asignaciones que se solapen (excluyendo la que estamos editando)
+        solapamiento_query = Q(equipo=asignacion.equipo, activo=True) & ~Q(id=asignacion.id)
+        
+        if fecha_fin_obj:
+            # Rango con fecha fin: buscar solapamientos
+            solapamiento_query &= (
+                Q(fecha_inicio__lte=fecha_fin_obj, fecha_fin__gte=fecha_inicio_obj) |
+                Q(fecha_inicio__lte=fecha_fin_obj, fecha_fin__isnull=True)
+            )
+        else:
+            # Rango sin fecha fin: buscar cualquier asignación que empiece antes o durante
+            solapamiento_query &= Q(fecha_inicio__lte=fecha_inicio_obj) & (
+                Q(fecha_fin__gte=fecha_inicio_obj) | Q(fecha_fin__isnull=True)
+            )
+        
+        # Excluir asignaciones de la misma faena
+        solapamiento_query &= ~Q(faena=faena)
+        
+        solapamientos = AsignacionEquipoFaena.objects.filter(solapamiento_query)
+        
+        if solapamientos.exists():
+            conflictos = []
+            for solap in solapamientos:
+                ffin_str = solap.fecha_fin.strftime('%d/%m/%Y') if solap.fecha_fin else 'Indefinida'
+                conflictos.append(f"{solap.faena.nombre} ({solap.fecha_inicio.strftime('%d/%m/%Y')} → {ffin_str})")
+            
+            return JsonResponse({
+                'error': f'El equipo ya está asignado a otra faena en ese período: {", ".join(conflictos)}'
+            }, status=400)
+        
+        # Verificar conflictos con OTs
+        from maquinarias.models import OrdenTrabajo
+        ot_query = Q(equipo=asignacion.equipo, activo=True)
+        
+        if fecha_fin_obj:
+            ot_query &= (
+                Q(fecha_inicio__lte=fecha_fin_obj, fecha_fin__gte=fecha_inicio_obj) |
+                Q(fecha_inicio__lte=fecha_fin_obj, fecha_fin__isnull=True)
+            )
+        else:
+            ot_query &= Q(fecha_inicio__lte=fecha_inicio_obj) & (
+                Q(fecha_fin__gte=fecha_inicio_obj) | Q(fecha_fin__isnull=True)
+            )
+        
+        ots_conflicto = OrdenTrabajo.objects.filter(ot_query)
+        
+        if ots_conflicto.exists():
+            conflictos_ot = []
+            for ot in ots_conflicto:
+                ffin_str = ot.fecha_fin.strftime('%d/%m/%Y') if ot.fecha_fin else 'Indefinida'
+                conflictos_ot.append(f"OT-{ot.folio} ({ot.fecha_inicio.strftime('%d/%m/%Y')} → {ffin_str})")
+            
+            return JsonResponse({
+                'error': f'El equipo tiene OT asignada en ese período: {", ".join(conflictos_ot)}'
+            }, status=400)
+        
+        # Guardar datos anteriores para historial
+        datos_anteriores = {
+            'equipo_id': asignacion.equipo.equipo_id,
+            'equipo_nombre': asignacion.equipo.nombreEquipo,
+            'equipo_codigo': asignacion.equipo.codigoInterno,
+            'fecha_inicio': asignacion.fecha_inicio.isoformat(),
+            'fecha_fin': asignacion.fecha_fin.isoformat() if asignacion.fecha_fin else None,
+            'observaciones': asignacion.observaciones
+        }
+        
+        # Actualizar asignación
+        asignacion.fecha_inicio = fecha_inicio_obj
+        asignacion.fecha_fin = fecha_fin_obj
+        asignacion.observaciones = observaciones
+        asignacion.save()
+        
+        # Registrar en historial
+        HistorialFaena.registrar(
+            faena=faena,
+            accion='EQUIPO_MODIFICADO',
+            descripcion=f"Asignación de equipo {asignacion.equipo.nombreEquipo} ({asignacion.equipo.codigoInterno}) modificada. Fechas: {fecha_inicio_obj.strftime('%d/%m/%Y')} → {fecha_fin_obj.strftime('%d/%m/%Y') if fecha_fin_obj else 'Indefinida'}",
+            usuario=request.user if request.user.is_authenticated else None,
+            datos_previos=datos_anteriores,
+            datos_nuevos={
+                'equipo_id': asignacion.equipo.equipo_id,
+                'equipo_nombre': asignacion.equipo.nombreEquipo,
+                'equipo_codigo': asignacion.equipo.codigoInterno,
+                'fecha_inicio': fecha_inicio,
+                'fecha_fin': fecha_fin,
+                'observaciones': observaciones
+            }
+        )
+        
+        # Invalidar caché del calendario
+        invalidar_cache_calendario()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Asignación de equipo actualizada correctamente'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Datos JSON inválidos'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 def gestionar_faenas(request):
@@ -1875,10 +2527,45 @@ def actualizar_faena(request):
             'nombre': faena.nombre,
             'fecha_inicio': faena.fecha_inicio.isoformat() if faena.fecha_inicio else None,
             'fecha_fin': faena.fecha_fin.isoformat() if faena.fecha_fin else None,
-            'descripcion': faena.descripcion
+            'descripcion': faena.descripcion,
+            'ubicacion': faena.ubicacion or ''
         }
         fecha_inicio_anterior = faena.fecha_inicio
         fecha_fin_anterior = faena.fecha_fin
+        
+        # Construir descripción detallada de los cambios
+        cambios = []
+        
+        if faena.codigo != codigo:
+            cambios.append(f"Código: {faena.codigo} → {codigo}")
+        
+        if faena.nombre != nombre:
+            cambios.append(f"Nombre: {faena.nombre} → {nombre}")
+        
+        if fecha_inicio_anterior != nueva_fecha_inicio:
+            fecha_inicio_ant_str = fecha_inicio_anterior.strftime('%d/%m/%Y') if fecha_inicio_anterior else 'Sin fecha'
+            cambios.append(f"Fecha inicio: {fecha_inicio_ant_str} → {nueva_fecha_inicio.strftime('%d/%m/%Y')}")
+        
+        if fecha_fin_anterior != nueva_fecha_fin:
+            fecha_fin_ant_str = fecha_fin_anterior.strftime('%d/%m/%Y') if fecha_fin_anterior else 'Sin fecha'
+            cambios.append(f"Fecha fin: {fecha_fin_ant_str} → {nueva_fecha_fin.strftime('%d/%m/%Y')}")
+        
+        if (faena.descripcion or '') != descripcion:
+            cambios.append("Descripción modificada")
+        
+        if (faena.ubicacion or '') != ubicacion:
+            cambios.append("Ubicación modificada")
+        
+        if faena.activo != activo:
+            estado_ant = "Activa" if faena.activo else "Inactiva"
+            estado_nuevo = "Activa" if activo else "Inactiva"
+            cambios.append(f"Estado: {estado_ant} → {estado_nuevo}")
+        
+        # Generar descripción
+        if cambios:
+            descripcion_historial = f"Faena modificada. Cambios: {', '.join(cambios)}"
+        else:
+            descripcion_historial = "Faena modificada (sin cambios detectados)"
         
         # Actualizar la faena
         faena.codigo = codigo
@@ -1894,7 +2581,7 @@ def actualizar_faena(request):
         HistorialFaena.registrar(
             faena=faena,
             accion='FAENA_MODIFICADA',
-            descripcion=f"Faena modificada. Fechas: {nueva_fecha_inicio.strftime('%d/%m/%Y')} → {nueva_fecha_fin.strftime('%d/%m/%Y')}",
+            descripcion=descripcion_historial,
             usuario=request.user if request.user.is_authenticated else None,
             datos_previos=datos_anteriores,
             datos_nuevos={
@@ -1902,7 +2589,9 @@ def actualizar_faena(request):
                 'nombre': nombre,
                 'fecha_inicio': fecha_inicio,
                 'fecha_fin': fecha_fin,
-                'descripcion': descripcion
+                'descripcion': descripcion,
+                'ubicacion': ubicacion,
+                'activo': activo
             }
         )
         
@@ -2093,18 +2782,102 @@ def eliminar_faena(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+def obtener_nombre_completo_usuario(usuario):
+    """
+    Obtiene el nombre completo del usuario, priorizando first_name + last_name.
+    Si no tiene nombre completo, retorna el username.
+    """
+    if not usuario:
+        return 'Sistema'
+    
+    nombre_completo = f"{usuario.first_name or ''} {usuario.last_name or ''}".strip()
+    if nombre_completo:
+        return nombre_completo
+    return usuario.username or 'Sistema'
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_historial_faena(request, faena_id):
+    """API para obtener el historial completo de una faena en formato JSON"""
+    try:
+        faena = get_object_or_404(Faena, id=faena_id)
+        historial = HistorialFaena.objects.filter(faena=faena).select_related(
+            'usuario', 'personal'
+        ).order_by('-fecha_hora')
+        
+        # Preparar historial con nombre completo de usuario
+        historial_data = []
+        for evento in historial:
+            historial_data.append({
+                'id': evento.id,
+                'fecha_hora': evento.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),
+                'fecha_hora_formateada': evento.fecha_hora.strftime('%d/%m/%Y %H:%M'),
+                'usuario': evento.usuario.username if evento.usuario else 'Sistema',
+                'usuario_nombre': obtener_nombre_completo_usuario(evento.usuario),
+                'accion': evento.accion,
+                'accion_display': evento.get_accion_display(),
+                'descripcion': evento.descripcion,
+                'personal': {
+                    'id': evento.personal.personal_id if evento.personal else None,
+                    'nombre_completo': f"{evento.personal.nombre} {evento.personal.apepat} {evento.personal.apemat}" if evento.personal else None,
+                    'rut': f"{evento.personal.rut}-{evento.personal.dvrut}" if evento.personal else None
+                } if evento.personal else None,
+                'datos_previos': evento.datos_previos,
+                'datos_nuevos': evento.datos_nuevos
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'faena': {
+                'id': faena.id,
+                'codigo': faena.codigo,
+                'nombre': faena.nombre
+            },
+            'historial': historial_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error al obtener historial de faena: {str(e)}'
+        }, status=500)
+
 @login_required
 def ver_historial_faena(request, faena_id):
-    """Vista para ver el historial completo de una faena"""
+    """Vista para ver el historial completo de una faena (mantenida por compatibilidad)"""
+    from django.core.serializers.json import DjangoJSONEncoder
+    
     try:
         faena = Faena.objects.get(id=faena_id)
         historial = HistorialFaena.objects.filter(faena=faena).select_related(
             'usuario', 'personal'
         ).order_by('-fecha_hora')
         
+        # Preparar historial con nombre completo de usuario
+        historial_data = []
+        for evento in historial:
+            historial_data.append({
+                'id': evento.id,
+                'fecha_hora': evento.fecha_hora,
+                'fecha_hora_formateada': evento.fecha_hora.strftime('%d/%m/%Y %H:%M'),
+                'usuario': evento.usuario.username if evento.usuario else 'Sistema',
+                'usuario_nombre': obtener_nombre_completo_usuario(evento.usuario),
+                'accion': evento.accion,
+                'accion_display': evento.get_accion_display(),
+                'descripcion': evento.descripcion,
+                'personal': {
+                    'id': evento.personal.personal_id if evento.personal else None,
+                    'nombre_completo': f"{evento.personal.nombre} {evento.personal.apepat} {evento.personal.apemat}" if evento.personal else None,
+                    'rut': f"{evento.personal.rut}-{evento.personal.dvrut}" if evento.personal else None
+                } if evento.personal else None,
+                'datos_previos': evento.datos_previos,
+                'datos_nuevos': evento.datos_nuevos
+            })
+        
         context = {
             'faena': faena,
             'historial': historial,
+            'historial_json': json.dumps(historial_data, cls=DjangoJSONEncoder, default=str),
         }
         
         return render(request, 'calendario/historial_faena.html', context)
@@ -2162,7 +2935,7 @@ def crear_asignacion_masiva(request):
             try:
                 personal_obj = Personal.objects.get(personal_id=personal_id)
                 
-                # Verificar solapamiento para este trabajador
+                # Verificar solapamiento con asignaciones a otras faenas
                 solapamiento_query = Q(personal=personal_obj, activo=True)
                 
                 if fecha_fin_date:
@@ -2189,6 +2962,39 @@ def crear_asignacion_masiva(request):
                     )
                     continue
                 
+                # Verificar si tiene OT asignadas en fechas que interfieren
+                ot_conflictivas = OrdenTrabajo.objects.filter(
+                    personal_asignado=personal_obj
+                ).filter(
+                    Q(fecha_inicio__isnull=False)
+                )
+                
+                # Verificar solapamiento de fechas con OT
+                if fecha_fin_date:
+                    ot_conflictivas = ot_conflictivas.filter(
+                        Q(fecha_inicio__lte=fecha_fin_date) & (
+                            Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date)
+                        )
+                    )
+                else:
+                    ot_conflictivas = ot_conflictivas.filter(
+                        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio_date)
+                    )
+                
+                ot_conflictivas = ot_conflictivas.select_related('equipo_id').order_by('-fecha_inicio')[:1]
+                
+                if ot_conflictivas.exists():
+                    ot_conflicto = ot_conflictivas.first()
+                    fecha_fin_ot = ot_conflicto.fecha_fin.strftime('%d/%m/%Y') if ot_conflicto.fecha_fin else 'Indefinido'
+                    fecha_inicio_ot = ot_conflicto.fecha_inicio.strftime('%d/%m/%Y') if ot_conflicto.fecha_inicio else 'N/A'
+                    equipo_nombre = ot_conflicto.equipo_id.nombreEquipo if ot_conflicto.equipo_id else 'N/A'
+                    errores.append(
+                        f"{personal_obj.nombre} {personal_obj.apepat} {personal_obj.apemat}: "
+                        f"Tiene OT asignada '{ot_conflicto.folio}' (Equipo: {equipo_nombre}) "
+                        f"({fecha_inicio_ot} → {fecha_fin_ot})"
+                    )
+                    continue
+                
                 # Crear asignación
                 asignacion = AsignacionFaena.objects.create(
                     personal=personal_obj,
@@ -2200,6 +3006,9 @@ def crear_asignacion_masiva(request):
                     observaciones=observaciones,
                     activo=activo
                 )
+                # Marcar que el historial se registrará manualmente (evitar duplicado en señal)
+                asignacion._historial_registrado = True
+                
                 asignaciones_creadas.append(asignacion)
                 
                 # Registrar en historial

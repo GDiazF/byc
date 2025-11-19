@@ -25,7 +25,7 @@
                 <button class="btn btn-sm btn-outline-light me-1" onclick="previousMonth()">
                     <i class="bi bi-chevron-left"></i>
                 </button>
-                <button class="btn btn-sm btn-light me-1" onclick="goToToday()">Hoy</button>
+                <button class="btn btn-sm btn-light me-1" onclick="goToToday()">Ir a mes actual</button>
                 <button class="btn btn-sm btn-outline-light me-1" onclick="nextMonth()">
                     <i class="bi bi-chevron-right"></i>
                 </button>
@@ -50,6 +50,7 @@
             </div>
             <div class="col-md-6 text-end">
                 <div class="btn-group btn-group-sm">
+                    <button class="btn btn-sm {% if page_size == 10 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(10)">10</button>
                     <button class="btn btn-sm {% if page_size == 25 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(25)">25</button>
                     <button class="btn btn-sm {% if page_size == 50 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(50)">50</button>
                     <button class="btn btn-sm {% if page_size == 100 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPagina(100)">100</button>

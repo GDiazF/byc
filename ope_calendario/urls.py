@@ -11,12 +11,17 @@ urlpatterns = [
     path('api/crear-asignacion-masiva/', views.crear_asignacion_masiva, name='crear_asignacion_masiva'),
     path('api/actualizar-asignacion/', views.actualizar_asignacion, name='actualizar_asignacion'),
     path('api/eliminar-asignacion/', views.eliminar_asignacion, name='eliminar_asignacion'),
+    path('api/crear-asignacion-equipos/', views.crear_asignacion_equipos, name='crear_asignacion_equipos'),
+    path('api/actualizar-asignacion-equipo/', views.actualizar_asignacion_equipo, name='actualizar_asignacion_equipo'),
+    path('api/eliminar-asignacion-equipo/', views.eliminar_asignacion_equipo, name='eliminar_asignacion_equipo'),
     path('api/personal/<int:personal_id>/info/', views.obtener_info_personal, name='obtener_info_personal'),
     
     # Gestión de faenas
     path('faenas/', views.gestionar_faenas, name='gestionar_faenas'),
     path('faenas/<int:faena_id>/asignar/', views.asignar_personal_faena, name='asignar_personal_faena'),
+    path('faenas/<int:faena_id>/asignar-equipos/', views.asignar_equipos_faena, name='asignar_equipos_faena'),
     path('faenas/<int:faena_id>/historial/', views.ver_historial_faena, name='ver_historial_faena'),
+    path('api/faenas/<int:faena_id>/historial/', views.api_historial_faena, name='api_historial_faena'),
     path('estados-manuales/<int:estado_id>/delete/', views.eliminar_estado_manual, name='eliminar_estado_manual'),
     path('api/asignar-estado-manual/', views.asignar_estado_manual_api, name='asignar_estado_manual_api'),
     path('api/listar-faenas/', views.listar_faenas_api, name='listar_faenas_api'),

@@ -9,7 +9,10 @@
 var faenas = {{ faenas_json|safe }};
 var personal = {{ personal_json|safe }};
 var turnos = {{ turnos_json|safe }};
+// URL base para API de historial de faenas
+var apiHistorialFaenaBase = "{% url 'calendario:api_historial_faena' 0 %}";
 </script>
+<script src="{% static 'js/historial_faena.js' %}"></script>
 <script src="{% static 'js/gestionar_faenas.js' %}"></script>
 {% endblock %}
 
@@ -29,15 +32,6 @@ var turnos = {{ turnos_json|safe }};
     <div class="card-body">
         <!-- Estadísticas Compactas -->
         <div class="row g-2 mb-3">
-            <div class="col-6 col-lg">
-                <div class="stat-card-compact bg-primary">
-                    <i class="bi bi-people-fill"></i>
-                    <div class="stat-info">
-                        <div class="stat-number">{{ total_personal }}</div>
-                        <div class="stat-text">Personal Total</div>
-                    </div>
-                </div>
-            </div>
             <div class="col-6 col-lg">
                 <div class="stat-card-compact" style="background-color: #fd7e14; color: white;">
                     <i class="bi bi-clock-fill"></i>
@@ -387,6 +381,33 @@ var turnos = {{ turnos_json|safe }};
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Historial Faena -->
+<div class="modal fade" id="modalHistorialFaena" tabindex="-1" aria-labelledby="modalHistorialFaenaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalHistorialFaenaLabel">
+                    <i class="bi bi-clock-history me-2"></i>Historial de Faena
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalHistorialFaenaBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando historial...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
             </div>
         </div>
     </div>

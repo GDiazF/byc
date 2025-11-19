@@ -304,6 +304,39 @@ class AsignacionFaena(models.Model):
         return None
 
 
+class AsignacionEquipoFaena(models.Model):
+    """
+    Asigna un equipo a una faena con fecha de inicio y (opcional) fin.
+    """
+    equipo = models.ForeignKey("maquinarias.Equipo", on_delete=models.CASCADE, related_name="asignaciones_faena", db_index=True)
+    faena = models.ForeignKey(Faena, on_delete=models.CASCADE, related_name="asignaciones_equipos", db_index=True)
+    
+    fecha_inicio = models.DateField(db_index=True)
+    fecha_fin = models.DateField(blank=True, null=True, db_index=True)
+    
+    observaciones = models.TextField(blank=True, null=True)
+    activo = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ["equipo", "fecha_inicio"]
+        verbose_name = "Asignación de Equipo a Faena"
+        verbose_name_plural = "Asignaciones de Equipos a Faenas"
+        indexes = [
+            models.Index(fields=["equipo", "fecha_inicio", "fecha_fin"]),
+            models.Index(fields=["faena", "fecha_inicio"]),
+        ]
+        constraints = [
+            CheckConstraint(
+                check=Q(fecha_fin__gte=F("fecha_inicio")) | Q(fecha_fin__isnull=True),
+                name="asig_equipo_faena_rango_valido",
+            )
+        ]
+    
+    def __str__(self):
+        ffin = self.fecha_fin or "∼"
+        return f"{self.equipo} → {self.faena} {self.fecha_inicio} → {ffin}"
+
+
 class HistorialFaena(models.Model):
     """
     Registra todos los cambios y acciones realizadas en una faena.
@@ -317,6 +350,9 @@ class HistorialFaena(models.Model):
         ('ASIGNACION_MODIFICADA', 'Asignación Modificada'),
         ('TURNO_MODIFICADO', 'Turno Modificado'),
         ('FECHA_MODIFICADA', 'Fecha Modificada'),
+        ('EQUIPO_ASIGNADO', 'Equipo Asignado'),
+        ('EQUIPO_ELIMINADO', 'Equipo Eliminado'),
+        ('EQUIPO_MODIFICADO', 'Equipo Modificado'),
     ]
     
     faena = models.ForeignKey(

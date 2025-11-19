@@ -292,9 +292,12 @@ function renderizarFaenaCard(faena, esActiva = true) {
                         <button class="btn btn-sm btn-dark" onclick="verDetallesFaena(${faena.id})">
                             <i class="bi bi-eye me-1"></i>Detalle
                         </button>
-                        <a href="/calendario/faenas/${faena.id}/historial/" class="btn btn-sm btn-info">
-                            <i class="bi bi-clock-history me-1"></i>Historial
+                        <a href="/calendario/faenas/${faena.id}/asignar-equipos/" class="btn btn-sm btn-warning">
+                            <i class="bi bi-truck me-1"></i>Equipos
                         </a>
+                        <button class="btn btn-sm btn-info" onclick="verHistorialFaena(${faena.id}, '${faena.codigo}')">
+                            <i class="bi bi-clock-history me-1"></i>Historial
+                        </button>
                     </div>
                 </div>
             </div>
@@ -327,9 +330,12 @@ function renderizarFaenaFila(faena, esActiva = true) {
                     <button class="btn btn-sm btn-primary" onclick="verDetallesFaena(${faena.id})" title="Ver Detalle">
                         <i class="bi bi-eye"></i>
                     </button>
-                    <a href="/calendario/faenas/${faena.id}/historial/" class="btn btn-sm btn-info" title="Ver Historial">
-                        <i class="bi bi-clock-history"></i>
+                    <a href="/calendario/faenas/${faena.id}/asignar-equipos/" class="btn btn-sm btn-warning" title="Asignar Equipos">
+                        <i class="bi bi-truck"></i>
                     </a>
+                    <button class="btn btn-sm btn-info" onclick="verHistorialFaena(${faena.id}, '${faena.codigo}')" title="Ver Historial">
+                        <i class="bi bi-clock-history"></i>
+                    </button>
                     <button class="btn btn-sm btn-secondary" onclick="editarFaena(${faena.id})" title="Editar">
                         <i class="bi bi-pencil"></i>
                     </button>

@@ -27,7 +27,7 @@ from .models import (
     TipoMantenimiento, EstadoOT, EstadoEquipo,
     EstadoCalendarioEquipo, EstadoFuenteEquipo, EstadoManualEquipo,
     OrdenTrabajo, ItemSeccionOT, HistorialObservacionesOT, HistorialOT,
-    obtener_estado_final_equipo_fecha
+    HistorialEquipo, obtener_estado_final_equipo_fecha
 )
 from gen_settings.models import Empresa
 from rrhh_personal.models import Personal, InfoLaboral, Cargo, DeptoEmpresa
@@ -35,6 +35,20 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, date, timedelta
 from calendar import monthrange
+
+
+def obtener_nombre_completo_usuario(usuario):
+    """
+    Obtiene el nombre completo del usuario, priorizando first_name + last_name.
+    Si no tiene nombre completo, retorna el username.
+    """
+    if not usuario:
+        return 'Sistema'
+    
+    nombre_completo = f"{usuario.first_name or ''} {usuario.last_name or ''}".strip()
+    if nombre_completo:
+        return nombre_completo
+    return usuario.username or 'Sistema'
 
 
 def lista_equipos(request):
@@ -261,6 +275,8 @@ def api_guardar_equipo(request):
                 equipo.horometro = data.get('horometro')
                 equipo.odometro = data.get('odometro')
                 equipo.horometroSuperEstructural = data.get('horometroSuperEstructural')
+                # Pasar usuario a la señal
+                equipo._current_user = request.user
                 equipo.save()
                 
                 return JsonResponse({
@@ -286,7 +302,7 @@ def api_guardar_equipo(request):
                 }, status=400)
             
             # Crear equipo
-            equipo = Equipo.objects.create(
+            equipo = Equipo(
                 empresa_id_id=data['empresa_id'],
                 modeloEquipo_id_id=data['modeloEquipo_id'],
                 codigoInterno=data['codigoInterno'].strip().upper(),
@@ -296,6 +312,9 @@ def api_guardar_equipo(request):
                 horometroSuperEstructural=data.get('horometroSuperEstructural'),
                 activo=True
             )
+            # Pasar usuario a la señal
+            equipo._current_user = request.user
+            equipo.save()
             
             return JsonResponse({
                 'success': True,
@@ -314,6 +333,8 @@ def api_eliminar_equipo(request, equipo_id):
     try:
         equipo = Equipo.objects.get(equipo_id=equipo_id)
         nombre = equipo.nombreEquipo
+        # Pasar usuario a la señal
+        equipo._current_user = request.user
         equipo.delete()
         
         return JsonResponse({
@@ -334,6 +355,8 @@ def api_toggle_activo_equipo(request, equipo_id):
     try:
         equipo = Equipo.objects.get(equipo_id=equipo_id)
         equipo.activo = not equipo.activo
+        # Pasar usuario a la señal
+        equipo._current_user = request.user
         equipo.save()
         
         return JsonResponse({
@@ -1623,7 +1646,7 @@ def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', ti
     if search_query and search_query.strip():
         equipos_query = equipos_query.filter(
             Q(nombreEquipo__icontains=search_query) |
-            Q(codigoEquipo__icontains=search_query) |
+            Q(codigoInterno__icontains=search_query) |
             Q(modeloEquipo_id__modeloEquipo__icontains=search_query)
         )
     
@@ -1657,6 +1680,17 @@ def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', ti
         'equipo_id', 'estado_equipo_id'
     )
     
+    # 2.5. Obtener todas las asignaciones a faenas de estos equipos en este mes
+    from ope_calendario.models import AsignacionEquipoFaena
+    asignaciones_faena = AsignacionEquipoFaena.objects.filter(
+        equipo__equipo_id__in=equipos_ids,
+        activo=True
+    ).filter(
+        Q(fecha_inicio__lte=fecha_fin) & (
+            Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha_inicio)
+        )
+    ).select_related('equipo', 'faena')
+    
     # 3. Obtener todos los mapeos de EstadoFuenteEquipo de una vez
     # Crear un diccionario para acceso rápido: estado_equipo_id -> estado_calendario
     mapeos_fuente = {}
@@ -1665,12 +1699,17 @@ def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', ti
         if fuente.estado_calendario.activo:
             mapeos_fuente[fuente.estado_equipo.estadoEquipo_id] = fuente.estado_calendario
     
-    # 4. Obtener estado predeterminado una sola vez
+    # 4. Obtener estado "Asignado" para asignaciones a faenas
+    estado_asignado_faena = EstadoCalendarioEquipo.objects.filter(
+        activo=True, nombre__icontains='asignado'
+    ).first()
+    
+    # 5. Obtener estado predeterminado una sola vez
     estado_predeterminado = EstadoCalendarioEquipo.objects.filter(
         activo=True, es_predeterminado=True
     ).first()
     
-    # 5. Crear diccionarios para acceso rápido en memoria
+    # 6. Crear diccionarios para acceso rápido en memoria
     estados_manuales_por_equipo = {}
     for em in estados_manuales:
         if em.equipo.equipo_id not in estados_manuales_por_equipo:
@@ -1683,7 +1722,14 @@ def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', ti
             ot_por_equipo[ot.equipo_id.equipo_id] = []
         ot_por_equipo[ot.equipo_id.equipo_id].append(ot)
     
-    # 6. Calcular estados en MEMORIA (sin consultas adicionales)
+    asignaciones_faena_por_equipo = {}
+    for asig in asignaciones_faena:
+        equipo_id = asig.equipo.equipo_id
+        if equipo_id not in asignaciones_faena_por_equipo:
+            asignaciones_faena_por_equipo[equipo_id] = []
+        asignaciones_faena_por_equipo[equipo_id].append(asig)
+    
+    # 7. Calcular estados en MEMORIA (sin consultas adicionales)
     estados_calculados = {}
     
     for equipo in equipos_list:
@@ -1733,15 +1779,41 @@ def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', ti
                     else:
                         estados_del_dia.append(ot_del_dia[0]['estado'])
             
+            # Si no hay estados manuales ni OT, revisar asignaciones a faenas
+            if not estados_del_dia and equipo_id in asignaciones_faena_por_equipo and estado_asignado_faena:
+                asignaciones_del_dia = [
+                    asig for asig in asignaciones_faena_por_equipo[equipo_id]
+                    if asig.fecha_inicio <= fecha_actual and (
+                        asig.fecha_fin is None or asig.fecha_fin >= fecha_actual
+                    )
+                ]
+                if asignaciones_del_dia:
+                    estados_del_dia.append(estado_asignado_faena)
+            
             # Si no hay nada, usar estado predeterminado
             if not estados_del_dia and estado_predeterminado:
                 estados_del_dia.append(estado_predeterminado)
             
             estados_calculados[equipo_id][day] = estados_del_dia
     
+    # Serializar asignaciones a faenas para el frontend
+    asignaciones_faena_json = []
+    for asig in asignaciones_faena:
+        asignaciones_faena_json.append({
+            'id': asig.id,
+            'equipo_id': asig.equipo.equipo_id,
+            'faena_id': asig.faena.id,
+            'faena_nombre': asig.faena.nombre,
+            'faena_codigo': asig.faena.codigo,
+            'fecha_inicio': asig.fecha_inicio.isoformat(),
+            'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None,
+            'observaciones': asig.observaciones or ''
+        })
+    
     return {
         'equipos': equipos_list,
         'ordenes_trabajo': list(ordenes_trabajo),
+        'asignaciones_faena': asignaciones_faena_json,
         'estados_calculados': estados_calculados,
         'total_equipos': total_equipos,
         'fecha_inicio': fecha_inicio,
@@ -1759,12 +1831,12 @@ def calendario_maquinarias(request):
         year = int(request.GET.get('year', datetime.now().year))
         month = int(request.GET.get('month', datetime.now().month))
         page = int(request.GET.get('page', 1))
-        page_size = int(request.GET.get('page_size', 25))
+        page_size = int(request.GET.get('page_size', 10))
     except (ValueError, TypeError):
         year = datetime.now().year
         month = datetime.now().month
         page = 1
-        page_size = 25
+        page_size = 10
     
     # Validar rango de fechas
     if month < 1 or month > 12:
@@ -1775,8 +1847,8 @@ def calendario_maquinarias(request):
     # Validar paginación
     if page < 1:
         page = 1
-    if page_size not in [25, 50, 100]:
-        page_size = 25
+    if page_size not in [10, 25, 50, 100]:
+        page_size = 10
     
     # Obtener filtros
     empresa_filter = request.GET.get('empresa', '')
@@ -1854,6 +1926,15 @@ def calendario_maquinarias(request):
                 })
             estados_calculados_json[str(equipo_id)][str(dia)] = estados_serializados
     
+    # Calcular total de páginas
+    total_pages = (calendario_data['total_equipos'] + page_size - 1) // page_size if calendario_data['total_equipos'] > 0 else 1
+    
+    # Crear rango de páginas para el template
+    page_range = range(1, total_pages + 1)
+    
+    # Serializar asignaciones a faenas para JSON
+    asignaciones_faena_json = json.dumps(calendario_data['asignaciones_faena'], cls=DjangoJSONEncoder)
+    
     context = {
         'current_year': year,
         'current_month': month,
@@ -1865,6 +1946,7 @@ def calendario_maquinarias(request):
         'estado_predeterminado_json': json.dumps(estado_predeterminado_json, cls=DjangoJSONEncoder) if estado_predeterminado_json else 'null',
         'equipos': calendario_data['equipos'],
         'ordenes_trabajo': calendario_data['ordenes_trabajo'],
+        'asignaciones_faena_json': asignaciones_faena_json,
         'estados_calculados': calendario_data['estados_calculados'],
         'estados_calculados_json': json.dumps(estados_calculados_json, cls=DjangoJSONEncoder),
         'fecha_inicio_mes': fecha_inicio_mes,
@@ -1873,7 +1955,8 @@ def calendario_maquinarias(request):
         'total_equipos': calendario_data['total_equipos'],
         'current_page': page,
         'page_size': page_size,
-        'total_pages': (calendario_data['total_equipos'] + page_size - 1) // page_size,
+        'total_pages': total_pages,
+        'page_range': page_range,
     }
     
     return render(request, 'maquinarias/calendario_maquinarias.html', context)
@@ -2454,17 +2537,16 @@ def api_detalle_pauta_ot(request, pauta_id):
                 items_ot = None
         
         items_pauta = ItemPauta.objects.filter(pauta_id=pauta).prefetch_related(
-            'seccion_id', 'tipos_reparacion', 'estado_seccion_id'
+            'seccion_id', 'tipos_reparacion'
         )
         
         items = []
         for item in items_pauta:
-            # Si hay OT, usar el estado de ItemSeccionOT, sino el de ItemPauta
+            # Si hay OT, usar el estado de ItemSeccionOT
+            # Si no hay OT, no hay estado (se establecerá al crear la OT)
             estado_seccion = None
             if items_ot:
                 estado_seccion = estados_ot_dict.get(item.seccion_id.seccion_id)
-            else:
-                estado_seccion = item.estado_seccion_id
             
             items.append({
                 'itemPauta_id': item.itemPauta_id,
@@ -2604,30 +2686,29 @@ def api_guardar_orden_trabajo(request):
             estados_pauta = data.get('estados_pauta', [])
             estados_secciones = data.get('estados_secciones', [])
             
-            # Actualizar estados de pauta
+            # Actualizar estados de pauta (los estados se guardan en ItemSeccionOT, no en ItemPauta)
             if estados_pauta:
                 for estado_data in estados_pauta:
                     item_pauta_id = estado_data.get('itemPauta_id')
+                    seccion_id = estado_data.get('seccion_id')
                     estado_seccion_id = estado_data.get('estado_seccion_id')
-                    if item_pauta_id and estado_seccion_id:
+                    
+                    if seccion_id and estado_seccion_id:
                         try:
+                            # Obtener el ItemPauta para validar que existe y obtener la sección
                             item_pauta = ItemPauta.objects.get(itemPauta_id=item_pauta_id, pauta_id=ot.pauta_id)
                             estado_seccion = EstadoOT.objects.get(estadoOT_id=estado_seccion_id)
                             
-                            # Obtener estado anterior para comparar
-                            estado_seccion_anterior = item_pauta.estado_seccion_id
-                            
-                            # Actualizar estado en ItemPauta
-                            item_pauta.estado_seccion_id = estado_seccion
-                            item_pauta.save()
-                            
-                            # Actualizar también en ItemSeccionOT
+                            # Buscar o crear el ItemSeccionOT correspondiente
                             item_seccion_ot = ItemSeccionOT.objects.filter(
                                 ot_id=ot,
                                 seccion_id=item_pauta.seccion_id
                             ).first()
                             
                             if item_seccion_ot:
+                                # Obtener estado anterior para comparar y registrar en historial
+                                estado_seccion_anterior = item_seccion_ot.estado_seccion_id
+                                
                                 # Registrar cambio si el estado cambió
                                 if estado_seccion_anterior != estado_seccion:
                                     HistorialOT.registrar(
@@ -2649,6 +2730,7 @@ def api_guardar_orden_trabajo(request):
                                         }
                                     )
                                 
+                                # Actualizar estado en ItemSeccionOT (aquí es donde se guarda realmente)
                                 item_seccion_ot.estado_seccion_id = estado_seccion
                                 item_seccion_ot.save()
                         except (ItemPauta.DoesNotExist, EstadoOT.DoesNotExist):
@@ -2780,7 +2862,8 @@ def api_guardar_orden_trabajo(request):
             ot.pauta_id = None
         
         # Observaciones
-        ot.observaciones = data.get('observaciones', '')
+        observaciones = data.get('observaciones', '').strip() if data.get('observaciones') else ''
+        ot.observaciones = observaciones if observaciones else None
         
         ot.save()
         
@@ -2822,7 +2905,7 @@ def api_guardar_orden_trabajo(request):
             ItemSeccionOT.objects.filter(ot_id=ot).delete()
             
             # Obtener items de la pauta
-            items_pauta = ItemPauta.objects.filter(pauta_id=ot.pauta_id).prefetch_related('tipos_reparacion', 'estado_seccion_id')
+            items_pauta = ItemPauta.objects.filter(pauta_id=ot.pauta_id).prefetch_related('tipos_reparacion')
             
             # Obtener estados de pauta desde el formulario (si se enviaron)
             estados_pauta = data.get('estados_pauta', [])
@@ -2847,18 +2930,9 @@ def api_guardar_orden_trabajo(request):
                 item_seccion.tipos_reparacion.set(item_pauta.tipos_reparacion.all())
             
             # Actualizar estados de las secciones en la pauta si se enviaron
-            if estados_pauta:
-                for estado_data in estados_pauta:
-                    item_pauta_id = estado_data.get('itemPauta_id')
-                    estado_seccion_id = estado_data.get('estado_seccion_id')
-                    if item_pauta_id and estado_seccion_id:
-                        try:
-                            item_pauta = ItemPauta.objects.get(itemPauta_id=item_pauta_id, pauta_id=ot.pauta_id)
-                            estado_seccion = EstadoOT.objects.get(estadoOT_id=estado_seccion_id)
-                            item_pauta.estado_seccion_id = estado_seccion
-                            item_pauta.save()
-                        except (ItemPauta.DoesNotExist, EstadoOT.DoesNotExist):
-                            pass
+            # NOTA: Los estados se guardan en ItemSeccionOT, no en ItemPauta
+            # En creación, los estados siempre se establecen como PENDIENTE, así que no hay nada que actualizar aquí
+            # Esta sección se mantiene por compatibilidad pero no hace nada en creación
         
         # Si NO es pauta o es correctivo, guardar items de secciones manuales
         elif (tipo_mantenimiento.nombre.lower() == 'preventivo' and not ot.corresponde_pauta) or tipo_mantenimiento.nombre.lower() == 'correctivo':
@@ -2984,11 +3058,11 @@ def api_detalle_ot(request, ot_id):
         # Secciones (si es pauta)
         secciones_pauta = []
         if ot.corresponde_pauta and ot.pauta_id:
-            items_pauta = ItemPauta.objects.filter(pauta_id=ot.pauta_id).select_related('seccion_id', 'estado_seccion_id').prefetch_related('tipos_reparacion')
+            items_pauta = ItemPauta.objects.filter(pauta_id=ot.pauta_id).select_related('seccion_id').prefetch_related('tipos_reparacion')
             for item in items_pauta:
                 # Buscar el estado en ItemSeccionOT si existe
-                item_seccion_ot = ItemSeccionOT.objects.filter(ot_id=ot, seccion_id=item.seccion_id).first()
-                estado_actual = item_seccion_ot.estado_seccion_id if item_seccion_ot and item_seccion_ot.estado_seccion_id else item.estado_seccion_id
+                item_seccion_ot = ItemSeccionOT.objects.filter(ot_id=ot, seccion_id=item.seccion_id).select_related('estado_seccion_id').first()
+                estado_actual = item_seccion_ot.estado_seccion_id if item_seccion_ot and item_seccion_ot.estado_seccion_id else None
                 
                 secciones_pauta.append({
                     'seccion_id': item.seccion_id.seccion_id,
@@ -3079,27 +3153,39 @@ def api_detalle_ot(request, ot_id):
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@require_http_methods(["GET"])
 def api_historial_ot(request, ot_id):
     """API para obtener el historial completo de una OT en formato JSON"""
     try:
         ot = get_object_or_404(OrdenTrabajo, ot_id=ot_id)
         
         historial_data = []
-        for cambio in HistorialOT.objects.filter(ot=ot).select_related('usuario', 'personal').order_by('-fecha_hora'):
+        for cambio in HistorialOT.objects.filter(ot=ot).select_related('usuario').order_by('-fecha_hora'):
+            # Obtener información de personal desde datos_nuevos si existe (para acciones de PERSONAL_ASIGNADO)
+            personal_info = None
+            if cambio.accion in ['PERSONAL_ASIGNADO', 'PERSONAL_ELIMINADO'] and cambio.datos_nuevos:
+                personal_ids = cambio.datos_nuevos.get('personal_ids', [])
+                if personal_ids:
+                    try:
+                        personal_list = Personal.objects.filter(personal_id__in=personal_ids)
+                        if personal_list.exists():
+                            personal_info = [{
+                                'personal_id': p.personal_id,
+                                'nombre_completo': f"{p.nombre} {p.apepat} {p.apemat}",
+                                'rut': f"{p.rut}-{p.dvrut}"
+                            } for p in personal_list]
+                    except Exception:
+                        pass  # Si hay error, simplemente no incluir información de personal
+            
             historial_data.append({
                 'fecha_hora': cambio.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),
                 'fecha_hora_formateada': cambio.fecha_hora.strftime('%d/%m/%Y %H:%M'),
                 'usuario': cambio.usuario.username if cambio.usuario else 'Sistema',
-                'usuario_nombre': f"{cambio.usuario.first_name} {cambio.usuario.last_name}".strip() if cambio.usuario and (cambio.usuario.first_name or cambio.usuario.last_name) else (cambio.usuario.username if cambio.usuario else 'Sistema'),
+                'usuario_nombre': obtener_nombre_completo_usuario(cambio.usuario) if cambio.usuario else 'Sistema',
                 'accion': cambio.accion,
                 'accion_display': cambio.get_accion_display(),
                 'descripcion': cambio.descripcion,
-                'personal': {
-                    'personal_id': cambio.personal.personal_id,
-                    'nombre_completo': f"{cambio.personal.nombre} {cambio.personal.apepat} {cambio.personal.apemat}",
-                    'rut': f"{cambio.personal.rut}-{cambio.personal.dvrut}"
-                } if cambio.personal else None,
+                'personal': personal_info,
                 'datos_previos': cambio.datos_previos,
                 'datos_nuevos': cambio.datos_nuevos
             })
@@ -3578,3 +3664,50 @@ def generar_pdf_ot(request, ot_id):
     except Exception as e:
         messages.error(request, f'Error al generar PDF: {str(e)}')
         return redirect('maquinarias:lista_ordenes_trabajo')
+
+
+# ============================================================================
+# APIs PARA HISTORIAL DE EQUIPOS
+# ============================================================================
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_historial_equipo(request, equipo_id):
+    """API para obtener el historial completo de un equipo en formato JSON"""
+    try:
+        equipo = get_object_or_404(Equipo, equipo_id=equipo_id)
+        historial = HistorialEquipo.objects.filter(equipo=equipo).select_related(
+            'usuario'
+        ).order_by('-fecha_hora')
+        
+        # Preparar historial con nombre completo de usuario
+        historial_data = []
+        for evento in historial:
+            historial_data.append({
+                'id': evento.id,
+                'fecha_hora': evento.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),
+                'fecha_hora_formateada': evento.fecha_hora.strftime('%d/%m/%Y %H:%M'),
+                'usuario': evento.usuario.username if evento.usuario else 'Sistema',
+                'usuario_nombre': obtener_nombre_completo_usuario(evento.usuario),
+                'accion': evento.accion,
+                'accion_display': evento.get_accion_display(),
+                'descripcion': evento.descripcion,
+                'datos_previos': evento.datos_previos,
+                'datos_nuevos': evento.datos_nuevos
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'equipo': {
+                'id': equipo.equipo_id,
+                'nombre': equipo.nombreEquipo,
+                'codigo_interno': equipo.codigoInterno
+            },
+            'historial': historial_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error al obtener historial de equipo: {str(e)}'
+        }, status=500)

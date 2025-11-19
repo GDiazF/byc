@@ -153,6 +153,9 @@ function renderizarTabla() {
                     <a href="/users/personal/${p.id}/update/" class="btn btn-sm btn-secondary" title="Editar">
                         <i class="bi bi-pencil"></i>
                     </a>
+                    <button type="button" class="btn btn-sm btn-info" onclick="verHistorialPersonal(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')" title="Ver Historial">
+                        <i class="bi bi-clock-history"></i>
+                    </button>
                 </div>
             </td>
             <td class="text-center">

@@ -1007,3 +1007,89 @@ class HistorialOT(models.Model):
             datos_previos=datos_previos,
             datos_nuevos=datos_nuevos
         )
+
+
+class HistorialEquipo(models.Model):
+    """
+    Registra todos los cambios y acciones realizadas en los Equipos.
+    Permite auditoría completa de modificaciones, activaciones/desactivaciones, cambios de estado, asignaciones.
+    """
+    ACCION_CHOICES = [
+        ('EQUIPO_CREADO', 'Equipo Creado'),
+        ('EQUIPO_MODIFICADO', 'Equipo Modificado'),
+        ('EQUIPO_ACTIVADO', 'Equipo Activado'),
+        ('EQUIPO_DESACTIVADO', 'Equipo Desactivado'),
+        ('EQUIPO_ELIMINADO', 'Equipo Eliminado'),
+        ('ESTADO_MANUAL_ASIGNADO', 'Estado Manual Asignado'),
+        ('ESTADO_MANUAL_MODIFICADO', 'Estado Manual Modificado'),
+        ('ESTADO_MANUAL_ELIMINADO', 'Estado Manual Eliminado'),
+        ('ASIGNACION_FAENA_CREADA', 'Asignación a Faena Creada'),
+        ('ASIGNACION_FAENA_MODIFICADA', 'Asignación a Faena Modificada'),
+        ('ASIGNACION_FAENA_ELIMINADA', 'Asignación a Faena Eliminada'),
+    ]
+    
+    equipo = models.ForeignKey(
+        Equipo,
+        on_delete=models.CASCADE,
+        related_name="historial",
+        db_index=True,
+        verbose_name='Equipo'
+    )
+    fecha_hora = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Fecha y Hora')
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Usuario que realizó la acción",
+        verbose_name='Usuario'
+    )
+    accion = models.CharField(
+        max_length=50,
+        choices=ACCION_CHOICES,
+        help_text="Tipo de acción realizada",
+        verbose_name='Acción'
+    )
+    descripcion = models.TextField(
+        help_text="Descripción detallada del cambio",
+        verbose_name='Descripción'
+    )
+    datos_previos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado anterior antes del cambio (JSON)",
+        verbose_name='Datos Previos'
+    )
+    datos_nuevos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado nuevo después del cambio (JSON)",
+        verbose_name='Datos Nuevos'
+    )
+    
+    class Meta:
+        ordering = ["-fecha_hora"]
+        verbose_name = "Historial de Equipo"
+        verbose_name_plural = "Historial de Equipos"
+        db_table = 'maquinarias_historialequipo'
+        indexes = [
+            models.Index(fields=["equipo", "-fecha_hora"]),
+            models.Index(fields=["usuario", "-fecha_hora"]),
+        ]
+    
+    def __str__(self):
+        return f"{self.equipo.nombreEquipo} - {self.get_accion_display()} - {self.fecha_hora.strftime('%d/%m/%Y %H:%M')}"
+    
+    @classmethod
+    def registrar(cls, equipo, accion, descripcion, usuario=None, datos_previos=None, datos_nuevos=None):
+        """
+        Método helper para registrar fácilmente un evento en el historial.
+        """
+        return cls.objects.create(
+            equipo=equipo,
+            accion=accion,
+            descripcion=descripcion,
+            usuario=usuario,
+            datos_previos=datos_previos,
+            datos_nuevos=datos_nuevos
+        )

@@ -1,0 +1,322 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Asignar Equipos - {{ faena_nombre }}{% endblock %}
+
+{% block extrajs %}
+<link rel="stylesheet" href="{% static 'css/asignar_personal_faena.css' %}">
+<script src="{% static 'js/asignar_equipos_faena.js' %}"></script>
+<script>
+// Inicializar datos desde Django
+initDataEquipos(
+    {{ equipos_json|safe }},
+    {{ faena_json|safe }},
+    {% if faena_fecha_inicio %}'{{ faena_fecha_inicio|date:"Y-m-d" }}'{% else %}null{% endif %},
+    {% if faena_fecha_fin %}'{{ faena_fecha_fin|date:"Y-m-d" }}'{% else %}null{% endif %}
+);
+
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Alertas -->
+<div id="alertContainer"></div>
+
+<!-- Card Principal -->
+<div class="card mb-3">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-truck me-2"></i>Asignar Equipos a: <span class="badge bg-light text-dark ms-2">{{ faena_codigo }}</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        <!-- Botón volver -->
+        <div class="mb-3">
+            <a href="{% url 'calendario:gestionar_faenas' %}" class="btn btn-sm btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Volver
+            </a>
+        </div>
+        
+        <!-- Información de la faena -->
+        <div class="card bg-light border-primary mb-3">
+            <div class="card-body py-2">
+                <div class="row">
+                    <div class="col-md-7">
+                        <strong>Faena:</strong> {{ faena_nombre }}<br>
+                        {% if faena_descripcion %}
+                        <strong>Descripción:</strong> {{ faena_descripcion }}<br>
+                        {% endif %}
+                        {% if faena_fecha_inicio or faena_fecha_fin %}
+                        <strong>Duración de la Faena:</strong> 
+                        <span class="badge bg-dark">
+                            <i class="bi bi-calendar-range me-1"></i>
+                            {% if faena_fecha_inicio %}{{ faena_fecha_inicio|date:"d-m-Y" }}{% else %}Sin inicio{% endif %} → {% if faena_fecha_fin %}{{ faena_fecha_fin|date:"d-m-Y" }}{% else %}Sin fin{% endif %}
+                        </span>
+                        {% if faena_duracion_dias %}
+                        <small class="text-muted">({{ faena_duracion_dias }} días)</small>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="col-md-5 text-end">
+                        <strong>Equipos asignados:</strong> 
+                        <span class="badge bg-primary fs-6">{{ total_asignados }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs mb-3" id="asignacionTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="asignar-tab" data-bs-toggle="tab" data-bs-target="#asignar" 
+                        type="button" role="tab" aria-controls="asignar" aria-selected="true">
+                    <i class="bi bi-truck me-2"></i>Asignar Equipos
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="gestionar-tab" data-bs-toggle="tab" data-bs-target="#gestionar" 
+                        type="button" role="tab" aria-controls="gestionar" aria-selected="false">
+                    <i class="bi bi-list-check me-2"></i>Equipos Asignados
+                    <span class="badge bg-primary ms-2">{{ total_asignados }}</span>
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Tabs Content -->
+        <div class="tab-content" id="asignacionTabsContent">
+            <!-- Tab: Asignar Nuevos Equipos -->
+            <div class="tab-pane fade show active" id="asignar" role="tabpanel" aria-labelledby="asignar-tab">
+        
+                <!-- Área de Advertencias/Errores -->
+                <div id="areaAdvertencias" class="mb-3" style="display: none;">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                </div>
+                
+                <!-- Filtros y búsqueda -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label small">Buscar</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInput" 
+                                   placeholder="Código, nombre o patente...">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Estado</label>
+                        <select class="form-select form-select-sm" id="filtroEstado">
+                            <option value="">Todos</option>
+                            <option value="disponible">Disponibles</option>
+                            <option value="asignado">Ya Asignados</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Tipo</label>
+                        <select class="form-select form-select-sm" id="filtroTipo">
+                            <option value="">Todos los tipos</option>
+                            {% for tipo in tipos_unicos %}
+                            <option value="{{ tipo }}">{{ tipo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Empresa</label>
+                        <select class="form-select form-select-sm" id="filtroEmpresa">
+                            <option value="">Todas las empresas</option>
+                            {% for empresa in empresas_unicas %}
+                            <option value="{{ empresa }}">{{ empresa }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label small">&nbsp;</label>
+                        <button class="btn btn-sm btn-secondary w-100" onclick="limpiarFiltrosEquipos()" title="Limpiar filtros">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Selector de registros y contador -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small">
+                        <strong id="totalSeleccionados">0</strong> de <strong id="totalEquipos">0</strong> equipos seleccionados
+                    </span>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 small">Mostrar:</label>
+                        <select class="form-select form-select-sm" id="registrosPorPagina" style="width: auto;" onchange="cambiarRegistrosPorPaginaEquipos()">
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="9999">Todos</option>
+                        </select>
+                    </div>
+                </div>
+                
+                 <!-- Tabla de equipos -->
+                 <div class="table-responsive">
+                     <table class="table table-sm table-hover align-middle" style="table-layout: fixed; width: 100%;">
+                         <thead class="table-dark">
+                             <tr>
+                                 <th style="width: 4%;" class="text-center">
+                                     <input class="form-check-input" type="checkbox" id="selectAllEquipos" onchange="toggleSelectAllEquipos()">
+                                 </th>
+                                 <th class="sortable" data-column="nombre" style="width: 20%;" onclick="ordenarTablaEquipos('nombre')">
+                                     Nombre <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th style="width: 10%;">Patente</th>
+                                 <th class="sortable" data-column="tipo" style="width: 12%;" onclick="ordenarTablaEquipos('tipo')">
+                                     Tipo <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th class="sortable" data-column="empresa" style="width: 15%;" onclick="ordenarTablaEquipos('empresa')">
+                                     Empresa <i class="bi bi-arrow-down-up ms-1"></i>
+                                 </th>
+                                 <th style="width: 10%;">Estado</th>
+                                 <th style="width: 15%;">Asignación Actual</th>
+                                 <th style="width: 14%;">Fecha Asignación</th>
+                             </tr>
+                         </thead>
+                         <tbody id="equiposTableBody">
+                             <!-- Se llena con JavaScript -->
+                         </tbody>
+                     </table>
+                 </div>
+                
+                <!-- Controles de Paginación -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="small text-muted">
+                        Mostrando <strong id="registroInicio">0</strong> a <strong id="registroFin">0</strong> de <strong id="totalRegistros">0</strong> registros
+                    </span>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="paginacion">
+                            <!-- Se llena con JavaScript -->
+                        </ul>
+                    </nav>
+                </div>
+                
+                <!-- Card de Configuración de Asignación (movido abajo) -->
+                <div class="card mt-3">
+                    <div class="card-header bg-dark text-white py-2">
+                        <h6 class="mb-0">
+                            <i class="bi bi-sliders me-2"></i>Configuración de Asignación
+                        </h6>
+                    </div>
+                    <div class="card-body py-2">
+                        <form id="formAsignacionEquipos" onsubmit="event.preventDefault(); asignarEquiposMasivo();">
+                            <div class="row g-2">
+                                <div class="col-md-3">
+                                    <label for="fecha_inicio" class="form-label small mb-1">Fecha Inicio *</label>
+                                    <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fecha_inicio" required
+                                           placeholder="DD-MM-YYYY">
+                                </div>
+                                
+                                <div class="col-md-3">
+                                    <label for="fecha_fin" class="form-label small mb-1">Fecha Fin</label>
+                                    <input type="text" class="form-control form-control-sm fecha-chile-picker" id="fecha_fin"
+                                           placeholder="DD-MM-YYYY">
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label for="observaciones" class="form-label small mb-1">Observaciones</label>
+                                    <input type="text" class="form-control form-control-sm" id="observaciones"
+                                              placeholder="Notas adicionales...">
+                                </div>
+                            </div>
+                            
+                            <div class="text-end mt-3">
+                                <button type="submit" class="btn btn-success btn-sm" id="btnAsignarEquiposMasivo" disabled>
+                                    <i class="bi bi-check-circle me-1"></i>Asignar Equipos Seleccionados
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Gestionar Equipos Asignados -->
+            <div class="tab-pane fade" id="gestionar" role="tabpanel" aria-labelledby="gestionar-tab">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Patente</th>
+                                <th>Tipo</th>
+                                <th>Empresa</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Fin</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="equiposAsignadosBody">
+                            <!-- Se llena con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Asignación de Equipo -->
+<div class="modal fade" id="modalEditarAsignacionEquipo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil me-2"></i>Editar Asignación de Equipo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditarAsignacionEquipo" onsubmit="guardarEdicionAsignacionEquipo(event)">
+                <div class="modal-body">
+                    <!-- Alertas -->
+                    <div id="alertEditAsignacionEquipo"></div>
+                    
+                    <input type="hidden" id="editEquipoAsig_id">
+                    <input type="hidden" id="editEquipoAsig_faena_id">
+                    
+                    <!-- Info equipo -->
+                    <div class="card bg-light mb-3">
+                        <div class="card-body py-2">
+                            <strong>Equipo:</strong> <span id="editEquipoAsig_nombreEquipo"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editEquipoAsig_fechaInicio" class="form-label">Fecha Inicio *</label>
+                                <input type="text" class="form-control fecha-chile-picker" id="editEquipoAsig_fechaInicio" required
+                                       placeholder="DD-MM-YYYY">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editEquipoAsig_fechaFin" class="form-label">Fecha Fin</label>
+                                <input type="text" class="form-control fecha-chile-picker" id="editEquipoAsig_fechaFin"
+                                       placeholder="DD-MM-YYYY">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editEquipoAsig_obs" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="editEquipoAsig_obs" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

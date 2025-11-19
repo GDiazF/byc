@@ -11,6 +11,44 @@
         display: flex;
         gap: 0.25rem;
     }
+    
+    /* Alinear equipos a la izquierda */
+    .calendar-table .sticky-col {
+        text-align: left !important;
+    }
+    
+    .equipo-name-container {
+        padding: 4px 8px;
+    }
+    
+    .equipo-info {
+        text-align: left;
+    }
+    
+    /* Estilos para tabla de documentación en modal (igual que rrhh-table) */
+    #equipoModalBody .rrhh-table tbody td {
+        font-size: 0.85rem !important;
+        padding: 0.5rem 0.6rem !important;
+    }
+    
+    #equipoModalBody .rrhh-table tbody td strong {
+        font-size: 0.9rem !important;
+    }
+    
+    #equipoModalBody .rrhh-table thead th {
+        font-size: 0.8rem !important;
+        padding: 0.5rem 0.6rem !important;
+    }
+    
+    #equipoModalBody .rrhh-table .badge {
+        font-size: 0.75rem !important;
+        padding: 0.25em 0.5em !important;
+    }
+    
+    #equipoModalBody .rrhh-table .btn-sm {
+        font-size: 0.7rem !important;
+        padding: 0.2rem 0.4rem !important;
+    }
 </style>
 {% endblock %}
 
@@ -29,7 +67,7 @@
                 <button class="btn btn-sm btn-outline-light me-1" onclick="navigateCalendar('month', -1)">
                     <i class="bi bi-chevron-left"></i>
                 </button>
-                <button class="btn btn-sm btn-light me-1" onclick="goToToday()">Hoy</button>
+                <button class="btn btn-sm btn-light me-1" onclick="goToToday()">Ir a mes actual</button>
                 <button class="btn btn-sm btn-outline-light me-1" onclick="navigateCalendar('month', 1)">
                     <i class="bi bi-chevron-right"></i>
                 </button>
@@ -54,6 +92,7 @@
             </div>
             <div class="col-md-6 text-end">
                 <div class="btn-group btn-group-sm">
+                    <button class="btn btn-sm {% if page_size == 10 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPaginaMaquinarias(10)">10</button>
                     <button class="btn btn-sm {% if page_size == 25 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPaginaMaquinarias(25)">25</button>
                     <button class="btn btn-sm {% if page_size == 50 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPaginaMaquinarias(50)">50</button>
                     <button class="btn btn-sm {% if page_size == 100 %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="cambiarTamanioPaginaMaquinarias(100)">100</button>
@@ -99,58 +138,6 @@
             </div>
         </div>
         
-        <!-- Navegación de páginas -->
-        {% if total_pages > 1 %}
-        <div class="row mb-3">
-            <div class="col-12">
-                <nav aria-label="Navegación de páginas">
-                    <ul class="pagination pagination-sm justify-content-center mb-0">
-                        <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
-                            <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ current_page|add:'-1' }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Anterior">
-                                <span aria-hidden="true">&laquo;</span>
-                            </a>
-                        </li>
-                        {% if total_pages <= 10 %}
-                            {% for i in total_pages|make_list %}
-                                {% if forloop.counter <= total_pages %}
-                                <li class="page-item {% if forloop.counter == current_page %}active{% endif %}">
-                                    <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ forloop.counter }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
-                                        {{ forloop.counter }}
-                                    </a>
-                                </li>
-                                {% endif %}
-                            {% endfor %}
-                        {% else %}
-                            <!-- Mostrar páginas cercanas a la actual -->
-                            {% if current_page > 3 %}
-                                <li class="page-item"><a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page=1&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">1</a></li>
-                                <li class="page-item disabled"><span class="page-link">...</span></li>
-                            {% endif %}
-                            {% for i in total_pages|make_list %}
-                                {% if forloop.counter >= current_page|add:'-2' and forloop.counter <= current_page|add:'2' and forloop.counter <= total_pages %}
-                                <li class="page-item {% if forloop.counter == current_page %}active{% endif %}">
-                                    <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ forloop.counter }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
-                                        {{ forloop.counter }}
-                                    </a>
-                                </li>
-                                {% endif %}
-                            {% endfor %}
-                            {% if current_page < total_pages|add:'-2' %}
-                                <li class="page-item disabled"><span class="page-link">...</span></li>
-                                <li class="page-item"><a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ total_pages }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">{{ total_pages }}</a></li>
-                            {% endif %}
-                        {% endif %}
-                        <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
-                            <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ current_page|add:'1' }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Siguiente">
-                                <span aria-hidden="true">&raquo;</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
-        </div>
-        {% endif %}
-        
         <!-- Leyenda de estados -->
         <div class="alert alert-light border mb-3 p-2 alert-permanent">
             <div class="d-flex align-items-center flex-wrap" id="statusLegendMaquinarias">
@@ -184,22 +171,107 @@
                 </tbody>
             </table>
         </div>
+        
+        <!-- Navegación de páginas (abajo a la derecha) -->
+        {% if total_equipos > page_size %}
+        <div class="row mt-3">
+            <div class="col-12 d-flex justify-content-end">
+                <nav aria-label="Navegación de páginas">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
+                            <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ current_page|add:'-1' }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa|urlencode }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo|urlencode }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado|urlencode }}{% endif %}" aria-label="Anterior">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% if total_pages <= 10 %}
+                            {% for num in page_range %}
+                                <li class="page-item {% if num == current_page %}active{% endif %}">
+                                    <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ num }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa|urlencode }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo|urlencode }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado|urlencode }}{% endif %}">
+                                        {{ num }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        {% else %}
+                            <!-- Mostrar páginas cercanas a la actual -->
+                            {% if current_page > 3 %}
+                                <li class="page-item"><a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page=1&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa|urlencode }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo|urlencode }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado|urlencode }}{% endif %}">1</a></li>
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                            {% for num in page_range %}
+                                {% if num >= current_page|add:'-2' and num <= current_page|add:'2' %}
+                                    <li class="page-item {% if num == current_page %}active{% endif %}">
+                                        <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ num }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa|urlencode }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo|urlencode }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado|urlencode }}{% endif %}">
+                                            {{ num }}
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if current_page < total_pages|add:'-2' %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                <li class="page-item"><a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ total_pages }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa|urlencode }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo|urlencode }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado|urlencode }}{% endif %}">{{ total_pages }}</a></li>
+                            {% endif %}
+                        {% endif %}
+                        <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
+                            <a class="page-link" href="?year={{ current_year }}&month={{ current_month }}&page={{ current_page|add:'1' }}&page_size={{ page_size }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa|urlencode }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo|urlencode }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado|urlencode }}{% endif %}" aria-label="Siguiente">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Bootstrap para información de Estado -->
+<div class="modal fade" id="estadoEquipoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Información del Estado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <strong>Equipo:</strong> <span id="modalEquipoNombre"></span>
+                </div>
+                <div class="mb-2">
+                    <strong>Fecha:</strong> <span id="modalEquipoFecha"></span>
+                </div>
+                <div class="mb-2">
+                    <strong>Estado:</strong> <span id="modalEquipoEstado"></span>
+                </div>
+                <div id="modalEquipoDetallesEstado"></div>
+                <div class="mb-2">
+                    <strong>Asignación:</strong> <span id="modalEquipoAsignacion"></span>
+                </div>
+                <div class="mb-2">
+                    <strong>Período:</strong> <span id="modalEquipoPeriodo"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- Modal Bootstrap para información de Equipo -->
 <div class="modal fade" id="equipoModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title">Información del Equipo</h5>
+                <h5 class="modal-title" id="equipoModalTitle">Información del Equipo y Documentación</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="equipoModalBody">
-                <!-- Se llenará dinámicamente -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando información...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -277,6 +349,9 @@
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
+    
+    // Asignaciones a faenas
+    window.asignacionesFaena = {{ asignaciones_faena_json|safe }};
     
     window.fechaInicioMes = '{{ fecha_inicio_mes.isoformat }}';
     window.fechaFinMes = '{{ fecha_fin_mes.isoformat }}';

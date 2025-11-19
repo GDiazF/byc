@@ -39,7 +39,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const modeloEquipoSelect = document.getElementById('modelo_equipo_id');
     if (modeloEquipoSelect) {
-        modeloEquipoSelect.addEventListener('change', filtrarEquipos);
+        modeloEquipoSelect.addEventListener('change', function() {
+            filtrarEquipos();
+            // Actualizar modeloEquipoSeleccionado cuando cambia el select de modelo
+            modeloEquipoSeleccionado = modeloEquipoSelect.value || null;
+            // Si corresponde_pauta está marcado como "Sí", cargar pautas
+            const correspondePautaSi = document.getElementById('corresponde_pauta_si');
+            if (correspondePautaSi && correspondePautaSi.checked && modeloEquipoSeleccionado) {
+                cargarPautasPorModelo(modeloEquipoSeleccionado);
+            }
+        });
     }
     
     const equipoSelect = document.getElementById('equipo_id');
@@ -68,12 +77,15 @@ document.addEventListener('DOMContentLoaded', function() {
         pautaSelect.addEventListener('change', function(e) {
             const pautaId = e.target.value;
             if (pautaId) {
+                console.log('Pauta seleccionada:', pautaId);
                 cargarSeccionesPauta(pautaId);
             } else {
                 // Si no hay pauta seleccionada, ocultar secciones
-                const seccionesPautaContainer = document.getElementById('seccionesPautaContainer');
+                const seccionesPautaContainer = document.querySelector('#seccionPreventivo #seccionesPautaContainer') || 
+                                                 document.getElementById('seccionesPautaContainer');
                 if (seccionesPautaContainer) {
                     seccionesPautaContainer.style.display = 'none';
+                    seccionesPautaContainer.classList.add('hidden-section');
                 }
             }
         });
@@ -326,6 +338,15 @@ function cargarDatosEquipo() {
         document.getElementById('odometro').value = '';
         document.getElementById('horometro_superestructura').value = '';
         modeloEquipoSeleccionado = null;
+        
+        // Si corresponde_pauta está marcado, limpiar pautas
+        const correspondePautaSi = document.getElementById('corresponde_pauta_si');
+        if (correspondePautaSi && correspondePautaSi.checked) {
+            const pautaSelect = document.getElementById('pauta_id');
+            if (pautaSelect) {
+                pautaSelect.innerHTML = '<option value="">Primero seleccione un equipo...</option>';
+            }
+        }
         return;
     }
     
@@ -335,6 +356,12 @@ function cargarDatosEquipo() {
     document.getElementById('horometro_superestructura').value = option.dataset.horometroSuperEstructural || '';
     
     modeloEquipoSeleccionado = option.dataset.modeloId;
+    
+    // También actualizar el select de modelo si está disponible
+    const modeloSelect = document.getElementById('modelo_equipo_id');
+    if (modeloSelect && modeloEquipoSeleccionado && modeloSelect.value !== modeloEquipoSeleccionado) {
+        modeloSelect.value = modeloEquipoSeleccionado;
+    }
     
     // Debug: verificar que el modelo_id se obtuvo correctamente
     if (!modeloEquipoSeleccionado) {
@@ -385,22 +412,58 @@ function cambiarCorrespondePauta() {
     const correspondePautaSi = document.getElementById('corresponde_pauta_si');
     const correspondePautaNo = document.getElementById('corresponde_pauta_no');
     const selectPautaContainer = document.getElementById('selectPautaContainer');
-    const seccionesPautaContainer = document.getElementById('seccionesPautaContainer');
+    // Buscar el contenedor dentro de #seccionPreventivo primero (modo creación)
+    const seccionesPautaContainer = document.querySelector('#seccionPreventivo #seccionesPautaContainer') || 
+                                     document.getElementById('seccionesPautaContainer');
     const seccionReparaciones = document.getElementById('seccionReparaciones');
     
     if (correspondePautaSi && correspondePautaSi.checked) {
-        selectPautaContainer.style.display = 'block';
-        seccionesPautaContainer.style.display = 'none';
-        seccionReparaciones.style.display = 'none';
+        if (selectPautaContainer) {
+            selectPautaContainer.style.display = 'block';
+            selectPautaContainer.classList.remove('hidden-section');
+        }
+        if (seccionesPautaContainer) {
+            seccionesPautaContainer.style.display = 'none';
+            seccionesPautaContainer.classList.add('hidden-section');
+        }
+        if (seccionReparaciones) {
+            seccionReparaciones.style.display = 'none';
+        }
         
-        // Cargar pautas si hay modelo seleccionado
-        if (modeloEquipoSeleccionado) {
-            cargarPautasPorModelo(modeloEquipoSeleccionado);
+        // Obtener modelo_id del equipo seleccionado o del select de modelo
+        let modeloIdParaPautas = modeloEquipoSeleccionado;
+        
+        // Si no hay modeloEquipoSeleccionado (no se ha seleccionado equipo), 
+        // intentar obtenerlo del select de modelo directamente
+        if (!modeloIdParaPautas) {
+            const modeloSelect = document.getElementById('modelo_equipo_id');
+            if (modeloSelect && modeloSelect.value) {
+                modeloIdParaPautas = modeloSelect.value;
+            }
+        }
+        
+        // Cargar pautas si hay modelo disponible
+        if (modeloIdParaPautas) {
+            cargarPautasPorModelo(modeloIdParaPautas);
+        } else {
+            // Si no hay modelo seleccionado, mostrar mensaje
+            const pautaSelect = document.getElementById('pauta_id');
+            if (pautaSelect) {
+                pautaSelect.innerHTML = '<option value="">Primero seleccione un equipo o modelo...</option>';
+            }
         }
     } else if (correspondePautaNo && correspondePautaNo.checked) {
-        selectPautaContainer.style.display = 'none';
-        seccionesPautaContainer.style.display = 'none';
-        seccionReparaciones.style.display = 'block';
+        if (selectPautaContainer) {
+            selectPautaContainer.style.display = 'none';
+            selectPautaContainer.classList.add('hidden-section');
+        }
+        if (seccionesPautaContainer) {
+            seccionesPautaContainer.style.display = 'none';
+            seccionesPautaContainer.classList.add('hidden-section');
+        }
+        if (seccionReparaciones) {
+            seccionReparaciones.style.display = 'block';
+        }
         // Limpiar items de secciones si había algo de preventivo con pauta
         const itemsContainer = document.getElementById('itemsSeccionesContainer');
         if (itemsContainer) {
@@ -408,9 +471,17 @@ function cambiarCorrespondePauta() {
             itemSeccionIndex = 0; // Reiniciar contador
         }
     } else {
-        selectPautaContainer.style.display = 'none';
-        seccionesPautaContainer.style.display = 'none';
-        seccionReparaciones.style.display = 'none';
+        if (selectPautaContainer) {
+            selectPautaContainer.style.display = 'none';
+            selectPautaContainer.classList.add('hidden-section');
+        }
+        if (seccionesPautaContainer) {
+            seccionesPautaContainer.style.display = 'none';
+            seccionesPautaContainer.classList.add('hidden-section');
+        }
+        if (seccionReparaciones) {
+            seccionReparaciones.style.display = 'none';
+        }
     }
 }
 
@@ -501,27 +572,30 @@ function cargarSeccionesPauta(pautaIdParam = null) {
     }
     
     // Buscar el contenedor - puede estar en diferentes lugares según el modo
-    let seccionesPautaContainer = document.getElementById('seccionesPautaContainer');
-    let seccionesPautaList = document.getElementById('seccionesPautaList');
-    
-    // Si no se encuentra, buscar en todo el documento
+    // Priorizar el contenedor dentro de la sección de preventivo (modo creación)
+    let seccionesPautaContainer = document.querySelector('#seccionPreventivo #seccionesPautaContainer');
     if (!seccionesPautaContainer) {
-        seccionesPautaContainer = document.querySelector('#seccionesPautaContainer');
+        seccionesPautaContainer = document.getElementById('seccionesPautaContainer');
     }
+    
+    let seccionesPautaList = document.querySelector('#seccionPreventivo #seccionesPautaList');
     if (!seccionesPautaList) {
-        seccionesPautaList = document.querySelector('#seccionesPautaList');
+        seccionesPautaList = document.getElementById('seccionesPautaList');
     }
     
     if (!pautaId) {
         console.log('No hay pautaId para cargar');
         if (seccionesPautaContainer) {
             seccionesPautaContainer.style.display = 'none';
+            seccionesPautaContainer.classList.add('hidden-section');
         }
         return;
     }
     
     if (!seccionesPautaContainer || !seccionesPautaList) {
         console.error('No se encontraron los contenedores de secciones de pauta');
+        console.error('seccionesPautaContainer:', seccionesPautaContainer);
+        console.error('seccionesPautaList:', seccionesPautaList);
         return;
     }
     
@@ -595,11 +669,20 @@ function cargarSeccionesPauta(pautaIdParam = null) {
                     seccionesPautaList.appendChild(itemDiv);
                 });
                 
-                seccionesPautaContainer.style.display = 'block';
-                console.log('Secciones cargadas exitosamente');
+                // Mostrar el contenedor de secciones
+                if (seccionesPautaContainer) {
+                    seccionesPautaContainer.style.display = 'block';
+                    seccionesPautaContainer.classList.remove('hidden-section');
+                    console.log('Secciones cargadas exitosamente, contenedor mostrado');
+                } else {
+                    console.error('No se encontró el contenedor de secciones para mostrar');
+                }
             } else {
                 console.log('No se encontraron items en la respuesta');
-                seccionesPautaContainer.style.display = 'none';
+                // Ocultar contenedor si no hay items
+                if (seccionesPautaContainer) {
+                    seccionesPautaContainer.style.display = 'none';
+                }
             }
         })
         .catch(error => {
@@ -1463,6 +1546,9 @@ function guardarOrdenTrabajo(event) {
     }
     
     // Recolectar datos del formulario
+    const observacionesElement = document.getElementById('observaciones');
+    const observacionesValue = observacionesElement ? observacionesElement.value.trim() : '';
+    
     const formData = {
         ot_id: null,
         equipo_id: equipoId,
@@ -1471,9 +1557,11 @@ function guardarOrdenTrabajo(event) {
         tipo_mantenimiento_id: tipoMantenimientoId,
         estado_ot_id: estadoPendienteId,  // Siempre PENDIENTE en creación
         estado_equipo_id: document.getElementById('estado_equipo_id').value,
-        observaciones: document.getElementById('observaciones').value,
+        observaciones: observacionesValue,
         personal_asignado: personalSeleccionados
     };
+    
+    console.log('Observaciones a guardar:', observacionesValue);
     
     // Obtener nombre del tipo de mantenimiento
     const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');

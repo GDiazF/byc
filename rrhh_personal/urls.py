@@ -35,6 +35,8 @@ from .views import (
     crear_ausentismo,
     actualizar_ausentismo,
     eliminar_ausentismo,
+    api_historial_personal,
+    api_historial_documentos_personal,
 )
 
 urlpatterns = [
@@ -83,4 +85,8 @@ urlpatterns = [
     path('personal/<int:personal_id>/ausentismos/create/', crear_ausentismo, name='crear_ausentismo'),
     path('personal/<int:personal_id>/ausentismos/<int:ausentismo_id>/update/', actualizar_ausentismo, name='actualizar_ausentismo'),
     path('personal/ausentismos/<int:ausentismo_id>/delete/', eliminar_ausentismo, name='eliminar_ausentismo'),
+    
+    # APIs para historial
+    path('api/personal/<int:personal_id>/historial/', api_historial_personal, name='api_historial_personal'),
+    path('api/personal/<int:personal_id>/historial/documentos/', api_historial_documentos_personal, name='api_historial_documentos_personal'),
 ]

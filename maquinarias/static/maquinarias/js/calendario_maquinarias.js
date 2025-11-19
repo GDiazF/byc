@@ -103,6 +103,24 @@ function cargarEstadosOT() {
 function inicializarCalendarioMaquinarias() {
     equiposFiltrados = [...window.equipos];
     ordenesFiltradas = [...window.ordenesTrabajo];
+    
+    // Debug: verificar que los estados calculados estén disponibles
+    if (window.estadosCalculados) {
+        console.log('Estados calculados disponibles:', Object.keys(window.estadosCalculados).length, 'equipos');
+        // Mostrar estructura completa del primer equipo para debug
+        const primerEquipoId = Object.keys(window.estadosCalculados)[0];
+        if (primerEquipoId) {
+            console.log('Primer equipo ID:', primerEquipoId);
+            console.log('Días con estados para primer equipo:', Object.keys(window.estadosCalculados[primerEquipoId]));
+            const primerDia = Object.keys(window.estadosCalculados[primerEquipoId])[0];
+            if (primerDia) {
+                console.log('Estado para primer día:', window.estadosCalculados[primerEquipoId][primerDia]);
+            }
+        }
+    } else {
+        console.warn('No hay estados calculados disponibles');
+    }
+    
     generarCalendarioMaquinarias();
 }
 
@@ -148,26 +166,31 @@ function generarCalendarioMaquinarias() {
     equiposFiltrados.forEach(equipo => {
         bodyHTML += '<tr>';
         
-        // Columna de nombre del equipo (sticky) con click para mostrar info
+        // Columna de nombre del equipo (sticky) con click para mostrar info - alineado a la izquierda
         bodyHTML += `<td class="sticky-col">
             <div class="equipo-name-container">
                 <div class="equipo-info" onclick="mostrarDetalleEquipo(${equipo.equipo_id})" 
-                     style="cursor: pointer;" 
+                     style="cursor: pointer; text-align: left;" 
                      title="Click para ver información del equipo">
-                    <div style="font-size: 0.75rem; font-weight: 600;">${equipo.nombreEquipo}</div>
-                    <small style="color: #6c757d; font-size: 0.65rem;">${equipo.empresa}</small>
+                    <div style="font-size: 0.75rem; font-weight: 600; text-align: left;">${equipo.nombreEquipo}</div>
+                    <small style="color: #6c757d; font-size: 0.65rem; text-align: left; display: block;">${equipo.empresa}</small>
                 </div>
             </div>
         </td>`;
         
-        // Celdas de días con estados calculados
+        // Celdas de días con estados calculados (igual que calendario de personal)
         for (let day = 1; day <= daysInMonth; day++) {
             // Obtener estado calculado del backend
+            // Los estados están indexados por equipo_id como string y día como string
             let estado = null;
+            const equipoIdStr = String(equipo.equipo_id);
+            const dayStr = String(day);
+            
+            // Obtener estado calculado del backend
             if (window.estadosCalculados && 
-                window.estadosCalculados[equipo.equipo_id] && 
-                window.estadosCalculados[equipo.equipo_id][day]) {
-                const estadosDelDia = window.estadosCalculados[equipo.equipo_id][day];
+                window.estadosCalculados[equipoIdStr] && 
+                window.estadosCalculados[equipoIdStr][dayStr]) {
+                const estadosDelDia = window.estadosCalculados[equipoIdStr][dayStr];
                 if (estadosDelDia && estadosDelDia.length > 0) {
                     estado = estadosDelDia[0]; // Tomar el primer estado (mayor prioridad)
                 }
@@ -189,28 +212,65 @@ function generarCalendarioMaquinarias() {
             });
             
             if (estado) {
-                // Hay estado calculado
+                // Hay estado calculado (viene de OT, estado manual o asignación a faena)
                 const otId = otsDelDia.length > 0 ? otsDelDia[0].ot_id : null;
-                const onclickAttr = otId ? `onclick="mostrarDetalleOT(${otId})"` : '';
-                const cursorStyle = otId ? 'cursor: pointer;' : '';
                 
+                // Buscar asignación a faena para este día
+                const asignacionesDelDia = (window.asignacionesFaena || []).filter(asig => {
+                    if (asig.equipo_id !== equipo.equipo_id) return false;
+                    const fechaInicio = asig.fecha_inicio ? asig.fecha_inicio.split('T')[0] : null;
+                    const fechaFin = asig.fecha_fin ? asig.fecha_fin.split('T')[0] : null;
+                    if (fechaInicio && fechaFin) {
+                        return fechaISO >= fechaInicio && fechaISO <= fechaFin;
+                    } else if (fechaInicio) {
+                        return fechaISO >= fechaInicio;
+                    }
+                    return false;
+                });
+                
+                // Determinar qué mostrar al hacer clic
+                let onclickAttr = '';
+                if (otId) {
+                    onclickAttr = `onclick="mostrarDetalleOT(${otId})"`;
+                } else if (asignacionesDelDia.length > 0) {
+                    onclickAttr = `onclick="showEstadoInfoEquipo(${equipo.equipo_id}, ${day})"`;
+                } else {
+                    onclickAttr = `onclick="showEstadoInfoEquipo(${equipo.equipo_id}, ${day})"`;
+                }
+                
+                // Construir tooltip con información detallada
+                let tooltipText = estado.nombre || 'Sin nombre';
+                if (otsDelDia.length > 0) {
+                    const ot = otsDelDia[0];
+                    tooltipText += `\nOT: ${ot.folio}`;
+                    if (ot.estado_ot) {
+                        tooltipText += `\nEstado OT: ${ot.estado_ot}`;
+                    }
+                    if (ot.estado_equipo) {
+                        tooltipText += `\nEstado Equipo: ${ot.estado_equipo}`;
+                    }
+                } else if (asignacionesDelDia.length > 0) {
+                    const asig = asignacionesDelDia[0];
+                    tooltipText += `\nFaena: ${asig.faena_nombre}`;
+                }
+                
+                // Usar la misma estructura que el calendario de personal
                 bodyHTML += `<td ${onclickAttr}
-                                style="background-color: ${estado.background_color}; color: ${estado.color}; ${cursorStyle}"
-                                title="${estado.nombre}${otsDelDia.length > 0 ? ' - OT: ' + otsDelDia[0].folio : ''}">
-                    <div class="estado-cell">
-                        <div style="font-size: 0.65rem; font-weight: 600;">${estado.nombre_corto}</div>
-                    </div>
+                                style="background-color: ${estado.background_color}; color: ${estado.color};"
+                                title="${tooltipText.replace(/"/g, '&quot;')}">
+                    <div class="estado-cell">${estado.nombre_corto}</div>
                 </td>`;
             } else {
                 // Sin estado - mostrar estado predeterminado si existe
                 const estadoPred = window.estadoPredeterminado;
                 if (estadoPred) {
-                    bodyHTML += `<td style="background-color: ${estadoPred.background_color}; color: ${estadoPred.color};"
+                    bodyHTML += `<td onclick="showEstadoInfoEquipo(${equipo.equipo_id}, ${day})"
+                                    style="background-color: ${estadoPred.background_color}; color: ${estadoPred.color};"
                                     title="${estadoPred.nombre}">
                         <div class="estado-cell">${estadoPred.nombre_corto}</div>
                     </td>`;
                 } else {
-                    bodyHTML += `<td class="empty-cell"></td>`;
+                    bodyHTML += `<td class="empty-cell" onclick="showEstadoInfoEquipo(${equipo.equipo_id}, ${day})"></td>`;
                 }
             }
         }
@@ -313,6 +373,135 @@ function cambiarTamanioPaginaMaquinarias(newSize) {
 }
 
 // Mostrar detalle de Equipo
+// Formatear fecha a formato chileno largo
+function formatearFechaChilenaLarga(fecha) {
+    if (!fecha) return '';
+    
+    try {
+        const date = new Date(fecha);
+        const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        
+        const diaSemana = diasSemana[date.getDay()];
+        const dia = date.getDate();
+        const mes = meses[date.getMonth()];
+        const anio = date.getFullYear();
+        
+        return `${diaSemana}, ${dia} de ${mes} de ${anio}`;
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return fecha;
+    }
+}
+
+// Formatear fecha a formato chileno (DD-MM-YYYY)
+function formatearFechaChilena(fecha) {
+    if (!fecha) return '';
+    
+    try {
+        const date = new Date(fecha + 'T00:00:00');
+        const dia = String(date.getDate()).padStart(2, '0');
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        const anio = date.getFullYear();
+        return `${dia}-${mes}-${anio}`;
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return fecha;
+    }
+}
+
+// Mostrar información de estado del equipo (similar a showEstadoInfo del calendario de personal)
+function showEstadoInfoEquipo(equipoId, day) {
+    const equipo = window.equipos.find(e => e.equipo_id === equipoId);
+    if (!equipo) return;
+    
+    const nombreEquipo = equipo.nombreEquipo || 'Sin nombre';
+    const fecha = new Date(window.currentYear, window.currentMonth - 1, day);
+    const fechaISO = fecha.toISOString().split('T')[0];
+    
+    // Obtener estado calculado del backend
+    let estado = null;
+    const equipoIdStr = String(equipoId);
+    const dayStr = String(day);
+    
+    if (window.estadosCalculados && 
+        window.estadosCalculados[equipoIdStr] && 
+        window.estadosCalculados[equipoIdStr][dayStr]) {
+        const estadosDelDia = window.estadosCalculados[equipoIdStr][dayStr];
+        if (estadosDelDia && estadosDelDia.length > 0) {
+            estado = estadosDelDia[0];
+        }
+    }
+    
+    // Si no hay estado, usar el predeterminado
+    if (!estado && window.estadoPredeterminado) {
+        estado = window.estadoPredeterminado;
+    }
+    
+    // Buscar OT del día
+    const otsDelDia = (window.ordenesTrabajo || []).filter(ot => {
+        if (ot.equipo_id !== equipoId) return false;
+        if (ot.fecha_inicio && ot.fecha_fin) {
+            return fechaISO >= ot.fecha_inicio.split('T')[0] && fechaISO <= ot.fecha_fin.split('T')[0];
+        } else if (ot.fecha_inicio) {
+            return fechaISO === ot.fecha_inicio.split('T')[0];
+        } else if (ot.fecha_fin) {
+            return fechaISO === ot.fecha_fin.split('T')[0];
+        }
+        return false;
+    });
+    
+    // Buscar asignación a faena del día
+    const asignacionesDelDia = (window.asignacionesFaena || []).filter(asig => {
+        if (asig.equipo_id !== equipoId) return false;
+        const fechaInicio = asig.fecha_inicio ? asig.fecha_inicio.split('T')[0] : null;
+        const fechaFin = asig.fecha_fin ? asig.fecha_fin.split('T')[0] : null;
+        if (fechaInicio && fechaFin) {
+            return fechaISO >= fechaInicio && fechaISO <= fechaFin;
+        } else if (fechaInicio) {
+            return fechaISO >= fechaInicio;
+        }
+        return false;
+    });
+    
+    // Determinar asignación actual
+    let asignacionTexto = 'Disponible';
+    let periodoTexto = '-';
+    
+    if (otsDelDia.length > 0) {
+        const ot = otsDelDia[0];
+        asignacionTexto = `OT: ${ot.folio}`;
+        if (ot.fecha_inicio && ot.fecha_fin) {
+            periodoTexto = `${formatearFechaChilena(ot.fecha_inicio)} → ${formatearFechaChilena(ot.fecha_fin)}`;
+        } else if (ot.fecha_inicio) {
+            periodoTexto = `Desde ${formatearFechaChilena(ot.fecha_inicio)}`;
+        }
+    } else if (asignacionesDelDia.length > 0) {
+        const asig = asignacionesDelDia[0];
+        asignacionTexto = asig.faena_nombre || 'Faena asignada';
+        if (asig.fecha_inicio && asig.fecha_fin) {
+            periodoTexto = `${formatearFechaChilena(asig.fecha_inicio)} → ${formatearFechaChilena(asig.fecha_fin)}`;
+        } else if (asig.fecha_inicio) {
+            periodoTexto = `Desde ${formatearFechaChilena(asig.fecha_inicio)}`;
+        }
+    }
+    
+    // Llenar modal
+    document.getElementById('modalEquipoNombre').textContent = nombreEquipo;
+    document.getElementById('modalEquipoFecha').textContent = formatearFechaChilenaLarga(fechaISO);
+    document.getElementById('modalEquipoEstado').textContent = estado ? estado.nombre : 'Sin estado';
+    document.getElementById('modalEquipoAsignacion').textContent = asignacionTexto;
+    document.getElementById('modalEquipoPeriodo').textContent = periodoTexto;
+    
+    // Mostrar detalles adicionales si existen
+    const detallesDiv = document.getElementById('modalEquipoDetallesEstado');
+    detallesDiv.innerHTML = '';
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('estadoEquipoModal'));
+    modal.show();
+}
+
 function mostrarDetalleEquipo(equipoId) {
     const equipo = window.equipos.find(e => e.equipo_id === equipoId);
     if (!equipo) return;
@@ -320,7 +509,10 @@ function mostrarDetalleEquipo(equipoId) {
     const modalBody = document.getElementById('equipoModalBody');
     if (!modalBody) return;
     
-    // Crear estructura con tabs
+    // Obtener asignaciones a faenas del equipo
+    const asignacionesEquipo = (window.asignacionesFaena || []).filter(asig => asig.equipo_id === equipoId);
+    
+    // Crear estructura con tabs simplificada (estilo del proyecto)
     modalBody.innerHTML = `
         <!-- Nav tabs -->
         <ul class="nav nav-tabs mb-3" id="equipoTabs" role="tablist">
@@ -340,13 +532,13 @@ function mostrarDetalleEquipo(equipoId) {
         <div class="tab-content" id="equipoTabContent">
             <!-- Tab: Información -->
             <div class="tab-pane fade show active" id="info-pane" role="tabpanel" aria-labelledby="info-tab">
-                <div class="row g-3">
+                <div class="row">
                     <div class="col-md-6">
                         <div class="card border">
                             <div class="card-header bg-light">
                                 <h6 class="mb-0 fw-bold"><i class="bi bi-info-circle me-2 text-primary"></i>Información General</h6>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body p-0">
                                 <table class="table table-sm table-bordered mb-0">
                                     <tbody>
                                         <tr>
@@ -355,7 +547,7 @@ function mostrarDetalleEquipo(equipoId) {
                                         </tr>
                                         <tr>
                                             <th class="bg-light">Código Interno:</th>
-                                            <td>${equipo.codigoInterno}</td>
+                                            <td>${equipo.codigoInterno || 'N/A'}</td>
                                         </tr>
                                         ${equipo.patente ? `
                                         <tr>
@@ -365,7 +557,7 @@ function mostrarDetalleEquipo(equipoId) {
                                         ` : ''}
                                         <tr>
                                             <th class="bg-light">Empresa:</th>
-                                            <td>${equipo.empresa}</td>
+                                            <td>${equipo.empresa || 'N/A'}</td>
                                         </tr>
                                         <tr>
                                             <th class="bg-light">Tipo:</th>
@@ -389,7 +581,7 @@ function mostrarDetalleEquipo(equipoId) {
                             <div class="card-header bg-light">
                                 <h6 class="mb-0 fw-bold"><i class="bi bi-speedometer2 me-2 text-success"></i>Horómetros y Odómetro</h6>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body p-0">
                                 <table class="table table-sm table-bordered mb-0">
                                     <tbody>
                                         <tr>
@@ -410,6 +602,36 @@ function mostrarDetalleEquipo(equipoId) {
                         </div>
                     </div>
                 </div>
+                ${asignacionesEquipo.length > 0 ? `
+                <div class="mt-3">
+                    <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-briefcase me-2"></i>Asignaciones a Faenas</h6>
+                    <div class="list-group">
+                        ${asignacionesEquipo.map(asig => {
+                            const fechaInicio = formatearFechaChilena(asig.fecha_inicio);
+                            const fechaFin = asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Sin fecha fin';
+                            return `
+                                <div class="list-group-item px-0 py-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="flex-grow-1 me-2">
+                                            <div class="fw-bold small">${asig.faena_nombre || 'Faena sin nombre'}</div>
+                                            <div class="text-muted" style="font-size: 0.75rem;">
+                                                <i class="bi bi-calendar-range me-1"></i>${fechaInicio} → ${fechaFin}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+                ` : `
+                <div class="mt-3">
+                    <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-briefcase me-2"></i>Asignaciones a Faenas</h6>
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>No hay asignaciones a faenas registradas.
+                    </div>
+                </div>
+                `}
             </div>
             
             <!-- Tab: Documentación -->
@@ -471,7 +693,7 @@ async function cargarDocumentosEquipo(equipoId) {
     }
 }
 
-// Renderizar documentos del equipo
+// Renderizar documentos del equipo en formato tabla simple (estilo del proyecto)
 function renderizarDocumentosEquipo(documentos, container) {
     if (!documentos || documentos.length === 0) {
         container.innerHTML = `
@@ -485,14 +707,14 @@ function renderizarDocumentosEquipo(documentos, container) {
     
     let html = `
         <div class="table-responsive">
-            <table class="table table-sm table-bordered table-hover">
-                <thead class="table-light">
+            <table class="table table-sm table-hover table-bordered rrhh-table">
+                <thead class="table-dark">
                     <tr>
                         <th>Tipo de Documento</th>
-                        <th>Archivo</th>
                         <th>Fecha Subida</th>
                         <th>Fecha Vencimiento</th>
                         <th>Estado</th>
+                        <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -508,31 +730,31 @@ function renderizarDocumentosEquipo(documentos, container) {
         if (doc.estado === 'vencido') {
             badgeEstado = '<span class="badge bg-danger">Vencido</span>';
         } else if (doc.estado === 'por_vencer') {
-            badgeEstado = `<span class="badge bg-warning">Por vencer (${doc.dias_restantes} días)</span>`;
+            badgeEstado = `<span class="badge bg-warning text-dark">Por vencer (${doc.dias_restantes} días)</span>`;
         } else {
             badgeEstado = '<span class="badge bg-success text-white">Vigente</span>';
         }
         
         const archivoLink = doc.archivo_url 
-            ? `<a href="${doc.archivo_url}" target="_blank" class="btn btn-sm btn-primary" title="${doc.archivo_nombre || 'Ver archivo'}">
+            ? `<a href="${doc.archivo_url}" target="_blank" class="btn btn-sm btn-primary" title="${doc.archivo_nombre || 'Ver documento'}">
                  <i class="bi bi-eye"></i>
                </a>`
-            : 'N/A';
+            : '<span class="text-muted">N/A</span>';
         
         html += `
             <tr>
                 <td><strong>${doc.tipo_documento_nombre}</strong></td>
-                <td>${archivoLink}</td>
                 <td>${fechaSubida}</td>
                 <td>${fechaVencimiento}</td>
                 <td>${badgeEstado}</td>
+                <td class="text-center">${archivoLink}</td>
             </tr>
         `;
         
         if (doc.observaciones) {
             html += `
                 <tr>
-                    <td colspan="5" class="small text-muted">
+                    <td colspan="5" class="small text-muted bg-light">
                         <strong>Observaciones:</strong> ${doc.observaciones}
                     </td>
                 </tr>

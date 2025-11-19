@@ -81,5 +81,8 @@ urlpatterns = [
     path('api/ordenes-trabajo/<int:ot_id>/historial/', views.api_historial_ot, name='api_historial_ot'),
     path('api/cargos-por-depto/', views.api_cargos_por_depto, name='api_cargos_por_depto'),
     path('api/departamentos/', views.api_departamentos, name='api_departamentos'),
+    
+    # APIs para historial de equipos
+    path('api/equipos/<int:equipo_id>/historial/', views.api_historial_equipo, name='api_historial_equipo'),
 ]
 

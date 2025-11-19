@@ -3,6 +3,7 @@ from datetime import datetime, date
 import os
 from django.core.files.storage import FileSystemStorage
 from gen_settings.models import Region, Comuna, Empresa
+from django.contrib.auth.models import User
 # from .storage import MediaS3Storage  # Solo para producción con S3
 
 #MODELO PARA RUTAS DE LOS DOCUMENTOS---------------------------------------------------------
@@ -629,3 +630,205 @@ class LicenciaInternaPorPersonal(models.Model):
                 print(f"Error al eliminar archivo de licencia interna: {e}")
                 
         super().delete(*args, **kwargs)
+
+
+# ============================================================================
+# MODELOS DE HISTORIAL PARA AUDITORÍA Y REPORTABILIDAD
+# ============================================================================
+
+class HistorialPersonal(models.Model):
+    """
+    Registra todos los cambios y acciones realizadas en el Personal.
+    Permite auditoría completa de modificaciones, activaciones/desactivaciones.
+    """
+    ACCION_CHOICES = [
+        ('PERSONAL_CREADO', 'Personal Creado'),
+        ('PERSONAL_MODIFICADO', 'Personal Modificado'),
+        ('PERSONAL_ACTIVADO', 'Personal Activado'),
+        ('PERSONAL_DESACTIVADO', 'Personal Desactivado'),
+        ('PERSONAL_ELIMINADO', 'Personal Eliminado'),
+    ]
+    
+    personal = models.ForeignKey(
+        Personal,
+        on_delete=models.CASCADE,
+        related_name="historial",
+        db_index=True,
+        verbose_name='Personal'
+    )
+    fecha_hora = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Fecha y Hora')
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Usuario que realizó la acción",
+        verbose_name='Usuario'
+    )
+    accion = models.CharField(
+        max_length=50,
+        choices=ACCION_CHOICES,
+        help_text="Tipo de acción realizada",
+        verbose_name='Acción'
+    )
+    descripcion = models.TextField(
+        help_text="Descripción detallada del cambio",
+        verbose_name='Descripción'
+    )
+    datos_previos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado anterior antes del cambio (JSON)",
+        verbose_name='Datos Previos'
+    )
+    datos_nuevos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado nuevo después del cambio (JSON)",
+        verbose_name='Datos Nuevos'
+    )
+    
+    class Meta:
+        ordering = ["-fecha_hora"]
+        verbose_name = "Historial de Personal"
+        verbose_name_plural = "Historial de Personal"
+        db_table = 'rrhh_personal_historialpersonal'
+        indexes = [
+            models.Index(fields=["personal", "-fecha_hora"]),
+            models.Index(fields=["usuario", "-fecha_hora"]),
+        ]
+    
+    def __str__(self):
+        return f"{self.personal.nombre} {self.personal.apepat} - {self.get_accion_display()} - {self.fecha_hora.strftime('%d/%m/%Y %H:%M')}"
+    
+    @classmethod
+    def registrar(cls, personal, accion, descripcion, usuario=None, datos_previos=None, datos_nuevos=None):
+        """
+        Método helper para registrar fácilmente un evento en el historial.
+        """
+        return cls.objects.create(
+            personal=personal,
+            accion=accion,
+            descripcion=descripcion,
+            usuario=usuario,
+            datos_previos=datos_previos,
+            datos_nuevos=datos_nuevos
+        )
+
+
+class HistorialDocumentoPersonal(models.Model):
+    """
+    Registra todos los cambios en documentos del personal (agregado, eliminado, modificado).
+    Incluye documentos personales, licencias, certificaciones, exámenes, etc.
+    """
+    TIPO_DOCUMENTO_CHOICES = [
+        ('DOCUMENTO_PERSONAL', 'Documento Personal'),
+        ('LICENCIA_CONDUCIR', 'Licencia de Conducir'),
+        ('LICENCIA_INTERNA', 'Licencia Interna'),
+        ('LICENCIA_MEDICA', 'Licencia Médica'),
+        ('CERTIFICACION', 'Certificación'),
+        ('EXAMEN', 'Examen'),
+    ]
+    
+    ACCION_CHOICES = [
+        ('DOCUMENTO_AGREGADO', 'Documento Agregado'),
+        ('DOCUMENTO_MODIFICADO', 'Documento Modificado'),
+        ('DOCUMENTO_ELIMINADO', 'Documento Eliminado'),
+        ('DOCUMENTO_REEMPLAZADO', 'Documento Reemplazado'),
+    ]
+    
+    personal = models.ForeignKey(
+        Personal,
+        on_delete=models.CASCADE,
+        related_name="historial_documentos",
+        db_index=True,
+        verbose_name='Personal'
+    )
+    fecha_hora = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Fecha y Hora')
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Usuario que realizó la acción",
+        verbose_name='Usuario'
+    )
+    tipo_documento = models.CharField(
+        max_length=50,
+        choices=TIPO_DOCUMENTO_CHOICES,
+        help_text="Tipo de documento afectado",
+        verbose_name='Tipo de Documento'
+    )
+    accion = models.CharField(
+        max_length=50,
+        choices=ACCION_CHOICES,
+        help_text="Tipo de acción realizada",
+        verbose_name='Acción'
+    )
+    nombre_documento = models.CharField(
+        max_length=255,
+        help_text="Nombre o descripción del documento",
+        verbose_name='Nombre del Documento'
+    )
+    campo_documento = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Campo del modelo donde se almacena (si aplica)",
+        verbose_name='Campo del Documento'
+    )
+    archivo_ruta = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True,
+        help_text="Ruta del archivo (si fue eliminado, se guarda la ruta anterior)",
+        verbose_name='Ruta del Archivo'
+    )
+    descripcion = models.TextField(
+        help_text="Descripción detallada del cambio",
+        verbose_name='Descripción'
+    )
+    datos_previos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado anterior antes del cambio (JSON)",
+        verbose_name='Datos Previos'
+    )
+    datos_nuevos = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Estado nuevo después del cambio (JSON)",
+        verbose_name='Datos Nuevos'
+    )
+    
+    class Meta:
+        ordering = ["-fecha_hora"]
+        verbose_name = "Historial de Documento de Personal"
+        verbose_name_plural = "Historial de Documentos de Personal"
+        db_table = 'rrhh_personal_historialdocumentopersonal'
+        indexes = [
+            models.Index(fields=["personal", "-fecha_hora"]),
+            models.Index(fields=["usuario", "-fecha_hora"]),
+            models.Index(fields=["tipo_documento", "-fecha_hora"]),
+        ]
+    
+    def __str__(self):
+        return f"{self.personal.nombre} {self.personal.apepat} - {self.get_tipo_documento_display()} - {self.get_accion_display()} - {self.fecha_hora.strftime('%d/%m/%Y %H:%M')}"
+    
+    @classmethod
+    def registrar(cls, personal, tipo_documento, accion, nombre_documento, descripcion, usuario=None, campo_documento=None, archivo_ruta=None, datos_previos=None, datos_nuevos=None):
+        """
+        Método helper para registrar fácilmente un evento en el historial de documentos.
+        """
+        return cls.objects.create(
+            personal=personal,
+            tipo_documento=tipo_documento,
+            accion=accion,
+            nombre_documento=nombre_documento,
+            descripcion=descripcion,
+            usuario=usuario,
+            campo_documento=campo_documento,
+            archivo_ruta=archivo_ruta,
+            datos_previos=datos_previos,
+            datos_nuevos=datos_nuevos
+        )
