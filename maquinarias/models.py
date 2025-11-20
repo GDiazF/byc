@@ -41,6 +41,67 @@ def obtener_ruta_documento_maquinaria(instance, filename):
     
     return os.path.join('Documentacion_Maquinarias', 'Otros', filename)
 
+def mover_archivo_a_eliminados_maquinaria(archivo_field, equipo_id, nombre_documento):
+    """
+    Mueve un archivo de maquinaria a la carpeta de eliminados en lugar de eliminarlo.
+    Estructura: Documentacion_Eliminada_Maquinarias/EQUIPO_ID/EQUIPO_ID_nombre_documento.pdf
+    
+    Args:
+        archivo_field: Campo FileField del modelo
+        equipo_id: ID del equipo (int o string)
+        nombre_documento: Nombre descriptivo del documento (ej: "Permiso de Circulación")
+    
+    Returns:
+        str: Ruta relativa del archivo movido, o None si hubo error
+    """
+    if not archivo_field or not archivo_field.name:
+        return None
+    
+    try:
+        from django.conf import settings
+        import shutil
+        
+        # Obtener rutas
+        archivo_original_path = archivo_field.path
+        if not os.path.exists(archivo_original_path):
+            return None
+        
+        # Crear nombre de archivo limpio (sin caracteres especiales)
+        # Formato: EQUIPO_ID_nombre_documento.pdf
+        nombre_limpio = nombre_documento.lower().replace(' ', '_').replace('/', '_')
+        # Obtener extensión del archivo original
+        extension = os.path.splitext(archivo_field.name)[1]
+        nombre_archivo_final = f"{equipo_id}_{nombre_limpio}{extension}"
+        
+        # Ruta destino: Documentacion_Eliminada_Maquinarias/EQUIPO_ID/EQUIPO_ID_nombre_documento.pdf
+        carpeta_eliminados = os.path.join(settings.MEDIA_ROOT, 'Documentacion_Eliminada_Maquinarias', str(equipo_id))
+        os.makedirs(carpeta_eliminados, exist_ok=True)
+        
+        ruta_destino = os.path.join(carpeta_eliminados, nombre_archivo_final)
+        
+        # Si ya existe un archivo con ese nombre, agregar timestamp
+        if os.path.exists(ruta_destino):
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            nombre_base, ext = os.path.splitext(nombre_archivo_final)
+            nombre_archivo_final = f"{nombre_base}_{timestamp}{ext}"
+            ruta_destino = os.path.join(carpeta_eliminados, nombre_archivo_final)
+        
+        # Mover el archivo
+        shutil.move(archivo_original_path, ruta_destino)
+        
+        # Retornar ruta relativa para guardar en historial
+        ruta_relativa = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), nombre_archivo_final)
+        return ruta_relativa
+        
+    except Exception as e:
+        # Si falla el movimiento, intentar eliminar normalmente
+        print(f"Error al mover archivo a eliminados: {str(e)}")
+        try:
+            archivo_field.delete(save=False)
+        except:
+            pass
+        return None
+
 
 class OverwriteStorage(FileSystemStorage):
     """

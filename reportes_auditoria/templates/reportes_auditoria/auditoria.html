@@ -1,0 +1,417 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Auditoría - Sistema BYC{% endblock %}
+
+{% block extrastyles %}
+<style>
+    .filters-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .badge-tipo-entidad {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+    .table-hover tbody tr:hover {
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="bi bi-shield-check me-2"></i>Auditoría del Sistema
+            </h2>
+            
+            <!-- Filtros -->
+            <div class="card filters-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="bi bi-funnel me-2"></i>Filtros
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Tipo de Entidad</label>
+                            <select class="form-select" id="filtroTipoEntidad">
+                                <option value="">Todos</option>
+                                <option value="PERSONAL">Personal</option>
+                                <option value="DOCUMENTO">Documentos</option>
+                                <option value="EQUIPO">Equipos</option>
+                                <option value="FAENA">Faenas</option>
+                                <option value="OT">Órdenes de Trabajo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Fecha Desde</label>
+                            <input type="text" class="form-control fecha-chile-picker" id="filtroFechaDesde" placeholder="DD/MM/YYYY">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Fecha Hasta</label>
+                            <input type="text" class="form-control fecha-chile-picker" id="filtroFechaHasta" placeholder="DD/MM/YYYY">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Usuario</label>
+                            <select class="form-select" id="filtroUsuario">
+                                <option value="">Todos</option>
+                                {% for usuario in usuarios %}
+                                <option value="{{ usuario.id }}">
+                                    {% if usuario.first_name or usuario.last_name %}
+                                        {{ usuario.first_name }} {{ usuario.last_name }}
+                                    {% else %}
+                                        {{ usuario.username }}
+                                    {% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Búsqueda</label>
+                            <input type="text" class="form-control" id="filtroBusqueda" placeholder="Buscar en descripción, nombres...">
+                        </div>
+                        <div class="col-md-12">
+                            <button type="button" class="btn btn-primary" id="btnAplicarFiltros">
+                                <i class="bi bi-search me-2"></i>Aplicar Filtros
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="btnLimpiarFiltros">
+                                <i class="bi bi-x-circle me-2"></i>Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabla de eventos -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0">Eventos de Auditoría</h5>
+                        <div>
+                            <select class="form-select form-select-sm d-inline-block" style="width: auto;" id="selectPerPage">
+                                <option value="10">10</option>
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 5%;"></th>
+                                    <th style="width: 12%;">Fecha y Hora</th>
+                                    <th style="width: 10%;">Tipo</th>
+                                    <th style="width: 20%;">Entidad</th>
+                                    <th style="width: 15%;">Usuario</th>
+                                    <th style="width: 15%;">Acción</th>
+                                    <th style="width: 23%;">Descripción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaEventosBody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-5">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="mt-2 text-muted">Cargando eventos...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Paginación -->
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center" id="paginacion">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para detalles -->
+<div class="modal fade" id="modalDetalles" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles del Evento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalDetallesBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script src="{% static 'gen_settings/js/datePickerChile.js' %}"></script>
+<script>
+    // Configuración global
+    const API_AUDITORIA_URL = "{% url 'reportes_auditoria:api_auditoria' %}";
+    
+    // Variables globales
+    let paginaActual = 1;
+    let porPagina = 25;
+    let filtros = {};
+    
+    // Inicializar cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+        inicializarDatePickersChile();
+        cargarEventos();
+        
+        // Eventos
+        document.getElementById('btnAplicarFiltros').addEventListener('click', aplicarFiltros);
+        document.getElementById('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
+        document.getElementById('selectPerPage').addEventListener('change', function() {
+            porPagina = parseInt(this.value);
+            paginaActual = 1;
+            cargarEventos();
+        });
+    });
+    
+    function aplicarFiltros() {
+        const tipoEntidadValue = document.getElementById('filtroTipoEntidad').value;
+        filtros = {
+            tipo_entidad: tipoEntidadValue ? [tipoEntidadValue] : [],
+            fecha_desde: obtenerFechaISO('filtroFechaDesde'),
+            fecha_hasta: obtenerFechaISO('filtroFechaHasta'),
+            usuario_id: document.getElementById('filtroUsuario').value || null,
+            busqueda: document.getElementById('filtroBusqueda').value.trim() || null
+        };
+        paginaActual = 1;
+        cargarEventos();
+    }
+    
+    function limpiarFiltros() {
+        document.getElementById('filtroTipoEntidad').value = '';
+        document.getElementById('filtroFechaDesde').value = '';
+        document.getElementById('filtroFechaHasta').value = '';
+        document.getElementById('filtroUsuario').value = '';
+        document.getElementById('filtroBusqueda').value = '';
+        filtros = {};
+        paginaActual = 1;
+        cargarEventos();
+    }
+    
+    function obtenerFechaISO(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input || !input.value) return null;
+        
+        // Si tiene el date picker, usar su método
+        const wrapper = input.closest('[data-datepicker-chile-wrapper]');
+        if (wrapper && wrapper._datePickerChile) {
+            return wrapper._datePickerChile.getValue();
+        }
+        
+        // Si no, convertir manualmente
+        const partes = input.value.split('/');
+        if (partes.length === 3) {
+            return `${partes[2]}-${partes[1]}-${partes[0]}`;
+        }
+        return null;
+    }
+    
+    function cargarEventos() {
+        const tbody = document.getElementById('tablaEventosBody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando eventos...</p>
+                </td>
+            </tr>
+        `;
+        
+        const params = new URLSearchParams({
+            page: paginaActual,
+            per_page: porPagina,
+            ...filtros
+        });
+        
+        // Agregar arrays correctamente
+        if (filtros.tipo_entidad && filtros.tipo_entidad.length > 0) {
+            filtros.tipo_entidad.forEach(tipo => {
+                params.append('tipo_entidad[]', tipo);
+            });
+        }
+        
+        fetch(`${API_AUDITORIA_URL}?${params}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderizarEventos(data.eventos);
+                    renderizarPaginacion(data.pagination);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error: ${data.error}</td></tr>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error al cargar eventos</td></tr>`;
+            });
+    }
+    
+    function renderizarEventos(eventos) {
+        const tbody = document.getElementById('tablaEventosBody');
+        
+        if (eventos.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-1"></i>
+                        <p class="mt-2">No se encontraron eventos</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        let html = '';
+        eventos.forEach((evento, index) => {
+            const badgeColor = obtenerColorTipoEntidad(evento.tipo_entidad);
+            const badgeAccion = obtenerBadgeAccion(evento.accion);
+            const tieneDetalles = evento.datos_previos || evento.datos_nuevos;
+            
+            html += `
+                <tr class="${tieneDetalles ? 'historial-row-clickable' : ''}" 
+                    ${tieneDetalles ? `onclick="mostrarDetalles(${index})"` : ''}
+                    data-evento='${JSON.stringify(evento)}'>
+                    <td class="text-center">
+                        ${tieneDetalles ? '<i class="bi bi-info-circle text-muted"></i>' : ''}
+                    </td>
+                    <td><small>${evento.fecha_hora_formateada}</small></td>
+                    <td>
+                        <span class="badge ${badgeColor} badge-tipo-entidad">${evento.tipo_entidad_display}</span>
+                    </td>
+                    <td>
+                        <strong>${escapeHtml(evento.entidad_nombre)}</strong><br>
+                        <small class="text-muted">${escapeHtml(evento.entidad_info)}</small>
+                    </td>
+                    <td><small>${escapeHtml(evento.usuario_nombre || evento.usuario)}</small></td>
+                    <td>${badgeAccion}</td>
+                    <td><small>${escapeHtml(evento.descripcion || '-')}</small></td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+    }
+    
+    function renderizarPaginacion(pagination) {
+        const ul = document.getElementById('paginacion');
+        
+        if (pagination.pages <= 1) {
+            ul.innerHTML = '';
+            return;
+        }
+        
+        let html = '';
+        
+        // Botón anterior
+        html += `
+            <li class="page-item ${!pagination.has_previous ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPagina(${pagination.page - 1}); return false;">Anterior</a>
+            </li>
+        `;
+        
+        // Números de página
+        for (let i = 1; i <= pagination.pages; i++) {
+            if (i === 1 || i === pagination.pages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+                html += `
+                    <li class="page-item ${i === pagination.page ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="cambiarPagina(${i}); return false;">${i}</a>
+                    </li>
+                `;
+            } else if (i === pagination.page - 3 || i === pagination.page + 3) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+        
+        // Botón siguiente
+        html += `
+            <li class="page-item ${!pagination.has_next ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPagina(${pagination.page + 1}); return false;">Siguiente</a>
+            </li>
+        `;
+        
+        ul.innerHTML = html;
+    }
+    
+    function cambiarPagina(pagina) {
+        paginaActual = pagina;
+        cargarEventos();
+    }
+    
+    function mostrarDetalles(index) {
+        const row = document.querySelectorAll('#tablaEventosBody tr')[index];
+        const evento = JSON.parse(row.getAttribute('data-evento'));
+        
+        let detallesHTML = `
+            <div class="mb-3">
+                <strong>Tipo de Entidad:</strong> ${evento.tipo_entidad_display}<br>
+                <strong>Entidad:</strong> ${evento.entidad_nombre}<br>
+                <strong>Fecha y Hora:</strong> ${evento.fecha_hora_formateada}<br>
+                <strong>Usuario:</strong> ${evento.usuario_nombre || evento.usuario}<br>
+                <strong>Acción:</strong> ${evento.accion_display}<br>
+                <strong>Descripción:</strong> ${evento.descripcion || '-'}
+            </div>
+        `;
+        
+        if (evento.datos_previos) {
+            detallesHTML += '<div class="mb-3"><strong>Datos Previos:</strong><pre class="bg-light p-2 rounded">' + JSON.stringify(evento.datos_previos, null, 2) + '</pre></div>';
+        }
+        
+        if (evento.datos_nuevos) {
+            detallesHTML += '<div class="mb-3"><strong>Datos Nuevos:</strong><pre class="bg-light p-2 rounded">' + JSON.stringify(evento.datos_nuevos, null, 2) + '</pre></div>';
+        }
+        
+        document.getElementById('modalDetallesBody').innerHTML = detallesHTML;
+        new bootstrap.Modal(document.getElementById('modalDetalles')).show();
+    }
+    
+    function obtenerColorTipoEntidad(tipo) {
+        const colores = {
+            'PERSONAL': 'bg-primary',
+            'DOCUMENTO': 'bg-info',
+            'EQUIPO': 'bg-warning text-dark',
+            'FAENA': 'bg-success',
+            'OT': 'bg-secondary'
+        };
+        return colores[tipo] || 'bg-secondary';
+    }
+    
+    function obtenerBadgeAccion(accion) {
+        // Mapear acciones a colores
+        if (accion.includes('CREADO') || accion.includes('AGREGADO') || accion.includes('ACTIVADO')) {
+            return '<span class="badge bg-success">' + accion.replace(/_/g, ' ') + '</span>';
+        } else if (accion.includes('MODIFICADO') || accion.includes('CAMBIADO')) {
+            return '<span class="badge bg-primary">' + accion.replace(/_/g, ' ') + '</span>';
+        } else if (accion.includes('ELIMINADO') || accion.includes('DESACTIVADO')) {
+            return '<span class="badge bg-danger">' + accion.replace(/_/g, ' ') + '</span>';
+        }
+        return '<span class="badge bg-secondary">' + accion.replace(/_/g, ' ') + '</span>';
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}
+

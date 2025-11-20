@@ -5,7 +5,7 @@ from django.db.models.signals import post_save, pre_delete, pre_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .models import Personal, HistorialPersonal, HistorialDocumentoPersonal
-from .models import LicenciaPorPersonal, LicenciaMedicaPorPersonal, Certificacion, Examen
+from .models import LicenciaPorPersonal, LicenciaMedicaPorPersonal, LicenciaInternaPorPersonal, Certificacion, Examen
 
 
 @receiver(post_save, sender=Personal)
@@ -230,13 +230,26 @@ def registrar_licencia_conducir(sender, instance, created, **kwargs):
 
 @receiver(pre_delete, sender=LicenciaPorPersonal)
 def registrar_eliminacion_licencia_conducir(sender, instance, **kwargs):
-    """Registra cuando se elimina una licencia de conducir."""
+    """Registra cuando se elimina una licencia de conducir y mueve el archivo a eliminados."""
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
     tipos_str = ", ".join([t.tipoLicencia for t in instance.tipos.all()])
     nombre_doc = f"Licencia de Conducir - Tipos: {tipos_str}"
+    
+    # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    archivo_ruta_historial = None
+    if instance.rutaDoc and instance.rutaDoc.name:
+        from .models import mover_archivo_a_eliminados
+        archivo_ruta_historial = mover_archivo_a_eliminados(
+            instance.rutaDoc,
+            instance.personal_id.rut,
+            nombre_doc
+        )
+        # Si no se pudo mover, usar la ruta original
+        if not archivo_ruta_historial:
+            archivo_ruta_historial = instance.rutaDoc.name
     
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
@@ -245,7 +258,7 @@ def registrar_eliminacion_licencia_conducir(sender, instance, **kwargs):
         nombre_documento=nombre_doc,
         descripcion=f"Licencia de conducir eliminada",
         usuario=usuario,
-        archivo_ruta=instance.rutaDoc.name if instance.rutaDoc else None,
+        archivo_ruta=archivo_ruta_historial,
         datos_previos={
             'tipos': [t.tipoLicencia for t in instance.tipos.all()],
             'fecha_emision': instance.fechaEmision.isoformat() if instance.fechaEmision else None,
@@ -287,12 +300,25 @@ def registrar_licencia_medica(sender, instance, created, **kwargs):
 
 @receiver(pre_delete, sender=LicenciaMedicaPorPersonal)
 def registrar_eliminacion_licencia_medica(sender, instance, **kwargs):
-    """Registra cuando se elimina una licencia médica."""
+    """Registra cuando se elimina una licencia médica y mueve el archivo a eliminados."""
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
     nombre_doc = f"Licencia Médica - {instance.tipoLicenciaMedica_id.tipoLicenciaMedica if instance.tipoLicenciaMedica_id else 'N/A'}"
+    
+    # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    archivo_ruta_historial = None
+    if instance.rutaDoc and instance.rutaDoc.name:
+        from .models import mover_archivo_a_eliminados
+        archivo_ruta_historial = mover_archivo_a_eliminados(
+            instance.rutaDoc,
+            instance.personal_id.rut,
+            nombre_doc
+        )
+        # Si no se pudo mover, usar la ruta original
+        if not archivo_ruta_historial:
+            archivo_ruta_historial = instance.rutaDoc.name
     
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
@@ -301,7 +327,71 @@ def registrar_eliminacion_licencia_medica(sender, instance, **kwargs):
         nombre_documento=nombre_doc,
         descripcion=f"Licencia médica eliminada",
         usuario=usuario,
-        archivo_ruta=instance.rutaDoc.name if instance.rutaDoc else None,
+        archivo_ruta=archivo_ruta_historial,
+    )
+
+
+@receiver(post_save, sender=LicenciaInternaPorPersonal)
+def registrar_licencia_interna(sender, instance, created, **kwargs):
+    """Registra cuando se agrega o modifica una licencia interna."""
+    usuario = None
+    if hasattr(instance, '_current_user'):
+        usuario = instance._current_user
+    
+    nombre_doc = f"Licencia Interna - {instance.tipoLicenciaInterna_id.tipoLicenciaInterna if instance.tipoLicenciaInterna_id else 'N/A'}"
+    
+    if created:
+        HistorialDocumentoPersonal.registrar(
+            personal=instance.personal_id,
+            tipo_documento='LICENCIA_INTERNA',
+            accion='DOCUMENTO_AGREGADO',
+            nombre_documento=nombre_doc,
+            descripcion=f"Licencia interna agregada",
+            usuario=usuario,
+            archivo_ruta=instance.rutaDoc.name if instance.rutaDoc else None,
+        )
+    else:
+        HistorialDocumentoPersonal.registrar(
+            personal=instance.personal_id,
+            tipo_documento='LICENCIA_INTERNA',
+            accion='DOCUMENTO_MODIFICADO',
+            nombre_documento=nombre_doc,
+            descripcion=f"Licencia interna modificada",
+            usuario=usuario,
+            archivo_ruta=instance.rutaDoc.name if instance.rutaDoc else None,
+        )
+
+
+@receiver(pre_delete, sender=LicenciaInternaPorPersonal)
+def registrar_eliminacion_licencia_interna(sender, instance, **kwargs):
+    """Registra cuando se elimina una licencia interna y mueve el archivo a eliminados."""
+    usuario = None
+    if hasattr(instance, '_current_user'):
+        usuario = instance._current_user
+    
+    nombre_doc = f"Licencia Interna - {instance.tipoLicenciaInterna_id.tipoLicenciaInterna if instance.tipoLicenciaInterna_id else 'N/A'}"
+    
+    # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    archivo_ruta_historial = None
+    if instance.rutaDoc and instance.rutaDoc.name:
+        from .models import mover_archivo_a_eliminados
+        archivo_ruta_historial = mover_archivo_a_eliminados(
+            instance.rutaDoc,
+            instance.personal_id.rut,
+            nombre_doc
+        )
+        # Si no se pudo mover, usar la ruta original
+        if not archivo_ruta_historial:
+            archivo_ruta_historial = instance.rutaDoc.name
+    
+    HistorialDocumentoPersonal.registrar(
+        personal=instance.personal_id,
+        tipo_documento='LICENCIA_INTERNA',
+        accion='DOCUMENTO_ELIMINADO',
+        nombre_documento=nombre_doc,
+        descripcion=f"Licencia interna eliminada",
+        usuario=usuario,
+        archivo_ruta=archivo_ruta_historial,
     )
 
 
@@ -338,12 +428,25 @@ def registrar_certificacion(sender, instance, created, **kwargs):
 
 @receiver(pre_delete, sender=Certificacion)
 def registrar_eliminacion_certificacion(sender, instance, **kwargs):
-    """Registra cuando se elimina una certificación."""
+    """Registra cuando se elimina una certificación y mueve el archivo a eliminados."""
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
     nombre_doc = f"Certificación - {instance.tipoCertificacion_id.tipoCertificacion if instance.tipoCertificacion_id else 'N/A'}"
+    
+    # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    archivo_ruta_historial = None
+    if instance.rutaDoc and instance.rutaDoc.name:
+        from .models import mover_archivo_a_eliminados
+        archivo_ruta_historial = mover_archivo_a_eliminados(
+            instance.rutaDoc,
+            instance.personal_id.rut,
+            nombre_doc
+        )
+        # Si no se pudo mover, usar la ruta original
+        if not archivo_ruta_historial:
+            archivo_ruta_historial = instance.rutaDoc.name
     
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
@@ -352,7 +455,7 @@ def registrar_eliminacion_certificacion(sender, instance, **kwargs):
         nombre_documento=nombre_doc,
         descripcion=f"Certificación eliminada",
         usuario=usuario,
-        archivo_ruta=instance.rutaDoc.name if instance.rutaDoc else None,
+        archivo_ruta=archivo_ruta_historial,
     )
 
 
@@ -389,12 +492,25 @@ def registrar_examen(sender, instance, created, **kwargs):
 
 @receiver(pre_delete, sender=Examen)
 def registrar_eliminacion_examen(sender, instance, **kwargs):
-    """Registra cuando se elimina un examen."""
+    """Registra cuando se elimina un examen y mueve el archivo a eliminados."""
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
     nombre_doc = f"Examen - {instance.tipoEx_id.tipoExamen if instance.tipoEx_id else 'N/A'}"
+    
+    # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    archivo_ruta_historial = None
+    if instance.rutaDoc and instance.rutaDoc.name:
+        from .models import mover_archivo_a_eliminados
+        archivo_ruta_historial = mover_archivo_a_eliminados(
+            instance.rutaDoc,
+            instance.personal_id.rut,
+            nombre_doc
+        )
+        # Si no se pudo mover, usar la ruta original
+        if not archivo_ruta_historial:
+            archivo_ruta_historial = instance.rutaDoc.name
     
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
@@ -403,6 +519,6 @@ def registrar_eliminacion_examen(sender, instance, **kwargs):
         nombre_documento=nombre_doc,
         descripcion=f"Examen eliminado",
         usuario=usuario,
-        archivo_ruta=instance.rutaDoc.name if instance.rutaDoc else None,
+        archivo_ruta=archivo_ruta_historial,
     )
 

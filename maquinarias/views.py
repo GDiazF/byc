@@ -572,8 +572,18 @@ def api_subir_documento_maquinaria(request, equipo_id):
             tipo_documento_id=tipo_documento
         ).first()
         
-        # Si existe, moverlo al historial
+        # Si existe, moverlo al historial y a carpeta de eliminados
         if documento_existente:
+            # Mover archivo a carpeta de eliminados ANTES de crear el historial
+            archivo_ruta_eliminado = None
+            if documento_existente.archivo and documento_existente.archivo.name:
+                from .models import mover_archivo_a_eliminados_maquinaria
+                archivo_ruta_eliminado = mover_archivo_a_eliminados_maquinaria(
+                    documento_existente.archivo,
+                    equipo_id,
+                    tipo_documento.nombre
+                )
+            
             # Crear registro en historial
             historial = HistorialDocumentoMaquinaria(
                 equipo_id=equipo,
@@ -584,27 +594,31 @@ def api_subir_documento_maquinaria(request, equipo_id):
                 observaciones=documento_existente.observaciones
             )
             
-            # Guardar el historial primero para tener la instancia
-            historial.save()
-            
-            # Copiar el archivo al historial
-            if documento_existente.archivo:
+            # Si el archivo fue movido exitosamente, copiarlo también al historial
+            if archivo_ruta_eliminado:
                 try:
-                    # Copiar el archivo usando el método del FileField
-                    historial.archivo.save(
-                        documento_existente.archivo.name.split('/')[-1],
-                        documento_existente.archivo,
-                        save=True
-                    )
+                    historial.save()
+                    
+                    # Copiar el archivo desde la carpeta de eliminados al historial
+                    ruta_archivo_eliminado = os.path.join(settings.MEDIA_ROOT, archivo_ruta_eliminado)
+                    if os.path.exists(ruta_archivo_eliminado):
+                        with open(ruta_archivo_eliminado, 'rb') as source_file:
+                            nombre_archivo = archivo_ruta_eliminado.split('/')[-1]
+                            historial.archivo.save(nombre_archivo, source_file, save=True)
+                    else:
+                        historial.save()
                 except Exception as e:
-                    # Si falla la copia, eliminar el historial creado
-                    historial.delete()
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'Error al copiar archivo al historial: {str(e)}'
-                    }, status=500)
+                    # Si falla, crear historial sin archivo pero con la ruta en observaciones
+                    if historial.observaciones:
+                        historial.observaciones += f"\n[Archivo eliminado: {archivo_ruta_eliminado}]"
+                    else:
+                        historial.observaciones = f"[Archivo eliminado: {archivo_ruta_eliminado}]"
+                    historial.save()
+            else:
+                # Si no había archivo o no se pudo mover, crear historial sin archivo
+                historial.save()
             
-            # Eliminar el documento existente (esto también eliminará el archivo original)
+            # Eliminar el documento existente (el archivo ya fue movido, así que esto solo elimina el registro)
             documento_existente.delete()
         
         # Crear nuevo documento
@@ -634,9 +648,24 @@ def api_subir_documento_maquinaria(request, equipo_id):
 @csrf_exempt
 @require_http_methods(["DELETE"])
 def api_eliminar_documento_maquinaria(request, documento_id):
-    """API para eliminar un documento de maquinaria (lo mueve al historial)"""
+    """API para eliminar un documento de maquinaria (mueve el archivo a eliminados)"""
     try:
         documento = get_object_or_404(DocumentoMaquinaria, documento_id=documento_id)
+        
+        # Guardar información antes de eliminar
+        archivo_ruta_original = documento.archivo.name if documento.archivo else None
+        nombre_documento = documento.tipo_documento_id.nombre
+        equipo_id = documento.equipo_id.equipo_id
+        
+        # Mover archivo a carpeta de eliminados ANTES de crear el historial
+        archivo_ruta_eliminado = None
+        if documento.archivo and documento.archivo.name:
+            from .models import mover_archivo_a_eliminados_maquinaria
+            archivo_ruta_eliminado = mover_archivo_a_eliminados_maquinaria(
+                documento.archivo,
+                equipo_id,
+                nombre_documento
+            )
         
         # Crear registro en historial
         historial = HistorialDocumentoMaquinaria(
@@ -647,28 +676,41 @@ def api_eliminar_documento_maquinaria(request, documento_id):
             fecha_subida_original=documento.fecha_subida,
             observaciones=documento.observaciones
         )
-        historial.save()
         
-        # Copiar el archivo al historial
-        if documento.archivo:
+        # Si el archivo fue movido exitosamente, copiarlo también al historial
+        # (el modelo requiere un archivo, así que copiamos desde la carpeta de eliminados)
+        if archivo_ruta_eliminado:
             try:
-                # Guardar el historial primero para tener la instancia
-                historial.save()
+                from django.conf import settings
+                from django.core.files.storage import default_storage
+                import shutil
                 
-                # Copiar el archivo usando el método del FileField
-                historial.archivo.save(
-                    documento.archivo.name.split('/')[-1],
-                    documento.archivo,
-                    save=True
-                )
+                # Ruta completa del archivo eliminado
+                ruta_archivo_eliminado = os.path.join(settings.MEDIA_ROOT, archivo_ruta_eliminado)
+                
+                if os.path.exists(ruta_archivo_eliminado):
+                    # Guardar el historial primero para tener la instancia
+                    historial.save()
+                    
+                    # Copiar el archivo desde la carpeta de eliminados al historial
+                    with open(ruta_archivo_eliminado, 'rb') as source_file:
+                        nombre_archivo = archivo_ruta_eliminado.split('/')[-1]
+                        historial.archivo.save(nombre_archivo, source_file, save=True)
+                else:
+                    # Si no existe el archivo eliminado, crear historial sin archivo
+                    historial.save()
             except Exception as e:
-                historial.delete()
-                return JsonResponse({
-                    'success': False,
-                    'error': f'Error al copiar archivo al historial: {str(e)}'
-                }, status=500)
+                # Si falla, crear historial sin archivo pero con la ruta en observaciones
+                if historial.observaciones:
+                    historial.observaciones += f"\n[Archivo eliminado: {archivo_ruta_eliminado}]"
+                else:
+                    historial.observaciones = f"[Archivo eliminado: {archivo_ruta_eliminado}]"
+                historial.save()
+        else:
+            # Si no había archivo o no se pudo mover, crear historial sin archivo
+            historial.save()
         
-        # Eliminar el documento
+        # Eliminar el documento (el archivo ya fue movido, así que esto solo elimina el registro)
         documento.delete()
         
         return JsonResponse({
@@ -695,11 +737,36 @@ def api_historial_documentos_equipo(request, equipo_id):
         
         historial_data = []
         for item in historial:
+            archivo_url = None
+            archivo_nombre = None
+            
+            # Intentar obtener URL del archivo del historial
+            if item.archivo:
+                try:
+                    # Verificar si el archivo existe en la ubicación del historial
+                    if os.path.exists(item.archivo.path):
+                        archivo_url = item.archivo.url
+                        archivo_nombre = item.archivo.name.split('/')[-1]
+                    else:
+                        # Si no existe, buscar en la carpeta de eliminados
+                        # Buscar archivos que empiecen con EQUIPO_ID_nombre_documento
+                        carpeta_eliminados = os.path.join(settings.MEDIA_ROOT, 'Documentacion_Eliminada_Maquinarias', str(equipo_id))
+                        if os.path.exists(carpeta_eliminados):
+                            nombre_buscar = f"{equipo_id}_{item.tipo_documento_nombre.lower().replace(' ', '_')}"
+                            for archivo in os.listdir(carpeta_eliminados):
+                                if archivo.startswith(nombre_buscar):
+                                    ruta_relativa = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), archivo)
+                                    archivo_url = os.path.join(settings.MEDIA_URL.rstrip('/'), ruta_relativa).replace('\\', '/')
+                                    archivo_nombre = archivo
+                                    break
+                except Exception:
+                    pass
+            
             historial_data.append({
                 'id': item.historial_id,
                 'tipo_documento_nombre': item.tipo_documento_nombre,
-                'archivo_url': item.archivo.url if item.archivo else None,
-                'archivo_nombre': item.archivo.name.split('/')[-1] if item.archivo else None,
+                'archivo_url': archivo_url,
+                'archivo_nombre': archivo_nombre,
                 'fecha_vencimiento': item.fecha_vencimiento.isoformat() if item.fecha_vencimiento else None,
                 'fecha_subida_original': item.fecha_subida_original.isoformat() if item.fecha_subida_original else None,
                 'fecha_reemplazo': item.fecha_reemplazo.isoformat(),

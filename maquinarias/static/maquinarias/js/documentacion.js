@@ -106,13 +106,13 @@ function cargarDocumentos() {
                 renderizarDocumentos(data.documentos);
             } else {
                 mostrarError('Error al cargar documentos: ' + (data.error || 'Error desconocido'));
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Error al cargar documentos</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Error al cargar documentos</td></tr>';
             }
         })
         .catch(error => {
             console.error('Error:', error);
             mostrarError('Error al cargar documentos');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Error al cargar documentos</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Error al cargar documentos</td></tr>';
         });
 }
 
@@ -123,7 +123,7 @@ function renderizarDocumentos(documentos) {
     if (documentos.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4 text-muted">
+                <td colspan="5" class="text-center py-4 text-muted">
                     <i class="bi bi-folder-x fs-1"></i>
                     <p class="mt-2">No hay documentos registrados</p>
                 </td>
@@ -143,9 +143,6 @@ function renderizarDocumentos(documentos) {
         html += `
             <tr>
                 <td>${escapeHtml(doc.tipo_documento_nombre)}</td>
-                <td>
-                    ${doc.archivo_nombre ? escapeHtml(doc.archivo_nombre) : 'Sin archivo'}
-                </td>
                 <td>${fechaVencimiento}</td>
                 <td class="text-center">${estadoBadge}</td>
                 <td>${fechaSubida}</td>
@@ -314,13 +311,13 @@ function cargarHistorial() {
                 renderizarHistorial(data.historial);
             } else {
                 mostrarError('Error al cargar historial: ' + (data.error || 'Error desconocido'));
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Error al cargar historial</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Error al cargar historial</td></tr>';
             }
         })
         .catch(error => {
             console.error('Error:', error);
             mostrarError('Error al cargar historial');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Error al cargar historial</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Error al cargar historial</td></tr>';
         });
 }
 
@@ -331,7 +328,7 @@ function renderizarHistorial(historial) {
     if (historial.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4 text-muted">
+                <td colspan="5" class="text-center py-4 text-muted">
                     <i class="bi bi-folder-x fs-1"></i>
                     <p class="mt-2">No hay documentos en el historial</p>
                 </td>
@@ -353,9 +350,6 @@ function renderizarHistorial(historial) {
         html += `
             <tr>
                 <td>${escapeHtml(item.tipo_documento_nombre)}</td>
-                <td>
-                    ${item.archivo_nombre ? escapeHtml(item.archivo_nombre) : 'Sin archivo'}
-                </td>
                 <td>${fechaVencimiento}</td>
                 <td>${fechaSubidaOriginal}</td>
                 <td>${fechaReemplazo}</td>
@@ -385,7 +379,7 @@ function formatearFechaChilena(fechaISO) {
     const mes = String(fecha.getMonth() + 1).padStart(2, '0');
     const año = fecha.getFullYear();
     
-    return `${dia}-${mes}-${año}`;
+    return `${dia}/${mes}/${año}`;
 }
 
 function escapeHtml(text) {

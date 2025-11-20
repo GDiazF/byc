@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'main_home',
     'maquinarias',
     'gen_settings',
+    'reportes_auditoria',
     # 'storages',  # Solo para producción con S3
     'django.contrib.admin',
     'django.contrib.auth',

@@ -521,6 +521,10 @@ async function submitForm(form, type) {
                     console.log('[SUBMIT] Agregando nueva fila...'); // DEBUG
                     addRowToTable(type, data.data);
                 }
+                // Recargar historial si está disponible
+                if (typeof recargarHistorialDocumentos === 'function') {
+                    recargarHistorialDocumentos();
+                }
             } else {
                 if (data.errors) {
                     handleFormErrors(form, data.errors);
@@ -1045,6 +1049,10 @@ async function deleteDocument(type, id, confirmModal) {
                 showNotification('Éxito', data.message, 'success-no-reload');
                 // Eliminar la fila dinámicamente
                 removeRowById(type, id);
+                // Recargar historial si está disponible
+                if (typeof recargarHistorialDocumentos === 'function') {
+                    recargarHistorialDocumentos();
+                }
             } else {
                 showNotification('Error', data.message || 'Error al eliminar', 'error');
             }
@@ -1406,6 +1414,10 @@ async function uploadCarnetDocument(form) {
                 showNotification('Éxito', data.message, 'success-no-reload');
                 // Actualizar la tabla dinámicamente con la URL del servidor
                 updateDocumentRow(documentField, data.document_url);
+                // Recargar historial si está disponible
+                if (typeof recargarHistorialDocumentos === 'function') {
+                    recargarHistorialDocumentos();
+                }
             } else {
                 showNotification('Error', data.message || 'Error al subir el carnet', 'error');
             }
@@ -1446,6 +1458,10 @@ async function uploadPersonalDocument(form) {
                 showNotification('Éxito', data.message, 'success-no-reload');
                 // Actualizar la tabla dinámicamente con la URL del servidor
                 updateDocumentRow(documentField, data.document_url);
+                // Recargar historial si está disponible
+                if (typeof recargarHistorialDocumentos === 'function') {
+                    recargarHistorialDocumentos();
+                }
             } else {
                 showNotification('Error', data.message || 'Error al subir el documento', 'error');
             }
@@ -1570,6 +1586,10 @@ async function deletePersonalDocument(fieldName) {
                     showNotification('Éxito', data.message, 'success-no-reload');
                     // Actualizar la tabla dinámicamente eliminando el documento
                     removeDocumentFromRow(fieldName);
+                    // Recargar historial si está disponible
+                    if (typeof recargarHistorialDocumentos === 'function') {
+                        recargarHistorialDocumentos();
+                    }
                 } else {
                     showNotification('Error', data.message, 'error');
                 }

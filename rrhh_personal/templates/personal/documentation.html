@@ -17,8 +17,10 @@ window.DELETE_INTERNAL_LICENSE_URL = '{% url "delete_internal_license" 0 %}';
 window.DELETE_EXAM_URL = '{% url "delete_exam" 0 %}';
 window.DELETE_CERTIFICATION_URL = '{% url "delete_certification" personal.personal_id 0 %}';
 window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" personal.personal_id %}';
+window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" personal.personal_id %}';
 </script>
 <script src="{% static 'js/documentation.js' %}?v=29.0"></script>
+<script src="{% static 'js/historial_documentos_personal.js' %}?v=1.0"></script>
 {% endblock %}
 
 {% block content %}
@@ -399,6 +401,41 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Historial de Documentos Personales -->
+                <div class="form-section mt-4">
+                    <div class="form-section-header">
+                        <i class="bi bi-clock-history me-2"></i>
+                        <span>Historial de Documentos Personales</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-auto" id="btnToggleHistorialPersonal">
+                            <i class="bi bi-chevron-down me-1"></i>Mostrar Historial
+                        </button>
+                    </div>
+                    <div class="form-section-body" id="historialPersonalContainer" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered rrhh-table" id="tablaHistorialPersonal">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 18%;">Tipo de Documento</th>
+                                        <th style="width: 12%;">Acción</th>
+                                        <th style="width: 18%;">Fecha y Hora</th>
+                                        <th style="width: 12%;">Usuario</th>
+                                        <th style="width: 25%;">Descripción</th>
+                                        <th style="width: 15%;" class="text-center">Archivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historialPersonalTbody">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="bi bi-hourglass-split fs-1"></i>
+                                            <p class="mt-2">Cargando historial...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Licencias Tab -->
@@ -465,6 +502,41 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Historial de Licencias -->
+                <div class="form-section mt-4">
+                    <div class="form-section-header">
+                        <i class="bi bi-clock-history me-2"></i>
+                        <span>Historial de Licencias</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-auto" id="btnToggleHistorialLicencias">
+                            <i class="bi bi-chevron-down me-1"></i>Mostrar Historial
+                        </button>
+                    </div>
+                    <div class="form-section-body" id="historialLicenciasContainer" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered rrhh-table" id="tablaHistorialLicencias">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 18%;">Tipo de Documento</th>
+                                        <th style="width: 12%;">Acción</th>
+                                        <th style="width: 18%;">Fecha y Hora</th>
+                                        <th style="width: 12%;">Usuario</th>
+                                        <th style="width: 25%;">Descripción</th>
+                                        <th style="width: 15%;" class="text-center">Archivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historialLicenciasTbody">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="bi bi-hourglass-split fs-1"></i>
+                                            <p class="mt-2">Cargando historial...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Licencias Internas Tab -->
@@ -530,6 +602,41 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Historial de Licencias Internas -->
+                <div class="form-section mt-4">
+                    <div class="form-section-header">
+                        <i class="bi bi-clock-history me-2"></i>
+                        <span>Historial de Licencias Internas</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-auto" id="btnToggleHistorialLicenciasInternas">
+                            <i class="bi bi-chevron-down me-1"></i>Mostrar Historial
+                        </button>
+                    </div>
+                    <div class="form-section-body" id="historialLicenciasInternasContainer" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered rrhh-table" id="tablaHistorialLicenciasInternas">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 18%;">Tipo de Documento</th>
+                                        <th style="width: 12%;">Acción</th>
+                                        <th style="width: 18%;">Fecha y Hora</th>
+                                        <th style="width: 12%;">Usuario</th>
+                                        <th style="width: 25%;">Descripción</th>
+                                        <th style="width: 15%;" class="text-center">Archivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historialLicenciasInternasTbody">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="bi bi-hourglass-split fs-1"></i>
+                                            <p class="mt-2">Cargando historial...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Certificaciones Tab -->
@@ -594,6 +701,41 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- Historial de Certificaciones -->
+                <div class="form-section mt-4">
+                    <div class="form-section-header">
+                        <i class="bi bi-clock-history me-2"></i>
+                        <span>Historial de Certificaciones</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-auto" id="btnToggleHistorialCertificaciones">
+                            <i class="bi bi-chevron-down me-1"></i>Mostrar Historial
+                        </button>
+                    </div>
+                    <div class="form-section-body" id="historialCertificacionesContainer" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered rrhh-table" id="tablaHistorialCertificaciones">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 18%;">Tipo de Documento</th>
+                                        <th style="width: 12%;">Acción</th>
+                                        <th style="width: 18%;">Fecha y Hora</th>
+                                        <th style="width: 12%;">Usuario</th>
+                                        <th style="width: 25%;">Descripción</th>
+                                        <th style="width: 15%;" class="text-center">Archivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historialCertificacionesTbody">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="bi bi-hourglass-split fs-1"></i>
+                                            <p class="mt-2">Cargando historial...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -669,6 +811,41 @@ window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" persona
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- Historial de Exámenes -->
+                <div class="form-section mt-4">
+                    <div class="form-section-header">
+                        <i class="bi bi-clock-history me-2"></i>
+                        <span>Historial de Exámenes</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-auto" id="btnToggleHistorialExamenes">
+                            <i class="bi bi-chevron-down me-1"></i>Mostrar Historial
+                        </button>
+                    </div>
+                    <div class="form-section-body" id="historialExamenesContainer" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered rrhh-table" id="tablaHistorialExamenes">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 18%;">Tipo de Documento</th>
+                                        <th style="width: 12%;">Acción</th>
+                                        <th style="width: 18%;">Fecha y Hora</th>
+                                        <th style="width: 12%;">Usuario</th>
+                                        <th style="width: 25%;">Descripción</th>
+                                        <th style="width: 15%;" class="text-center">Archivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historialExamenesTbody">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="bi bi-hourglass-split fs-1"></i>
+                                            <p class="mt-2">Cargando historial...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -44,6 +44,72 @@ def obtener_nombre_completo_usuario(usuario):
     
     return usuario.username if usuario.username else 'Sistema'
 
+def obtener_url_archivo_historial(evento, personal):
+    """Obtiene la URL del archivo del historial si existe"""
+    if not evento.archivo_ruta:
+        return None
+    
+    try:
+        from django.conf import settings
+        
+        # Si el archivo está en la carpeta de eliminados, construir URL directamente
+        if evento.archivo_ruta.startswith('Documentacion_Eliminada/'):
+            ruta_completa = os.path.join(settings.MEDIA_ROOT, evento.archivo_ruta)
+            if os.path.exists(ruta_completa):
+                # Construir URL relativa desde MEDIA_URL
+                url_relativa = evento.archivo_ruta.replace('\\', '/')
+                return os.path.join(settings.MEDIA_URL.rstrip('/'), url_relativa).replace('\\', '/')
+        
+        # Para documentos personales, verificar si está en el campo actual
+        if evento.campo_documento:
+            campo_actual = getattr(personal, evento.campo_documento, None)
+            if campo_actual and campo_actual.name == evento.archivo_ruta:
+                return campo_actual.url
+        
+        # Para otros tipos de documentos (licencias, certificaciones, exámenes)
+        # Buscar en los modelos correspondientes usando archivo_ruta
+        if evento.tipo_documento == 'LICENCIA_CONDUCIR':
+            from .models import LicenciaPorPersonal
+            licencia = LicenciaPorPersonal.objects.filter(
+                personal_id=personal,
+                rutaDoc__isnull=False
+            ).exclude(rutaDoc='').first()
+            if licencia and licencia.rutaDoc.name == evento.archivo_ruta:
+                return licencia.rutaDoc.url
+        
+        elif evento.tipo_documento == 'LICENCIA_INTERNA':
+            from .models import LicenciaInternaPorPersonal
+            licencia = LicenciaInternaPorPersonal.objects.filter(
+                personal_id=personal,
+                rutaDoc__isnull=False
+            ).exclude(rutaDoc='').first()
+            if licencia and licencia.rutaDoc.name == evento.archivo_ruta:
+                return licencia.rutaDoc.url
+        
+        elif evento.tipo_documento == 'CERTIFICACION':
+            from .models import Certificacion
+            cert = Certificacion.objects.filter(
+                personal_id=personal,
+                rutaDoc__isnull=False
+            ).exclude(rutaDoc='').first()
+            if cert and cert.rutaDoc.name == evento.archivo_ruta:
+                return cert.rutaDoc.url
+        
+        elif evento.tipo_documento == 'EXAMEN':
+            from .models import Examen
+            examen = Examen.objects.filter(
+                personal_id=personal,
+                rutaDoc__isnull=False
+            ).exclude(rutaDoc='').first()
+            if examen and examen.rutaDoc.name == evento.archivo_ruta:
+                return examen.rutaDoc.url
+        
+        # Si no se encuentra, el archivo fue eliminado o reemplazado
+        return None
+    except Exception as e:
+        print(f"Error en obtener_url_archivo_historial: {str(e)}")
+        return None
+
 #vista para tabla de personal
 class PersonalListView(ListView, LoginRequiredMixin):
     model = Personal
@@ -312,6 +378,7 @@ def add_license(request, personal_id):
                 
                 licencia = form.save(commit=False)
                 licencia.personal_id = personal
+                licencia._current_user = request.user
                 licencia.save()
                 form.save_m2m()  # Importante: guardar las relaciones many-to-many
                 
@@ -376,6 +443,7 @@ def add_exam(request, personal_id):
                 
                 examen = form.save(commit=False)
                 examen.personal_id = personal
+                examen._current_user = request.user
                 examen.save()
                 
                 return JsonResponse({
@@ -417,6 +485,7 @@ def delete_exam(request, exam_id):
     if request.method == 'DELETE':
         try:
             exam = get_object_or_404(Examen, examen_id=exam_id)
+            exam._current_user = request.user
             exam.delete()
             return JsonResponse({'status': 'success', 'message': 'Examen eliminado exitosamente'})
         except Exception as e:
@@ -461,6 +530,7 @@ def add_internal_license(request, personal_id):
             if form.is_valid():
                 licencia = form.save(commit=False)
                 licencia.personal_id = personal
+                licencia._current_user = request.user
                 licencia.save()
                 
                 return JsonResponse({
@@ -563,6 +633,7 @@ def edit_internal_license(request, license_id):
                     license.fechaEmision = form.cleaned_data['fechaEmision']
                     license.fechaVencimiento = form.cleaned_data['fechaVencimiento']
                     license.observacion = form.cleaned_data['observacion']
+                    license._current_user = request.user
                     license.save()
                     
                     return JsonResponse({
@@ -591,7 +662,9 @@ def edit_internal_license(request, license_id):
                 form = LicenciasInternasPersonal(form_data, form_files, instance=license)
                 
                 if form.is_valid():
-                    license = form.save()
+                    license = form.save(commit=False)
+                    license._current_user = request.user
+                    license.save()
                     return JsonResponse({
                         'status': 'success',
                         'message': 'Licencia interna actualizada exitosamente',
@@ -676,12 +749,60 @@ def upload_personal_document(request, personal_id):
                     'message': 'Campo de documento inválido'
                 }, status=400)
             
+            # Verificar si ya existe un documento (para saber si es nuevo o reemplazo)
+            documento_anterior = getattr(personal, document_field)
+            archivo_anterior_ruta = documento_anterior.name if documento_anterior else None
+            
             # Guardar el documento
             setattr(personal, document_field, document_file)
             personal.save()
             
             # Obtener la URL del documento guardado
             document_url = getattr(personal, document_field).url if getattr(personal, document_field) else None
+            
+            # Registrar en historial
+            nombres_documentos = {
+                'curriculum': 'Curriculum Vitae',
+                'certificado_antecedentes': 'Certificado de Antecedentes',
+                'hoja_vida_conductor': 'Hoja de Vida del Conductor',
+                'foto_carnet': 'Foto Carnet',
+                'certificado_afp': 'Certificado AFP',
+                'certificado_salud': 'Certificado de Salud',
+                'certificado_estudios': 'Certificado de Estudios',
+                'certificado_residencia': 'Certificado de Residencia',
+                'fotocopia_carnet': 'Fotocopia Carnet',
+                'fotocopia_finiquito': 'Fotocopia Finiquito',
+                'comprobante_banco': 'Comprobante Banco'
+            }
+            nombre_doc = nombres_documentos.get(document_field, document_field)
+            
+            if archivo_anterior_ruta:
+                # Es un reemplazo
+                HistorialDocumentoPersonal.registrar(
+                    personal=personal,
+                    tipo_documento='DOCUMENTO_PERSONAL',
+                    accion='DOCUMENTO_REEMPLAZADO',
+                    nombre_documento=nombre_doc,
+                    descripcion=f"Documento {nombre_doc} reemplazado",
+                    usuario=request.user,
+                    campo_documento=document_field,
+                    archivo_ruta=document_file.name,
+                    datos_previos={'archivo_anterior': archivo_anterior_ruta},
+                    datos_nuevos={'archivo_nuevo': document_file.name}
+                )
+            else:
+                # Es nuevo
+                HistorialDocumentoPersonal.registrar(
+                    personal=personal,
+                    tipo_documento='DOCUMENTO_PERSONAL',
+                    accion='DOCUMENTO_AGREGADO',
+                    nombre_documento=nombre_doc,
+                    descripcion=f"Documento {nombre_doc} agregado",
+                    usuario=request.user,
+                    campo_documento=document_field,
+                    archivo_ruta=document_file.name,
+                    datos_nuevos={'archivo': document_file.name}
+                )
             
             return JsonResponse({
                 'status': 'success',
@@ -729,6 +850,9 @@ def upload_carnet_document(request, personal_id):
                     'message': 'La fecha de vencimiento es obligatoria'
                 }, status=400)
             
+            # Verificar si ya existe un documento (para saber si es nuevo o reemplazo)
+            archivo_anterior_ruta = personal.fotocopia_carnet.name if personal.fotocopia_carnet else None
+            
             # Guardar el archivo del carnet
             personal.fotocopia_carnet = carnet_file
             
@@ -746,6 +870,36 @@ def upload_carnet_document(request, personal_id):
             
             # Obtener la URL del documento guardado
             document_url = personal.fotocopia_carnet.url if personal.fotocopia_carnet else None
+            
+            # Registrar en historial
+            from .models import HistorialDocumentoPersonal
+            if archivo_anterior_ruta:
+                # Es un reemplazo
+                HistorialDocumentoPersonal.registrar(
+                    personal=personal,
+                    tipo_documento='DOCUMENTO_PERSONAL',
+                    accion='DOCUMENTO_REEMPLAZADO',
+                    nombre_documento='Fotocopia Carnet',
+                    descripcion=f"Fotocopia Carnet reemplazada. Fecha de vencimiento: {fecha_vencimiento}",
+                    usuario=request.user,
+                    campo_documento='fotocopia_carnet',
+                    archivo_ruta=carnet_file.name,
+                    datos_previos={'archivo_anterior': archivo_anterior_ruta},
+                    datos_nuevos={'archivo_nuevo': carnet_file.name, 'fecha_vencimiento': fecha_vencimiento}
+                )
+            else:
+                # Es nuevo
+                HistorialDocumentoPersonal.registrar(
+                    personal=personal,
+                    tipo_documento='DOCUMENTO_PERSONAL',
+                    accion='DOCUMENTO_AGREGADO',
+                    nombre_documento='Fotocopia Carnet',
+                    descripcion=f"Fotocopia Carnet agregada. Fecha de vencimiento: {fecha_vencimiento}",
+                    usuario=request.user,
+                    campo_documento='fotocopia_carnet',
+                    archivo_ruta=carnet_file.name,
+                    datos_nuevos={'archivo': carnet_file.name, 'fecha_vencimiento': fecha_vencimiento}
+                )
             
             return JsonResponse({
                 'status': 'success',
@@ -795,10 +949,36 @@ def delete_personal_document(request, personal_id):
                     'message': 'Campo de documento inválido'
                 }, status=400)
             
-            # Eliminar el archivo físico y limpiar el campo
+            # Mover el archivo a carpeta de eliminados en lugar de eliminarlo
             field = getattr(personal, document_field)
             if field:
-                field.delete(save=False)
+                archivo_ruta_original = field.name  # Guardar ruta original
+                
+                # Nombres de documentos para la carpeta de eliminados
+                nombres_documentos = {
+                    'curriculum': 'Curriculum Vitae',
+                    'certificado_antecedentes': 'Certificado de Antecedentes',
+                    'hoja_vida_conductor': 'Hoja de Vida del Conductor',
+                    'foto_carnet': 'Foto Carnet',
+                    'certificado_afp': 'Certificado AFP',
+                    'certificado_salud': 'Certificado de Salud',
+                    'certificado_estudios': 'Certificado de Estudios',
+                    'certificado_residencia': 'Certificado de Residencia',
+                    'fotocopia_carnet': 'Fotocopia Carnet',
+                    'fotocopia_finiquito': 'Fotocopia Finiquito',
+                    'comprobante_banco': 'Comprobante Banco'
+                }
+                nombre_doc = nombres_documentos.get(document_field, document_field)
+                
+                # Mover archivo a carpeta de eliminados
+                from .models import mover_archivo_a_eliminados
+                archivo_ruta_eliminado = mover_archivo_a_eliminados(
+                    field, 
+                    personal.rut, 
+                    nombre_doc
+                )
+                
+                # Limpiar el campo del modelo
                 setattr(personal, document_field, None)
                 
                 # Si es el carnet, también eliminar la fecha de vencimiento
@@ -806,6 +986,22 @@ def delete_personal_document(request, personal_id):
                     personal.fecha_vencimiento_carnet = None
                 
                 personal.save()
+                
+                # Registrar en historial con la nueva ruta del archivo eliminado
+                from .models import HistorialDocumentoPersonal
+                archivo_ruta_historial = archivo_ruta_eliminado if archivo_ruta_eliminado else archivo_ruta_original
+                
+                HistorialDocumentoPersonal.registrar(
+                    personal=personal,
+                    tipo_documento='DOCUMENTO_PERSONAL',
+                    accion='DOCUMENTO_ELIMINADO',
+                    nombre_documento=nombre_doc,
+                    descripcion=f"Documento {nombre_doc} eliminado",
+                    usuario=request.user,
+                    campo_documento=document_field,
+                    archivo_ruta=archivo_ruta_historial,
+                    datos_previos={'archivo': archivo_ruta_original, 'archivo_eliminado': archivo_ruta_historial}
+                )
                 
                 return JsonResponse({
                     'status': 'success',
@@ -879,6 +1075,7 @@ def save_certification(request, pk):
         if form.is_valid():
             certification = form.save(commit=False)
             certification.personal_id = personal
+            certification._current_user = request.user
             certification.save()
             
             return JsonResponse({
@@ -912,6 +1109,7 @@ def save_certification(request, pk):
 def delete_certification(request, pk, certification_id):
     try:
         certification = get_object_or_404(Certificacion, certif_id=certification_id, personal_id__personal_id=pk)
+        certification._current_user = request.user
         certification.delete()
         return JsonResponse({
             'status': 'success',
@@ -1218,6 +1416,7 @@ def edit_license(request, license_id):
                     license.fechaEmision = form.cleaned_data['fechaEmision']
                     license.fechaVencimiento = form.cleaned_data['fechaVencimiento']
                     license.tipos.set(form.cleaned_data['tipos'])
+                    license._current_user = request.user
                     license.save()
                     
                     # Obtener las clases de licencia
@@ -1247,7 +1446,9 @@ def edit_license(request, license_id):
                 form = LicenciasPersonal(form_data, form_files, instance=license)
                 
                 if form.is_valid():
-                    license = form.save()
+                    license = form.save(commit=False)
+                    license._current_user = request.user
+                    license.save()
                     
                     # Obtener las clases de licencia
                     clase = ', '.join([tipo.tipoLicencia for tipo in license.tipos.all()])
@@ -1341,6 +1542,7 @@ def edit_certification(request, cert_id):
                     cert.proveedor_id = form.cleaned_data['proveedor_id']
                     cert.fechaEmision = form.cleaned_data['fechaEmision']
                     cert.fechaVencimiento = form.cleaned_data['fechaVencimiento']
+                    cert._current_user = request.user
                     cert.save()
                     
                     return JsonResponse({
@@ -1367,7 +1569,9 @@ def edit_certification(request, cert_id):
                 form = CertificacionPersonal(form_data, form_files, instance=cert)
                 
                 if form.is_valid():
-                    cert = form.save()
+                    cert = form.save(commit=False)
+                    cert._current_user = request.user
+                    cert.save()
                     
                     return JsonResponse({
                         'status': 'success',
@@ -1460,6 +1664,7 @@ def edit_exam(request, exam_id):
                     exam.proveedor_id = form.cleaned_data['proveedor_id']
                     exam.fechaEmision = form.cleaned_data['fechaEmision']
                     exam.fechaVencimiento = form.cleaned_data['fechaVencimiento']
+                    exam._current_user = request.user
                     exam.save()
                     
                     return JsonResponse({
@@ -1487,7 +1692,9 @@ def edit_exam(request, exam_id):
                 form = ExamenPersonal(form_data, form_files, instance=exam)
                 
                 if form.is_valid():
-                    exam = form.save()
+                    exam = form.save(commit=False)
+                    exam._current_user = request.user
+                    exam.save()
                     
                     return JsonResponse({
                         'status': 'success',
@@ -1655,6 +1862,7 @@ def api_historial_documentos_personal(request, personal_id):
                 'nombre_documento': evento.nombre_documento,
                 'campo_documento': evento.campo_documento,
                 'archivo_ruta': evento.archivo_ruta,
+                'archivo_url': obtener_url_archivo_historial(evento, personal),
                 'descripcion': evento.descripcion,
                 'datos_previos': evento.datos_previos,
                 'datos_nuevos': evento.datos_nuevos

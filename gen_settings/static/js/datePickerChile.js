@@ -5,9 +5,9 @@
 // para usar en todo el proyecto sin dependencias externas.
 
 /**
- * Convierte una fecha ISO (YYYY-MM-DD) a formato chileno (DD-MM-YYYY)
+ * Convierte una fecha ISO (YYYY-MM-DD) a formato chileno (DD/MM/YYYY)
  * @param {string} fechaISO - Fecha en formato YYYY-MM-DD
- * @returns {string} Fecha en formato DD-MM-YYYY
+ * @returns {string} Fecha en formato DD/MM/YYYY
  */
 function convertirFechaISOAChileno(fechaISO) {
     if (!fechaISO) return '';
@@ -16,18 +16,19 @@ function convertirFechaISOAChileno(fechaISO) {
     if (partes.length !== 3) return '';
     
     const [anio, mes, dia] = partes;
-    return `${dia.padStart(2, '0')}-${mes.padStart(2, '0')}-${anio}`;
+    return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${anio}`;
 }
 
 /**
- * Convierte una fecha chilena (DD-MM-YYYY) a formato ISO (YYYY-MM-DD)
- * @param {string} fechaChilena - Fecha en formato DD-MM-YYYY
+ * Convierte una fecha chilena (DD/MM/YYYY o DD-MM-YYYY) a formato ISO (YYYY-MM-DD)
+ * @param {string} fechaChilena - Fecha en formato DD/MM/YYYY o DD-MM-YYYY
  * @returns {string} Fecha en formato YYYY-MM-DD
  */
 function convertirFechaChilenoAISO(fechaChilena) {
     if (!fechaChilena) return '';
     
-    const partes = fechaChilena.split('-');
+    // Normalizar separador (aceptar tanto / como -)
+    const partes = fechaChilena.split(/[-\/]/);
     if (partes.length !== 3) return '';
     
     const [dia, mes, anio] = partes;
@@ -49,7 +50,7 @@ function convertirADatePickerChile(inputOriginal) {
     const name = inputOriginal.name || id;
     const required = inputOriginal.required;
     const value = inputOriginal.value;
-    const placeholder = inputOriginal.placeholder || 'DD-MM-YYYY';
+    const placeholder = inputOriginal.placeholder || 'DD/MM/YYYY';
     const className = inputOriginal.className;
     
     // Detectar el tamaño del input original
@@ -63,7 +64,7 @@ function convertirADatePickerChile(inputOriginal) {
     if (isLarge) inputGroupClass += ' input-group-lg';
     contenedor.className = inputGroupClass;
     
-    // Input de display (visible, formato chileno, readonly)
+    // Input de display (visible, formato chileno, editable manualmente)
     const inputDisplay = document.createElement('input');
     inputDisplay.type = 'text';
     inputDisplay.className = className;
@@ -71,7 +72,7 @@ function convertirADatePickerChile(inputOriginal) {
     inputDisplay.placeholder = placeholder;
     inputDisplay.maxLength = 10;
     inputDisplay.required = required;
-    inputDisplay.readOnly = true;
+    inputDisplay.readOnly = false; // Permitir entrada manual
     
     // Botón de calendario con el tamaño apropiado
     const botonCalendario = document.createElement('button');
@@ -132,9 +133,74 @@ function convertirADatePickerChile(inputOriginal) {
         inputHidden.showPicker();
     });
     
-    // Evento: hacer clic en el display también abre el calendario
-    inputDisplay.addEventListener('click', function() {
+    // Evento: hacer doble clic en el display abre el calendario (opcional)
+    // Esto permite escribir manualmente con un solo clic, pero abrir el calendario con doble clic
+    inputDisplay.addEventListener('dblclick', function(e) {
+        e.preventDefault();
         inputHidden.showPicker();
+    });
+    
+    // Evento: validar entrada manual en el display
+    inputDisplay.addEventListener('blur', function() {
+        const valor = this.value.trim();
+        
+        // Si está vacío, limpiar todo
+        if (!valor) {
+            inputHidden.value = '';
+            inputReal.value = '';
+            return;
+        }
+        
+        // Validar formato DD-MM-YYYY o DD/MM/YYYY
+        const formatoValido = /^(\d{2})[-/](\d{2})[-/](\d{4})$/.test(valor);
+        
+        if (formatoValido) {
+            // Normalizar separador a guión
+            const valorNormalizado = valor.replace(/\//g, '-');
+            const partes = valorNormalizado.split('-');
+            const dia = parseInt(partes[0], 10);
+            const mes = parseInt(partes[1], 10);
+            const anio = parseInt(partes[2], 10);
+            
+            // Validar rango de fechas
+            if (dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12 && anio >= 1900 && anio <= 2100) {
+                // Convertir a ISO
+                const fechaISO = `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+                
+                // Validar que la fecha sea válida (ej: no 31/02)
+                const fecha = new Date(fechaISO + 'T00:00:00');
+                if (fecha.getFullYear() === anio && fecha.getMonth() + 1 === mes && fecha.getDate() === dia) {
+                    inputHidden.value = fechaISO;
+                    inputDisplay.value = convertirFechaISOAChileno(fechaISO);
+                    inputReal.value = fechaISO;
+                    
+                    // Disparar evento change
+                    const event = new Event('change', { bubbles: true });
+                    inputReal.dispatchEvent(event);
+                } else {
+                    // Fecha inválida, restaurar valor anterior
+                    if (inputReal.value) {
+                        inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
+                    }
+                }
+            } else {
+                // Valores fuera de rango, restaurar valor anterior
+                if (inputReal.value) {
+                    inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
+                }
+            }
+        } else {
+            // Formato inválido, restaurar valor anterior
+            if (inputReal.value) {
+                inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
+            }
+        }
+    });
+    
+    // Permitir solo números y guiones/barras mientras se escribe
+    inputDisplay.addEventListener('input', function(e) {
+        // Permitir solo números, guiones y barras
+        this.value = this.value.replace(/[^\d\/-]/g, '');
     });
     
     // Construir la estructura
