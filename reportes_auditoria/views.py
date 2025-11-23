@@ -51,6 +51,13 @@ def api_auditoria(request):
         accion = request.GET.get('accion', None)
         busqueda = request.GET.get('busqueda', '').strip()
         
+        # Convertir usuario_id a int si existe
+        if usuario_id:
+            try:
+                usuario_id = int(usuario_id)
+            except (ValueError, TypeError):
+                usuario_id = None
+        
         # Lista para consolidar todos los eventos
         eventos = []
         
@@ -190,7 +197,7 @@ def api_auditoria(request):
                     'id': f"FAENA_{evento.id}",
                     'tipo_entidad': 'FAENA',
                     'tipo_entidad_display': 'Faena',
-                    'entidad_id': evento.faena.faena_id,
+                    'entidad_id': evento.faena.id,
                     'entidad_nombre': evento.faena.nombre,
                     'entidad_info': f"Fechas: {evento.faena.fecha_inicio.strftime('%d/%m/%Y')} - {evento.faena.fecha_fin.strftime('%d/%m/%Y') if evento.faena.fecha_fin else 'Indefinido'}",
                     'fecha_hora': evento.fecha_hora,
@@ -242,7 +249,31 @@ def api_auditoria(request):
         # Ordenar por fecha_hora descendente
         eventos.sort(key=lambda x: x['fecha_hora'], reverse=True)
         
-        # Paginación
+        # Si per_page es muy grande (exportación), devolver todos sin paginación
+        if per_page >= 10000:
+            # Formatear fechas para el frontend
+            eventos_data = []
+            for evento in eventos:
+                eventos_data.append({
+                    **evento,
+                    'fecha_hora': evento['fecha_hora'].strftime('%Y-%m-%d %H:%M:%S'),
+                    'fecha_hora_formateada': evento['fecha_hora'].strftime('%d/%m/%Y %H:%M'),
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'eventos': eventos_data,
+                'pagination': {
+                    'page': 1,
+                    'per_page': len(eventos_data),
+                    'total': len(eventos_data),
+                    'pages': 1,
+                    'has_next': False,
+                    'has_previous': False,
+                }
+            })
+        
+        # Paginación normal
         paginator = Paginator(eventos, per_page)
         page_obj = paginator.get_page(page)
         

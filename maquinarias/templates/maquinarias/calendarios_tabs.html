@@ -229,9 +229,13 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <select class="form-select form-select-sm" id="estadoFilterMaquinarias">
-                            <option value="">Estado OT: Todos</option>
-                            <!-- Se llenará dinámicamente -->
+                        <select class="form-select form-select-sm" id="faenaFilterMaquinarias">
+                            <option value="">Faena: Todas</option>
+                            {% for faena in faenas %}
+                            <option value="{{ faena.nombre }}">
+                                {{ faena.nombre }}
+                            </option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="col-md-2 text-end">

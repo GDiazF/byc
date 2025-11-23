@@ -122,11 +122,11 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <select class="form-select form-select-sm" id="estadoFilterMaquinarias">
-                    <option value="">Estado OT: Todos</option>
-                    {% for estado in estados_ot %}
-                    <option value="{{ estado.nombre }}" {% if request.GET.estado == estado.nombre %}selected{% endif %}>
-                        {{ estado.nombre }}
+                <select class="form-select form-select-sm" id="faenaFilterMaquinarias">
+                    <option value="">Faena: Todas</option>
+                    {% for faena in faenas %}
+                    <option value="{{ faena.nombre }}" {% if request.GET.faena == faena.nombre %}selected{% endif %}>
+                        {{ faena.nombre }}
                     </option>
                     {% endfor %}
                 </select>

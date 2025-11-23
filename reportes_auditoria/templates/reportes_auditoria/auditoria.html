@@ -4,132 +4,125 @@
 {% block title %}Auditoría - Sistema BYC{% endblock %}
 
 {% block extrastyles %}
-<style>
-    .filters-card {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    .badge-tipo-entidad {
-        font-size: 0.75rem;
-        padding: 4px 8px;
-    }
-    .table-hover tbody tr:hover {
-        cursor: pointer;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/auditoria.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <h2 class="mb-4">
-                <i class="bi bi-shield-check me-2"></i>Auditoría del Sistema
-            </h2>
-            
-            <!-- Filtros -->
-            <div class="card filters-card">
-                <div class="card-body">
-                    <h5 class="card-title mb-3">
-                        <i class="bi bi-funnel me-2"></i>Filtros
-                    </h5>
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Tipo de Entidad</label>
-                            <select class="form-select" id="filtroTipoEntidad">
-                                <option value="">Todos</option>
-                                <option value="PERSONAL">Personal</option>
-                                <option value="DOCUMENTO">Documentos</option>
-                                <option value="EQUIPO">Equipos</option>
-                                <option value="FAENA">Faenas</option>
-                                <option value="OT">Órdenes de Trabajo</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Fecha Desde</label>
-                            <input type="text" class="form-control fecha-chile-picker" id="filtroFechaDesde" placeholder="DD/MM/YYYY">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Fecha Hasta</label>
-                            <input type="text" class="form-control fecha-chile-picker" id="filtroFechaHasta" placeholder="DD/MM/YYYY">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Usuario</label>
-                            <select class="form-select" id="filtroUsuario">
-                                <option value="">Todos</option>
-                                {% for usuario in usuarios %}
-                                <option value="{{ usuario.id }}">
-                                    {% if usuario.first_name or usuario.last_name %}
-                                        {{ usuario.first_name }} {{ usuario.last_name }}
-                                    {% else %}
-                                        {{ usuario.username }}
-                                    {% endif %}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Búsqueda</label>
-                            <input type="text" class="form-control" id="filtroBusqueda" placeholder="Buscar en descripción, nombres...">
-                        </div>
-                        <div class="col-md-12">
-                            <button type="button" class="btn btn-primary" id="btnAplicarFiltros">
-                                <i class="bi bi-search me-2"></i>Aplicar Filtros
-                            </button>
-                            <button type="button" class="btn btn-secondary" id="btnLimpiarFiltros">
-                                <i class="bi bi-x-circle me-2"></i>Limpiar
-                            </button>
-                        </div>
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-shield-check me-2"></i>Auditoría del Sistema
+        </h5>
+    </div>
+    <div class="card-body p-4">
+        <!-- Filtros -->
+        <div class="card filters-card mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="bi bi-funnel me-2"></i>Filtros
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label small">Tipo de Entidad</label>
+                        <select class="form-select form-select-sm" id="filtroTipoEntidad">
+                            <option value="">Todos</option>
+                            <option value="PERSONAL">Personal</option>
+                            <option value="DOCUMENTO">Documentos</option>
+                            <option value="EQUIPO">Equipos</option>
+                            <option value="FAENA">Faenas</option>
+                            <option value="OT">Órdenes de Trabajo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Fecha Desde</label>
+                        <input type="text" class="form-control form-control-sm fecha-chile-picker" id="filtroFechaDesde" placeholder="DD/MM/YYYY">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Fecha Hasta</label>
+                        <input type="text" class="form-control form-control-sm fecha-chile-picker" id="filtroFechaHasta" placeholder="DD/MM/YYYY">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Usuario</label>
+                        <select class="form-select form-select-sm" id="filtroUsuario">
+                            <option value="">Todos</option>
+                            {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}">
+                                {% if usuario.first_name or usuario.last_name %}
+                                    {{ usuario.first_name }} {{ usuario.last_name }}
+                                {% else %}
+                                    {{ usuario.username }}
+                                {% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Búsqueda</label>
+                        <input type="text" class="form-control form-control-sm" id="filtroBusqueda" placeholder="Buscar en descripción, nombres..." autocomplete="off">
+                    </div>
+                    <div class="col-md-12">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnAplicarFiltros">
+                            <i class="bi bi-search me-2"></i>Aplicar Filtros
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnLimpiarFiltros">
+                            <i class="bi bi-x-circle me-2"></i>Limpiar
+                        </button>
                     </div>
                 </div>
             </div>
-            
-            <!-- Tabla de eventos -->
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="card-title mb-0">Eventos de Auditoría</h5>
-                        <div>
-                            <select class="form-select form-select-sm d-inline-block" style="width: auto;" id="selectPerPage">
-                                <option value="10">10</option>
-                                <option value="25" selected>25</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-hover table-bordered">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th style="width: 5%;"></th>
-                                    <th style="width: 12%;">Fecha y Hora</th>
-                                    <th style="width: 10%;">Tipo</th>
-                                    <th style="width: 20%;">Entidad</th>
-                                    <th style="width: 15%;">Usuario</th>
-                                    <th style="width: 15%;">Acción</th>
-                                    <th style="width: 23%;">Descripción</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaEventosBody">
-                                <tr>
-                                    <td colspan="7" class="text-center py-5">
-                                        <div class="spinner-border text-primary" role="status">
-                                            <span class="visually-hidden">Cargando...</span>
-                                        </div>
-                                        <p class="mt-2 text-muted">Cargando eventos...</p>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- Paginación -->
+        </div>
+        
+        <!-- Controles de tabla -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Eventos de Auditoría</h5>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-success btn-sm" id="btnExportarExcel" disabled>
+                    <i class="bi bi-file-earmark-excel me-1"></i>Exportar a Excel
+                </button>
+                <label class="form-label small me-2 mb-0">Mostrar:</label>
+                <select class="form-select form-select-sm d-inline-block" style="width: auto;" id="selectPerPage">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Tabla de eventos -->
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;"></th>
+                                <th style="width: 12%;">Fecha y Hora</th>
+                                <th style="width: 10%;">Tipo</th>
+                                <th style="width: 20%;">Entidad</th>
+                                <th style="width: 15%;">Usuario</th>
+                                <th style="width: 15%;">Acción</th>
+                                <th style="width: 23%;">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaEventosBody">
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <i class="bi bi-funnel fs-1 text-muted"></i>
+                                    <p class="mt-2 text-muted">
+                                        <strong>No hay eventos mostrados</strong><br>
+                                        <small>Por favor, aplica filtros para ver los eventos de auditoría</small>
+                                    </p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación -->
+                <div class="p-3">
                     <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center" id="paginacion">
+                        <ul class="pagination justify-content-center mb-0" id="paginacion">
                         </ul>
                     </nav>
                 </div>
@@ -157,6 +150,7 @@
 {% endblock %}
 
 {% block extrajs %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="{% static 'gen_settings/js/datePickerChile.js' %}"></script>
 <script>
     // Configuración global
@@ -167,30 +161,95 @@
     let porPagina = 25;
     let filtros = {};
     
+    // Variable para almacenar todos los eventos actuales (para exportar)
+    let eventosActuales = [];
+    let timeoutBusqueda = null;
+    
     // Inicializar cuando el DOM esté listo
     document.addEventListener('DOMContentLoaded', function() {
         inicializarDatePickersChile();
-        cargarEventos();
+        // NO cargar eventos automáticamente - esperar a que se apliquen filtros
         
         // Eventos
         document.getElementById('btnAplicarFiltros').addEventListener('click', aplicarFiltros);
         document.getElementById('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
+        document.getElementById('btnExportarExcel').addEventListener('click', exportarAExcel);
         document.getElementById('selectPerPage').addEventListener('change', function() {
             porPagina = parseInt(this.value);
             paginaActual = 1;
-            cargarEventos();
+            if (Object.keys(filtros).length > 0) {
+                cargarEventos();
+            }
+        });
+        
+        // Búsqueda en tiempo real con debounce
+        const inputBusqueda = document.getElementById('filtroBusqueda');
+        inputBusqueda.addEventListener('input', function() {
+            // Limpiar timeout anterior
+            if (timeoutBusqueda) {
+                clearTimeout(timeoutBusqueda);
+            }
+            
+            // Esperar 500ms después de que el usuario deje de escribir
+            timeoutBusqueda = setTimeout(function() {
+                const valorBusqueda = inputBusqueda.value.trim();
+                
+                // Si hay otros filtros aplicados o hay texto en búsqueda, buscar
+                const tieneOtrosFiltros = document.getElementById('filtroTipoEntidad').value ||
+                                         document.getElementById('filtroFechaDesde').value ||
+                                         document.getElementById('filtroFechaHasta').value ||
+                                         document.getElementById('filtroUsuario').value;
+                
+                if (valorBusqueda.length > 0 || tieneOtrosFiltros) {
+                    aplicarFiltros();
+                } else if (valorBusqueda.length === 0 && !tieneOtrosFiltros) {
+                    // Si no hay nada, limpiar
+                    limpiarFiltros();
+                }
+            }, 500); // Esperar 500ms después de que el usuario deje de escribir
+        });
+        
+        // También buscar al presionar Enter
+        inputBusqueda.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (timeoutBusqueda) {
+                    clearTimeout(timeoutBusqueda);
+                }
+                aplicarFiltros();
+            }
         });
     });
     
     function aplicarFiltros() {
         const tipoEntidadValue = document.getElementById('filtroTipoEntidad').value;
-        filtros = {
-            tipo_entidad: tipoEntidadValue ? [tipoEntidadValue] : [],
-            fecha_desde: obtenerFechaISO('filtroFechaDesde'),
-            fecha_hasta: obtenerFechaISO('filtroFechaHasta'),
-            usuario_id: document.getElementById('filtroUsuario').value || null,
-            busqueda: document.getElementById('filtroBusqueda').value.trim() || null
-        };
+        const busquedaValue = document.getElementById('filtroBusqueda').value.trim();
+        const usuarioValue = document.getElementById('filtroUsuario').value;
+        const fechaDesdeValue = obtenerFechaISO('filtroFechaDesde');
+        const fechaHastaValue = obtenerFechaISO('filtroFechaHasta');
+        
+        // Construir objeto de filtros solo con valores válidos
+        filtros = {};
+        
+        if (tipoEntidadValue) {
+            filtros.tipo_entidad = [tipoEntidadValue];
+        }
+        
+        if (fechaDesdeValue) {
+            filtros.fecha_desde = fechaDesdeValue;
+        }
+        
+        if (fechaHastaValue) {
+            filtros.fecha_hasta = fechaHastaValue;
+        }
+        
+        if (usuarioValue) {
+            filtros.usuario_id = usuarioValue;
+        }
+        
+        if (busquedaValue) {
+            filtros.busqueda = busquedaValue;
+        }
+        
         paginaActual = 1;
         cargarEventos();
     }
@@ -203,7 +262,25 @@
         document.getElementById('filtroBusqueda').value = '';
         filtros = {};
         paginaActual = 1;
-        cargarEventos();
+        eventosActuales = [];
+        document.getElementById('btnExportarExcel').disabled = true;
+        mostrarMensajeVacio();
+    }
+    
+    function mostrarMensajeVacio() {
+        const tbody = document.getElementById('tablaEventosBody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-5">
+                    <i class="bi bi-funnel fs-1 text-muted"></i>
+                    <p class="mt-2 text-muted">
+                        <strong>No hay eventos mostrados</strong><br>
+                        <small>Por favor, aplica filtros para ver los eventos de auditoría</small>
+                    </p>
+                </td>
+            </tr>
+        `;
+        document.getElementById('paginacion').innerHTML = '';
     }
     
     function obtenerFechaISO(inputId) {
@@ -237,32 +314,57 @@
             </tr>
         `;
         
-        const params = new URLSearchParams({
-            page: paginaActual,
-            per_page: porPagina,
-            ...filtros
-        });
+        // Construir parámetros de manera explícita
+        const params = new URLSearchParams();
+        params.append('page', paginaActual);
+        params.append('per_page', porPagina);
         
-        // Agregar arrays correctamente
-        if (filtros.tipo_entidad && filtros.tipo_entidad.length > 0) {
+        // Agregar filtros solo si tienen valores válidos
+        if (filtros.tipo_entidad && Array.isArray(filtros.tipo_entidad) && filtros.tipo_entidad.length > 0) {
             filtros.tipo_entidad.forEach(tipo => {
                 params.append('tipo_entidad[]', tipo);
             });
         }
         
+        if (filtros.fecha_desde) {
+            params.append('fecha_desde', filtros.fecha_desde);
+        }
+        
+        if (filtros.fecha_hasta) {
+            params.append('fecha_hasta', filtros.fecha_hasta);
+        }
+        
+        if (filtros.usuario_id) {
+            params.append('usuario_id', filtros.usuario_id);
+        }
+        
+        if (filtros.busqueda && filtros.busqueda.trim()) {
+            params.append('busqueda', filtros.busqueda.trim());
+        }
+        
         fetch(`${API_AUDITORIA_URL}?${params}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
+                    eventosActuales = data.eventos;
                     renderizarEventos(data.eventos);
                     renderizarPaginacion(data.pagination);
+                    // Habilitar botón de exportar si hay eventos
+                    document.getElementById('btnExportarExcel').disabled = data.eventos.length === 0;
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error: ${data.error}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error: ${data.error || 'Error desconocido'}</td></tr>`;
+                    document.getElementById('btnExportarExcel').disabled = true;
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error al cargar eventos</td></tr>`;
+                console.error('Error al cargar eventos:', error);
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error al cargar eventos: ${error.message}</td></tr>`;
+                document.getElementById('btnExportarExcel').disabled = true;
             });
     }
     
@@ -287,10 +389,13 @@
             const badgeAccion = obtenerBadgeAccion(evento.accion);
             const tieneDetalles = evento.datos_previos || evento.datos_nuevos;
             
+            // Escapar el JSON correctamente para atributo HTML (usar comillas simples en el atributo)
+            const eventoJSON = JSON.stringify(evento).replace(/'/g, "&#39;");
+            
             html += `
                 <tr class="${tieneDetalles ? 'historial-row-clickable' : ''}" 
-                    ${tieneDetalles ? `onclick="mostrarDetalles(${index})"` : ''}
-                    data-evento='${JSON.stringify(evento)}'>
+                    ${tieneDetalles ? `onclick="mostrarDetallesDesdeRow(this)"` : ''}
+                    data-evento='${eventoJSON}'>
                     <td class="text-center">
                         ${tieneDetalles ? '<i class="bi bi-info-circle text-muted"></i>' : ''}
                     </td>
@@ -357,27 +462,139 @@
         cargarEventos();
     }
     
-    function mostrarDetalles(index) {
-        const row = document.querySelectorAll('#tablaEventosBody tr')[index];
-        const evento = JSON.parse(row.getAttribute('data-evento'));
+    function formatearNombreCampo(key) {
+        // Convertir snake_case a formato legible
+        return key
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase())
+            .trim();
+    }
+    
+    function formatearValor(valor) {
+        if (valor === null || valor === undefined) {
+            return '<span class="text-muted">No especificado</span>';
+        }
+        if (typeof valor === 'boolean') {
+            return valor ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>';
+        }
+        if (typeof valor === 'object') {
+            // Si es un objeto, intentar mostrar de forma legible
+            if (Array.isArray(valor)) {
+                return valor.length > 0 ? valor.join(', ') : '<span class="text-muted">Vacío</span>';
+            }
+            // Si es un objeto complejo, mostrar como JSON formateado
+            return '<pre class="mb-0 small">' + JSON.stringify(valor, null, 2) + '</pre>';
+        }
+        return escapeHtml(String(valor));
+    }
+    
+    function formatearDatosJSON(datos, titulo) {
+        if (!datos || typeof datos !== 'object') {
+            return '';
+        }
+        
+        // Campos técnicos que no queremos mostrar
+        const camposTecnicos = ['id', '_state', '_previous_state'];
+        
+        // Obtener claves válidas
+        const keys = Object.keys(datos).filter(k => 
+            !camposTecnicos.includes(k) && 
+            !k.endsWith('_id') &&
+            datos[k] !== null && 
+            datos[k] !== undefined && 
+            datos[k] !== ''
+        );
+        
+        if (keys.length === 0) {
+            return '';
+        }
+        
+        let html = `<div class="mb-3">
+            <strong class="d-block mb-2">${titulo}:</strong>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                    <tbody>`;
+        
+        keys.forEach(key => {
+            const nombreCampo = formatearNombreCampo(key);
+            const valor = datos[key];
+            html += `
+                <tr>
+                    <td style="width: 40%; font-weight: 600; background-color: #f8f9fa;">${nombreCampo}</td>
+                    <td>${formatearValor(valor)}</td>
+                </tr>
+            `;
+        });
+        
+        html += `</tbody></table></div></div>`;
+        return html;
+    }
+    
+    function mostrarDetallesDesdeRow(row) {
+        try {
+            const eventoJSON = row.getAttribute('data-evento');
+            if (!eventoJSON) {
+                console.error('No se encontró el atributo data-evento');
+                return;
+            }
+            const evento = JSON.parse(eventoJSON);
+            mostrarDetalles(evento);
+        } catch (error) {
+            console.error('Error al parsear evento:', error);
+            alert('Error al cargar los detalles del evento');
+        }
+    }
+    
+    function mostrarDetalles(evento) {
         
         let detallesHTML = `
             <div class="mb-3">
-                <strong>Tipo de Entidad:</strong> ${evento.tipo_entidad_display}<br>
-                <strong>Entidad:</strong> ${evento.entidad_nombre}<br>
-                <strong>Fecha y Hora:</strong> ${evento.fecha_hora_formateada}<br>
-                <strong>Usuario:</strong> ${evento.usuario_nombre || evento.usuario}<br>
-                <strong>Acción:</strong> ${evento.accion_display}<br>
-                <strong>Descripción:</strong> ${evento.descripcion || '-'}
+                <table class="table table-sm table-bordered">
+                    <tbody>
+                        <tr>
+                            <td style="width: 30%; font-weight: 600; background-color: #f8f9fa;">Tipo de Entidad</td>
+                            <td><span class="badge ${obtenerColorTipoEntidad(evento.tipo_entidad)}">${evento.tipo_entidad_display}</span></td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; background-color: #f8f9fa;">Entidad</td>
+                            <td><strong>${escapeHtml(evento.entidad_nombre)}</strong><br><small class="text-muted">${escapeHtml(evento.entidad_info)}</small></td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; background-color: #f8f9fa;">Fecha y Hora</td>
+                            <td>${evento.fecha_hora_formateada}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; background-color: #f8f9fa;">Usuario</td>
+                            <td>${escapeHtml(evento.usuario_nombre || evento.usuario)}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; background-color: #f8f9fa;">Acción</td>
+                            <td>${obtenerBadgeAccion(evento.accion)}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; background-color: #f8f9fa;">Descripción</td>
+                            <td>${escapeHtml(evento.descripcion || '-')}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         `;
         
-        if (evento.datos_previos) {
-            detallesHTML += '<div class="mb-3"><strong>Datos Previos:</strong><pre class="bg-light p-2 rounded">' + JSON.stringify(evento.datos_previos, null, 2) + '</pre></div>';
+        // Formatear datos previos
+        const datosPreviosHTML = formatearDatosJSON(evento.datos_previos, 'Información Anterior');
+        if (datosPreviosHTML) {
+            detallesHTML += datosPreviosHTML;
         }
         
-        if (evento.datos_nuevos) {
-            detallesHTML += '<div class="mb-3"><strong>Datos Nuevos:</strong><pre class="bg-light p-2 rounded">' + JSON.stringify(evento.datos_nuevos, null, 2) + '</pre></div>';
+        // Formatear datos nuevos
+        const datosNuevosHTML = formatearDatosJSON(evento.datos_nuevos, 'Información Nueva');
+        if (datosNuevosHTML) {
+            detallesHTML += datosNuevosHTML;
+        }
+        
+        // Si no hay datos previos ni nuevos, mostrar mensaje
+        if (!datosPreviosHTML && !datosNuevosHTML && (evento.datos_previos || evento.datos_nuevos)) {
+            detallesHTML += '<div class="alert alert-info mb-0"><small>No hay cambios de datos adicionales para mostrar.</small></div>';
         }
         
         document.getElementById('modalDetallesBody').innerHTML = detallesHTML;
@@ -411,6 +628,164 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    
+    async function exportarAExcel() {
+        // Verificar que haya filtros aplicados
+        const tieneFiltros = Object.keys(filtros).length > 0 && 
+                            (filtros.tipo_entidad?.length > 0 || 
+                             filtros.fecha_desde || 
+                             filtros.fecha_hasta || 
+                             filtros.usuario_id || 
+                             filtros.busqueda);
+        
+        if (!tieneFiltros) {
+            alert('Por favor, aplica filtros antes de exportar. Esto es necesario para evitar exportar demasiados datos.');
+            return;
+        }
+        
+        // Mostrar indicador de carga
+        const btnExportar = document.getElementById('btnExportarExcel');
+        const textoOriginal = btnExportar.innerHTML;
+        btnExportar.disabled = true;
+        btnExportar.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Exportando...';
+        
+        try {
+            // Obtener TODOS los eventos con los filtros actuales (sin paginación)
+            const params = new URLSearchParams({
+                page: 1,
+                per_page: 10000, // Número grande para obtener todos
+            });
+            
+            // Agregar filtros
+            if (filtros.tipo_entidad && filtros.tipo_entidad.length > 0) {
+                filtros.tipo_entidad.forEach(tipo => {
+                    params.append('tipo_entidad[]', tipo);
+                });
+            }
+            if (filtros.fecha_desde) {
+                params.append('fecha_desde', filtros.fecha_desde);
+            }
+            if (filtros.fecha_hasta) {
+                params.append('fecha_hasta', filtros.fecha_hasta);
+            }
+            if (filtros.usuario_id) {
+                params.append('usuario_id', filtros.usuario_id);
+            }
+            if (filtros.busqueda) {
+                params.append('busqueda', filtros.busqueda);
+            }
+            
+            const response = await fetch(`${API_AUDITORIA_URL}?${params}`);
+            const data = await response.json();
+            
+            if (!data.success) {
+                alert('Error al obtener los datos para exportar: ' + data.error);
+                return;
+            }
+            
+            const todosLosEventos = data.eventos;
+            
+            if (todosLosEventos.length === 0) {
+                alert('No hay eventos para exportar con los filtros actuales.');
+                return;
+            }
+            
+            // Función para formatear datos JSON para Excel
+            function formatearDatosParaExcel(datos) {
+                if (!datos || typeof datos !== 'object') {
+                    return '';
+                }
+                
+                // Campos técnicos que no queremos mostrar
+                const camposTecnicos = ['id', '_state', '_previous_state'];
+                
+                // Obtener claves válidas
+                const keys = Object.keys(datos).filter(k => 
+                    !camposTecnicos.includes(k) && 
+                    !k.endsWith('_id') &&
+                    datos[k] !== null && 
+                    datos[k] !== undefined && 
+                    datos[k] !== ''
+                );
+                
+                if (keys.length === 0) {
+                    return '';
+                }
+                
+                // Formatear como lista legible
+                const lineas = keys.map(key => {
+                    const nombreCampo = formatearNombreCampo(key);
+                    let valor = datos[key];
+                    
+                    // Formatear valores especiales
+                    if (typeof valor === 'boolean') {
+                        valor = valor ? 'Sí' : 'No';
+                    } else if (Array.isArray(valor)) {
+                        valor = valor.join(', ');
+                    } else if (typeof valor === 'object') {
+                        // Para objetos complejos, mostrar como JSON pero más compacto
+                        valor = JSON.stringify(valor).replace(/"/g, '').replace(/,/g, ', ');
+                    }
+                    
+                    return `${nombreCampo}: ${valor}`;
+                });
+                
+                return lineas.join(' | ');
+            }
+            
+            // Preparar datos para Excel
+            const datosExcel = todosLosEventos.map(evento => ({
+                'Fecha y Hora': evento.fecha_hora_formateada,
+                'Tipo de Entidad': evento.tipo_entidad_display,
+                'Entidad': evento.entidad_nombre,
+                'Información Entidad': evento.entidad_info,
+                'Usuario': evento.usuario_nombre || evento.usuario,
+                'Acción': evento.accion_display,
+                'Descripción': evento.descripcion || '-',
+                'Datos Previos': formatearDatosParaExcel(evento.datos_previos),
+                'Datos Nuevos': formatearDatosParaExcel(evento.datos_nuevos)
+            }));
+            
+            // Crear libro de trabajo
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(datosExcel);
+            
+            // Ajustar ancho de columnas
+            const colWidths = [
+                { wch: 20 }, // Fecha y Hora
+                { wch: 15 }, // Tipo de Entidad
+                { wch: 30 }, // Entidad
+                { wch: 30 }, // Información Entidad
+                { wch: 20 }, // Usuario
+                { wch: 20 }, // Acción
+                { wch: 40 }, // Descripción
+                { wch: 50 }, // Datos Previos
+                { wch: 50 }  // Datos Nuevos
+            ];
+            ws['!cols'] = colWidths;
+            
+            // Agregar hoja al libro
+            XLSX.utils.book_append_sheet(wb, ws, 'Auditoría');
+            
+            // Generar nombre de archivo con fecha actual
+            const fechaActual = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            const nombreArchivo = `auditoria_${fechaActual}.xlsx`;
+            
+            // Descargar archivo
+            XLSX.writeFile(wb, nombreArchivo);
+            
+            // Restaurar botón
+            btnExportar.disabled = false;
+            btnExportar.innerHTML = textoOriginal;
+            
+        } catch (error) {
+            console.error('Error al exportar:', error);
+            alert('Error al exportar a Excel: ' + error.message);
+            // Restaurar botón en caso de error
+            btnExportar.disabled = false;
+            btnExportar.innerHTML = textoOriginal;
+        }
     }
 </script>
 {% endblock %}

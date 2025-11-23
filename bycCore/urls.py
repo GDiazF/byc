@@ -30,6 +30,7 @@ urlpatterns = [
     path('calendario/', include('ope_calendario.urls')),
     path('maquinarias/', include('maquinarias.urls')),
     path('reportes/', include('reportes_auditoria.urls')),
+    path('dashboards/', include('dashboards.urls')),
 ]
 
 if settings.DEBUG:

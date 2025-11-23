@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners para filtros de maquinarias
     const searchInputMaquinarias = document.getElementById('searchInputMaquinarias');
     const empresaFilterMaquinarias = document.getElementById('empresaFilterMaquinarias');
-    const estadoFilterMaquinarias = document.getElementById('estadoFilterMaquinarias');
+    const faenaFilterMaquinarias = document.getElementById('faenaFilterMaquinarias');
     
     if (searchInputMaquinarias) {
         searchInputMaquinarias.addEventListener('input', aplicarFiltrosMaquinarias);
@@ -69,35 +69,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (empresaFilterMaquinarias) {
         empresaFilterMaquinarias.addEventListener('change', aplicarFiltrosMaquinarias);
     }
-    if (estadoFilterMaquinarias) {
-        estadoFilterMaquinarias.addEventListener('change', aplicarFiltrosMaquinarias);
+    if (faenaFilterMaquinarias) {
+        faenaFilterMaquinarias.addEventListener('change', aplicarFiltrosMaquinarias);
     }
-    
-    // Cargar estados OT para el filtro
-    cargarEstadosOT();
 });
 
-// Cargar estados OT para el filtro
-function cargarEstadosOT() {
-    const estadoFilter = document.getElementById('estadoFilterMaquinarias');
-    if (!estadoFilter) return;
-    
-    // Obtener estados únicos de las órdenes de trabajo
-    const estados = new Set();
-    window.ordenesTrabajo.forEach(ot => {
-        if (ot.estado_ot) {
-            estados.add(ot.estado_ot);
-        }
-    });
-    
-    // Agregar opciones al select
-    estados.forEach(estado => {
-        const option = document.createElement('option');
-        option.value = estado;
-        option.textContent = estado;
-        estadoFilter.appendChild(option);
-    });
-}
 
 // Inicializar calendario de maquinarias
 function inicializarCalendarioMaquinarias() {
@@ -287,7 +263,7 @@ function generarCalendarioMaquinarias() {
 function aplicarFiltrosMaquinarias() {
     const search = document.getElementById('searchInputMaquinarias')?.value || '';
     const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';
-    const estado = document.getElementById('estadoFilterMaquinarias')?.value || '';
+    const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';
     
     // Construir URL con filtros y recargar página
     const url = new URL(window.location.href);
@@ -298,13 +274,7 @@ function aplicarFiltrosMaquinarias() {
     const page = url.searchParams.get('page') || '1';
     const pageSize = url.searchParams.get('page_size') || window.pageSize || '25';
     
-    // Actualizar parámetros
-    url.searchParams.set('year', year);
-    url.searchParams.set('month', month);
-    url.searchParams.set('page', '1'); // Resetear a página 1 al filtrar
-    url.searchParams.set('page_size', pageSize);
-    
-    // Agregar filtros
+    // Agregar filtros a la URL
     if (search) {
         url.searchParams.set('search', search);
     } else {
@@ -317,11 +287,17 @@ function aplicarFiltrosMaquinarias() {
         url.searchParams.delete('empresa');
     }
     
-    if (estado) {
-        url.searchParams.set('estado', estado);
+    if (faena) {
+        url.searchParams.set('faena', faena);
     } else {
-        url.searchParams.delete('estado');
+        url.searchParams.delete('faena');
     }
+    
+    // Mantener fecha y paginación
+    url.searchParams.set('year', year);
+    url.searchParams.set('month', month);
+    url.searchParams.set('page', '1'); // Resetear a página 1 al filtrar
+    url.searchParams.set('page_size', pageSize);
     
     // Recargar página con filtros
     window.location.href = url.toString();

@@ -276,6 +276,7 @@ def registrar_licencia_medica(sender, instance, created, **kwargs):
     
     nombre_doc = f"Licencia Médica - {instance.tipoLicenciaMedica_id.tipoLicenciaMedica if instance.tipoLicenciaMedica_id else 'N/A'}"
     
+    # Las licencias médicas no tienen archivo asociado (rutaDoc), solo son registros
     if created:
         HistorialDocumentoPersonal.registrar(
             personal=instance.personal_id,
@@ -284,7 +285,7 @@ def registrar_licencia_medica(sender, instance, created, **kwargs):
             nombre_documento=nombre_doc,
             descripcion=f"Licencia médica agregada",
             usuario=usuario,
-            archivo_ruta=instance.rutaDoc.name if instance.rutaDoc else None,
+            archivo_ruta=None,  # Las licencias médicas no tienen archivo
         )
     else:
         HistorialDocumentoPersonal.registrar(
@@ -294,32 +295,20 @@ def registrar_licencia_medica(sender, instance, created, **kwargs):
             nombre_documento=nombre_doc,
             descripcion=f"Licencia médica modificada",
             usuario=usuario,
-            archivo_ruta=instance.rutaDoc.name if instance.rutaDoc else None,
+            archivo_ruta=None,  # Las licencias médicas no tienen archivo
         )
 
 
 @receiver(pre_delete, sender=LicenciaMedicaPorPersonal)
 def registrar_eliminacion_licencia_medica(sender, instance, **kwargs):
-    """Registra cuando se elimina una licencia médica y mueve el archivo a eliminados."""
+    """Registra cuando se elimina una licencia médica."""
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
     nombre_doc = f"Licencia Médica - {instance.tipoLicenciaMedica_id.tipoLicenciaMedica if instance.tipoLicenciaMedica_id else 'N/A'}"
     
-    # Mover archivo a carpeta de eliminados antes de eliminar el registro
-    archivo_ruta_historial = None
-    if instance.rutaDoc and instance.rutaDoc.name:
-        from .models import mover_archivo_a_eliminados
-        archivo_ruta_historial = mover_archivo_a_eliminados(
-            instance.rutaDoc,
-            instance.personal_id.rut,
-            nombre_doc
-        )
-        # Si no se pudo mover, usar la ruta original
-        if not archivo_ruta_historial:
-            archivo_ruta_historial = instance.rutaDoc.name
-    
+    # Las licencias médicas no tienen archivo asociado (rutaDoc), solo son registros
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
         tipo_documento='LICENCIA_MEDICA',
@@ -327,7 +316,7 @@ def registrar_eliminacion_licencia_medica(sender, instance, **kwargs):
         nombre_documento=nombre_doc,
         descripcion=f"Licencia médica eliminada",
         usuario=usuario,
-        archivo_ruta=archivo_ruta_historial,
+        archivo_ruta=None,  # Las licencias médicas no tienen archivo
     )
 
 

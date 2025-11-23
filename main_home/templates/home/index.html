@@ -227,27 +227,15 @@
                {% endif %}
                
                {% block content %}
-        <!-- El contenido específico de cada página irá aquí -->
-        <div class="container-fluid">
-            <h1 class="mt-4">Bienvenido al Panel de Control</h1>
-            <p>Este es el contenido principal de tu aplicación.</p>
-            
-            <div class="card">
-                <div class="card-header">
-                    <i class="bi bi-info-circle me-2"></i> Información
-                </div>
-                <div class="card-body">
-                    <p>Esta plantilla incluye:</p>
-                    <ul>
-                        <li>Navbar superior con menú de usuario</li>
-                        <li>Sidebar colapsable perfectamente alineado a la izquierda</li>
-                        <li>Submenús desplegables</li>
-                        <li>Diseño completamente responsivo</li>
-                        <li>Botón hamburguesa para mostrar/ocultar el sidebar</li>
-                    </ul>
-                </div>
+        {% if mostrar_dashboard %}
+            {% include 'home/dashboard.html' %}
+        {% else %}
+            <!-- Contenido alternativo si no hay dashboard -->
+            <div class="container-fluid">
+                <h1 class="mt-4">Bienvenido al Panel de Control</h1>
+                <p>Este es el contenido principal de tu aplicación.</p>
             </div>
-        </div>
+        {% endif %}
         {% endblock %}
     </div>
     

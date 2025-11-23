@@ -1687,7 +1687,7 @@ def lista_ordenes_trabajo(request):
     return render(request, 'maquinarias/lista_ordenes_trabajo.html', context)
 
 
-def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', tipo_filter='', search_query='', page=1, page_size=25):
+def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', tipo_filter='', faena_filter='', search_query='', page=1, page_size=25):
     """
     Obtiene datos para el calendario de maquinarias con paginación.
     ARQUITECTURA OPTIMIZADA: Obtiene todos los datos de una vez y calcula estados en memoria
@@ -1716,6 +1716,19 @@ def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', ti
             Q(codigoInterno__icontains=search_query) |
             Q(modeloEquipo_id__modeloEquipo__icontains=search_query)
         )
+    
+    # Aplicar filtro de faena (filtrar equipos que tienen asignación activa a esa faena)
+    if faena_filter and faena_filter.strip():
+        from ope_calendario.models import AsignacionEquipoFaena
+        equipos_en_faena = AsignacionEquipoFaena.objects.filter(
+            faena__nombre__icontains=faena_filter,
+            activo=True,
+            fecha_inicio__lte=fecha_fin
+        ).filter(
+            Q(fecha_fin__gte=fecha_inicio) | Q(fecha_fin__isnull=True)
+        ).values_list('equipo__equipo_id', flat=True).distinct()
+        
+        equipos_query = equipos_query.filter(equipo_id__in=equipos_en_faena)
     
     # Contar total antes de paginar
     total_equipos = equipos_query.count()
@@ -1920,11 +1933,12 @@ def calendario_maquinarias(request):
     # Obtener filtros
     empresa_filter = request.GET.get('empresa', '')
     tipo_filter = request.GET.get('tipo', '')
+    faena_filter = request.GET.get('faena', '')
     search_query = request.GET.get('search', '')
     
     # Obtener datos del calendario con paginación y optimización
     calendario_data = obtener_calendario_maquinarias_optimizado(
-        year, month, empresa_filter, tipo_filter, search_query, page, page_size
+        year, month, empresa_filter, tipo_filter, faena_filter, search_query, page, page_size
     )
     
     # Obtener rango de fechas del mes
@@ -1941,8 +1955,9 @@ def calendario_maquinarias(request):
     # Obtener empresas para filtros
     empresas = Empresa.objects.all().order_by('nomFantasia')
     
-    # Obtener estados OT para filtros
-    estados_ot = EstadoOT.objects.filter(activo=True).order_by('orden', 'nombre')
+    # Obtener faenas activas para filtros
+    from ope_calendario.models import Faena
+    faenas = Faena.objects.filter(activo=True).order_by('nombre')
     
     # Obtener estados del calendario
     estados_calendario = EstadoCalendarioEquipo.objects.filter(activo=True).order_by('-prioridad', 'nombre')
@@ -2007,7 +2022,7 @@ def calendario_maquinarias(request):
         'current_month': month,
         'current_month_name': month_names[month - 1],
         'empresas': empresas,
-        'estados_ot': estados_ot,
+        'faenas': faenas,
         'estados_calendario': estados_calendario,
         'estados_calendario_json': json.dumps(estados_calendario_json, cls=DjangoJSONEncoder),
         'estado_predeterminado_json': json.dumps(estado_predeterminado_json, cls=DjangoJSONEncoder) if estado_predeterminado_json else 'null',

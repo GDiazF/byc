@@ -1,0 +1,670 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Dashboards - Sistema BYC{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/auditoria.css' %}">
+<style>
+    .dashboard-card {
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1.5rem;
+        height: 100%;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-card.success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .stat-card.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .stat-card.info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 250px;
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        min-height: 250px;
+        max-height: 300px;
+    }
+    
+    .card-body canvas {
+        max-height: 250px !important;
+        height: 250px !important;
+    }
+    
+    .dashboard-card {
+        overflow: hidden;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link.active {
+        font-weight: 600;
+        color: #212529;
+    }
+    
+    .tab-pane {
+        padding: 1.5rem 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-speedometer2 me-2"></i>Dashboards del Sistema
+        </h5>
+    </div>
+    <div class="card-body p-4">
+        <!-- Tabs por área -->
+        <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="rrhh-tab" data-bs-toggle="tab" data-bs-target="#rrhh" type="button" role="tab">
+                    <i class="bi bi-people me-2"></i>RRHH
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="operaciones-tab" data-bs-toggle="tab" data-bs-target="#operaciones" type="button" role="tab">
+                    <i class="bi bi-calendar-check me-2"></i>Operaciones
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="maquinarias-tab" data-bs-toggle="tab" data-bs-target="#maquinarias" type="button" role="tab">
+                    <i class="bi bi-gear me-2"></i>Maquinarias
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="gerencia-tab" data-bs-toggle="tab" data-bs-target="#gerencia" type="button" role="tab">
+                    <i class="bi bi-graph-up-arrow me-2"></i>Gerencia
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link disabled" id="ventas-tab" type="button" role="tab" disabled>
+                    <i class="bi bi-cart me-2"></i>Ventas <small class="text-muted">(Próximamente)</small>
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Contenido de los tabs -->
+        <div class="tab-content" id="dashboardTabsContent">
+            <!-- Tab RRHH -->
+            <div class="tab-pane fade show active" id="rrhh" role="tabpanel">
+                <div id="rrhh-content">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando datos de RRHH...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Operaciones -->
+            <div class="tab-pane fade" id="operaciones" role="tabpanel">
+                <div id="operaciones-content">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando datos de Operaciones...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Maquinarias -->
+            <div class="tab-pane fade" id="maquinarias" role="tabpanel">
+                <div id="maquinarias-content">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando datos de Maquinarias...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Gerencia -->
+            <div class="tab-pane fade" id="gerencia" role="tabpanel">
+                <div id="gerencia-content">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando datos de Gerencia...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // URLs de las APIs
+    const API_RRHH = "{% url 'dashboards:api_dashboard_rrhh' %}";
+    const API_OPERACIONES = "{% url 'dashboards:api_dashboard_operaciones' %}";
+    const API_MAQUINARIAS = "{% url 'dashboards:api_dashboard_maquinarias' %}";
+    const API_GERENCIA = "{% url 'dashboards:api_dashboard_gerencia' %}";
+    
+    // Almacenar instancias de gráficos
+    const charts = {};
+    
+    // Inicializar cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+        // Cargar datos del tab activo
+        cargarDashboardRRHH();
+        
+        // Event listeners para los tabs
+        document.getElementById('rrhh-tab').addEventListener('shown.bs.tab', function() {
+            cargarDashboardRRHH();
+        });
+        
+        document.getElementById('operaciones-tab').addEventListener('shown.bs.tab', function() {
+            cargarDashboardOperaciones();
+        });
+        
+        document.getElementById('maquinarias-tab').addEventListener('shown.bs.tab', function() {
+            cargarDashboardMaquinarias();
+        });
+        
+        document.getElementById('gerencia-tab').addEventListener('shown.bs.tab', function() {
+            cargarDashboardGerencia();
+        });
+    });
+    
+    // Funciones para cargar cada dashboard
+    function cargarDashboardRRHH() {
+        const container = document.getElementById('rrhh-content');
+        if (container.dataset.loaded === 'true') return;
+        
+        fetch(API_RRHH)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderizarDashboardRRHH(data.data, container);
+                    container.dataset.loaded = 'true';
+                } else {
+                    container.innerHTML = '<div class="alert alert-danger">Error al cargar datos: ' + data.error + '</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                container.innerHTML = '<div class="alert alert-danger">Error al cargar datos de RRHH</div>';
+            });
+    }
+    
+    function cargarDashboardOperaciones() {
+        const container = document.getElementById('operaciones-content');
+        if (container.dataset.loaded === 'true') return;
+        
+        fetch(API_OPERACIONES)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderizarDashboardOperaciones(data.data, container);
+                    container.dataset.loaded = 'true';
+                } else {
+                    container.innerHTML = '<div class="alert alert-danger">Error al cargar datos: ' + data.error + '</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                container.innerHTML = '<div class="alert alert-danger">Error al cargar datos de Operaciones</div>';
+            });
+    }
+    
+    function cargarDashboardMaquinarias() {
+        const container = document.getElementById('maquinarias-content');
+        if (container.dataset.loaded === 'true') return;
+        
+        fetch(API_MAQUINARIAS)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderizarDashboardMaquinarias(data.data, container);
+                    container.dataset.loaded = 'true';
+                } else {
+                    container.innerHTML = '<div class="alert alert-danger">Error al cargar datos: ' + data.error + '</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                container.innerHTML = '<div class="alert alert-danger">Error al cargar datos de Maquinarias</div>';
+            });
+    }
+    
+    function cargarDashboardGerencia() {
+        const container = document.getElementById('gerencia-content');
+        if (container.dataset.loaded === 'true') return;
+        
+        fetch(API_GERENCIA)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderizarDashboardGerencia(data.data, container);
+                    container.dataset.loaded = 'true';
+                } else {
+                    container.innerHTML = '<div class="alert alert-danger">Error al cargar datos: ' + data.error + '</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                container.innerHTML = '<div class="alert alert-danger">Error al cargar datos de Gerencia</div>';
+            });
+    }
+    
+    // Funciones para renderizar cada dashboard
+    function renderizarDashboardRRHH(data, container) {
+        let html = `
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card success">
+                        <div class="stat-number">${data.total_personal}</div>
+                        <div class="stat-label">Personal Activo</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card warning">
+                        <div class="stat-number">${data.total_personal_inactivo}</div>
+                        <div class="stat-label">Personal Inactivo</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card info">
+                        <div class="stat-number">${data.activaciones}</div>
+                        <div class="stat-label">Activaciones (30 días)</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.desactivaciones}</div>
+                        <div class="stat-label">Desactivaciones (30 días)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Personal por Empresa</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-rrhh-empresas"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Actividad Reciente</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Cambios en últimos 30 días:</strong> ${data.cambios_recientes}</p>
+                            <p class="mb-0"><small class="text-muted">Incluye todas las modificaciones realizadas al personal</small></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        // Crear gráfico de personal por empresa
+        if (data.personal_por_empresa && data.personal_por_empresa.length > 0) {
+            const ctx = document.getElementById('chart-rrhh-empresas').getContext('2d');
+            charts['rrhh-empresas'] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.personal_por_empresa.map(e => e.empresa_id__nomFantasia || 'Sin empresa'),
+                    datasets: [{
+                        data: data.personal_por_empresa.map(e => e.total),
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#f093fb',
+                            '#4facfe',
+                            '#43e97b'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    function renderizarDashboardOperaciones(data, container) {
+        let html = `
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card success">
+                        <div class="stat-number">${data.faenas_activas}</div>
+                        <div class="stat-label">Faenas Activas</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card info">
+                        <div class="stat-number">${data.faenas_proximas}</div>
+                        <div class="stat-label">Faenas Próximas</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.faenas_en_curso}</div>
+                        <div class="stat-label">En Curso</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card warning">
+                        <div class="stat-number">${data.faenas_finalizadas}</div>
+                        <div class="stat-label">Finalizadas</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Faenas por Mes (Últimos 6 meses)</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-operaciones-faenas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        // Crear gráfico de faenas por mes
+        if (data.faenas_por_mes && data.faenas_por_mes.length > 0) {
+            const ctx = document.getElementById('chart-operaciones-faenas').getContext('2d');
+            charts['operaciones-faenas'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.faenas_por_mes.map(f => f.nombre),
+                    datasets: [{
+                        label: 'Faenas',
+                        data: data.faenas_por_mes.map(f => f.total),
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2.5,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    function renderizarDashboardMaquinarias(data, container) {
+        let html = `
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card success">
+                        <div class="stat-number">${data.equipos_activos}</div>
+                        <div class="stat-label">Equipos Activos</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card warning">
+                        <div class="stat-number">${data.equipos_inactivos}</div>
+                        <div class="stat-label">Equipos Inactivos</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card info">
+                        <div class="stat-number">${data.ots_recientes}</div>
+                        <div class="stat-label">OTs Recientes (30 días)</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.ots_por_estado.reduce((sum, e) => sum + e.total, 0)}</div>
+                        <div class="stat-label">Total OTs</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Órdenes de Trabajo por Estado</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-maquinarias-ots"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Equipos por Tipo</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-maquinarias-tipos"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        // Crear gráfico de OTs por estado
+        if (data.ots_por_estado && data.ots_por_estado.length > 0) {
+            const ctx = document.getElementById('chart-maquinarias-ots').getContext('2d');
+            charts['maquinarias-ots'] = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: data.ots_por_estado.map(e => e.estado),
+                    datasets: [{
+                        data: data.ots_por_estado.map(e => e.total),
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#f093fb',
+                            '#4facfe',
+                            '#43e97b'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Crear gráfico de equipos por tipo
+        if (data.equipos_por_tipo && data.equipos_por_tipo.length > 0) {
+            const ctx = document.getElementById('chart-maquinarias-tipos').getContext('2d');
+            charts['maquinarias-tipos'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.equipos_por_tipo.map(e => e.modeloEquipo_id__tipoEquipo_id__tipoEquipo || 'Sin tipo'),
+                    datasets: [{
+                        label: 'Equipos',
+                        data: data.equipos_por_tipo.map(e => e.total),
+                        backgroundColor: '#4facfe'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2.5,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    function renderizarDashboardGerencia(data, container) {
+        let html = `
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card success">
+                        <div class="stat-number">${data.resumen.total_personal}</div>
+                        <div class="stat-label">Personal Activo</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card info">
+                        <div class="stat-number">${data.resumen.total_equipos}</div>
+                        <div class="stat-label">Equipos Activos</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.resumen.total_faenas_activas}</div>
+                        <div class="stat-label">Faenas Activas</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card warning">
+                        <div class="stat-number">${data.resumen.total_ots}</div>
+                        <div class="stat-label">Total OTs</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Actividad Reciente (Últimos 7 días)</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <p class="mb-1"><strong>Cambios en Personal:</strong></p>
+                                    <h4>${data.actividad_reciente.cambios_personal}</h4>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="mb-1"><strong>Cambios en Equipos:</strong></p>
+                                    <h4>${data.actividad_reciente.cambios_equipos}</h4>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="mb-1"><strong>Cambios en Faenas:</strong></p>
+                                    <h4>${data.actividad_reciente.cambios_faenas}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+</script>
+{% endblock %}
+
