@@ -1,36 +1,47 @@
-{% extends 'home/index.html' %}
 {% load static %}
 
-{% block title %}Dashboards - Sistema BYC{% endblock %}
-
 {% block extrastyles %}
-<link rel="stylesheet" href="{% static 'css/auditoria.css' %}">
 <style>
     .dashboard-card {
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         margin-bottom: 1.5rem;
-        height: 100%;
+    }
+    
+    @media (min-width: 768px) {
+        .dashboard-card {
+            height: 100%;
+        }
     }
     
     .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); /* Bootstrap primary */
         color: white;
         border-radius: 12px;
         padding: 1.5rem;
         margin-bottom: 1rem;
+        transition: transform 0.2s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
     
     .stat-card.success {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        background: linear-gradient(135deg, #198754 0%, #146c43 100%); /* Bootstrap success */
     }
     
     .stat-card.warning {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%); /* Bootstrap warning */
     }
     
     .stat-card.info {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%); /* Bootstrap info */
+    }
+    
+    .stat-card.danger {
+        background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%); /* Bootstrap danger */
     }
     
     .stat-number {
@@ -44,12 +55,6 @@
         opacity: 0.9;
     }
     
-    .chart-container {
-        position: relative;
-        height: 250px;
-        margin-bottom: 1rem;
-    }
-    
     .card-body {
         min-height: 250px;
         max-height: 300px;
@@ -58,118 +63,449 @@
     .card-body canvas {
         max-height: 250px !important;
         height: 250px !important;
+        max-width: 100% !important;
+        width: 100% !important;
     }
     
     .dashboard-card {
         overflow: hidden;
     }
     
+    /* Prevenir overflow horizontal solo en el contenedor del dashboard */
+    .dashboard-container {
+        overflow-x: hidden;
+        max-width: 100%;
+    }
+    
+    /* Responsive: tabs en móviles */
+    .nav-tabs-wrapper {
+        border-bottom: 2px solid #dee2e6;
+        margin-bottom: 1.5rem;
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        overflow-x: auto;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        max-height: none !important;
+        height: auto !important;
+        background-color: #ced3d8;
+    }
+    
+    .nav-tabs {
+        background-color: transparent;
+        border-bottom: none;
+    }
+    
+    @media (min-width: 768px) {
+        .nav-tabs-wrapper {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+    }
+    
+    .nav-tabs {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    
     .nav-tabs .nav-link {
         color: #495057;
         font-weight: 500;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 0.75rem 1.5rem;
+        white-space: nowrap;
+        font-size: 0.9rem;
+    }
+    
+    /* Responsive: ajustes para móviles */
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            margin-left: 0;
+            margin-right: 0;
+        }
+        
+        .stat-number {
+            font-size: 1.75rem;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+        }
+        
+        .card-body {
+            min-height: auto !important;
+            max-height: none !important;
+            padding: 0.75rem !important;
+        }
+        
+        .card-body canvas {
+            max-height: 200px !important;
+            height: auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+        }
+        
+        /* Asegurar que los gráficos no se salgan */
+        .card-body {
+            overflow: hidden;
+            position: relative;
+            box-sizing: border-box;
+        }
+        
+        /* Asegurar que las filas no causen overflow */
+        .row {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+            max-width: calc(100% + 0.5rem);
+            box-sizing: border-box;
+        }
+        
+        .row > * {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+            box-sizing: border-box;
+        }
+        
+        /* Asegurar que los cards no se salgan */
+        .card {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .dashboard-card {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .nav-tabs-wrapper {
+            margin-left: 0;
+            margin-right: 0;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        
+        .nav-tabs .nav-link {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+        }
+        
+        .nav-tabs .nav-link i {
+            display: none !important;
+        }
+        
+        .table {
+            font-size: 0.7rem;
+        }
+        
+        .table th,
+        .table td {
+            padding: 0.35rem 0.25rem;
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
+        
+        .dashboard-card {
+            margin-bottom: 1rem;
+        }
+        
+        .card-header {
+            padding: 0.75rem;
+        }
+        
+        .card-header h6 {
+            font-size: 0.85rem;
+        }
+        
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        
+        .stat-card {
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .row {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+        }
+        
+        .row > * {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .container-fluid {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+        }
+        
+        .card-body {
+            padding: 0.5rem !important;
+        }
+        
+        .card-body canvas {
+            max-height: 160px !important;
+            height: auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+        }
+        
+        .card-body {
+            overflow: hidden;
+            position: relative;
+            box-sizing: border-box;
+        }
+        
+        .row {
+            margin-left: -0.125rem;
+            margin-right: -0.125rem;
+            max-width: calc(100% + 0.25rem);
+            box-sizing: border-box;
+        }
+        
+        .row > * {
+            padding-left: 0.125rem;
+            padding-right: 0.125rem;
+            box-sizing: border-box;
+        }
+        
+        .card {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .dashboard-card {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .stat-card {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .nav-tabs-wrapper {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+        
+        .nav-tabs .nav-link {
+            padding: 0.4rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        
+        .stat-card {
+            padding: 0.5rem;
+        }
+        
+        .table th,
+        .table td {
+            padding: 0.3rem 0.2rem;
+            font-size: 0.65rem;
+        }
+        
+        .card-header {
+            padding: 0.5rem;
+        }
+        
+        .card-header h6 {
+            font-size: 0.8rem;
+        }
+        
+        .badge {
+            font-size: 0.65rem;
+            padding: 0.25rem 0.4rem;
+        }
+    }
+    
+    /* Prevenir overflow horizontal solo dentro del dashboard */
+    .dashboard-container {
+        overflow-x: hidden;
+        max-width: 100%;
+        position: relative;
+        box-sizing: border-box;
+    }
+    
+    /* Asegurar que las filas dentro del dashboard no causen overflow */
+    .dashboard-container .row {
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+        box-sizing: border-box;
+    }
+    
+    .dashboard-container .row > * {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* Asegurar que todos los elementos dentro del dashboard respeten el ancho */
+    .dashboard-container .card, 
+    .dashboard-container .card-body, 
+    .dashboard-container .card-header, 
+    .dashboard-container .dashboard-card, 
+    .dashboard-container .stat-card {
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        border-color: #dee2e6;
+        color: #212529;
     }
     
     .nav-tabs .nav-link.active {
         font-weight: 600;
         color: #212529;
+        border-bottom-color: #212529;
+        background-color: transparent;
     }
     
     .tab-pane {
-        padding: 1.5rem 0;
+        padding: 0;
+    }
+    
+    
+    .table th {
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 0.75rem 0.5rem;
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .table td {
+        font-size: 0.8rem;
+        padding: 0.5rem;
+        vertical-align: middle;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .table-warning {
+        background-color: #fff3cd !important;
+    }
+    
+    /* Asegurar que los modales también sean responsivos */
+    @media (max-width: 768px) {
+        .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100% - 1rem);
+        }
+        
+        .modal-content {
+            max-width: 100%;
+        }
+        
+        .accordion-item {
+            max-width: 100%;
+        }
     }
 </style>
 {% endblock %}
 
-{% block content %}
-<div class="card">
-    <div class="card-header bg-dark text-white">
-        <h5 class="mb-0">
-            <i class="bi bi-speedometer2 me-2"></i>Dashboards del Sistema
-        </h5>
-    </div>
-    <div class="card-body p-4">
-        <!-- Tabs por área -->
-        <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
+<div class="container-fluid mt-4 px-2 px-md-3 dashboard-container" style="max-width: 100%; overflow-x: hidden;">
+    <!-- Tabs por área -->
+    <div class="nav-tabs-wrapper">
+        <ul class="nav nav-tabs flex-nowrap" id="dashboardTabs" role="tablist" style="min-width: max-content;">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="rrhh-tab" data-bs-toggle="tab" data-bs-target="#rrhh" type="button" role="tab">
-                    <i class="bi bi-people me-2"></i>RRHH
+                    <i class="bi bi-people me-2 d-none d-md-inline"></i>RRHH
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="operaciones-tab" data-bs-toggle="tab" data-bs-target="#operaciones" type="button" role="tab">
-                    <i class="bi bi-calendar-check me-2"></i>Operaciones
+                    <i class="bi bi-calendar-check me-2 d-none d-md-inline"></i>Operaciones
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="maquinarias-tab" data-bs-toggle="tab" data-bs-target="#maquinarias" type="button" role="tab">
-                    <i class="bi bi-gear me-2"></i>Maquinarias
+                    <i class="bi bi-gear me-2 d-none d-md-inline"></i>Maquinarias
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="gerencia-tab" data-bs-toggle="tab" data-bs-target="#gerencia" type="button" role="tab">
-                    <i class="bi bi-graph-up-arrow me-2"></i>Gerencia
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link disabled" id="ventas-tab" type="button" role="tab" disabled>
-                    <i class="bi bi-cart me-2"></i>Ventas <small class="text-muted">(Próximamente)</small>
+                    <i class="bi bi-graph-up-arrow me-2 d-none d-md-inline"></i>Gerencia
                 </button>
             </li>
         </ul>
+    </div>
+    
+    <!-- Contenido de los tabs -->
+    <div class="tab-content" id="dashboardTabsContent">
+        <!-- Tab RRHH -->
+        <div class="tab-pane fade show active" id="rrhh" role="tabpanel">
+            <div id="rrhh-content">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando datos de RRHH...</p>
+                </div>
+            </div>
+        </div>
         
-        <!-- Contenido de los tabs -->
-        <div class="tab-content" id="dashboardTabsContent">
-            <!-- Tab RRHH -->
-            <div class="tab-pane fade show active" id="rrhh" role="tabpanel">
-                <div id="rrhh-content">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Cargando datos de RRHH...</p>
+        <!-- Tab Operaciones -->
+        <div class="tab-pane fade" id="operaciones" role="tabpanel">
+            <div id="operaciones-content">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
                     </div>
+                    <p class="mt-2 text-muted">Cargando datos de Operaciones...</p>
                 </div>
             </div>
-            
-            <!-- Tab Operaciones -->
-            <div class="tab-pane fade" id="operaciones" role="tabpanel">
-                <div id="operaciones-content">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Cargando datos de Operaciones...</p>
+        </div>
+        
+        <!-- Tab Maquinarias -->
+        <div class="tab-pane fade" id="maquinarias" role="tabpanel">
+            <div id="maquinarias-content">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
                     </div>
+                    <p class="mt-2 text-muted">Cargando datos de Maquinarias...</p>
                 </div>
             </div>
-            
-            <!-- Tab Maquinarias -->
-            <div class="tab-pane fade" id="maquinarias" role="tabpanel">
-                <div id="maquinarias-content">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Cargando datos de Maquinarias...</p>
+        </div>
+        
+        <!-- Tab Gerencia -->
+        <div class="tab-pane fade" id="gerencia" role="tabpanel">
+            <div id="gerencia-content">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Tab Gerencia -->
-            <div class="tab-pane fade" id="gerencia" role="tabpanel">
-                <div id="gerencia-content">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Cargando datos de Gerencia...</p>
-                    </div>
+                    <p class="mt-2 text-muted">Cargando datos de Gerencia...</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
 {% block extrajs %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -182,6 +518,12 @@
     
     // Almacenar instancias de gráficos
     const charts = {};
+    
+    // Determinar qué tab mostrar según el rol (preparado para futuro)
+    // Por ahora, siempre mostrar todos los tabs
+    // TODO: Implementar lógica de roles
+    // const userRole = '{{ request.user.groups.first.name|default:"gerencia" }}';
+    // const defaultTab = userRole === 'rrhh' ? 'rrhh' : userRole === 'operaciones' ? 'operaciones' : 'gerencia';
     
     // Inicializar cuando el DOM esté listo
     document.addEventListener('DOMContentLoaded', function() {
@@ -287,38 +629,11 @@
             });
     }
     
-    // Funciones para renderizar cada dashboard
+    // Funciones para renderizar cada dashboard (copiadas del template original)
     function renderizarDashboardRRHH(data, container) {
         let html = `
             <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="stat-card success">
-                        <div class="stat-number">${data.total_personal}</div>
-                        <div class="stat-label">Personal Activo</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card warning">
-                        <div class="stat-number">${data.total_personal_inactivo}</div>
-                        <div class="stat-label">Personal Inactivo</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card info">
-                        <div class="stat-number">${data.activaciones}</div>
-                        <div class="stat-label">Activaciones (30 días)</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-number">${data.desactivaciones}</div>
-                        <div class="stat-label">Desactivaciones (30 días)</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-6">
+                <div class="col-12 col-md-6 mb-3 mb-md-0">
                     <div class="card dashboard-card">
                         <div class="card-header bg-dark text-white">
                             <h6 class="mb-0">Personal por Empresa</h6>
@@ -328,14 +643,69 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                     <div class="card dashboard-card">
                         <div class="card-header bg-dark text-white">
-                            <h6 class="mb-0">Actividad Reciente</h6>
+                            <h6 class="mb-0">Distribución del Personal</h6>
                         </div>
                         <div class="card-body">
-                            <p class="mb-2"><strong>Cambios en últimos 30 días:</strong> ${data.cambios_recientes}</p>
-                            <p class="mb-0"><small class="text-muted">Incluye todas las modificaciones realizadas al personal</small></p>
+                            <canvas id="chart-rrhh-distribucion"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Documentos por Vencer (Próximos 30 días)
+                            </h6>
+                            <span class="badge bg-warning">${data.total_documentos_por_vencer || 0}</span>
+                        </div>
+                        <div class="card-body">
+                            ${data.documentos_por_vencer && data.documentos_por_vencer.length > 0 ? `
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Tipo</th>
+                                                <th>Documento</th>
+                                                <th>Personal</th>
+                                                <th>RUT</th>
+                                                <th>Fecha Vencimiento</th>
+                                                <th>Días Restantes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.documentos_por_vencer.map(doc => `
+                                                <tr class="${doc.dias_restantes <= 5 ? 'table-warning' : ''}">
+                                                    <td><span class="badge bg-secondary">${doc.tipo}</span></td>
+                                                    <td>${doc.nombre}</td>
+                                                    <td>${doc.personal}</td>
+                                                    <td>${doc.personal_rut}</td>
+                                                    <td>${doc.fecha_vencimiento}</td>
+                                                    <td>
+                                                        <span class="badge ${doc.dias_restantes <= 5 ? 'bg-danger' : doc.dias_restantes <= 10 ? 'bg-warning' : 'bg-info'}">
+                                                            ${doc.dias_restantes} día${doc.dias_restantes !== 1 ? 's' : ''}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ` : `
+                                <div class="text-center py-3">
+                                    <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                                    <p class="mt-2 text-muted mb-0">No hay documentos por vencer en los próximos 30 días</p>
+                                </div>
+                            `}
                         </div>
                     </div>
                 </div>
@@ -344,22 +714,102 @@
         
         container.innerHTML = html;
         
+        // Crear gráfico de distribución del personal (doughnut, igual estilo que personal por empresa)
+        const ctxDistribucion = document.getElementById('chart-rrhh-distribucion').getContext('2d');
+        const distribucionData = {
+            labels: ['Disponible', 'En Faena', 'Con Licencia Médica', 'Con Ausentismo'],
+            datasets: [{
+                data: [
+                    data.personal_disponible || 0,
+                    data.personal_en_faena || 0,
+                    data.personal_con_licencia || 0,
+                    data.personal_con_ausentismo || 0
+                ],
+                backgroundColor: [
+                    '#198754', // success - Disponible (verde, igual que la tarjeta success)
+                    '#0dcaf0', // info - En Faena (azul claro, igual que la tarjeta info)
+                    '#ffc107', // warning - Con Licencia Médica (amarillo, igual que la tarjeta warning)
+                    '#dc3545'  // danger - Con Ausentismo (rojo, igual que la tarjeta danger)
+                ]
+            }]
+        };
+        
+        charts['rrhh-distribucion'] = new Chart(ctxDistribucion, {
+            type: 'doughnut',
+            data: distribucionData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                aspectRatio: 2,
+                layout: {
+                    padding: {
+                        left: 5,
+                        right: 5,
+                        top: 5,
+                        bottom: 5
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: window.innerWidth < 768 ? 9 : 11
+                            },
+                            padding: window.innerWidth < 768 ? 8 : 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const label = distribucionData.labels[index];
+                        mostrarDetallesDistribucion(label, data);
+                    }
+                },
+                onHover: (event, elements) => {
+                    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                }
+            }
+        });
+        
         // Crear gráfico de personal por empresa
         if (data.personal_por_empresa && data.personal_por_empresa.length > 0) {
             const ctx = document.getElementById('chart-rrhh-empresas').getContext('2d');
+            // Nueva paleta de colores más variada y atractiva
+            const empresaColors = [
+                '#667eea', // Morado azulado
+                '#764ba2', // Morado oscuro
+                '#f093fb', // Rosa
+                '#4facfe', // Azul claro
+                '#43e97b', // Verde claro
+                '#fa709a', // Rosa coral
+                '#fee140', // Amarillo claro
+                '#30cfd0', // Turquesa
+                '#a8edea', // Aqua claro
+                '#fed6e3'  // Rosa pastel
+            ];
+            // Invertir el orden para que coincida con el orden visual del gráfico
+            const empresasReversed = [...data.personal_por_empresa].reverse();
             charts['rrhh-empresas'] = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: data.personal_por_empresa.map(e => e.empresa_id__nomFantasia || 'Sin empresa'),
+                    labels: empresasReversed.map(e => e.empresa_id__nomFantasia || 'Sin empresa'),
                     datasets: [{
-                        data: data.personal_por_empresa.map(e => e.total),
-                        backgroundColor: [
-                            '#667eea',
-                            '#764ba2',
-                            '#f093fb',
-                            '#4facfe',
-                            '#43e97b'
-                        ]
+                        data: empresasReversed.map(e => e.total),
+                        backgroundColor: empresaColors.slice(0, empresasReversed.length)
                     }]
                 },
                 options: {
@@ -380,33 +830,235 @@
                 }
             });
         }
+    }
+    
+    function mostrarDetallesDistribucion(tipo, data) {
+        let titulo = '';
+        let modalHTML = '';
+        
+        if (tipo === 'Con Ausentismo') {
+            const detalles = data.tipos_ausentismo || [];
+            if (detalles.length === 0) {
+                alert(`No hay detalles disponibles para ${tipo}`);
+                return;
+            }
+            
+            titulo = 'Detalles de Ausentismos';
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesDistribucion" tabindex="-1" aria-labelledby="modalDetallesDistribucionLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesDistribucionLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Tipo</th>
+                                                <th class="text-end">Cantidad de Personas</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${detalles.map(d => `
+                                                <tr>
+                                                    <td>${d.tipo}</td>
+                                                    <td class="text-end"><strong>${d.cantidad}</strong></td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-info">
+                                                <th>Total</th>
+                                                <th class="text-end">${detalles.reduce((sum, d) => sum + d.cantidad, 0)}</th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (tipo === 'Con Licencia Médica') {
+            const detalles = data.tipos_licencia_medica || [];
+            if (detalles.length === 0) {
+                alert(`No hay detalles disponibles para ${tipo}`);
+                return;
+            }
+            
+            titulo = 'Detalles de Licencias Médicas';
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesDistribucion" tabindex="-1" aria-labelledby="modalDetallesDistribucionLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesDistribucionLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Tipo</th>
+                                                <th class="text-end">Cantidad de Personas</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${detalles.map(d => `
+                                                <tr>
+                                                    <td>${d.tipo}</td>
+                                                    <td class="text-end"><strong>${d.cantidad}</strong></td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-info">
+                                                <th>Total</th>
+                                                <th class="text-end">${detalles.reduce((sum, d) => sum + d.cantidad, 0)}</th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (tipo === 'En Faena') {
+            const faenas = data.faenas_con_personal || [];
+            if (faenas.length === 0) {
+                alert(`No hay faenas activas con personal asignado`);
+                return;
+            }
+            
+            titulo = 'Personal en Faenas';
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesDistribucion" tabindex="-1" aria-labelledby="modalDetallesDistribucionLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesDistribucionLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="accordion" id="accordionFaenas">
+                                    ${faenas.map((faena, index) => `
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="heading${faena.id}">
+                                                <button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${faena.id}" aria-expanded="${index === 0 ? 'true' : 'false'}" aria-controls="collapse${faena.id}">
+                                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                                        <div>
+                                                            <strong>${faena.nombre}</strong>
+                                                            ${faena.codigo ? `<span class="badge bg-secondary ms-2">${faena.codigo}</span>` : ''}
+                                                        </div>
+                                                        <span class="badge bg-primary">${faena.cantidad_personal} persona${faena.cantidad_personal !== 1 ? 's' : ''}</span>
+                                                    </div>
+                                                </button>
+                                            </h2>
+                                            <div id="collapse${faena.id}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="heading${faena.id}" data-bs-parent="#accordionFaenas">
+                                                <div class="accordion-body">
+                                                    ${faena.fecha_inicio || faena.fecha_fin ? `
+                                                        <p class="mb-3">
+                                                            <small class="text-muted">
+                                                                ${faena.fecha_inicio ? `Desde: ${faena.fecha_inicio}` : ''}
+                                                                ${faena.fecha_inicio && faena.fecha_fin ? ' | ' : ''}
+                                                                ${faena.fecha_fin ? `Hasta: ${faena.fecha_fin}` : ''}
+                                                            </small>
+                                                        </p>
+                                                    ` : ''}
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-hover">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Nombre</th>
+                                                                    <th>RUT</th>
+                                                                    <th>Cargo</th>
+                                                                    <th>Turno</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                ${faena.personal.map(p => `
+                                                                    <tr>
+                                                                        <td>${p.nombre}</td>
+                                                                        <td>${p.rut}</td>
+                                                                        <td>${p.cargo}</td>
+                                                                        <td>${p.turno}</td>
+                                                                    </tr>
+                                                                `).join('')}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Para Disponible, no hay detalles por tipo
+            return;
+        }
+        
+        // Eliminar modal anterior si existe
+        const modalAnterior = document.getElementById('modalDetallesDistribucion');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+        
+        // Agregar modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalDetallesDistribucion'));
+        modal.show();
+        
+        // Limpiar modal cuando se cierre
+        document.getElementById('modalDetallesDistribucion').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
     }
     
     function renderizarDashboardOperaciones(data, container) {
         let html = `
             <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="stat-card success">
-                        <div class="stat-number">${data.faenas_activas}</div>
-                        <div class="stat-label">Faenas Activas</div>
+                <div class="col-12 col-md-6 mb-3 mb-md-0">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Distribución del Personal</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-operaciones-personal"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="stat-card info">
-                        <div class="stat-number">${data.faenas_proximas}</div>
-                        <div class="stat-label">Faenas Próximas</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-number">${data.faenas_en_curso}</div>
-                        <div class="stat-label">En Curso</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card warning">
-                        <div class="stat-number">${data.faenas_finalizadas}</div>
-                        <div class="stat-label">Finalizadas</div>
+                <div class="col-12 col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Estado de Equipos</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-operaciones-equipos"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -414,247 +1066,107 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="card dashboard-card">
-                        <div class="card-header bg-dark text-white">
-                            <h6 class="mb-0">Faenas por Mes (Últimos 6 meses)</h6>
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Documentos por Vencer (Próximos 30 días)
+                            </h6>
                         </div>
-                        <div class="card-body">
-                            <canvas id="chart-operaciones-faenas"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        container.innerHTML = html;
-        
-        // Crear gráfico de faenas por mes
-        if (data.faenas_por_mes && data.faenas_por_mes.length > 0) {
-            const ctx = document.getElementById('chart-operaciones-faenas').getContext('2d');
-            charts['operaciones-faenas'] = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.faenas_por_mes.map(f => f.nombre),
-                    datasets: [{
-                        label: 'Faenas',
-                        data: data.faenas_por_mes.map(f => f.total),
-                        backgroundColor: '#667eea'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2.5,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                font: {
-                                    size: 10
-                                }
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                font: {
-                                    size: 10
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    }
-    
-    function renderizarDashboardMaquinarias(data, container) {
-        let html = `
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="stat-card success">
-                        <div class="stat-number">${data.equipos_activos}</div>
-                        <div class="stat-label">Equipos Activos</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card warning">
-                        <div class="stat-number">${data.equipos_inactivos}</div>
-                        <div class="stat-label">Equipos Inactivos</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card info">
-                        <div class="stat-number">${data.ots_recientes}</div>
-                        <div class="stat-label">OTs Recientes (30 días)</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-number">${data.ots_por_estado.reduce((sum, e) => sum + e.total, 0)}</div>
-                        <div class="stat-label">Total OTs</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card dashboard-card">
-                        <div class="card-header bg-dark text-white">
-                            <h6 class="mb-0">Órdenes de Trabajo por Estado</h6>
-                        </div>
-                        <div class="card-body">
-                            <canvas id="chart-maquinarias-ots"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card dashboard-card">
-                        <div class="card-header bg-dark text-white">
-                            <h6 class="mb-0">Equipos por Tipo</h6>
-                        </div>
-                        <div class="card-body">
-                            <canvas id="chart-maquinarias-tipos"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        container.innerHTML = html;
-        
-        // Crear gráfico de OTs por estado
-        if (data.ots_por_estado && data.ots_por_estado.length > 0) {
-            const ctx = document.getElementById('chart-maquinarias-ots').getContext('2d');
-            charts['maquinarias-ots'] = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: data.ots_por_estado.map(e => e.estado),
-                    datasets: [{
-                        data: data.ots_por_estado.map(e => e.total),
-                        backgroundColor: [
-                            '#667eea',
-                            '#764ba2',
-                            '#f093fb',
-                            '#4facfe',
-                            '#43e97b'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 12,
-                                font: {
-                                    size: 11
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Crear gráfico de equipos por tipo
-        if (data.equipos_por_tipo && data.equipos_por_tipo.length > 0) {
-            const ctx = document.getElementById('chart-maquinarias-tipos').getContext('2d');
-            charts['maquinarias-tipos'] = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.equipos_por_tipo.map(e => e.modeloEquipo_id__tipoEquipo_id__tipoEquipo || 'Sin tipo'),
-                    datasets: [{
-                        label: 'Equipos',
-                        data: data.equipos_por_tipo.map(e => e.total),
-                        backgroundColor: '#4facfe'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2.5,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                font: {
-                                    size: 10
-                                }
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                font: {
-                                    size: 10
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    }
-    
-    function renderizarDashboardGerencia(data, container) {
-        let html = `
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="stat-card success">
-                        <div class="stat-number">${data.resumen.total_personal}</div>
-                        <div class="stat-label">Personal Activo</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card info">
-                        <div class="stat-number">${data.resumen.total_equipos}</div>
-                        <div class="stat-label">Equipos Activos</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-number">${data.resumen.total_faenas_activas}</div>
-                        <div class="stat-label">Faenas Activas</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card warning">
-                        <div class="stat-number">${data.resumen.total_ots}</div>
-                        <div class="stat-label">Total OTs</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card dashboard-card">
-                        <div class="card-header bg-dark text-white">
-                            <h6 class="mb-0">Actividad Reciente (Últimos 7 días)</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <p class="mb-1"><strong>Cambios en Personal:</strong></p>
-                                    <h4>${data.actividad_reciente.cambios_personal}</h4>
+                        <div class="card-body" style="display: flex; flex-direction: column; height: 500px; padding: 1rem;">
+                            <ul class="nav nav-tabs mb-3" id="tabsDocumentosOperaciones" role="tablist" style="flex-shrink: 0;">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="tab-personal-operaciones" data-bs-toggle="tab" data-bs-target="#content-personal-operaciones" type="button" role="tab">
+                                        <i class="bi bi-people me-2"></i>Personal
+                                        <span class="badge bg-warning ms-2">${data.total_documentos_personal_por_vencer || 0}</span>
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="tab-maquinarias-operaciones" data-bs-toggle="tab" data-bs-target="#content-maquinarias-operaciones" type="button" role="tab">
+                                        <i class="bi bi-gear me-2"></i>Maquinarias
+                                        <span class="badge bg-warning ms-2">${data.total_documentos_maquinarias_por_vencer || 0}</span>
+                                    </button>
+                                </li>
+                            </ul>
+                            
+                            <div class="tab-content" id="tabsContentDocumentosOperaciones" style="flex: 1; overflow: hidden; min-height: 0;">
+                                <!-- Tab Personal -->
+                                <div class="tab-pane fade show active" id="content-personal-operaciones" role="tabpanel" style="height: 100%; overflow: hidden;">
+                                    ${data.documentos_personal_por_vencer && data.documentos_personal_por_vencer.length > 0 ? `
+                                        <div style="height: 100%; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6; border-radius: 0.25rem;">
+                                            <table class="table table-sm table-hover mb-0">
+                                                <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 10;">
+                                                    <tr>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Tipo</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Documento</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Personal</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">RUT</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Fecha Vencimiento</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Días Restantes</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${data.documentos_personal_por_vencer.map(doc => `
+                                                        <tr class="${doc.dias_restantes <= 5 ? 'table-warning' : ''}">
+                                                            <td><span class="badge bg-secondary">${doc.tipo}</span></td>
+                                                            <td>${doc.nombre}</td>
+                                                            <td>${doc.personal}</td>
+                                                            <td>${doc.personal_rut}</td>
+                                                            <td>${doc.fecha_vencimiento}</td>
+                                                            <td>
+                                                                <span class="badge ${doc.dias_restantes <= 5 ? 'bg-danger' : doc.dias_restantes <= 10 ? 'bg-warning' : 'bg-info'}">
+                                                                    ${doc.dias_restantes} día${doc.dias_restantes !== 1 ? 's' : ''}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ` : `
+                                        <div class="text-center py-3">
+                                            <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                                            <p class="mt-2 text-muted mb-0">No hay documentos de personal por vencer en los próximos 30 días</p>
+                                        </div>
+                                    `}
                                 </div>
-                                <div class="col-md-4">
-                                    <p class="mb-1"><strong>Cambios en Equipos:</strong></p>
-                                    <h4>${data.actividad_reciente.cambios_equipos}</h4>
-                                </div>
-                                <div class="col-md-4">
-                                    <p class="mb-1"><strong>Cambios en Faenas:</strong></p>
-                                    <h4>${data.actividad_reciente.cambios_faenas}</h4>
+                                
+                                <!-- Tab Maquinarias -->
+                                <div class="tab-pane fade" id="content-maquinarias-operaciones" role="tabpanel" style="height: 100%; overflow: hidden;">
+                                    ${data.documentos_maquinarias_por_vencer && data.documentos_maquinarias_por_vencer.length > 0 ? `
+                                        <div style="height: 100%; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6; border-radius: 0.25rem;">
+                                            <table class="table table-sm table-hover mb-0">
+                                                <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 10;">
+                                                    <tr>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Tipo</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Equipo</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Código</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Fecha Vencimiento</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Días Restantes</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${data.documentos_maquinarias_por_vencer.map(doc => `
+                                                        <tr class="${doc.dias_restantes <= 5 ? 'table-warning' : ''}">
+                                                            <td><span class="badge bg-secondary">${doc.tipo}</span></td>
+                                                            <td>${doc.equipo}</td>
+                                                            <td>${doc.equipo_codigo}</td>
+                                                            <td>${doc.fecha_vencimiento}</td>
+                                                            <td>
+                                                                <span class="badge ${doc.dias_restantes <= 5 ? 'bg-danger' : doc.dias_restantes <= 10 ? 'bg-warning' : 'bg-info'}">
+                                                                    ${doc.dias_restantes} día${doc.dias_restantes !== 1 ? 's' : ''}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ` : `
+                                        <div class="text-center py-3">
+                                            <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                                            <p class="mt-2 text-muted mb-0">No hay documentos de maquinarias por vencer en los próximos 30 días</p>
+                                        </div>
+                                    `}
                                 </div>
                             </div>
                         </div>
@@ -664,6 +1176,1101 @@
         `;
         
         container.innerHTML = html;
+        
+        // Crear gráfico de distribución del personal (igual que RRHH)
+        const ctxPersonal = document.getElementById('chart-operaciones-personal').getContext('2d');
+        const distribucionPersonalData = {
+            labels: ['Disponible', 'En Faena', 'Con Licencia Médica', 'Con Ausentismo'],
+            datasets: [{
+                data: [
+                    data.personal_disponible || 0,
+                    data.personal_en_faena || 0,
+                    data.personal_con_licencia || 0,
+                    data.personal_con_ausentismo || 0
+                ],
+                backgroundColor: [
+                    '#198754', // success - Disponible
+                    '#0dcaf0', // info - En Faena
+                    '#ffc107', // warning - Con Licencia Médica
+                    '#dc3545'  // danger - Con Ausentismo
+                ]
+            }]
+        };
+        
+        charts['operaciones-personal'] = new Chart(ctxPersonal, {
+            type: 'doughnut',
+            data: distribucionPersonalData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                aspectRatio: 2,
+                layout: {
+                    padding: {
+                        left: 5,
+                        right: 5,
+                        top: 5,
+                        bottom: 5
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: window.innerWidth < 768 ? 9 : 11
+                            },
+                            padding: window.innerWidth < 768 ? 8 : 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const label = distribucionPersonalData.labels[index];
+                        mostrarDetallesDistribucion(label, data);
+                    }
+                },
+                onHover: (event, elements) => {
+                    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                }
+            }
+        });
+        
+        // Crear gráfico de distribución de equipos
+        const ctxEquipos = document.getElementById('chart-operaciones-equipos').getContext('2d');
+        
+        // Preparar datos de distribución de equipos
+        const distribucionEquipos = data.distribucion_equipos || {};
+        const labelsEquipos = [];
+        const valoresEquipos = [];
+        const coloresEquipos = [];
+        
+        // Colores predefinidos para estados comunes
+        const coloresEstados = {
+            'Disponibles': '#198754', // success
+            'En Uso': '#0dcaf0', // info
+            'En Faena': '#ffc107', // warning
+            'Inactivos': '#6c757d', // secondary
+            'Shutdown': '#dc3545', // danger
+            'Operativo con anomalías': '#fd7e14', // warning variant
+            'Operativo con Anomalías': '#fd7e14', // warning variant (con mayúscula)
+            'En Mantenimiento': '#fd7e14', // warning variant
+            'En Reparación': '#e83e8c', // pink
+            'Fuera de Servicio': '#6610f2', // purple
+            'Disponible': '#198754' // success (singular)
+        };
+        
+        // Función para obtener color de un estado
+        function obtenerColorEstado(estado) {
+            // Buscar coincidencia exacta primero
+            if (coloresEstados[estado]) {
+                return coloresEstados[estado];
+            }
+            // Buscar por coincidencia parcial (case insensitive)
+            const estadoLower = estado.toLowerCase();
+            for (const key in coloresEstados) {
+                if (key.toLowerCase() === estadoLower) {
+                    return coloresEstados[key];
+                }
+            }
+            // Si no se encuentra, usar un color por defecto basado en el nombre
+            if (estadoLower.includes('shutdown') || estadoLower.includes('fuera')) {
+                return '#dc3545'; // danger
+            }
+            if (estadoLower.includes('anomalía') || estadoLower.includes('mantenimiento')) {
+                return '#fd7e14'; // warning
+            }
+            if (estadoLower.includes('reparación') || estadoLower.includes('reparacion')) {
+                return '#e83e8c'; // pink
+            }
+            // Color por defecto
+            return '#6c757d'; // secondary
+        }
+        
+        // Agregar estados en orden de importancia
+        const ordenEstados = ['Disponibles', 'En Uso', 'En Faena', 'Inactivos'];
+        const estadosAgregados = new Set();
+        
+        // Primero agregar estados conocidos en orden
+        for (const estado of ordenEstados) {
+            const valor = distribucionEquipos[estado];
+            if (valor !== undefined && valor !== null && valor > 0) {
+                labelsEquipos.push(estado);
+                valoresEquipos.push(valor);
+                coloresEquipos.push(obtenerColorEstado(estado));
+                estadosAgregados.add(estado);
+            }
+        }
+        
+        // Luego agregar TODOS los demás estados (Shutdown, Operativo con anomalías, etc.)
+        for (const estado in distribucionEquipos) {
+            const valor = distribucionEquipos[estado];
+            if (!estadosAgregados.has(estado) && valor !== undefined && valor !== null && valor > 0) {
+                labelsEquipos.push(estado);
+                valoresEquipos.push(valor);
+                coloresEquipos.push(obtenerColorEstado(estado));
+                estadosAgregados.add(estado);
+            }
+        }
+        
+        const distribucionEquiposData = {
+            labels: labelsEquipos,
+            datasets: [{
+                data: valoresEquipos,
+                backgroundColor: coloresEquipos
+            }]
+        };
+        
+        charts['operaciones-equipos'] = new Chart(ctxEquipos, {
+            type: 'doughnut',
+            data: distribucionEquiposData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                aspectRatio: 2,
+                layout: {
+                    padding: {
+                        left: 5,
+                        right: 5,
+                        top: 5,
+                        bottom: 5
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: window.innerWidth < 768 ? 9 : 11
+                            },
+                            padding: window.innerWidth < 768 ? 8 : 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const label = distribucionEquiposData.labels[index];
+                        mostrarDetallesEquipos(label, data);
+                    }
+                },
+                onHover: (event, elements) => {
+                    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                }
+            }
+        });
+    }
+    
+    function renderizarDashboardMaquinarias(data, container) {
+        let html = `
+            <div class="row mb-4">
+                <div class="col-12 col-md-6 mb-3 mb-md-0">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Órdenes de Trabajo por Estado</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-maquinarias-ots"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Estado de Equipos</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-maquinarias-equipos"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="bi bi-list-ul me-2"></i>
+                                Información de Equipos
+                            </h6>
+                        </div>
+                        <div class="card-body" style="display: flex; flex-direction: column; height: 500px; padding: 1rem;">
+                            <ul class="nav nav-tabs mb-3" id="tabsInfoMaquinarias" role="tablist" style="flex-shrink: 0;">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="tab-documentos-maquinarias" data-bs-toggle="tab" data-bs-target="#content-documentos-maquinarias" type="button" role="tab">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Documentos por Vencer
+                                        <span class="badge bg-warning ms-2">${data.total_documentos_maquinarias_por_vencer || 0}</span>
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="tab-ranking-maquinarias" data-bs-toggle="tab" data-bs-target="#content-ranking-maquinarias" type="button" role="tab">
+                                        <i class="bi bi-trophy-fill me-2"></i>Ranking Equipos Más Intervenidos
+                                        <span class="badge bg-info ms-2">${data.ranking_equipos_intervenidos ? data.ranking_equipos_intervenidos.length : 0}</span>
+                                    </button>
+                                </li>
+                            </ul>
+                            
+                            <div class="tab-content" id="tabsContentInfoMaquinarias" style="flex: 1; overflow: hidden; min-height: 0;">
+                                <!-- Tab Documentos por Vencer -->
+                                <div class="tab-pane fade show active" id="content-documentos-maquinarias" role="tabpanel" style="height: 100%; overflow: hidden;">
+                                    ${data.documentos_maquinarias_por_vencer && data.documentos_maquinarias_por_vencer.length > 0 ? `
+                                        <div style="height: 100%; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6; border-radius: 0.25rem;">
+                                            <table class="table table-sm table-hover mb-0">
+                                                <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 10;">
+                                                    <tr>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Tipo</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Equipo</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Código</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Fecha Vencimiento</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Días Restantes</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${data.documentos_maquinarias_por_vencer.map(doc => `
+                                                        <tr class="${doc.dias_restantes <= 5 ? 'table-warning' : ''}">
+                                                            <td><span class="badge bg-secondary">${doc.tipo}</span></td>
+                                                            <td>${doc.equipo}</td>
+                                                            <td>${doc.equipo_codigo}</td>
+                                                            <td>${doc.fecha_vencimiento}</td>
+                                                            <td>
+                                                                <span class="badge ${doc.dias_restantes <= 5 ? 'bg-danger' : doc.dias_restantes <= 10 ? 'bg-warning' : 'bg-info'}">
+                                                                    ${doc.dias_restantes} día${doc.dias_restantes !== 1 ? 's' : ''}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ` : `
+                                        <div class="text-center py-3">
+                                            <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                                            <p class="mt-2 text-muted mb-0">No hay documentos de maquinarias por vencer en los próximos 30 días</p>
+                                        </div>
+                                    `}
+                                </div>
+                                
+                                <!-- Tab Ranking Equipos Más Intervenidos -->
+                                <div class="tab-pane fade" id="content-ranking-maquinarias" role="tabpanel" style="height: 100%; overflow: hidden;">
+                                    ${data.ranking_equipos_intervenidos && data.ranking_equipos_intervenidos.length > 0 ? `
+                                        <div style="height: 100%; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6; border-radius: 0.25rem;">
+                                            <table class="table table-sm table-hover mb-0">
+                                                <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 10;">
+                                                    <tr>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6; width: 60px;">#</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Equipo</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">Código</th>
+                                                        <th style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6; text-align: center;">Total OTs</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${data.ranking_equipos_intervenidos.map(item => `
+                                                        <tr>
+                                                            <td>
+                                                                <span class="badge ${item.posicion === 1 ? 'bg-warning' : item.posicion <= 3 ? 'bg-info' : 'bg-secondary'}">
+                                                                    ${item.posicion}
+                                                                </span>
+                                                            </td>
+                                                            <td><strong>${item.equipo}</strong></td>
+                                                            <td>${item.codigo}</td>
+                                                            <td style="text-align: center;">
+                                                                <span class="badge bg-primary">${item.total_ots} OT${item.total_ots !== 1 ? 's' : ''}</span>
+                                                            </td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ` : `
+                                        <div class="text-center py-3">
+                                            <i class="bi bi-info-circle-fill text-info" style="font-size: 2rem;"></i>
+                                            <p class="mt-2 text-muted mb-0">No hay equipos con historial de órdenes de trabajo</p>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        // Crear gráfico de OTs por estado (doughnut, similar a otros dashboards)
+        if (data.ots_por_estado && data.ots_por_estado.length > 0) {
+            const ctx = document.getElementById('chart-maquinarias-ots').getContext('2d');
+            const bootstrapColorsOTs = [
+                '#0d6efd', // primary
+                '#198754', // success
+                '#0dcaf0', // info
+                '#ffc107', // warning
+                '#dc3545', // danger
+                '#6c757d', // secondary
+                '#212529'  // dark
+            ];
+            charts['maquinarias-ots'] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.ots_por_estado.map(e => e.estado),
+                    datasets: [{
+                        data: data.ots_por_estado.map(e => e.total),
+                        backgroundColor: bootstrapColorsOTs.slice(0, data.ots_por_estado.length)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    aspectRatio: 2,
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 5,
+                            top: 5,
+                            bottom: 5
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Crear gráfico de distribución de equipos (similar a operaciones)
+        if (data.distribucion_equipos) {
+            const ctxEquipos = document.getElementById('chart-maquinarias-equipos').getContext('2d');
+            
+            // Preparar datos de distribución de equipos
+            const distribucionEquipos = data.distribucion_equipos || {};
+            const labelsEquipos = [];
+            const valoresEquipos = [];
+            const coloresEquipos = [];
+            
+            // Colores predefinidos para estados comunes (igual que operaciones)
+            const coloresEstados = {
+                'Disponibles': '#198754', // success
+                'En Uso': '#0dcaf0', // info
+                'En Faena': '#ffc107', // warning
+                'Inactivos': '#6c757d', // secondary
+                'Shutdown': '#dc3545', // danger
+                'Operativo con anomalías': '#fd7e14', // warning variant
+                'Operativo con Anomalías': '#fd7e14', // warning variant (con mayúscula)
+                'En Mantenimiento': '#fd7e14', // warning variant
+                'En Reparación': '#e83e8c', // pink
+                'Fuera de Servicio': '#6610f2', // purple
+                'Disponible': '#198754' // success (singular)
+            };
+            
+            // Función para obtener color de un estado (igual que operaciones)
+            function obtenerColorEstado(estado) {
+                // Buscar coincidencia exacta primero
+                if (coloresEstados[estado]) {
+                    return coloresEstados[estado];
+                }
+                // Buscar por coincidencia parcial (case insensitive)
+                const estadoLower = estado.toLowerCase();
+                for (const key in coloresEstados) {
+                    if (key.toLowerCase() === estadoLower) {
+                        return coloresEstados[key];
+                    }
+                }
+                // Si no se encuentra, usar un color por defecto basado en el nombre
+                if (estadoLower.includes('shutdown') || estadoLower.includes('fuera')) {
+                    return '#dc3545'; // danger
+                }
+                if (estadoLower.includes('anomalía') || estadoLower.includes('mantenimiento')) {
+                    return '#fd7e14'; // warning
+                }
+                if (estadoLower.includes('reparación') || estadoLower.includes('reparacion')) {
+                    return '#e83e8c'; // pink
+                }
+                // Color por defecto
+                return '#6c757d'; // secondary
+            }
+            
+            // Agregar estados en orden de importancia
+            const ordenEstados = ['Disponibles', 'En Uso', 'En Faena', 'Inactivos'];
+            const estadosAgregados = new Set();
+            
+            // Primero agregar estados conocidos en orden
+            for (const estado of ordenEstados) {
+                const valor = distribucionEquipos[estado];
+                if (valor !== undefined && valor !== null && valor > 0) {
+                    labelsEquipos.push(estado);
+                    valoresEquipos.push(valor);
+                    coloresEquipos.push(obtenerColorEstado(estado));
+                    estadosAgregados.add(estado);
+                }
+            }
+            
+            // Luego agregar TODOS los demás estados (Shutdown, Operativo con anomalías, etc.)
+            for (const estado in distribucionEquipos) {
+                const valor = distribucionEquipos[estado];
+                if (!estadosAgregados.has(estado) && valor !== undefined && valor !== null && valor > 0) {
+                    labelsEquipos.push(estado);
+                    valoresEquipos.push(valor);
+                    coloresEquipos.push(obtenerColorEstado(estado));
+                    estadosAgregados.add(estado);
+                }
+            }
+            
+            const distribucionEquiposData = {
+                labels: labelsEquipos,
+                datasets: [{
+                    data: valoresEquipos,
+                    backgroundColor: coloresEquipos
+                }]
+            };
+            
+            charts['maquinarias-equipos'] = new Chart(ctxEquipos, {
+                type: 'doughnut',
+                data: distribucionEquiposData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    aspectRatio: 2,
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 5,
+                            top: 5,
+                            bottom: 5
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: window.innerWidth < 768 ? 9 : 11
+                                },
+                                padding: window.innerWidth < 768 ? 8 : 12
+                            }
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const label = distribucionEquiposData.labels[index];
+                            mostrarDetallesEquipos(label, data);
+                        }
+                    },
+                    onHover: (event, elements) => {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    }
+                }
+            });
+        }
+    }
+    
+    function mostrarDetallesEquipos(estado, data) {
+        let titulo = '';
+        let modalHTML = '';
+        
+        // Normalizar el nombre del estado para comparación
+        const estadoLower = estado.toLowerCase();
+        
+        if (estadoLower.includes('faena') || estadoLower.includes('asignado') || estado === 'En Faena' || estado === 'Asignado') {
+            const detalles = data.equipos_en_faena_detalle || [];
+            if (detalles.length === 0) {
+                alert(`No hay equipos en faena`);
+                return;
+            }
+            
+            titulo = 'Equipos en Faena';
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesEquipos" tabindex="-1" aria-labelledby="modalDetallesEquiposLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl" style="margin-top: 2rem;">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesEquiposLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover">
+                                        <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 10;">
+                                            <tr>
+                                                <th>Equipo</th>
+                                                <th>Código</th>
+                                                <th>Faena</th>
+                                                <th>Código Faena</th>
+                                                <th>Fecha Inicio</th>
+                                                <th>Fecha Fin</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${detalles.map(eq => `
+                                                <tr>
+                                                    <td>${eq.equipo}</td>
+                                                    <td>${eq.codigo}</td>
+                                                    <td>${eq.faena}</td>
+                                                    <td>${eq.faena_codigo}</td>
+                                                    <td>${eq.fecha_inicio}</td>
+                                                    <td>${eq.fecha_fin}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (estadoLower.includes('anomalía') || estadoLower.includes('anomalia')) {
+            const detalles = data.equipos_con_anomalias_detalle || [];
+            if (detalles.length === 0) {
+                alert(`No hay equipos con anomalías`);
+                return;
+            }
+            
+            titulo = 'Equipos Operativos con Anomalías';
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesEquipos" tabindex="-1" aria-labelledby="modalDetallesEquiposLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl" style="margin-top: 2rem;">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesEquiposLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover">
+                                        <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 10;">
+                                            <tr>
+                                                <th>Equipo</th>
+                                                <th>Código</th>
+                                                <th>OT Folio</th>
+                                                <th>Fecha Inicio</th>
+                                                <th>Fecha Fin</th>
+                                                <th>Observaciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${detalles.map(eq => `
+                                                <tr>
+                                                    <td>${eq.equipo}</td>
+                                                    <td>${eq.codigo}</td>
+                                                    <td>${eq.ot_folio}</td>
+                                                    <td>${eq.fecha_inicio}</td>
+                                                    <td>${eq.fecha_fin}</td>
+                                                    <td>${eq.observaciones}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (estadoLower.includes('shutdown')) {
+            const detalles = data.equipos_shutdown_detalle || [];
+            if (detalles.length === 0) {
+                alert(`No hay equipos en shutdown`);
+                return;
+            }
+            
+            titulo = 'Equipos en Shutdown';
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesEquipos" tabindex="-1" aria-labelledby="modalDetallesEquiposLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl" style="margin-top: 2rem;">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesEquiposLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover">
+                                        <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 10;">
+                                            <tr>
+                                                <th>Equipo</th>
+                                                <th>Código</th>
+                                                <th>OT Folio</th>
+                                                <th>Fecha Inicio</th>
+                                                <th>Fecha Fin</th>
+                                                <th>Observaciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${detalles.map(eq => `
+                                                <tr>
+                                                    <td>${eq.equipo}</td>
+                                                    <td>${eq.codigo}</td>
+                                                    <td>${eq.ot_folio || 'N/A'}</td>
+                                                    <td>${eq.fecha_inicio}</td>
+                                                    <td>${eq.fecha_fin}</td>
+                                                    <td>${eq.observaciones}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Para otros estados, no mostrar modal
+            return;
+        }
+        
+        // Remover modal anterior si existe
+        const modalAnterior = document.getElementById('modalDetallesEquipos');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+        
+        // Agregar el nuevo modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('modalDetallesEquipos'));
+        modal.show();
+        
+        // Limpiar modal cuando se cierre
+        document.getElementById('modalDetallesEquipos').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+    }
+    
+    function renderizarDashboardGerencia(data, container) {
+        // Calcular datos para gráficos
+        const resumen = data.resumen_ejecutivo || {};
+        const personalTotal = resumen.total_personal_activo || 0;
+        const personalDisponible = resumen.personal_disponible || 0;
+        const personalEnFaena = resumen.personal_en_faena || 0;
+        const personalNoDisponible = personalTotal - personalDisponible;
+        
+        const equiposTotal = resumen.total_equipos_activos || 0;
+        const equiposDisponibles = resumen.equipos_disponibles || 0;
+        const equiposEnUso = resumen.equipos_en_uso || 0;
+        
+        let html = `
+            <!-- Gráficos de KPIs Consolidados -->
+            <div class="row mb-4">
+                <div class="col-12 col-md-6 mb-3 mb-md-0">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Distribución de Personal</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-gerencia-personal"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Distribución de Equipos</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-gerencia-equipos"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gráficos de Análisis -->
+            <div class="row mb-4">
+                <div class="col-12 col-md-6 mb-3 mb-md-0">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Preventivo vs Correctivo (Últimos 30 días)</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-gerencia-preventivo-correctivo"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">Estado de OTs</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-gerencia-ots-estado"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Alertas Críticas y Resumen Ejecutivo -->
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3 mb-md-0">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Alertas Críticas
+                            </h6>
+                        </div>
+                        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                            ${data.alertas_criticas && data.alertas_criticas.length > 0 ? `
+                                <div class="list-group">
+                                    ${data.alertas_criticas.map(alerta => `
+                                        <div class="list-group-item ${alerta.severidad === 'alta' ? 'list-group-item-danger' : alerta.severidad === 'media' ? 'list-group-item-warning' : 'list-group-item-info'}">
+                                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                                <div>
+                                                    <i class="bi bi-${alerta.icono || 'exclamation-triangle'} me-2"></i>
+                                                    <strong>${alerta.tipo}</strong>
+                                                </div>
+                                                <span class="badge bg-dark rounded-pill">${alerta.cantidad}</span>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <div class="text-center py-3">
+                                    <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                                    <p class="mt-2 text-muted mb-0">No hay alertas críticas en este momento</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">
+                                <i class="bi bi-clipboard-data me-2"></i>
+                                Resumen Ejecutivo
+                            </h6>
+                        </div>
+                        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                            ${data.resumen_ejecutivo ? `
+                                <table class="table table-sm table-hover mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Personal Activo:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.total_personal_activo || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Personal Disponible:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.personal_disponible || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Personal en Faena:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.personal_en_faena || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Equipos Activos:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.total_equipos_activos || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Equipos Disponibles:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.equipos_disponibles || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Equipos en Uso:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.equipos_en_uso || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Faenas en Curso:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.faenas_en_curso || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Faenas Planificadas:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.faenas_planificadas || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Faenas Finalizadas:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.faenas_finalizadas || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>OTs Activas:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.ots_activas || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>OTs Finalizadas:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.ots_finalizadas || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Alertas Críticas:</strong></td>
+                                            <td class="text-end">${data.resumen_ejecutivo.alertas_criticas_pendientes || 0}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            ` : `
+                                <div class="text-center py-3">
+                                    <p class="text-muted mb-0">No hay datos disponibles</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        // Crear gráfico de Distribución de Personal (colores iguales a operaciones)
+        const ctxPersonal = document.getElementById('chart-gerencia-personal');
+        if (ctxPersonal && personalTotal > 0) {
+            charts['gerencia-personal'] = new Chart(ctxPersonal.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Disponible', 'En Faena', 'No Disponible'],
+                    datasets: [{
+                        data: [
+                            personalDisponible,
+                            personalEnFaena,
+                            personalNoDisponible - personalEnFaena
+                        ],
+                        backgroundColor: [
+                            '#198754', // success - Disponible (igual que operaciones)
+                            '#0dcaf0', // info - En Faena (igual que operaciones)
+                            '#6c757d'  // secondary - No Disponible (licencias/ausentismo)
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    aspectRatio: 2,
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 5,
+                            top: 5,
+                            bottom: 5
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: window.innerWidth < 768 ? 9 : 11
+                                },
+                                padding: window.innerWidth < 768 ? 8 : 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Crear gráfico de Distribución de Equipos (colores iguales a operaciones/maquinarias)
+        const ctxEquipos = document.getElementById('chart-gerencia-equipos');
+        if (ctxEquipos && equiposTotal > 0) {
+            charts['gerencia-equipos'] = new Chart(ctxEquipos.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Disponibles', 'En Uso'],
+                    datasets: [{
+                        data: [
+                            equiposDisponibles,
+                            equiposEnUso
+                        ],
+                        backgroundColor: [
+                            '#198754', // success - Disponibles (igual que operaciones/maquinarias)
+                            '#ffc107'  // warning - En Uso (igual que operaciones/maquinarias)
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    aspectRatio: 2,
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 5,
+                            top: 5,
+                            bottom: 5
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: window.innerWidth < 768 ? 9 : 11
+                                },
+                                padding: window.innerWidth < 768 ? 8 : 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Crear gráfico Preventivo vs Correctivo (colores consistentes)
+        if (data.ots_preventivas_30_dias !== undefined && data.ots_correctivas_30_dias !== undefined) {
+            const ctxPreventivo = document.getElementById('chart-gerencia-preventivo-correctivo');
+            if (ctxPreventivo) {
+                charts['gerencia-preventivo'] = new Chart(ctxPreventivo.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Preventivo', 'Correctivo'],
+                        datasets: [{
+                            data: [data.ots_preventivas_30_dias || 0, data.ots_correctivas_30_dias || 0],
+                            backgroundColor: ['#198754', '#dc3545'] // success y danger
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        aspectRatio: 2,
+                        layout: {
+                            padding: {
+                                left: 5,
+                                right: 5,
+                                top: 5,
+                                bottom: 5
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: {
+                                        size: window.innerWidth < 768 ? 9 : 11
+                                    },
+                                    padding: window.innerWidth < 768 ? 8 : 12
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return `${label}: ${value} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Crear gráfico Estado de OTs (colores consistentes)
+        const ctxOTs = document.getElementById('chart-gerencia-ots-estado');
+        if (ctxOTs) {
+            charts['gerencia-ots'] = new Chart(ctxOTs.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Activas', 'Finalizadas'],
+                    datasets: [{
+                        data: [data.ots_activas || 0, data.ots_finalizadas || 0],
+                        backgroundColor: ['#ffc107', '#198754'] // warning y success (igual que otros dashboards)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    aspectRatio: 2,
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 5,
+                            top: 5,
+                            bottom: 5
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: window.innerWidth < 768 ? 9 : 11
+                                },
+                                padding: window.innerWidth < 768 ? 8 : 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     }
 </script>
 {% endblock %}

@@ -1,0 +1,245 @@
+{% extends 'home/index.html' %}
+{% load static %}
+
+{% block title %}Mi Perfil - Sistema BYC{% endblock %}
+
+{% block extrastyles %}
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #212529 0%, #343a40 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 4px solid rgba(255, 255, 255, 0.2);
+        margin: 0 auto 1rem;
+    }
+    
+    .profile-avatar i {
+        font-size: 60px;
+        color: white;
+    }
+    
+    .info-section {
+        background: #ffffff;
+        border: 1px solid #e8eaed;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .info-section-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 2px solid #dee2e6;
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #212529;
+        display: flex;
+        align-items: center;
+    }
+    
+    .info-section-header i {
+        font-size: 1.1rem;
+        color: #0d6efd;
+        margin-right: 0.5rem;
+    }
+    
+    .info-section-body {
+        padding: 1rem;
+    }
+    
+    .info-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .info-value {
+        color: #212529;
+        font-size: 0.95rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-3">
+    <div class="row">
+        <div class="col-lg-10 offset-lg-1">
+            <div class="card" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+                <!-- Header del Perfil -->
+                <div class="profile-header">
+                    <div class="text-center">
+                        <div class="profile-avatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <h3 class="mb-2">
+                            {% if user.first_name or user.last_name %}
+                                {{ user.first_name }} {{ user.last_name }}
+                            {% else %}
+                                {{ user.username }}
+                            {% endif %}
+                        </h3>
+                        <p class="mb-1 opacity-75">
+                            <i class="bi bi-person-badge me-2"></i>{{ user.username }}
+                        </p>
+                        {% if user.email %}
+                        <p class="mb-0 opacity-75">
+                            <i class="bi bi-envelope me-2"></i>{{ user.email }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body p-4">
+                    <!-- Información Personal -->
+                    <div class="info-section">
+                        <div class="info-section-header">
+                            <i class="bi bi-person-fill"></i>
+                            <span>Información Personal</span>
+                        </div>
+                        <div class="info-section-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <div class="info-label">Nombre de Usuario</div>
+                                        <div class="info-value">{{ user.username }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <div class="info-label">Email</div>
+                                        <div class="info-value">{{ user.email|default:"Sin email registrado" }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <div class="info-label">Nombre</div>
+                                        <div class="info-value">{{ user.first_name|default:"Sin especificar" }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <div class="info-label">Apellidos</div>
+                                        <div class="info-value">
+                                            {% if user.last_name %}
+                                                {{ user.last_name }}
+                                            {% else %}
+                                                Sin especificar
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Estado de la Cuenta -->
+                    <div class="info-section">
+                        <div class="info-section-header">
+                            <i class="bi bi-shield-check"></i>
+                            <span>Estado de la Cuenta</span>
+                        </div>
+                        <div class="info-section-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <div class="info-label">Estado</div>
+                                        <div class="info-value">
+                                            {% if user.is_active %}
+                                                <span class="badge bg-success">Activo</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Inactivo</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <div class="info-label">Tipo de Usuario</div>
+                                        <div class="info-value">
+                                            {% if user.is_superuser %}
+                                                <span class="badge bg-warning text-dark">Superusuario</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Usuario</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Actividad -->
+                    <div class="info-section">
+                        <div class="info-section-header">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Actividad</span>
+                        </div>
+                        <div class="info-section-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <div class="info-label">Último Acceso</div>
+                                        <div class="info-value">
+                                            {% if user.last_login %}
+                                                <i class="bi bi-calendar3 me-1"></i>{{ user.last_login|date:"d/m/Y" }}
+                                                <small class="text-muted">a las {{ user.last_login|date:"H:i" }}</small>
+                                            {% else %}
+                                                <span class="text-muted">Nunca</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <div class="info-label">Fecha de Registro</div>
+                                        <div class="info-value">
+                                            {% if user.date_joined %}
+                                                <i class="bi bi-calendar-check me-1"></i>{{ user.date_joined|date:"d/m/Y" }}
+                                                <small class="text-muted">a las {{ user.date_joined|date:"H:i" }}</small>
+                                            {% else %}
+                                                <span class="text-muted">Sin especificar</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón de regreso -->
+                    <div class="mt-4 text-end">
+                        <a href="{% url 'home:home' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Volver al Inicio
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

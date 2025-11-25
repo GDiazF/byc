@@ -125,10 +125,12 @@ class PersonalListView(ListView, LoginRequiredMixin):
         
         context['empresas'] = Empresa.objects.all()
         
-        # Preparar datos del personal para JSON
+        # Preparar datos del personal para JSON - optimizado para evitar N+1 queries
         personal_data = []
+        # Usar el queryset optimizado que ya tiene prefetch_related
         for persona in context['personal']:
-            info_laboral = persona.infolaboral_set.first()
+            # Acceder a la primera info laboral desde el prefetch (ya está en memoria)
+            info_laboral = next(iter(persona.infolaboral_set.all()), None)
             personal_data.append({
                 'id': persona.personal_id,
                 'rut': f"{persona.rut}-{persona.dvrut}",
@@ -1337,20 +1339,45 @@ def eliminar_ausentismo(request, ausentismo_id):
 def gestionar_ausencias(request):
     """Vista unificada para gestionar licencias médicas y ausentismos"""
     from gen_settings.models import Empresa
+    from django.db.models import Count, Q
+    from datetime import date
     
-    # Obtener todo el personal activo con sus relaciones
+    # Obtener todo el personal activo con sus relaciones - optimizado
+    # Precalcular conteos de licencias y ausentismos activos para evitar N+1 queries
     personal = Personal.objects.filter(activo=True).prefetch_related(
         'infolaboral_set__cargo_id',
+        'infolaboral_set__depto_id',
         'infolaboral_set__empresa_id',
-        'licenciamedicaporpersonal_set',
-        'ausentismo_set'
+        'licenciamedicaporpersonal_set__tipoLicenciaMedica_id',
+        'ausentismo_set__tipoausen_id'
+    ).annotate(
+        licencias_activas_count=Count(
+            'licenciamedicaporpersonal',
+            filter=Q(licenciamedicaporpersonal__fecha_fin_licencia__gte=date.today())
+        ),
+        ausentismos_activos_count=Count(
+            'ausentismo',
+            filter=Q(ausentismo__fechafin__gte=date.today())
+        )
     ).order_by('apepat', 'apemat', 'nombre')
+    
+    # Preparar datos optimizados para el template
+    personal_data = []
+    for persona in personal:
+        info_laboral = next(iter(persona.infolaboral_set.all()), None)
+        personal_data.append({
+            'persona': persona,
+            'info_laboral': info_laboral,
+            'licencias_activas': persona.licencias_activas_count,
+            'ausentismos_activos': persona.ausentismos_activos_count,
+        })
     
     # Obtener empresas para los filtros
     empresas = Empresa.objects.all().order_by('nomFantasia')
     
     context = {
-        'personal': personal,
+        'personal': personal,  # Mantener para compatibilidad
+        'personal_data': personal_data,  # Datos optimizados
         'empresas': empresas,
     }
     

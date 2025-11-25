@@ -237,18 +237,18 @@
 
 {% block extrajs %}
 <script>
-// Datos del servidor para LICENCIAS
+// Datos del servidor para LICENCIAS - Optimizado
 window.personalDataLicencias = [
-    {% for persona in personal %}
-    {% with info_laboral=persona.infolaboral_set.first %}
+    {% for data in personal_data %}
+    {% with persona=data.persona info_laboral=data.info_laboral %}
     {
         id: {{ persona.personal_id }},
         rut: "{{ persona.rut }}-{{ persona.dvrut }}",
         nombre: "{{ persona.nombre }} {{ persona.apepat }} {{ persona.apemat }}",
         cargo: "{% if info_laboral and info_laboral.cargo_id %}{{ info_laboral.cargo_id.cargo }}{% else %}-{% endif %}",
         empresa: "{% if info_laboral and info_laboral.empresa_id %}{{ info_laboral.empresa_id.nomFantasia }}{% else %}-{% endif %}",
-        licenciasActivas: {{ persona.get_licencias_activas_count }},
-        ausentismosActivos: {{ persona.get_ausentismos_activos_count }}
+        licenciasActivas: {{ data.licencias_activas }},
+        ausentismosActivos: {{ data.ausentismos_activos }}
     }{% if not forloop.last %},{% endif %}
     {% endwith %}
     {% endfor %}

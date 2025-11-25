@@ -925,6 +925,11 @@ def api_calendario_mensual(request):
                     estados_serializados[personal_id][dia] = None
         
         # Construir diccionario de faenas por personal (considerando asignaciones y estados manuales)
+        # Calcular fechas del mes para filtrar estados manuales
+        from calendar import monthrange
+        fecha_inicio_mes = date(year, month, 1)
+        fecha_fin_mes = date(year, month, monthrange(year, month)[1])
+        
         faenas_por_personal = {}
         for p in calendario_data['personal']:
             # Buscar asignación activa
@@ -934,8 +939,8 @@ def api_calendario_mensual(request):
             else:
                 # Si no tiene asignación de turno, buscar estado manual
                 estado_manual = p.estados_manuales.filter(
-                    fecha_inicio__lte=fecha_fin,
-                    fecha_fin__gte=fecha_inicio
+                    fecha_inicio__lte=fecha_fin_mes,
+                    fecha_fin__gte=fecha_inicio_mes
                 ).first()
                 if estado_manual:
                     faenas_por_personal[p.personal_id] = estado_manual.faena.nombre
@@ -1461,14 +1466,29 @@ def asignar_personal_faena(request, faena_id):
         messages.error(request, 'Faena no encontrada')
         return redirect('calendario:gestionar_faenas')
     
-    # Obtener personal activo con sus asignaciones
+    # Obtener personal activo con sus asignaciones - optimizado
+    from datetime import date
     personal_list = Personal.objects.filter(activo=True).select_related(
         'sexo_id', 'estcivil_id'
     ).prefetch_related(
         'infolaboral_set__cargo_id',
         'infolaboral_set__empresa_id',
-        'asignaciones_faena__faena',
-        'asignaciones_faena__turno'
+        Prefetch(
+            'asignaciones_faena',
+            queryset=AsignacionFaena.objects.filter(
+                activo=True
+            ).filter(
+                Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=date.today())
+            ).select_related('faena', 'turno'),
+            to_attr='asignaciones_activas_prefetch'
+        ),
+        Prefetch(
+            'ordenes_trabajo',
+            queryset=OrdenTrabajo.objects.filter(
+                fecha_inicio__isnull=False
+            ).select_related('estado_ot_id', 'equipo_id'),
+            to_attr='ots_prefetch'
+        )
     ).order_by('apepat', 'apemat', 'nombre')
     
     # Obtener turnos disponibles
@@ -1484,16 +1504,19 @@ def asignar_personal_faena(request, faena_id):
     cargos_set = set()
     empresas_set = set()
     
+    # Precalcular fechas de la faena para evitar repetir en el loop
+    faena_inicio = faena.fecha_inicio
+    faena_fin = faena.fecha_fin
+    
     for p in personal_list:
-        # Verificar asignación activa a faena
-        asignacion_activa = p.asignaciones_faena.filter(
-            activo=True
-        ).filter(
-            Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=date.today())
-        ).select_related('faena', 'turno').first()
+        # Usar asignaciones ya prefetchadas (evita consultas adicionales)
+        asignaciones_activas = getattr(p, 'asignaciones_activas_prefetch', [])
+        asignacion_activa = asignaciones_activas[0] if asignaciones_activas else None
         
-        cargo = p.infolaboral_set.first().cargo_id.cargo if p.infolaboral_set.exists() else 'Sin cargo'
-        empresa = p.infolaboral_set.first().empresa_id.nomFantasia if p.infolaboral_set.exists() and p.infolaboral_set.first().empresa_id else 'Sin empresa'
+        # Usar info laboral ya prefetchada (evita consultas adicionales)
+        info_laboral = next(iter(p.infolaboral_set.all()), None)
+        cargo = info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'Sin cargo'
+        empresa = info_laboral.empresa_id.nomFantasia if info_laboral and info_laboral.empresa_id else 'Sin empresa'
         cargos_set.add(cargo)
         empresas_set.add(empresa)
         
@@ -1535,39 +1558,34 @@ def asignar_personal_faena(request, faena_id):
                 }
         
         # Verificar si tiene OT asignadas en fechas que interfieren con la faena
+        # Usar OTs ya prefetchadas (evita consultas adicionales)
         tiene_ot_asignada = False
         ot_data = None
         
-        if faena.fecha_inicio:
-            # Obtener OT donde este personal está asignado y que interfieren con las fechas de la faena
-            faena_inicio = faena.fecha_inicio
-            faena_fin = faena.fecha_fin if faena.fecha_fin else None
+        if faena_inicio:
+            # Filtrar OTs prefetchadas que se solapan con las fechas de la faena
+            ots_prefetch = getattr(p, 'ots_prefetch', [])
+            ot_asignadas = []
             
-            # Buscar OT que se solapen con las fechas de la faena
-            ot_asignadas = OrdenTrabajo.objects.filter(
-                personal_asignado=p
-            ).filter(
-                Q(fecha_inicio__isnull=False)
-            )
+            for ot in ots_prefetch:
+                if ot.fecha_inicio:
+                    ot_fin = ot.fecha_fin if ot.fecha_fin else None
+                    # Verificar solapamiento
+                    if faena_fin:
+                        if ot_fin:
+                            if ot.fecha_inicio <= faena_fin and ot_fin >= faena_inicio:
+                                ot_asignadas.append(ot)
+                        else:
+                            if ot.fecha_inicio <= faena_fin:
+                                ot_asignadas.append(ot)
+                    else:
+                        if not ot_fin or ot_fin >= faena_inicio:
+                            ot_asignadas.append(ot)
             
-            # Verificar solapamiento de fechas
-            if faena_fin:
-                # Si la faena tiene fecha fin, verificar solapamiento completo
-                ot_asignadas = ot_asignadas.filter(
-                    Q(fecha_inicio__lte=faena_fin) & (
-                        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=faena_inicio)
-                    )
-                )
-            else:
-                # Si la faena no tiene fecha fin, solo verificar que la OT comience antes o no tenga fin
-                ot_asignadas = ot_asignadas.filter(
-                    Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=faena_inicio)
-                )
-            
-            ot_asignadas = ot_asignadas.select_related('equipo_id', 'estado_ot_id').order_by('-fecha_inicio')[:1]
-            
-            if ot_asignadas.exists():
-                ot = ot_asignadas.first()
+            if ot_asignadas:
+                # Ordenar por fecha_inicio descendente y tomar la primera
+                ot_asignadas.sort(key=lambda x: x.fecha_inicio, reverse=True)
+                ot = ot_asignadas[0]
                 tiene_ot_asignada = True
                 ot_data = {
                     'tipo': 'ot',
@@ -1734,11 +1752,26 @@ def asignar_equipos_faena(request, faena_id):
         messages.error(request, 'Faena no encontrada')
         return redirect('calendario:gestionar_faenas')
     
-    # Obtener equipos activos con sus asignaciones
+    # Obtener equipos activos con sus asignaciones - optimizado
     equipos_list = Equipo.objects.filter(activo=True).select_related(
         'empresa_id', 'modeloEquipo_id__tipoEquipo_id', 'modeloEquipo_id__marcaEquipo_id'
     ).prefetch_related(
-        'asignaciones_faena__faena'
+        Prefetch(
+            'asignaciones_faena',
+            queryset=AsignacionEquipoFaena.objects.filter(
+                activo=True
+            ).filter(
+                Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=date.today())
+            ).select_related('faena'),
+            to_attr='asignaciones_activas_prefetch'
+        ),
+        Prefetch(
+            'ordenes_trabajo',
+            queryset=OrdenTrabajo.objects.filter(
+                fecha_inicio__isnull=False
+            ).select_related('estado_ot_id', 'equipo_id'),
+            to_attr='ots_prefetch'
+        )
     ).order_by('codigoInterno', 'nombreEquipo')
     
     # Obtener otras faenas para filtro
@@ -1749,13 +1782,14 @@ def asignar_equipos_faena(request, faena_id):
     empresas_set = set()
     tipos_set = set()
     
+    # Precalcular fechas de la faena para evitar repetir en el loop
+    faena_inicio_eq = faena.fecha_inicio
+    faena_fin_eq = faena.fecha_fin
+    
     for eq in equipos_list:
-        # Verificar asignación activa a faena
-        asignacion_activa = eq.asignaciones_faena.filter(
-            activo=True
-        ).filter(
-            Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=date.today())
-        ).select_related('faena').first()
+        # Usar asignaciones ya prefetchadas (evita consultas adicionales)
+        asignaciones_activas = getattr(eq, 'asignaciones_activas_prefetch', [])
+        asignacion_activa = asignaciones_activas[0] if asignaciones_activas else None
         
         empresa = eq.empresa_id.nomFantasia if eq.empresa_id else 'Sin empresa'
         tipo = eq.modeloEquipo_id.tipoEquipo_id.tipoEquipo if eq.modeloEquipo_id and eq.modeloEquipo_id.tipoEquipo_id else 'Sin tipo'
@@ -1799,39 +1833,34 @@ def asignar_equipos_faena(request, faena_id):
                 }
         
         # Verificar si tiene OT asignadas en fechas que interfieren con la faena
+        # Usar OTs ya prefetchadas (evita consultas adicionales)
         tiene_ot_asignada = False
         ot_data = None
         
-        if faena.fecha_inicio:
-            # Obtener OT donde este equipo está asignado y que interfieren con las fechas de la faena
-            faena_inicio = faena.fecha_inicio
-            faena_fin = faena.fecha_fin if faena.fecha_fin else None
+        if faena_inicio_eq:
+            # Filtrar OTs prefetchadas que se solapan con las fechas de la faena
+            ots_prefetch = getattr(eq, 'ots_prefetch', [])
+            ot_asignadas = []
             
-            # Buscar OT que se solapen con las fechas de la faena
-            ot_asignadas = OrdenTrabajo.objects.filter(
-                equipo_id=eq
-            ).filter(
-                Q(fecha_inicio__isnull=False)
-            )
+            for ot in ots_prefetch:
+                if ot.fecha_inicio:
+                    ot_fin = ot.fecha_fin if ot.fecha_fin else None
+                    # Verificar solapamiento
+                    if faena_fin_eq:
+                        if ot_fin:
+                            if ot.fecha_inicio <= faena_fin_eq and ot_fin >= faena_inicio_eq:
+                                ot_asignadas.append(ot)
+                        else:
+                            if ot.fecha_inicio <= faena_fin_eq:
+                                ot_asignadas.append(ot)
+                    else:
+                        if not ot_fin or ot_fin >= faena_inicio_eq:
+                            ot_asignadas.append(ot)
             
-            # Verificar solapamiento de fechas
-            if faena_fin:
-                # Si la faena tiene fecha fin, verificar solapamiento completo
-                ot_asignadas = ot_asignadas.filter(
-                    Q(fecha_inicio__lte=faena_fin) & (
-                        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=faena_inicio)
-                    )
-                )
-            else:
-                # Si la faena no tiene fecha fin, solo verificar que la OT comience antes o no tenga fin
-                ot_asignadas = ot_asignadas.filter(
-                    Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=faena_inicio)
-                )
-            
-            ot_asignadas = ot_asignadas.select_related('estado_ot_id').order_by('-fecha_inicio')[:1]
-            
-            if ot_asignadas.exists():
-                ot = ot_asignadas.first()
+            if ot_asignadas:
+                # Ordenar por fecha_inicio descendente y tomar la primera
+                ot_asignadas.sort(key=lambda x: x.fecha_inicio, reverse=True)
+                ot = ot_asignadas[0]
                 tiene_ot_asignada = True
                 ot_data = {
                     'tipo': 'ot',
@@ -2275,27 +2304,20 @@ def gestionar_faenas(request):
     ).order_by('nombre')
     
     # Preparar datos para JSON (optimizado)
+    # Usar asignaciones ya prefetchadas en lugar de hacer consultas adicionales
     faenas_data = []
     for faena in faenas:
-        asignaciones_activas = faena.asignaciones.filter(
-            activo=True,
-            personal__activo=True
-        ).select_related(
-            'personal',
-            'turno',
-            'bloque_inicio__estado'
-        ).prefetch_related(
-            'personal__infolaboral_set__cargo_id',
-            'personal__infolaboral_set__empresa_id'
-        )
+        # Las asignaciones ya vienen en prefetch_related, usar directamente
+        asignaciones_activas = [a for a in faena.asignaciones.all() 
+                               if a.activo and a.personal.activo]
         
         # Pre-contar para evitar count() en cada iteración
         total_personal = len(asignaciones_activas)
         
         asignaciones_list = []
         for asig in asignaciones_activas:
-            # Obtener info laboral de forma eficiente
-            info_laboral = asig.personal.infolaboral_set.first() if hasattr(asig.personal, 'infolaboral_set') else None
+            # Obtener info laboral de forma eficiente (ya viene en prefetch)
+            info_laboral = next(iter(asig.personal.infolaboral_set.all()), None)
             cargo = info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'Sin cargo'
             
             asignaciones_list.append({
@@ -2338,12 +2360,13 @@ def gestionar_faenas(request):
     personal_data = []
     for p in personal:
         # Obtener info laboral una sola vez (ya viene en prefetch)
-        info_laboral = p.infolaboral_set.first()
+        info_laboral = next(iter(p.infolaboral_set.all()), None)
         cargo = info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'Sin cargo'
         empresa = info_laboral.empresa_id.razonSocial if info_laboral and info_laboral.empresa_id else 'Sin empresa'
         
         # Obtener asignaciones activas (ya viene en prefetch)
-        asignaciones_activas = [a for a in p.asignaciones_faena.all() if a.activo and (not a.fecha_fin or a.fecha_fin >= date.today())]
+        asignaciones_activas = [a for a in p.asignaciones_faena.all() 
+                               if a.activo and (not a.fecha_fin or a.fecha_fin >= date.today())]
         tiene_asignacion = len(asignaciones_activas) > 0
         
         personal_data.append({
