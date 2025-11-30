@@ -549,7 +549,11 @@ def api_subir_documento_maquinaria(request, equipo_id):
         tipo_documento = get_object_or_404(TipoDocumentoMaquinaria, tipoDocumento_id=tipo_documento_id, activo=True)
         
         # Validar fecha de vencimiento si es requerida
-        if tipo_documento.requiere_fecha_vencimiento and not fecha_vencimiento:
+        # "Revisión Técnica" siempre requiere fecha de vencimiento
+        es_revision_tecnica = 'revisión técnica' in tipo_documento.nombre.lower() or 'revision tecnica' in tipo_documento.nombre.lower()
+        requiere_fecha = tipo_documento.requiere_fecha_vencimiento or es_revision_tecnica
+        
+        if requiere_fecha and not fecha_vencimiento:
             return JsonResponse({
                 'success': False,
                 'error': f'El documento "{tipo_documento.nombre}" requiere una fecha de vencimiento'
@@ -1720,15 +1724,29 @@ def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', ti
     # Aplicar filtro de faena (filtrar equipos que tienen asignación activa a esa faena)
     if faena_filter and faena_filter.strip():
         from ope_calendario.models import AsignacionEquipoFaena
-        equipos_en_faena = AsignacionEquipoFaena.objects.filter(
-            faena__nombre__icontains=faena_filter,
-            activo=True,
-            fecha_inicio__lte=fecha_fin
-        ).filter(
-            Q(fecha_fin__gte=fecha_inicio) | Q(fecha_fin__isnull=True)
-        ).values_list('equipo__equipo_id', flat=True).distinct()
-        
-        equipos_query = equipos_query.filter(equipo_id__in=equipos_en_faena)
+        if faena_filter.lower() == 'sin asignar':
+            # Filtrar equipos SIN asignaciones activas en el mes actual
+            # Incluir tanto asignaciones con fecha_fin como asignaciones indefinidas (sin fecha_fin)
+            equipos_con_asignaciones = AsignacionEquipoFaena.objects.filter(
+                Q(activo=True) &
+                Q(fecha_inicio__lte=fecha_fin) &
+                (Q(fecha_fin__gte=fecha_inicio) | Q(fecha_fin__isnull=True))
+            ).values_list('equipo__equipo_id', flat=True).distinct()
+            
+            equipos_query = equipos_query.exclude(
+                equipo_id__in=equipos_con_asignaciones
+            )
+        else:
+            # Filtrar equipos que tienen asignación activa a esa faena específica
+            equipos_en_faena = AsignacionEquipoFaena.objects.filter(
+                faena__nombre__icontains=faena_filter,
+                activo=True,
+                fecha_inicio__lte=fecha_fin
+            ).filter(
+                Q(fecha_fin__gte=fecha_inicio) | Q(fecha_fin__isnull=True)
+            ).values_list('equipo__equipo_id', flat=True).distinct()
+            
+            equipos_query = equipos_query.filter(equipo_id__in=equipos_en_faena)
     
     # Contar total antes de paginar
     total_equipos = equipos_query.count()

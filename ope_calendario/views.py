@@ -873,7 +873,7 @@ def api_calendario_mensual(request):
         year = int(request.GET.get('year', datetime.now().year))
         month = int(request.GET.get('month', datetime.now().month))
         page = int(request.GET.get('page', 1))
-        page_size = int(request.GET.get('page_size', 25))
+        page_size = int(request.GET.get('page_size', 10))
         faena_filter = request.GET.get('faena', '')
         cargo_filter = request.GET.get('cargo', '')
         search_query = request.GET.get('search', '')

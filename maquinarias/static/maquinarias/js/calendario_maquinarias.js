@@ -63,9 +63,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const empresaFilterMaquinarias = document.getElementById('empresaFilterMaquinarias');
     const faenaFilterMaquinarias = document.getElementById('faenaFilterMaquinarias');
     
+    // Filtro de búsqueda: filtrar localmente sin recargar página (como tabla de personal)
     if (searchInputMaquinarias) {
-        searchInputMaquinarias.addEventListener('input', aplicarFiltrosMaquinarias);
+        searchInputMaquinarias.addEventListener('input', filtrarEquiposLocalmente);
     }
+    
+    // Filtros de empresa y faena: recargar página (requieren consulta al backend)
     if (empresaFilterMaquinarias) {
         empresaFilterMaquinarias.addEventListener('change', aplicarFiltrosMaquinarias);
     }
@@ -97,6 +100,8 @@ function inicializarCalendarioMaquinarias() {
         console.warn('No hay estados calculados disponibles');
     }
     
+    // Los equipos ya vienen filtrados del backend si hay parámetros en la URL
+    // Solo generamos el calendario con los equipos cargados
     generarCalendarioMaquinarias();
 }
 
@@ -143,13 +148,21 @@ function generarCalendarioMaquinarias() {
         bodyHTML += '<tr>';
         
         // Columna de nombre del equipo (sticky) con click para mostrar info - alineado a la izquierda
+        // Construir información de tipo, marca y modelo
+        const tipoInfo = [];
+        if (equipo.tipoEquipo) tipoInfo.push(equipo.tipoEquipo.toUpperCase());
+        if (equipo.marcaEquipo) tipoInfo.push(equipo.marcaEquipo);
+        if (equipo.modeloEquipo) tipoInfo.push(equipo.modeloEquipo);
+        const tipoMarcaModelo = tipoInfo.length > 0 ? tipoInfo.join(' - ') : '';
+        
         bodyHTML += `<td class="sticky-col">
             <div class="equipo-name-container">
                 <div class="equipo-info" onclick="mostrarDetalleEquipo(${equipo.equipo_id})" 
                      style="cursor: pointer; text-align: left;" 
                      title="Click para ver información del equipo">
                     <div style="font-size: 0.75rem; font-weight: 600; text-align: left;">${equipo.nombreEquipo}</div>
-                    <small style="color: #6c757d; font-size: 0.65rem; text-align: left; display: block;">${equipo.empresa}</small>
+                    <small style="color: #fd7e14; font-style: italic; font-size: 0.65rem; text-align: left; display: block;">${tipoMarcaModelo || 'Sin información'}</small>
+                    <small style="color: #6c757d; font-size: 0.65rem; text-align: left; display: block;">${equipo.empresa || 'Sin empresa'}</small>
                 </div>
             </div>
         </td>`;
@@ -259,7 +272,46 @@ function generarCalendarioMaquinarias() {
 
 // Esta función ya no se usa, los colores vienen de los estados calculados
 
-// Aplicar filtros al calendario de maquinarias
+// Filtrar equipos localmente (sin recargar página) - similar a tabla de personal
+function filtrarEquiposLocalmente() {
+    const search = document.getElementById('searchInputMaquinarias')?.value || '';
+    const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';
+    const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';
+    
+    // Filtrar equipos localmente basándose en el texto de búsqueda
+    const searchLower = search.toLowerCase();
+    
+    equiposFiltrados = window.equipos.filter(equipo => {
+        // Búsqueda por nombre, código interno o modelo
+        const matchBusqueda = !searchLower || 
+            (equipo.nombreEquipo && equipo.nombreEquipo.toLowerCase().includes(searchLower)) ||
+            (equipo.codigoInterno && equipo.codigoInterno.toLowerCase().includes(searchLower)) ||
+            (equipo.modeloEquipo && equipo.modeloEquipo.toLowerCase().includes(searchLower));
+        
+        // Filtro de empresa (si está seleccionado)
+        const matchEmpresa = !empresa || (equipo.empresa && equipo.empresa === empresa);
+        
+        // Filtro de faena (si está seleccionado)
+        let matchFaena = true;
+        if (faena) {
+            const asignacionesEquipo = (window.asignacionesFaena || []).filter(asig => asig.equipo_id === equipo.equipo_id);
+            if (faena === 'Sin asignar') {
+                // Equipos sin asignaciones activas
+                matchFaena = asignacionesEquipo.length === 0;
+            } else {
+                // Equipos con asignación a la faena específica
+                matchFaena = asignacionesEquipo.some(asig => asig.faena_nombre === faena);
+            }
+        }
+        
+        return matchBusqueda && matchEmpresa && matchFaena;
+    });
+    
+    // Re-renderizar calendario con equipos filtrados
+    generarCalendarioMaquinarias();
+}
+
+// Aplicar filtros al calendario de maquinarias (recarga página para filtros de backend)
 function aplicarFiltrosMaquinarias() {
     const search = document.getElementById('searchInputMaquinarias')?.value || '';
     const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';
@@ -443,14 +495,15 @@ function showEstadoInfoEquipo(equipoId, day) {
     // Determinar asignación actual
     let asignacionTexto = 'Disponible';
     let periodoTexto = '-';
+    let otActual = null;
     
     if (otsDelDia.length > 0) {
-        const ot = otsDelDia[0];
-        asignacionTexto = `OT: ${ot.folio}`;
-        if (ot.fecha_inicio && ot.fecha_fin) {
-            periodoTexto = `${formatearFechaChilena(ot.fecha_inicio)} → ${formatearFechaChilena(ot.fecha_fin)}`;
-        } else if (ot.fecha_inicio) {
-            periodoTexto = `Desde ${formatearFechaChilena(ot.fecha_inicio)}`;
+        otActual = otsDelDia[0];
+        asignacionTexto = `OT: ${otActual.folio}`;
+        if (otActual.fecha_inicio && otActual.fecha_fin) {
+            periodoTexto = `${formatearFechaChilena(otActual.fecha_inicio)} → ${formatearFechaChilena(otActual.fecha_fin)}`;
+        } else if (otActual.fecha_inicio) {
+            periodoTexto = `Desde ${formatearFechaChilena(otActual.fecha_inicio)}`;
         }
     } else if (asignacionesDelDia.length > 0) {
         const asig = asignacionesDelDia[0];
@@ -465,7 +518,31 @@ function showEstadoInfoEquipo(equipoId, day) {
     // Llenar modal
     document.getElementById('modalEquipoNombre').textContent = nombreEquipo;
     document.getElementById('modalEquipoFecha').textContent = formatearFechaChilenaLarga(fechaISO);
-    document.getElementById('modalEquipoEstado').textContent = estado ? estado.nombre : 'Sin estado';
+    
+    // Mostrar estado con badge si hay OT, sino mostrar solo texto
+    const estadoElement = document.getElementById('modalEquipoEstado');
+    if (otActual && (otActual.estado_ot || otActual.estado_equipo)) {
+        // Si hay OT, mostrar badges con estados
+        const estadoOTColors = getColorEstadoOT(otActual.estado_ot);
+        const estadoEquipoColors = getColorEstadoEquipo(otActual.estado_equipo);
+        
+        // Forzar texto blanco con estilo inline cuando corresponda
+        const estadoOTStyle = estadoOTColors.text === 'text-white' ? 'style="color: #ffffff !important;"' : '';
+        const estadoEquipoStyle = estadoEquipoColors.text === 'text-white' ? 'style="color: #ffffff !important;"' : '';
+        
+        let estadoHTML = '';
+        if (otActual.estado_ot) {
+            estadoHTML += `<span class="badge bg-${estadoOTColors.bg} ${estadoOTColors.text} me-2" ${estadoOTStyle}>${otActual.estado_ot}</span>`;
+        }
+        if (otActual.estado_equipo) {
+            estadoHTML += `<span class="badge bg-${estadoEquipoColors.bg} ${estadoEquipoColors.text}" ${estadoEquipoStyle}>${otActual.estado_equipo}</span>`;
+        }
+        estadoElement.innerHTML = estadoHTML || (estado ? estado.nombre : 'Sin estado');
+    } else {
+        // Si no hay OT, mostrar solo el nombre del estado
+        estadoElement.textContent = estado ? estado.nombre : 'Sin estado';
+    }
+    
     document.getElementById('modalEquipoAsignacion').textContent = asignacionTexto;
     document.getElementById('modalEquipoPeriodo').textContent = periodoTexto;
     
@@ -747,6 +824,28 @@ function renderizarDocumentosEquipo(documentos, container) {
     container.innerHTML = html;
 }
 
+// Función helper para obtener color de estado OT (retorna objeto con bg y text)
+function getColorEstadoOT(estado) {
+    if (!estado) return { bg: 'secondary', text: 'text-white' };
+    const estadoLower = estado.toLowerCase();
+    if (estadoLower.includes('pendiente')) return { bg: 'secondary', text: 'text-white' }; // Gris con texto blanco
+    if (estadoLower.includes('proceso') || estadoLower.includes('en proceso')) return { bg: 'success', text: 'text-white' }; // Verde con texto blanco
+    if (estadoLower.includes('finalizada') || estadoLower.includes('terminada')) return { bg: 'dark', text: 'text-white' }; // Negro con texto blanco
+    if (estadoLower.includes('cancelada')) return { bg: 'danger', text: 'text-white' }; // Rojo con texto blanco
+    return { bg: 'secondary', text: 'text-white' };
+}
+
+// Función helper para obtener color de estado equipo (retorna objeto con bg y text)
+function getColorEstadoEquipo(estado) {
+    if (!estado) return { bg: 'secondary', text: 'text-white' };
+    const estadoLower = estado.toLowerCase();
+    if (estadoLower.includes('shutdown')) return { bg: 'danger', text: 'text-white' }; // Rojo con texto blanco
+    if (estadoLower.includes('disponible') && !estadoLower.includes('reparación')) return { bg: 'success', text: 'text-dark' }; // Verde con texto negro
+    if (estadoLower.includes('reparación') || estadoLower.includes('en reparación')) return { bg: 'dark', text: 'text-white' }; // Negro con texto blanco
+    if (estadoLower.includes('operativo con anomalías') || estadoLower.includes('operativo con anomalias')) return { bg: 'warning', text: 'text-white' }; // Amarillo con texto blanco
+    return { bg: 'secondary', text: 'text-white' };
+}
+
 // Mostrar detalle de OT
 function mostrarDetalleOT(otId) {
     const ot = window.ordenesTrabajo.find(o => o.ot_id === otId);
@@ -763,6 +862,14 @@ function mostrarDetalleOT(otId) {
         ? ot.personal_asignado.map(p => `<li>${p.nombre}</li>`).join('')
         : '<li class="text-muted">Sin personal asignado</li>';
     
+    // Obtener colores de los estados
+    const estadoOTColors = getColorEstadoOT(ot.estado_ot);
+    const estadoEquipoColors = getColorEstadoEquipo(ot.estado_equipo);
+    
+    // Forzar texto blanco con estilo inline cuando corresponda
+    const estadoOTStyle = estadoOTColors.text === 'text-white' ? 'style="color: #ffffff !important;"' : '';
+    const estadoEquipoStyle = estadoEquipoColors.text === 'text-white' ? 'style="color: #ffffff !important;"' : '';
+    
     modalBody.innerHTML = `
         <div class="row">
             <div class="col-md-6">
@@ -772,8 +879,8 @@ function mostrarDetalleOT(otId) {
                 <p><strong>Tipo de Mantenimiento:</strong> ${ot.tipo_mantenimiento || 'N/A'}</p>
             </div>
             <div class="col-md-6">
-                <p><strong>Estado OT:</strong> <span class="badge bg-secondary">${ot.estado_ot || 'N/A'}</span></p>
-                <p><strong>Estado Equipo:</strong> <span class="badge bg-info">${ot.estado_equipo || 'N/A'}</span></p>
+                <p><strong>Estado OT:</strong> <span class="badge bg-${estadoOTColors.bg} ${estadoOTColors.text}" ${estadoOTStyle}>${ot.estado_ot || 'N/A'}</span></p>
+                <p><strong>Estado Equipo:</strong> <span class="badge bg-${estadoEquipoColors.bg} ${estadoEquipoColors.text}" ${estadoEquipoStyle}>${ot.estado_equipo || 'N/A'}</span></p>
                 <p><strong>Fecha de Creación:</strong> ${fechaCreacion}</p>
                 <p><strong>Fecha de Inicio:</strong> ${fechaInicio}</p>
                 <p><strong>Fecha de Fin:</strong> ${fechaFin}</p>
@@ -785,13 +892,6 @@ function mostrarDetalleOT(otId) {
                 <ul>
                     ${personalHTML}
                 </ul>
-            </div>
-        </div>
-        <div class="row mt-3">
-            <div class="col-12 text-end">
-                <a href="/maquinarias/ordenes-trabajo/${ot.ot_id}/editar/" class="btn btn-primary btn-sm">
-                    <i class="bi bi-pencil me-1"></i>Ver Detalle
-                </a>
             </div>
         </div>
     `;

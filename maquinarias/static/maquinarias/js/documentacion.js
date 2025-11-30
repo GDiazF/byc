@@ -12,6 +12,8 @@ let tiposDocumentos = [];
 document.addEventListener('DOMContentLoaded', function() {
     inicializarEventos();
     cargarDocumentos();
+    // Verificar si hay un tipo seleccionado inicialmente
+    actualizarFormularioSegunTipo();
 });
 
 function inicializarEventos() {
@@ -70,16 +72,66 @@ function actualizarFormularioSegunTipo() {
     
     if (!tipoSelect || !fechaVencimientoGroup) return;
     
-    const selectedOption = tipoSelect.options[tipoSelect.selectedIndex];
+    const selectedIndex = tipoSelect.selectedIndex;
+    if (selectedIndex < 0 || selectedIndex >= tipoSelect.options.length) {
+        // Si no hay opción seleccionada válida, ocultar el campo
+        fechaVencimientoGroup.classList.remove('show');
+        fechaVencimientoGroup.style.display = 'none';
+        if (fechaVencimientoInput) {
+            fechaVencimientoInput.removeAttribute('required');
+            fechaVencimientoInput.value = '';
+        }
+        return;
+    }
+    
+    const selectedOption = tipoSelect.options[selectedIndex];
+    if (!selectedOption || !selectedOption.value) {
+        // Si no hay valor en la opción seleccionada, ocultar el campo
+        fechaVencimientoGroup.classList.remove('show');
+        fechaVencimientoGroup.style.display = 'none';
+        if (fechaVencimientoInput) {
+            fechaVencimientoInput.removeAttribute('required');
+            fechaVencimientoInput.value = '';
+        }
+        return;
+    }
+    
+    // Obtener el nombre del tipo de documento
+    const tipoNombre = selectedOption.textContent.trim().toLowerCase();
     const requiereFecha = selectedOption.getAttribute('data-requiere-fecha') === 'true';
     
-    if (requiereFecha) {
+    // "Revisión Técnica" siempre requiere fecha de vencimiento
+    // Normalizar el nombre removiendo acentos y espacios extras para comparación más flexible
+    const nombreNormalizado = tipoNombre
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+        .replace(/\s+/g, ' ') // Normalizar espacios
+        .trim();
+    
+    // Comparación más flexible para "Revisión Técnica"
+    const esRevisionTecnica = nombreNormalizado.includes('revision') && nombreNormalizado.includes('tecnica') ||
+                              tipoNombre.includes('revisión') && tipoNombre.includes('técnica') ||
+                              tipoNombre.includes('revision') && tipoNombre.includes('tecnica');
+    
+    // Debug temporal - remover después de verificar
+    console.log('Tipo seleccionado:', tipoNombre, 'Requiere fecha:', requiereFecha, 'Es revisión técnica:', esRevisionTecnica);
+    
+    // Mostrar u ocultar el campo según si requiere fecha
+    if (requiereFecha || esRevisionTecnica) {
         fechaVencimientoGroup.classList.add('show');
-        fechaVencimientoInput.setAttribute('required', 'required');
+        fechaVencimientoGroup.style.display = 'block';
+        if (fechaVencimientoInput) {
+            fechaVencimientoInput.setAttribute('required', 'required');
+            fechaVencimientoInput.classList.remove('is-invalid');
+        }
     } else {
         fechaVencimientoGroup.classList.remove('show');
-        fechaVencimientoInput.removeAttribute('required');
-        fechaVencimientoInput.value = '';
+        fechaVencimientoGroup.style.display = 'none';
+        if (fechaVencimientoInput) {
+            fechaVencimientoInput.removeAttribute('required');
+            fechaVencimientoInput.value = '';
+            fechaVencimientoInput.classList.remove('is-invalid');
+        }
     }
 }
 
@@ -188,6 +240,7 @@ function subirDocumento() {
     const formData = new FormData(form);
     const tipoDocumentoId = formData.get('tipo_documento_id');
     const archivo = formData.get('archivo');
+    const fechaVencimiento = formData.get('fecha_vencimiento');
     
     if (!tipoDocumentoId || !archivo) {
         mostrarError('Por favor complete todos los campos requeridos');
@@ -198,6 +251,24 @@ function subirDocumento() {
     if (!archivo.name.toLowerCase().endsWith('.pdf')) {
         mostrarError('Solo se aceptan archivos PDF');
         return;
+    }
+    
+    // Validar que "Revisión Técnica" tenga fecha de vencimiento
+    const tipoSelect = document.getElementById('tipoDocumentoSelect');
+    if (tipoSelect) {
+        const selectedOption = tipoSelect.options[tipoSelect.selectedIndex];
+        const tipoNombre = selectedOption.textContent.trim().toLowerCase();
+        const esRevisionTecnica = tipoNombre.includes('revisión técnica') || tipoNombre.includes('revision tecnica');
+        
+        if (esRevisionTecnica && !fechaVencimiento) {
+            mostrarError('El documento "Revisión Técnica" requiere una fecha de vencimiento');
+            const fechaVencimientoInput = document.getElementById('fechaVencimientoInput');
+            if (fechaVencimientoInput) {
+                fechaVencimientoInput.focus();
+                fechaVencimientoInput.classList.add('is-invalid');
+            }
+            return;
+        }
     }
     
     // Deshabilitar botón de envío
@@ -403,53 +474,44 @@ function getCookie(name) {
     return cookieValue;
 }
 
-function mostrarExito(mensaje) {
-    // Usar toast de Bootstrap si está disponible, sino alert
-    if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-        // Crear toast dinámicamente
-        const toastContainer = document.getElementById('toast-container') || crearToastContainer();
-        const toast = crearToast('success', mensaje);
-        toastContainer.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast);
-        bsToast.show();
-    } else {
-        alert('✓ ' + mensaje);
+// Mostrar notificación estilo alert (igual que en el resto del proyecto)
+function showNotification(message, type = 'success') {
+    let container = document.querySelector('.messages-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'messages-container';
+        container.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;';
+        document.body.appendChild(container);
     }
+    
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show alert-permanent`;
+    alertDiv.setAttribute('role', 'alert');
+    alertDiv.style.marginBottom = '10px';
+    alertDiv.innerHTML = `
+        <i class="bi bi-${icon} me-2"></i>
+        ${escapeHtml(message)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    container.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 150);
+    }, 3000);
+}
+
+function mostrarExito(mensaje) {
+    showNotification(mensaje, 'success');
 }
 
 function mostrarError(mensaje) {
-    if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-        const toastContainer = document.getElementById('toast-container') || crearToastContainer();
-        const toast = crearToast('danger', mensaje);
-        toastContainer.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast);
-        bsToast.show();
-    } else {
-        alert('✗ ' + mensaje);
-    }
-}
-
-function crearToastContainer() {
-    const container = document.createElement('div');
-    container.id = 'toast-container';
-    container.className = 'toast-container position-fixed top-0 end-0 p-3';
-    container.style.zIndex = '9999';
-    document.body.appendChild(container);
-    return container;
-}
-
-function crearToast(tipo, mensaje) {
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${tipo} border-0`;
-    toast.setAttribute('role', 'alert');
-    toast.setAttribute('aria-live', 'assertive');
-    toast.setAttribute('aria-atomic', 'true');
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">${escapeHtml(mensaje)}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-    return toast;
+    showNotification(mensaje, 'error');
 }
 

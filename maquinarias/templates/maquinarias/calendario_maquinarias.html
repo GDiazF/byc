@@ -129,6 +129,9 @@
                         {{ faena.nombre }}
                     </option>
                     {% endfor %}
+                    <option value="Sin asignar" {% if request.GET.faena == 'Sin asignar' %}selected{% endif %}>
+                        Sin asignar
+                    </option>
                 </select>
             </div>
             <div class="col-md-2 text-end">

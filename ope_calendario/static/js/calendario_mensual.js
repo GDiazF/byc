@@ -762,19 +762,64 @@ function setupFilters() {
     const cargoFilter = document.getElementById('cargoFilter');
     const empresaFilter = document.getElementById('empresaFilter');
     
-    // Usar debounce para búsqueda (esperar 500ms después de escribir)
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            applyFiltersWithReload();
-        }, 500);
+    // Filtro de búsqueda: filtrar localmente sin recargar página (como maquinarias)
+    if (searchInput) {
+        searchInput.addEventListener('input', filtrarPersonalLocalmente);
+    }
+    
+    // Filtros de faena, cargo y empresa: recargar página (requieren consulta al backend)
+    if (faenaFilter) {
+        faenaFilter.addEventListener('change', applyFiltersWithReload);
+    }
+    if (cargoFilter) {
+        cargoFilter.addEventListener('change', applyFiltersWithReload);
+    }
+    if (empresaFilter) {
+        empresaFilter.addEventListener('change', applyFiltersWithReload);
+    }
+}
+
+// Filtrar personal localmente (sin recargar página) - similar a maquinarias
+function filtrarPersonalLocalmente() {
+    const search = document.getElementById('searchInput')?.value || '';
+    const faena = document.getElementById('faenaFilter')?.value || '';
+    const cargo = document.getElementById('cargoFilter')?.value || '';
+    const empresa = document.getElementById('empresaFilter')?.value || '';
+    
+    // Filtrar personal localmente basándose en el texto de búsqueda
+    const searchLower = search.toLowerCase();
+    
+    filteredPersonal = calendarioData.personal.filter(persona => {
+        // Búsqueda por nombre completo o RUT
+        const nombreCompleto = `${persona.nombre} ${persona.apepat} ${persona.apemat}`.toLowerCase();
+        const rut = `${persona.rut}${persona.dvrut}`.toLowerCase();
+        const matchBusqueda = !searchLower || 
+            nombreCompleto.includes(searchLower) || 
+            rut.includes(searchLower);
+        
+        // Filtro de faena (si está seleccionado)
+        let matchFaena = true;
+        if (faena) {
+            const asignaciones = asignacionesPorPersonal[persona.personal_id] || [];
+            const asignacionActiva = asignaciones.find(asig => asig.activo);
+            if (faena === 'Sin asignar') {
+                matchFaena = !asignacionActiva;
+            } else {
+                matchFaena = asignacionActiva && asignacionActiva.faena.nombre === faena;
+            }
+        }
+        
+        // Filtro de cargo (si está seleccionado)
+        const matchCargo = !cargo || (persona.cargo && persona.cargo === cargo);
+        
+        // Filtro de empresa (si está seleccionado)
+        const matchEmpresa = !empresa || (persona.empresa && persona.empresa === empresa);
+        
+        return matchBusqueda && matchFaena && matchCargo && matchEmpresa;
     });
     
-    // Para selects, aplicar inmediatamente
-    faenaFilter.addEventListener('change', applyFiltersWithReload);
-    cargoFilter.addEventListener('change', applyFiltersWithReload);
-    empresaFilter.addEventListener('change', applyFiltersWithReload);
+    // Re-renderizar calendario con personal filtrado
+    generateCalendar();
 }
 
 // Aplicar filtros recargando la página (para usar caché del backend)
@@ -790,7 +835,7 @@ function applyFiltersWithReload() {
     // Mantener year, month y page_size
     const currentYear = url.searchParams.get('year') || new Date().getFullYear();
     const currentMonth = url.searchParams.get('month') || (new Date().getMonth() + 1);
-    const pageSize = url.searchParams.get('page_size') || '25';
+    const pageSize = url.searchParams.get('page_size') || '10';
     
     // Limpiar y reconstruir todos los parámetros
     url.search = '';
