@@ -8,6 +8,12 @@ let faenaActual = null;
 let asignacionEditando = null;
 let vistaActual = 'tabla'; // 'cards' o 'tabla'
 
+// Asegurar que permisos esté definido (por si acaso no se carga desde el template)
+if (typeof permisos === 'undefined') {
+    var permisos = {};
+    console.warn('permisos no está definido, usando objeto vacío');
+}
+
 // ============================================================================
 // RECARGA DINÁMICA DE DATOS
 // ============================================================================
@@ -247,6 +253,23 @@ function obtenerEstadoFaena(faena) {
 
 // Renderizar faenas en formato de cards compactas
 function renderizarFaenaCard(faena, esActiva = true) {
+    // Verificar permisos (usar permisos global si está disponible, sino asumir que tiene permisos)
+    const canEdit = permisos && permisos.can_change_faena === true;
+    const canView = permisos && permisos.can_view_faena === true;
+    const canAddPersonal = permisos && permisos.can_add_asignacionfaena === true;
+    const canAddEquipos = permisos && permisos.can_add_asignacionequipofaena === true;
+    const canVerHistorial = permisos && (permisos.can_ver_historial_faena === true || permisos.can_ver_historial_faena === 'true');
+    
+    // Debug: verificar permisos de historial
+    if (faena.id === faenas[0]?.id) {
+        console.log('Debug permisos historial:', {
+            permisos: permisos,
+            can_ver_historial_faena: permisos?.can_ver_historial_faena,
+            tipo: typeof permisos?.can_ver_historial_faena,
+            canVerHistorial: canVerHistorial
+        });
+    }
+    
     return `
         <div class="col-sm-6 col-md-4 col-lg-3">
             <div class="card faena-card ${!esActiva ? 'faena-finalizada' : ''}" 
@@ -259,9 +282,15 @@ function renderizarFaenaCard(faena, esActiva = true) {
                             <i class="bi bi-geo-alt me-1"></i><strong>${faena.codigo}</strong>
                         </h6>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-sm btn-secondary" onclick="editarFaena(${faena.id})" title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </button>
+                            ${canEdit ? `
+                                <button class="btn btn-sm btn-secondary" onclick="editarFaena(${faena.id})" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            ` : `
+                                <button class="btn btn-sm btn-secondary" disabled title="No tiene permiso para editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            `}
                         </div>
                     </div>
                 </div>
@@ -284,20 +313,42 @@ function renderizarFaenaCard(faena, esActiva = true) {
                         ${obtenerEstadoFaena(faena)}
                     </div>
                     <div class="d-grid gap-1">
-                        ${esActiva ? `
+                        ${esActiva ? (canAddPersonal ? `
                             <a href="/calendario/faenas/${faena.id}/asignar/" class="btn btn-sm btn-success">
                                 <i class="bi bi-person-plus me-1"></i>Asignar
                             </a>
-                        ` : ''}
-                        <button class="btn btn-sm btn-dark" onclick="verDetallesFaena(${faena.id})">
-                            <i class="bi bi-eye me-1"></i>Detalle
-                        </button>
-                        <a href="/calendario/faenas/${faena.id}/asignar-equipos/" class="btn btn-sm btn-warning">
-                            <i class="bi bi-truck me-1"></i>Equipos
-                        </a>
-                        <button class="btn btn-sm btn-info" onclick="verHistorialFaena(${faena.id}, '${faena.codigo}')">
-                            <i class="bi bi-clock-history me-1"></i>Historial
-                        </button>
+                        ` : `
+                            <button class="btn btn-sm btn-success" disabled title="No tiene permiso para asignar personal">
+                                <i class="bi bi-person-plus me-1"></i>Asignar
+                            </button>
+                        `) : ''}
+                        ${canView ? `
+                            <button class="btn btn-sm btn-dark" onclick="verDetallesFaena(${faena.id})">
+                                <i class="bi bi-eye me-1"></i>Detalle
+                            </button>
+                        ` : `
+                            <button class="btn btn-sm btn-dark" disabled title="No tiene permiso para ver detalles">
+                                <i class="bi bi-eye me-1"></i>Detalle
+                            </button>
+                        `}
+                        ${canAddEquipos ? `
+                            <a href="/calendario/faenas/${faena.id}/asignar-equipos/" class="btn btn-sm btn-warning">
+                                <i class="bi bi-truck me-1"></i>Equipos
+                            </a>
+                        ` : `
+                            <button class="btn btn-sm btn-warning" disabled title="No tiene permiso para asignar equipos">
+                                <i class="bi bi-truck me-1"></i>Equipos
+                            </button>
+                        `}
+                        ${canVerHistorial ? `
+                            <button class="btn btn-sm btn-info" onclick="verHistorialFaena(${faena.id}, '${faena.codigo}')">
+                                <i class="bi bi-clock-history me-1"></i>Historial
+                            </button>
+                        ` : `
+                            <button class="btn btn-sm btn-info" disabled title="No tiene permiso para ver historial">
+                                <i class="bi bi-clock-history me-1"></i>Historial
+                            </button>
+                        `}
                     </div>
                 </div>
             </div>
@@ -307,6 +358,13 @@ function renderizarFaenaCard(faena, esActiva = true) {
 
 // Renderizar fila de tabla
 function renderizarFaenaFila(faena, esActiva = true) {
+    // Verificar permisos (usar permisos global si está disponible, sino asumir que tiene permisos)
+    const canEdit = permisos && permisos.can_change_faena === true;
+    const canView = permisos && permisos.can_view_faena === true;
+    const canAddPersonal = permisos && permisos.can_add_asignacionfaena === true;
+    const canAddEquipos = permisos && permisos.can_add_asignacionequipofaena === true;
+    const canVerHistorial = permisos && (permisos.can_ver_historial_faena === true || permisos.can_ver_historial_faena === 'true');
+    
     return `
         <tr data-faena-id="${faena.id}"
             data-faena-codigo="${faena.codigo || ''}"
@@ -322,23 +380,51 @@ function renderizarFaenaFila(faena, esActiva = true) {
             <td>${esActiva ? obtenerEstadoFaena(faena) : '<span class="badge bg-secondary">Finalizada</span>'}</td>
             <td class="text-center">
                 <div class="btn-group btn-group-sm">
-                    ${esActiva ? `
+                    ${esActiva ? (canAddPersonal ? `
                         <a href="/calendario/faenas/${faena.id}/asignar/" class="btn btn-sm btn-success" title="Asignar Personal">
                             <i class="bi bi-person-plus"></i>
                         </a>
-                    ` : ''}
-                    <button class="btn btn-sm btn-primary" onclick="verDetallesFaena(${faena.id})" title="Ver Detalle">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                    <a href="/calendario/faenas/${faena.id}/asignar-equipos/" class="btn btn-sm btn-warning" title="Asignar Equipos">
-                        <i class="bi bi-truck"></i>
-                    </a>
-                    <button class="btn btn-sm btn-info" onclick="verHistorialFaena(${faena.id}, '${faena.codigo}')" title="Ver Historial">
-                        <i class="bi bi-clock-history"></i>
-                    </button>
-                    <button class="btn btn-sm btn-secondary" onclick="editarFaena(${faena.id})" title="Editar">
-                        <i class="bi bi-pencil"></i>
-                    </button>
+                    ` : `
+                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para asignar personal">
+                            <i class="bi bi-person-plus"></i>
+                        </button>
+                    `) : ''}
+                    ${canView ? `
+                        <button class="btn btn-sm btn-primary" onclick="verDetallesFaena(${faena.id})" title="Ver Detalle">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    ` : `
+                        <button class="btn btn-sm btn-primary" disabled title="No tiene permiso para ver detalles">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    `}
+                    ${canAddEquipos ? `
+                        <a href="/calendario/faenas/${faena.id}/asignar-equipos/" class="btn btn-sm btn-warning" title="Asignar Equipos">
+                            <i class="bi bi-truck"></i>
+                        </a>
+                    ` : `
+                        <button class="btn btn-sm btn-warning" disabled title="No tiene permiso para asignar equipos">
+                            <i class="bi bi-truck"></i>
+                        </button>
+                    `}
+                    ${canVerHistorial ? `
+                        <button class="btn btn-sm btn-info" onclick="verHistorialFaena(${faena.id}, '${faena.codigo}')" title="Ver Historial">
+                            <i class="bi bi-clock-history"></i>
+                        </button>
+                    ` : `
+                        <button class="btn btn-sm btn-info" disabled title="No tiene permiso para ver historial">
+                            <i class="bi bi-clock-history"></i>
+                        </button>
+                    `}
+                    ${canEdit ? `
+                        <button class="btn btn-sm btn-secondary" onclick="editarFaena(${faena.id})" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    ` : `
+                        <button class="btn btn-sm btn-secondary" disabled title="No tiene permiso para editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    `}
                 </div>
             </td>
         </tr>
@@ -455,6 +541,13 @@ function cambiarVisualizacion(vista) {
 
 // Crear nueva faena
 function mostrarModalNuevaFaena() {
+    // Verificar permisos antes de abrir el modal
+    const canAdd = permisos && permisos.can_add_faena === true;
+    if (!canAdd) {
+        alert('No tiene permiso para crear faenas. Por favor, contacte al administrador si necesita acceso.');
+        return;
+    }
+    
     document.getElementById('faenaModalTitle').textContent = 'Nueva Faena';
     document.getElementById('faenaForm').reset();
     document.getElementById('faena_id').value = '';
@@ -469,6 +562,13 @@ function mostrarModalNuevaFaena() {
 
 // Editar faena
 function editarFaena(faenaId) {
+    // Verificar permisos antes de abrir el modal
+    const canEdit = permisos && permisos.can_change_faena === true;
+    if (!canEdit) {
+        alert('No tiene permiso para editar faenas. Por favor, contacte al administrador si necesita acceso.');
+        return;
+    }
+    
     const faena = faenas.find(f => f.id === faenaId);
     if (!faena) return;
     
@@ -661,6 +761,13 @@ async function eliminarFaena(faenaId) {
 
 // Ver detalles de faena
 function verDetallesFaena(faenaId) {
+    // Verificar permisos antes de abrir el modal
+    const canView = permisos && permisos.can_view_faena === true;
+    if (!canView) {
+        alert('No tiene permiso para ver detalles de faenas. Por favor, contacte al administrador si necesita acceso.');
+        return;
+    }
+    
     const faena = faenas.find(f => f.id === faenaId);
     if (!faena) return;
     
@@ -672,28 +779,48 @@ function verDetallesFaena(faenaId) {
     document.getElementById('detalleFechaFin').textContent = formatearFechaChilena(faena.fecha_fin) || 'Indefinida';
     document.getElementById('detalleTotalPersonal').textContent = faena.total_personal || 0;
     
-    // Mostrar u ocultar botón de gestionar según si la faena está activa
+    // Mostrar u ocultar botón de gestionar según si la faena está activa y permisos
     const btnGestionar = document.getElementById('btnGestionarAsignaciones');
     const faenaActiva = esFaenaActiva(faena);
+    const canAddPersonal = permisos && permisos.can_add_asignacionfaena === true;
     
-    if (faenaActiva) {
+    if (faenaActiva && canAddPersonal) {
         btnGestionar.style.display = 'inline-block';
-        btnGestionar.href = `/calendario/faenas/${faena.id}/asignar/#gestionar`;
+        if (btnGestionar.tagName === 'A') {
+            btnGestionar.href = `/calendario/faenas/${faena.id}/asignar/#gestionar`;
+        } else {
+            btnGestionar.disabled = false;
+            btnGestionar.onclick = () => {
+                window.location.href = `/calendario/faenas/${faena.id}/asignar/#gestionar`;
+            };
+        }
     } else {
-        btnGestionar.style.display = 'none';
+        if (btnGestionar.tagName === 'A') {
+            btnGestionar.style.display = 'none';
+        } else {
+            btnGestionar.style.display = 'inline-block';
+            btnGestionar.disabled = true;
+        }
     }
     
     const tbody = document.getElementById('detalleAsignacionesBody');
     
     if (faena.asignaciones.length === 0) {
+        const canAddPersonal = permisos && permisos.can_add_asignacionfaena === true;
         tbody.innerHTML = `
             <tr>
                 <td colspan="7" class="text-center py-4">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
                     <p class="text-muted mt-2 mb-3">No hay personal asignado a esta faena</p>
-                    <a href="/calendario/faenas/${faena.id}/asignar/" class="btn btn-success">
-                        <i class="bi bi-person-plus-fill me-1"></i>Asignar Personal
-                    </a>
+                    ${canAddPersonal ? `
+                        <a href="/calendario/faenas/${faena.id}/asignar/" class="btn btn-success">
+                            <i class="bi bi-person-plus-fill me-1"></i>Asignar Personal
+                        </a>
+                    ` : `
+                        <button class="btn btn-success" disabled title="No tiene permiso para asignar personal">
+                            <i class="bi bi-person-plus-fill me-1"></i>Asignar Personal
+                        </button>
+                    `}
                 </td>
             </tr>
         `;

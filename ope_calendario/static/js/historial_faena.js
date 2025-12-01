@@ -18,6 +18,14 @@ function getBadgeColorAccion(accion) {
 
 // Función para mostrar el historial de una faena en un modal
 function verHistorialFaena(faenaId, codigoFaena) {
+    // Verificar permisos antes de abrir el modal
+    const canVerHistorial = permisos && (permisos.can_ver_historial_faena === true || permisos.can_ver_historial_faena === 'true');
+    if (!canVerHistorial) {
+        console.log('Debug: No tiene permiso para ver historial. permisos:', permisos);
+        alert('No tiene permiso para ver el historial de faenas. Por favor, contacte al administrador si necesita acceso.');
+        return;
+    }
+    
     const modal = new bootstrap.Modal(document.getElementById('modalHistorialFaena'));
     const modalBody = document.getElementById('modalHistorialFaenaBody');
     const modalTitle = document.getElementById('modalHistorialFaenaLabel');

@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Gestión de Faenas y Servicios{% endblock %}
 
@@ -9,6 +10,7 @@
 var faenas = {{ faenas_json|safe }};
 var personal = {{ personal_json|safe }};
 var turnos = {{ turnos_json|safe }};
+var permisos = {{ permisos_json|safe }};
 // URL base para API de historial de faenas
 var apiHistorialFaenaBase = "{% url 'calendario:api_historial_faena' 0 %}";
 </script>
@@ -74,9 +76,15 @@ var apiHistorialFaenaBase = "{% url 'calendario:api_historial_faena' 0 %}";
         
         <!-- Sistema de Pestañas -->
         <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
+            {% if user|has_perm:'ope_calendario.add_faena' %}
             <button class="btn btn-success btn-sm" onclick="mostrarModalNuevaFaena()">
                 <i class="bi bi-plus-circle me-1"></i>Nueva Faena
             </button>
+            {% else %}
+            <button class="btn btn-success btn-sm" disabled title="No tiene permiso para crear faenas">
+                <i class="bi bi-plus-circle me-1"></i>Nueva Faena
+            </button>
+            {% endif %}
             
             <!-- Buscador (centro) -->
             <div class="flex-grow-1" style="max-width: 400px;">
@@ -334,9 +342,15 @@ var apiHistorialFaenaBase = "{% url 'calendario:api_historial_faena' 0 %}";
                 
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0"><i class="bi bi-people-fill me-2"></i>Personal Asignado</h6>
+                    {% if user|has_perm:'ope_calendario.add_asignacionfaena' %}
                     <a href="#" id="btnGestionarAsignaciones" class="btn btn-sm btn-primary">
                         <i class="bi bi-pencil-square me-1"></i>Gestionar Asignaciones
                     </a>
+                    {% else %}
+                    <button type="button" id="btnGestionarAsignaciones" class="btn btn-sm btn-primary" disabled title="No tiene permiso para gestionar asignaciones">
+                        <i class="bi bi-pencil-square me-1"></i>Gestionar Asignaciones
+                    </button>
+                    {% endif %}
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover align-middle">

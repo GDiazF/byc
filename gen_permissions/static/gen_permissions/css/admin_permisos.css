@@ -1,0 +1,46 @@
+/**
+ * Estilos CSS para el admin de permisos.
+ * 
+ * Agrega estilos visuales para diferenciar permisos de tablas maestras.
+ */
+
+/* Estilo para permisos de tablas maestras en el widget filter_horizontal */
+.filtered-select-multiple option[data-maestra="true"],
+.filtered-select-multiple select option[data-maestra="true"],
+select option[data-maestra="true"],
+.selector select option[data-maestra="true"],
+.selector-available select option[data-maestra="true"],
+.selector-chosen select option[data-maestra="true"] {
+    color: #856404 !important;
+    font-weight: bold !important;
+    background-color: #fff3cd !important;
+}
+
+/* Estilo adicional para opciones que contienen "(Maestra)" en el texto */
+select option:contains("(Maestra)"),
+.selector select option:contains("(Maestra)") {
+    color: #856404 !important;
+    font-weight: bold !important;
+}
+
+/* Estilo para el texto "(Maestra)" en los permisos */
+.permiso-maestra {
+    color: #856404;
+    font-weight: bold;
+    font-style: italic;
+}
+
+/* Estilo para el contenedor de permisos maestros */
+.permisos-maestros {
+    border-left: 3px solid #ffc107;
+    padding-left: 10px;
+    margin-top: 10px;
+}
+
+/* Estilo para el título de sección de permisos maestros */
+.permisos-maestros-titulo {
+    color: #856404;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+

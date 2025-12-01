@@ -24,6 +24,9 @@ from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from .models import HistorialPersonal, HistorialDocumentoPersonal
+# Importar decoradores de permisos desde gen_permissions
+from gen_permissions.decorators import permission_required_custom, permission_required_multiple
+from gen_permissions.mixins import PermissionRequiredMixin
 
 # Create your views here.
 
@@ -110,11 +113,14 @@ def obtener_url_archivo_historial(evento, personal):
         print(f"Error en obtener_url_archivo_historial: {str(e)}")
         return None
 
-#vista para tabla de personal
-class PersonalListView(ListView, LoginRequiredMixin):
+# Vista para tabla de personal
+# Requiere permiso de ver personal (view_personal)
+class PersonalListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
     model = Personal
     template_name = 'personal/table_personal.html'
     context_object_name = 'personal'
+    # Permiso requerido: ver personal
+    permission_required = 'rrhh_personal.view_personal'
     # Removido paginate_by para permitir que DataTables maneje la paginación
 
     def get_context_data(self, **kwargs):
@@ -142,6 +148,27 @@ class PersonalListView(ListView, LoginRequiredMixin):
             })
         
         context['personal_json'] = json.dumps(personal_data, cls=DjangoJSONEncoder)
+        
+        # Verificar permisos del usuario para pasar al template
+        user = self.request.user
+        permisos = {
+            'can_add_personal': user.has_perm('rrhh_personal.add_personal'),
+            'can_change_personal': user.has_perm('rrhh_personal.change_personal'),
+            'can_view_personal': user.has_perm('rrhh_personal.view_personal'),
+            'can_desactivar_personal': user.has_perm('rrhh_personal.desactivar_personal'),
+            'can_activar_personal': user.has_perm('rrhh_personal.activar_personal'),
+            'can_ver_historial_personal': user.has_perm('rrhh_personal.ver_historial_personal'),
+            # Permisos para documentación (si tiene alguno de estos, puede ver documentación)
+            'can_view_documentation': (
+                user.has_perm('rrhh_personal.view_personal') or
+                user.has_perm('rrhh_personal.change_personal') or
+                user.has_perm('rrhh_personal.add_licenciaporpersonal') or
+                user.has_perm('rrhh_personal.change_licenciaporpersonal') or
+                user.has_perm('rrhh_personal.add_examen') or
+                user.has_perm('rrhh_personal.change_examen')
+            ),
+        }
+        context['permisos_json'] = json.dumps(permisos)
         
         # Obtener y procesar empresa_id
         empresa_id = self.request.GET.get('empresa')
@@ -173,7 +200,11 @@ class PersonalListView(ListView, LoginRequiredMixin):
         
         return queryset.distinct()
 
-class PersonalCreateView(LoginRequiredMixin, CreateView):
+# Vista para crear personal
+# Requiere permiso de agregar personal (add_personal)
+class PersonalCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView):
+    # Permiso requerido: agregar personal
+    permission_required = 'rrhh_personal.add_personal'
     model = Personal
     form_class = PersonalCreationForm
     template_name = 'personal/create_personal.html'
@@ -251,7 +282,11 @@ def get_cargos(request):
     cargos = Cargo.objects.filter(depto_id=depto_id).values_list('cargo_id', 'cargo')
     return JsonResponse(dict(cargos))
 
-class PersonalUpdateView(LoginRequiredMixin, UpdateView):
+# Vista para editar personal
+# Requiere permiso de cambiar personal (change_personal)
+class PersonalUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
+    # Permiso requerido: cambiar personal
+    permission_required = 'rrhh_personal.change_personal'
     model = Personal
     form_class = PersonalCreationForm
     template_name = 'personal/edit_personal.html'
@@ -312,7 +347,12 @@ class PersonalUpdateView(LoginRequiredMixin, UpdateView):
         messages.error(self.request, 'Error al actualizar el personal. Por favor revise los datos ingresados.')
         return self.render_to_response(self.get_context_data(form=form))
 
-class PersonalDeleteView(LoginRequiredMixin, View):
+# Vista para eliminar personal
+# Requiere permiso de eliminar personal (delete_personal)
+class PersonalDeleteView(PermissionRequiredMixin, LoginRequiredMixin, View):
+    # Permiso requerido: eliminar personal
+    permission_required = 'rrhh_personal.delete_personal'
+    
     def post(self, request, pk):
         personal = get_object_or_404(Personal, pk=pk)
         try:
@@ -326,6 +366,7 @@ class PersonalDeleteView(LoginRequiredMixin, View):
 
 @login_required
 @require_POST
+@permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def toggle_personal_status(request, pk):
     try:
         personal = get_object_or_404(Personal, pk=pk)
@@ -337,6 +378,7 @@ def toggle_personal_status(request, pk):
 
 
 @login_required
+@permission_required_custom('rrhh_personal.view_personal')
 def personal_documentation(request, personal_id):
     personal = get_object_or_404(Personal, personal_id=personal_id)
     licencias = LicenciaPorPersonal.objects.filter(personal_id=personal)
@@ -356,6 +398,7 @@ def personal_documentation(request, personal_id):
     return render(request, 'personal/documentation.html', context)
 
 @login_required
+@permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def add_license(request, personal_id):
     if request.method == 'POST':
         try:
@@ -421,6 +464,7 @@ def add_license(request, personal_id):
     }, status=405)
 
 @login_required
+@permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def add_exam(request, personal_id):
     if request.method == 'POST':
         try:
@@ -483,6 +527,7 @@ def add_exam(request, personal_id):
     }, status=405)
 
 @login_required
+@permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def delete_exam(request, exam_id):
     if request.method == 'DELETE':
         try:
@@ -495,6 +540,7 @@ def delete_exam(request, exam_id):
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 @login_required
+@permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def delete_license(request, license_id):
     if request.method == 'DELETE':
         try:
@@ -511,6 +557,7 @@ def delete_license(request, license_id):
 # ============================================================================
 
 @login_required
+@permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def add_internal_license(request, personal_id):
     """Vista para agregar licencia interna de conducir"""
     if request.method == 'POST':
@@ -570,6 +617,7 @@ def add_internal_license(request, personal_id):
 
 
 @login_required
+@permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def edit_internal_license(request, license_id):
     """Vista para editar licencia interna de conducir"""
     if request.method == 'GET':
@@ -1029,6 +1077,28 @@ def delete_personal_document(request, personal_id):
 
 @login_required
 def documentation_view(request, pk):
+    # Verificar permisos: puede ver si tiene view_personal, change_personal, o permisos para agregar/editar documentación
+    puede_ver = (
+        request.user.has_perm('rrhh_personal.view_personal') or
+        request.user.has_perm('rrhh_personal.change_personal') or
+        request.user.has_perm('rrhh_personal.add_licenciaporpersonal') or
+        request.user.has_perm('rrhh_personal.change_licenciaporpersonal') or
+        request.user.has_perm('rrhh_personal.add_examen') or
+        request.user.has_perm('rrhh_personal.change_examen')
+    )
+    
+    if not puede_ver:
+        from django.contrib import messages
+        messages.error(
+            request,
+            'No tiene permiso para acceder a esta sección. Por favor, contacte al administrador si necesita acceso.'
+        )
+        from django.shortcuts import redirect
+        referer = request.META.get('HTTP_REFERER')
+        if referer:
+            return redirect(referer)
+        return redirect('/home/')
+    
     personal = get_object_or_404(Personal, personal_id=pk)
     from .forms import LicenciasInternasPersonal
     from .models import LicenciaInternaPorPersonal
@@ -1043,6 +1113,59 @@ def documentation_view(request, pk):
     examenes = Examen.objects.filter(personal_id=personal)
     certificaciones = Certificacion.objects.filter(personal_id=personal)
     
+    # Verificar permisos del usuario para pasar al template
+    user = request.user
+    permisos = {
+        'can_view_personal': user.has_perm('rrhh_personal.view_personal'),
+        'can_change_personal': user.has_perm('rrhh_personal.change_personal'),
+        # Historial de Documentos Personales - puede ver si tiene permisos de historial o de documentos personales
+        'can_ver_historial_documentos_personales': (
+            user.has_perm('rrhh_personal.view_historialdocumentopersonal') or
+            user.has_perm('rrhh_personal.ver_historial_personal') or
+            user.has_perm('rrhh_personal.view_personal') or
+            user.has_perm('rrhh_personal.change_personal')
+        ),
+        # Historial de Licencias - puede ver si tiene permisos de licencias
+        'can_ver_historial_licencias': (
+            user.has_perm('rrhh_personal.view_licenciaporpersonal') or
+            user.has_perm('rrhh_personal.add_licenciaporpersonal') or
+            user.has_perm('rrhh_personal.change_licenciaporpersonal') or
+            user.has_perm('rrhh_personal.ver_historial_personal') or
+            user.has_perm('rrhh_personal.view_personal') or
+            user.has_perm('rrhh_personal.change_personal')
+        ),
+        # Historial de Licencias Internas - puede ver si tiene permisos de licencias internas
+        'can_ver_historial_licencias_internas': (
+            user.has_perm('rrhh_personal.view_licenciainternaporpersonal') or
+            user.has_perm('rrhh_personal.add_licenciainternaporpersonal') or
+            user.has_perm('rrhh_personal.change_licenciainternaporpersonal') or
+            user.has_perm('rrhh_personal.ver_historial_personal') or
+            user.has_perm('rrhh_personal.view_personal') or
+            user.has_perm('rrhh_personal.change_personal')
+        ),
+        # Historial de Certificaciones - puede ver si tiene permisos de certificaciones
+        'can_ver_historial_certificaciones': (
+            user.has_perm('rrhh_personal.view_certificacion') or
+            user.has_perm('rrhh_personal.add_certificacion') or
+            user.has_perm('rrhh_personal.change_certificacion') or
+            user.has_perm('rrhh_personal.ver_historial_personal') or
+            user.has_perm('rrhh_personal.view_personal') or
+            user.has_perm('rrhh_personal.change_personal')
+        ),
+        # Historial de Exámenes - puede ver si tiene permisos de exámenes
+        'can_ver_historial_examenes': (
+            user.has_perm('rrhh_personal.view_examen') or
+            user.has_perm('rrhh_personal.add_examen') or
+            user.has_perm('rrhh_personal.change_examen') or
+            user.has_perm('rrhh_personal.ver_historial_personal') or
+            user.has_perm('rrhh_personal.view_personal') or
+            user.has_perm('rrhh_personal.change_personal')
+        ),
+    }
+    
+    import json
+    from django.core.serializers.json import DjangoJSONEncoder
+    
     context = {
         'personal': personal,
         'license_form': license_form,
@@ -1053,6 +1176,8 @@ def documentation_view(request, pk):
         'licencias_internas': licencias_internas,
         'examenes': examenes,
         'certificaciones': certificaciones,
+        'permisos': permisos,
+        'permisos_json': json.dumps(permisos, cls=DjangoJSONEncoder),
     }
     
     return render(request, 'personal/documentation.html', context)
@@ -1175,7 +1300,8 @@ def listar_licencias_medicas_personal(request, personal_id):
     return render(request, 'personal/listar_licencias_medicas_new.html', context)
 
 # Vista para editar una licencia médica específica
-class LicenciaMedicaPorPersonalUpdateView(LoginRequiredMixin, UpdateView):
+class LicenciaMedicaPorPersonalUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
+    permission_required = 'rrhh_personal.change_personal'
     model = LicenciaMedicaPorPersonal
     form_class = LicenciaMedicaPorPersonalForm
     template_name = 'personal/edit_licencia_medica.html'
@@ -1253,6 +1379,7 @@ def listar_ausentismos_personal(request, personal_id):
 
 
 @login_required
+@permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def crear_ausentismo(request, personal_id):
     """Vista para crear un ausentismo"""
     personal = get_object_or_404(Personal, personal_id=personal_id)
@@ -1757,7 +1884,8 @@ def edit_exam(request, exam_id):
 # VISTA PARA PERSONAL DESACTIVADO
 # ============================================================================
 
-class PersonalDesactivadoListView(ListView, LoginRequiredMixin):
+class PersonalDesactivadoListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
+    permission_required = 'rrhh_personal.view_personal'
     """Vista para listar personal desactivado"""
     model = Personal
     template_name = 'personal/personal_desactivado.html'
@@ -1821,6 +1949,14 @@ class PersonalDesactivadoListView(ListView, LoginRequiredMixin):
 # ============================================================================
 
 @csrf_exempt
+@login_required
+@permission_required_multiple(
+    'rrhh_personal.ver_historial_personal',
+    'rrhh_personal.view_personal',
+    'rrhh_personal.change_personal',
+    require_all=False,
+    is_ajax=True
+)
 @require_http_methods(["GET"])
 def api_historial_personal(request, personal_id):
     """API para obtener el historial completo de un personal en formato JSON"""
@@ -1864,6 +2000,14 @@ def api_historial_personal(request, personal_id):
 
 
 @csrf_exempt
+@login_required
+@permission_required_multiple(
+    'rrhh_personal.ver_historial_personal',
+    'rrhh_personal.view_personal',
+    'rrhh_personal.change_personal',
+    require_all=False,
+    is_ajax=True
+)
 @require_http_methods(["GET"])
 def api_historial_documentos_personal(request, personal_id):
     """API para obtener el historial de documentos de un personal en formato JSON"""
@@ -1913,14 +2057,114 @@ def api_historial_documentos_personal(request, personal_id):
 
 
 @login_required
+@permission_required_custom('rrhh_personal.view_personal', is_ajax=True)
+@require_http_methods(["GET"])
+def api_obtener_info_personal(request, personal_id):
+    """
+    API para obtener información completa del personal (personal y laboral).
+    Retorna toda la información en formato JSON para mostrar en un modal.
+    """
+    try:
+        personal = get_object_or_404(Personal, personal_id=personal_id)
+        
+        # Obtener información laboral (puede haber múltiples registros históricos)
+        info_laboral_list = personal.infolaboral_set.all().select_related(
+            'empresa_id', 'depto_id', 'cargo_id'
+        ).order_by('-fechacontrata')
+        
+        # Información laboral actual (la más reciente)
+        info_laboral_actual = info_laboral_list.first() if info_laboral_list.exists() else None
+        
+        # Preparar datos personales
+        datos_personales = {
+            'personal_id': personal.personal_id,
+            'rut': f"{personal.rut}-{personal.dvrut}",
+            'nombre': personal.nombre,
+            'apepat': personal.apepat,
+            'apemat': personal.apemat or '',
+            'nombre_completo': f"{personal.nombre} {personal.apepat} {personal.apemat}".strip(),
+            'fecha_nacimiento': personal.fechanac.strftime('%d/%m/%Y') if personal.fechanac else 'No disponible',
+            'correo': personal.correo,
+            'direccion': personal.direccion or 'No disponible',
+            'sexo': personal.sexo_id.sexo if personal.sexo_id else 'No disponible',
+            'estado_civil': personal.estcivil_id.estadocivil if personal.estcivil_id else 'No disponible',
+            'region': personal.region_id.nombre if personal.region_id else 'No disponible',
+            'comuna': personal.comuna_id.nombre if personal.comuna_id else 'No disponible',
+            'activo': personal.activo,
+            'estado_texto': 'Activo' if personal.activo else 'Inactivo',
+        }
+        
+        # Preparar información laboral actual
+        info_laboral_data = None
+        if info_laboral_actual:
+            info_laboral_data = {
+                'empresa': info_laboral_actual.empresa_id.nomFantasia if info_laboral_actual.empresa_id else 'No disponible',
+                'departamento': info_laboral_actual.depto_id.depto if info_laboral_actual.depto_id else 'No disponible',
+                'cargo': info_laboral_actual.cargo_id.cargo if info_laboral_actual.cargo_id else 'No disponible',
+                'fecha_contratacion': info_laboral_actual.fechacontrata.strftime('%d/%m/%Y') if info_laboral_actual.fechacontrata else 'No disponible',
+            }
+        
+        # Historial laboral (todas las asignaciones)
+        historial_laboral = []
+        for info_lab in info_laboral_list:
+            historial_laboral.append({
+                'empresa': info_lab.empresa_id.nomFantasia if info_lab.empresa_id else 'No disponible',
+                'departamento': info_lab.depto_id.depto if info_lab.depto_id else 'No disponible',
+                'cargo': info_lab.cargo_id.cargo if info_lab.cargo_id else 'No disponible',
+                'fecha_contratacion': info_lab.fechacontrata.strftime('%d/%m/%Y') if info_lab.fechacontrata else 'No disponible',
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'personal': datos_personales,
+                'laboral_actual': info_laboral_data,
+                'historial_laboral': historial_laboral
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc() if request.user.is_superuser else None
+        }, status=500)
+
+
+@login_required
 @require_POST
 def toggle_personal_activo(request):
-    """Toggle estado activo/inactivo de personal"""
+    """
+    Toggle estado activo/inactivo de personal.
+    
+    Requiere permisos específicos según la acción:
+    - Desactivar: requiere 'rrhh_personal.desactivar_personal'
+    - Activar: requiere 'rrhh_personal.activar_personal'
+    """
     try:
         data = json.loads(request.body)
         personal_id = data.get('personal_id')
         
         personal = get_object_or_404(Personal, personal_id=personal_id)
+        
+        # Verificar permiso según la acción que se va a realizar
+        if personal.activo:
+            # Si está activo, se va a desactivar - requiere permiso de desactivar
+            if not request.user.has_perm('rrhh_personal.desactivar_personal'):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'No tiene permiso para desactivar personal'
+                }, status=403)
+        else:
+            # Si está inactivo, se va a activar - requiere permiso de activar
+            if not request.user.has_perm('rrhh_personal.activar_personal'):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'No tiene permiso para activar personal'
+                }, status=403)
+        
+        # Si tiene el permiso, realizar la acción
         personal.activo = not personal.activo
         # Pasar usuario a la señal
         personal._current_user = request.user

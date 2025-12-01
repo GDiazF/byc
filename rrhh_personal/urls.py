@@ -37,6 +37,7 @@ from .views import (
     eliminar_ausentismo,
     api_historial_personal,
     api_historial_documentos_personal,
+    api_obtener_info_personal,
 )
 
 urlpatterns = [
@@ -89,4 +90,6 @@ urlpatterns = [
     # APIs para historial
     path('api/personal/<int:personal_id>/historial/', api_historial_personal, name='api_historial_personal'),
     path('api/personal/<int:personal_id>/historial/documentos/', api_historial_documentos_personal, name='api_historial_documentos_personal'),
+    # API para obtener información completa del personal
+    path('api/personal/<int:personal_id>/info/', api_obtener_info_personal, name='api_obtener_info_personal'),
 ]

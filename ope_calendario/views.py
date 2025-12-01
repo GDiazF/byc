@@ -6,6 +6,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.cache import cache
+from gen_permissions.decorators import permission_required_custom, permission_required_multiple
 from datetime import datetime, date, timedelta
 from calendar import monthrange
 import json
@@ -20,6 +21,8 @@ from maquinarias.models import OrdenTrabajo, Equipo
 
 # Create your views here.
 
+@login_required
+@permission_required_custom('ope_calendario.view_faena')
 def calendario_mensual(request):
     """Vista para mostrar el calendario mensual con datos reales y paginación"""
     
@@ -867,6 +870,9 @@ def obtener_estado_final_personal_fecha(personal, fecha):
     
     return estados_misma_prioridad
 
+@csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 def api_calendario_mensual(request):
     """API para obtener datos del calendario en formato JSON con paginación"""
     try:
@@ -989,6 +995,8 @@ def invalidar_cache_calendario():
     cache.set('calendario_version', new_version, None)  # Sin expiración
 
 
+@login_required
+@permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 @require_http_methods(["GET"])
 def obtener_info_personal(request, personal_id):
     """API para obtener información completa del personal incluyendo documentación"""
@@ -1092,6 +1100,8 @@ def obtener_info_personal(request, personal_id):
             'message': str(e)
         }, status=500)
 
+@login_required
+@permission_required_custom('ope_calendario.view_faena')
 def limpiar_cache_calendario(request):
     """Vista administrativa para limpiar el caché del calendario manualmente"""
     from django.contrib import messages
@@ -1105,6 +1115,8 @@ def limpiar_cache_calendario(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.add_asignacionfaena', is_ajax=True)
 @require_http_methods(["POST"])
 def crear_asignacion(request):
     """API para crear una nueva asignación de faena"""
@@ -1251,6 +1263,8 @@ def crear_asignacion(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.modificar_asignacion_personal', is_ajax=True)
 @require_http_methods(["POST"])
 def actualizar_asignacion(request):
     """API para actualizar una asignación de faena existente"""
@@ -1395,6 +1409,8 @@ def actualizar_asignacion(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.delete_asignacionfaena', is_ajax=True)
 @require_http_methods(["POST"])
 def eliminar_asignacion(request):
     """API para eliminar una asignación de faena"""
@@ -1454,6 +1470,8 @@ def eliminar_asignacion(request):
 # GESTIÓN DE FAENAS - VISTA PRINCIPAL
 # ============================================================================
 
+@login_required
+@permission_required_custom('ope_calendario.asignar_personal_faena')
 def asignar_personal_faena(request, faena_id):
     """Vista para asignar personal a una faena específica - PÁGINA COMPLETA"""
     from django.core.serializers.json import DjangoJSONEncoder
@@ -1740,6 +1758,8 @@ def asignar_personal_faena(request, faena_id):
     return render(request, 'calendario/asignar_personal_faena.html', context)
 
 
+@login_required
+@permission_required_custom('ope_calendario.asignar_equipos_faena')
 def asignar_equipos_faena(request, faena_id):
     """Vista para asignar equipos a una faena específica - PÁGINA COMPLETA"""
     from django.core.serializers.json import DjangoJSONEncoder
@@ -1950,6 +1970,8 @@ def asignar_equipos_faena(request, faena_id):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.add_asignacionequipofaena', is_ajax=True)
 @require_http_methods(["POST"])
 def crear_asignacion_equipos(request):
     """API para crear asignaciones de equipos a una faena"""
@@ -2085,6 +2107,8 @@ def crear_asignacion_equipos(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.delete_asignacionequipofaena', is_ajax=True)
 @require_http_methods(["POST"])
 def eliminar_asignacion_equipo(request):
     """API para eliminar una asignación de equipo a faena"""
@@ -2137,6 +2161,8 @@ def eliminar_asignacion_equipo(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.modificar_asignacion_equipo', is_ajax=True)
 @require_http_methods(["POST"])
 def actualizar_asignacion_equipo(request):
     """API para actualizar una asignación de equipo a faena existente"""
@@ -2275,6 +2301,8 @@ def actualizar_asignacion_equipo(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required
+@permission_required_custom('ope_calendario.view_faena')
 def gestionar_faenas(request):
     """Vista principal para gestionar faenas y sus asignaciones"""
     from django.core.serializers.json import DjangoJSONEncoder
@@ -2407,18 +2435,32 @@ def gestionar_faenas(request):
             'longitud_ciclo': sum([b.duracion_dias for b in turno.bloques.all()])
         })
     
+    # Verificar permisos del usuario para pasar al template
+    user = request.user
+    permisos = {
+        'can_add_faena': user.has_perm('ope_calendario.add_faena'),
+        'can_change_faena': user.has_perm('ope_calendario.change_faena'),
+        'can_view_faena': user.has_perm('ope_calendario.view_faena'),
+        'can_add_asignacionfaena': user.has_perm('ope_calendario.add_asignacionfaena'),
+        'can_add_asignacionequipofaena': user.has_perm('ope_calendario.add_asignacionequipofaena'),
+        'can_ver_historial_faena': user.has_perm('ope_calendario.ver_historial_faena') or user.has_perm('ope_calendario.view_historialfaena'),
+    }
+    
     context = {
         'faenas_json': json.dumps(faenas_data, cls=DjangoJSONEncoder),
         'personal_json': json.dumps(personal_data, cls=DjangoJSONEncoder),
         'turnos_json': json.dumps(turnos_data, cls=DjangoJSONEncoder),
         'total_faenas': len(faenas_data),
         'total_personal': len(personal_data),
+        'permisos_json': json.dumps(permisos),
     }
     
     return render(request, 'calendario/gestionar_faenas.html', context)
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.add_faena', is_ajax=True)
 @require_http_methods(["POST"])
 def crear_faena(request):
     """API para crear una nueva faena"""
@@ -2503,6 +2545,8 @@ def crear_faena(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.change_faena', is_ajax=True)
 @require_http_methods(["POST"])
 def actualizar_faena(request):
     """API para actualizar una faena existente y ajustar asignaciones automáticamente"""
@@ -2722,6 +2766,8 @@ def actualizar_faena(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 @require_http_methods(["GET"])
 def listar_faenas_api(request):
     """API para obtener lista de faenas con sus asignaciones"""
@@ -2759,6 +2805,8 @@ def listar_faenas_api(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.delete_faena', is_ajax=True)
 @require_http_methods(["POST"])
 def eliminar_faena(request):
     """API para eliminar una faena (en cascada con sus asignaciones)"""
@@ -2819,6 +2867,8 @@ def obtener_nombre_completo_usuario(usuario):
     return usuario.username or 'Sistema'
 
 @csrf_exempt
+@login_required
+@permission_required_multiple('ope_calendario.ver_historial_faena', 'ope_calendario.view_historialfaena', require_all=False, is_ajax=True)
 @require_http_methods(["GET"])
 def api_historial_faena(request, faena_id):
     """API para obtener el historial completo de una faena en formato JSON"""
@@ -2866,6 +2916,7 @@ def api_historial_faena(request, faena_id):
         }, status=500)
 
 @login_required
+@permission_required_multiple('ope_calendario.ver_historial_faena', 'ope_calendario.view_historialfaena', require_all=False)
 def ver_historial_faena(request, faena_id):
     """Vista para ver el historial completo de una faena (mantenida por compatibilidad)"""
     from django.core.serializers.json import DjangoJSONEncoder
@@ -2913,6 +2964,8 @@ def ver_historial_faena(request, faena_id):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.asignacion_masiva_personal', is_ajax=True)
 @require_http_methods(["POST"])
 def crear_asignacion_masiva(request):
     """API para crear múltiples asignaciones a la vez (asignación masiva)"""
@@ -3095,6 +3148,9 @@ def crear_asignacion_masiva(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 def api_estados(request):
     """API para obtener todos los estados disponibles"""
     estados = Estado.objects.filter(activo=True).order_by('-prioridad', 'nombre')
@@ -3111,6 +3167,9 @@ def api_estados(request):
     return JsonResponse({'estados': estados_data})
 
 
+@csrf_exempt
+@login_required
+@permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 def api_personal_faena(request, faena_id):
     """API para obtener el personal asignado a una faena específica con sus asignaciones"""
     try:
@@ -3211,6 +3270,7 @@ def api_personal_faena(request, faena_id):
 
 
 @login_required
+@permission_required_custom('ope_calendario.eliminar_estado_manual')
 @require_http_methods(["POST"])
 def eliminar_estado_manual(request, estado_id):
     """
@@ -3246,7 +3306,9 @@ def eliminar_estado_manual(request, estado_id):
         }, status=500)
 
 
+@csrf_exempt
 @login_required
+@permission_required_custom('ope_calendario.asignar_estado_manual', is_ajax=True)
 @require_http_methods(["POST"])
 def asignar_estado_manual_api(request):
     """

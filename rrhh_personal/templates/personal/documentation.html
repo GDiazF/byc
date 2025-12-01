@@ -10,6 +10,7 @@
 {% endblock %}
 
 {% block extrajs %}
+{% load permissions_tags %}
 <script>
 // Configurar URLs para el JavaScript
 window.DELETE_LICENSE_URL = '{% url "delete_license" 0 %}';
@@ -18,6 +19,8 @@ window.DELETE_EXAM_URL = '{% url "delete_exam" 0 %}';
 window.DELETE_CERTIFICATION_URL = '{% url "delete_certification" personal.personal_id 0 %}';
 window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" personal.personal_id %}';
 window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" personal.personal_id %}';
+// Permisos para historial
+var permisosHistorial = {{ permisos_json|safe }};
 </script>
 <script src="{% static 'js/documentation.js' %}?v=29.0"></script>
 <script src="{% static 'js/historial_documentos_personal.js' %}?v=1.0"></script>
@@ -403,6 +406,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                 </div>
                 
                 <!-- Historial de Documentos Personales -->
+                {% if permisos.can_ver_historial_documentos_personales %}
                 <div class="form-section mt-4">
                     <div class="form-section-header">
                         <i class="bi bi-clock-history me-2"></i>
@@ -436,6 +440,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             <!-- Licencias Tab -->
@@ -504,6 +509,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                 </div>
                 
                 <!-- Historial de Licencias -->
+                {% if permisos.can_ver_historial_licencias %}
                 <div class="form-section mt-4">
                     <div class="form-section-header">
                         <i class="bi bi-clock-history me-2"></i>
@@ -537,6 +543,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             <!-- Licencias Internas Tab -->
@@ -604,6 +611,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                 </div>
                 
                 <!-- Historial de Licencias Internas -->
+                {% if permisos.can_ver_historial_licencias_internas %}
                 <div class="form-section mt-4">
                     <div class="form-section-header">
                         <i class="bi bi-clock-history me-2"></i>
@@ -637,6 +645,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             <!-- Certificaciones Tab -->
@@ -704,6 +713,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                 </div>
                 
                 <!-- Historial de Certificaciones -->
+                {% if permisos.can_ver_historial_certificaciones %}
                 <div class="form-section mt-4">
                     <div class="form-section-header">
                         <i class="bi bi-clock-history me-2"></i>
@@ -737,6 +747,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             <!-- Exámenes Tab -->
@@ -814,6 +825,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                 </div>
                 
                 <!-- Historial de Exámenes -->
+                {% if permisos.can_ver_historial_examenes %}
                 <div class="form-section mt-4">
                     <div class="form-section-header">
                         <i class="bi bi-clock-history me-2"></i>
@@ -847,6 +859,7 @@ window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" pe
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'main_home',
     'maquinarias',
     'gen_settings',
+    'gen_permissions',  # App para gestión de roles y permisos
     'reportes_auditoria',
     'dashboards',
     # 'storages',  # Solo para producción con S3
@@ -57,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'gen_permissions.middleware.PermissionDeniedMiddleware',  # Manejo de errores de permisos
 ]
 
 ROOT_URLCONF = 'bycCore.urls'

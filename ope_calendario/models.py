@@ -184,6 +184,15 @@ class Faena(models.Model):
                 name="faena_rango_valido",
             )
         ]
+        # Permisos personalizados para acciones específicas dentro del modelo Faena
+        permissions = [
+            ('desactivar_faena', 'Puede desactivar faenas'),
+            ('activar_faena', 'Puede activar faenas'),
+            ('asignar_personal_faena', 'Puede asignar personal a faenas'),
+            ('asignar_equipos_faena', 'Puede asignar equipos a faenas'),
+            ('ver_historial_faena', 'Puede ver historial completo de faenas'),
+            ('exportar_faenas', 'Puede exportar datos de faenas'),
+        ]
 
     def clean(self):
         """Validar que la fecha de fin sea posterior a la fecha de inicio"""
@@ -245,6 +254,11 @@ class AsignacionFaena(models.Model):
                 check=Q(fecha_fin__gte=F("fecha_inicio")) | Q(fecha_fin__isnull=True),
                 name="asig_faena_rango_valido",
             )
+        ]
+        # Permisos personalizados para acciones específicas dentro del modelo AsignacionFaena
+        permissions = [
+            ('asignacion_masiva_personal', 'Puede realizar asignaciones masivas de personal'),
+            ('modificar_asignacion_personal', 'Puede modificar asignaciones de personal existentes'),
         ]
 
     def __str__(self):
@@ -330,6 +344,10 @@ class AsignacionEquipoFaena(models.Model):
                 check=Q(fecha_fin__gte=F("fecha_inicio")) | Q(fecha_fin__isnull=True),
                 name="asig_equipo_faena_rango_valido",
             )
+        ]
+        # Permisos personalizados para acciones específicas dentro del modelo AsignacionEquipoFaena
+        permissions = [
+            ('modificar_asignacion_equipo', 'Puede modificar asignaciones de equipos existentes'),
         ]
     
     def __str__(self):
@@ -452,6 +470,11 @@ class EstadoManual(models.Model):
                 check=Q(fecha_fin__gte=F("fecha_inicio")),
                 name="estado_manual_rango_valido",
             )
+        ]
+        # Permisos personalizados para acciones específicas dentro del modelo EstadoManual
+        permissions = [
+            ('asignar_estado_manual', 'Puede asignar estados manuales a personal'),
+            ('eliminar_estado_manual', 'Puede eliminar estados manuales'),
         ]
 
     def __str__(self):

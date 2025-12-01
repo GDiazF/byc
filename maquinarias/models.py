@@ -161,6 +161,13 @@ class Equipo(models.Model):
         unique_together = [['modeloEquipo_id', 'codigoInterno']]
         verbose_name = 'Equipo'
         verbose_name_plural = 'Equipos'
+        # Permisos personalizados para acciones específicas dentro del modelo Equipo
+        permissions = [
+            ('desactivar_equipo', 'Puede desactivar equipos'),
+            ('activar_equipo', 'Puede activar equipos'),
+            ('exportar_equipos', 'Puede exportar datos de equipos'),
+            ('ver_historial_equipo', 'Puede ver historial completo de equipos'),
+        ]
 
     def save(self, *args, **kwargs):
         """
@@ -268,6 +275,12 @@ class PautaMantenimientoPreventivo(models.Model):
         verbose_name = 'Pauta de Mantenimiento Preventivo'
         verbose_name_plural = 'Pautas de Mantenimiento Preventivo'
         ordering = ['modeloEquipo_id', 'nombre']
+        # Permisos personalizados para acciones específicas dentro del modelo PautaMantenimientoPreventivo
+        permissions = [
+            ('desactivar_pauta', 'Puede desactivar pautas de mantenimiento'),
+            ('activar_pauta', 'Puede activar pautas de mantenimiento'),
+            ('exportar_pautas', 'Puede exportar datos de pautas de mantenimiento'),
+        ]
     
     def __str__(self):
         return f"{self.nombre} - {self.modeloEquipo_id}"
@@ -369,6 +382,12 @@ class DocumentoMaquinaria(models.Model):
         # Un equipo solo puede tener un documento activo de cada tipo
         unique_together = [['equipo_id', 'tipo_documento_id']]
         ordering = ['tipo_documento_id__nombre']
+        # Permisos personalizados para acciones específicas dentro del modelo DocumentoMaquinaria
+        permissions = [
+            ('subir_documento', 'Puede subir documentos de maquinarias'),
+            ('eliminar_documento', 'Puede eliminar documentos de maquinarias'),
+            ('ver_historial_documentos', 'Puede ver historial de documentos'),
+        ]
     
     @property
     def esta_vencido(self):
@@ -864,6 +883,15 @@ class OrdenTrabajo(models.Model):
         verbose_name = 'Orden de Trabajo'
         verbose_name_plural = 'Ordenes de Trabajo'
         ordering = ['-fecha_creacion']
+        # Permisos personalizados para acciones específicas dentro del modelo OrdenTrabajo
+        permissions = [
+            ('cambiar_estado_ot', 'Puede cambiar el estado de órdenes de trabajo'),
+            ('asignar_personal_ot', 'Puede asignar personal a órdenes de trabajo'),
+            ('agregar_observacion_ot', 'Puede agregar observaciones a órdenes de trabajo'),
+            ('generar_pdf_ot', 'Puede generar PDF de órdenes de trabajo'),
+            ('ver_historial_ot', 'Puede ver historial completo de órdenes de trabajo'),
+            ('exportar_ots', 'Puede exportar datos de órdenes de trabajo'),
+        ]
     
     def __str__(self):
         # Si el folio ya tiene el prefijo OT-, mostrarlo tal cual, sino agregarlo

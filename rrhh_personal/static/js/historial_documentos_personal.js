@@ -10,31 +10,36 @@ const historialConfig = {
         tipo: 'DOCUMENTO_PERSONAL',
         containerId: 'historialPersonalContainer',
         tbodyId: 'historialPersonalTbody',
-        btnId: 'btnToggleHistorialPersonal'
+        btnId: 'btnToggleHistorialPersonal',
+        permisoKey: 'can_ver_historial_documentos_personales'
     },
     'licenses': {
         tipo: 'LICENCIA_CONDUCIR',
         containerId: 'historialLicenciasContainer',
         tbodyId: 'historialLicenciasTbody',
-        btnId: 'btnToggleHistorialLicencias'
+        btnId: 'btnToggleHistorialLicencias',
+        permisoKey: 'can_ver_historial_licencias'
     },
     'internal-licenses': {
         tipo: 'LICENCIA_INTERNA',
         containerId: 'historialLicenciasInternasContainer',
         tbodyId: 'historialLicenciasInternasTbody',
-        btnId: 'btnToggleHistorialLicenciasInternas'
+        btnId: 'btnToggleHistorialLicenciasInternas',
+        permisoKey: 'can_ver_historial_licencias_internas'
     },
     'certifications': {
         tipo: 'CERTIFICACION',
         containerId: 'historialCertificacionesContainer',
         tbodyId: 'historialCertificacionesTbody',
-        btnId: 'btnToggleHistorialCertificaciones'
+        btnId: 'btnToggleHistorialCertificaciones',
+        permisoKey: 'can_ver_historial_certificaciones'
     },
     'exams': {
         tipo: 'EXAMEN',
         containerId: 'historialExamenesContainer',
         tbodyId: 'historialExamenesTbody',
-        btnId: 'btnToggleHistorialExamenes'
+        btnId: 'btnToggleHistorialExamenes',
+        permisoKey: 'can_ver_historial_examenes'
     }
 };
 
@@ -48,11 +53,25 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function inicializarEventosHistorial() {
+    // Asegurar que permisosHistorial esté definido
+    const permisos = window.permisosHistorial || {};
+    
     // Configurar eventos para cada botón de toggle
     Object.keys(historialConfig).forEach(tabId => {
         const config = historialConfig[tabId];
         const btn = document.getElementById(config.btnId);
         if (btn) {
+            // Verificar si el usuario tiene permiso para este historial
+            const tienePermiso = permisos[config.permisoKey] === true || permisos[config.permisoKey] === 'true';
+            
+            if (!tienePermiso) {
+                // Deshabilitar el botón si no tiene permiso
+                btn.disabled = true;
+                btn.classList.add('disabled');
+                btn.title = 'No tiene permiso para ver este historial';
+                return;
+            }
+            
             btn.addEventListener('click', function() {
                 toggleHistorial(config.containerId, config.btnId, config.tipo);
             });
@@ -104,6 +123,18 @@ function toggleHistorial(containerId, btnId, tipoDocumento) {
     const btn = document.getElementById(btnId);
     
     if (!container || !btn) return;
+    
+    // Verificar permisos antes de permitir el toggle
+    const config = Object.values(historialConfig).find(c => c.containerId === containerId);
+    if (config) {
+        const permisos = window.permisosHistorial || {};
+        const tienePermiso = permisos[config.permisoKey] === true || permisos[config.permisoKey] === 'true';
+        
+        if (!tienePermiso) {
+            alert('No tiene permiso para ver este historial. Por favor, contacte al administrador si necesita acceso.');
+            return;
+        }
+    }
     
     if (container.style.display === 'none') {
         container.style.display = 'block';

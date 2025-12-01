@@ -1,4 +1,5 @@
 {% load static %}
+{% load permissions_tags %}
 
 {% block extrastyles %}
 <style>
@@ -432,32 +433,41 @@
     <!-- Tabs por área -->
     <div class="nav-tabs-wrapper">
         <ul class="nav nav-tabs flex-nowrap" id="dashboardTabs" role="tablist" style="min-width: max-content;">
+|            {% if user|has_perm:'dashboards.view_dashboard_rrhh' %}
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="rrhh-tab" data-bs-toggle="tab" data-bs-target="#rrhh" type="button" role="tab">
                     <i class="bi bi-people me-2 d-none d-md-inline"></i>RRHH
                 </button>
             </li>
+            {% endif %}
+            {% if user|has_perm:'dashboards.view_dashboard_operaciones' %}
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="operaciones-tab" data-bs-toggle="tab" data-bs-target="#operaciones" type="button" role="tab">
+                <button class="nav-link {% if not user|has_perm:'dashboards.view_dashboard_rrhh' %}active{% endif %}" id="operaciones-tab" data-bs-toggle="tab" data-bs-target="#operaciones" type="button" role="tab">
                     <i class="bi bi-calendar-check me-2 d-none d-md-inline"></i>Operaciones
                 </button>
             </li>
+            {% endif %}
+            {% if user|has_perm:'dashboards.view_dashboard_maquinarias' %}
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="maquinarias-tab" data-bs-toggle="tab" data-bs-target="#maquinarias" type="button" role="tab">
+                <button class="nav-link {% if not user|has_perm:'dashboards.view_dashboard_rrhh' and not user|has_perm:'dashboards.view_dashboard_operaciones' %}active{% endif %}" id="maquinarias-tab" data-bs-toggle="tab" data-bs-target="#maquinarias" type="button" role="tab">
                     <i class="bi bi-gear me-2 d-none d-md-inline"></i>Maquinarias
                 </button>
             </li>
+            {% endif %}
+            {% if user|has_perm:'dashboards.view_dashboard_gerencia' %}
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="gerencia-tab" data-bs-toggle="tab" data-bs-target="#gerencia" type="button" role="tab">
+                <button class="nav-link {% if not user|has_perm:'dashboards.view_dashboard_rrhh' and not user|has_perm:'dashboards.view_dashboard_operaciones' and not user|has_perm:'dashboards.view_dashboard_maquinarias' %}active{% endif %}" id="gerencia-tab" data-bs-toggle="tab" data-bs-target="#gerencia" type="button" role="tab">
                     <i class="bi bi-graph-up-arrow me-2 d-none d-md-inline"></i>Gerencia
                 </button>
             </li>
+            {% endif %}
         </ul>
     </div>
     
     <!-- Contenido de los tabs -->
     <div class="tab-content" id="dashboardTabsContent">
         <!-- Tab RRHH -->
+        {% if user|has_perm:'dashboards.view_dashboard_rrhh' %}
         <div class="tab-pane fade show active" id="rrhh" role="tabpanel">
             <div id="rrhh-content">
                 <div class="text-center py-5">
@@ -468,9 +478,11 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         
         <!-- Tab Operaciones -->
-        <div class="tab-pane fade" id="operaciones" role="tabpanel">
+        {% if user|has_perm:'dashboards.view_dashboard_operaciones' %}
+        <div class="tab-pane fade {% if not user|has_perm:'dashboards.view_dashboard_rrhh' %}show active{% endif %}" id="operaciones" role="tabpanel">
             <div id="operaciones-content">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
@@ -480,9 +492,11 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         
         <!-- Tab Maquinarias -->
-        <div class="tab-pane fade" id="maquinarias" role="tabpanel">
+        {% if user|has_perm:'dashboards.view_dashboard_maquinarias' %}
+        <div class="tab-pane fade {% if not user|has_perm:'dashboards.view_dashboard_rrhh' and not user|has_perm:'dashboards.view_dashboard_operaciones' %}show active{% endif %}" id="maquinarias" role="tabpanel">
             <div id="maquinarias-content">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
@@ -492,9 +506,11 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         
         <!-- Tab Gerencia -->
-        <div class="tab-pane fade" id="gerencia" role="tabpanel">
+        {% if user|has_perm:'dashboards.view_dashboard_gerencia' %}
+        <div class="tab-pane fade {% if not user|has_perm:'dashboards.view_dashboard_rrhh' and not user|has_perm:'dashboards.view_dashboard_operaciones' and not user|has_perm:'dashboards.view_dashboard_maquinarias' %}show active{% endif %}" id="gerencia" role="tabpanel">
             <div id="gerencia-content">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
@@ -504,6 +520,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -527,45 +544,130 @@
     
     // Inicializar cuando el DOM esté listo
     document.addEventListener('DOMContentLoaded', function() {
-        // Cargar datos del tab activo
-        cargarDashboardRRHH();
+        console.log('[Dashboard] DOM cargado, iniciando dashboards...');
         
-        // Event listeners para los tabs
-        document.getElementById('rrhh-tab').addEventListener('shown.bs.tab', function() {
-            cargarDashboardRRHH();
-        });
+        // Determinar qué tab está activo y cargar su contenido
+        // Buscar solo dentro del contenedor de tabs del dashboard (#dashboardTabs)
+        const tabsContainer = document.getElementById('dashboardTabs');
+        const activeTab = tabsContainer ? tabsContainer.querySelector('.nav-link.active') : null;
+        console.log('[Dashboard] Tab activo encontrado:', activeTab);
         
-        document.getElementById('operaciones-tab').addEventListener('shown.bs.tab', function() {
-            cargarDashboardOperaciones();
-        });
+        if (activeTab) {
+            const targetId = activeTab.getAttribute('data-bs-target');
+            console.log('[Dashboard] Target ID del tab activo:', targetId);
+            
+            if (targetId === '#rrhh') {
+                console.log('[Dashboard] Cargando dashboard RRHH...');
+                cargarDashboardRRHH();
+            } else if (targetId === '#operaciones') {
+                console.log('[Dashboard] Cargando dashboard Operaciones...');
+                cargarDashboardOperaciones();
+            } else if (targetId === '#maquinarias') {
+                console.log('[Dashboard] Cargando dashboard Maquinarias...');
+                cargarDashboardMaquinarias();
+            } else if (targetId === '#gerencia') {
+                console.log('[Dashboard] Cargando dashboard Gerencia...');
+                cargarDashboardGerencia();
+            } else {
+                console.warn('[Dashboard] Tab activo desconocido:', targetId);
+                // Si no se encuentra el target, intentar cargar RRHH por defecto
+                const rrhhContent = document.getElementById('rrhh-content');
+                if (rrhhContent) {
+                    console.log('[Dashboard] Contenedor RRHH encontrado, cargando por defecto...');
+                    cargarDashboardRRHH();
+                }
+            }
+        } else {
+            console.warn('[Dashboard] No se encontró tab activo, intentando cargar RRHH por defecto...');
+            // Si no hay tab activo, intentar cargar RRHH por defecto
+            const rrhhContent = document.getElementById('rrhh-content');
+            if (rrhhContent) {
+                console.log('[Dashboard] Contenedor RRHH encontrado, cargando...');
+                cargarDashboardRRHH();
+            } else {
+                console.error('[Dashboard] Contenedor RRHH NO encontrado');
+            }
+        }
         
-        document.getElementById('maquinarias-tab').addEventListener('shown.bs.tab', function() {
-            cargarDashboardMaquinarias();
-        });
+        // Event listeners para los tabs (solo si existen)
+        const rrhhTab = document.getElementById('rrhh-tab');
+        if (rrhhTab) {
+            rrhhTab.addEventListener('shown.bs.tab', function() {
+                cargarDashboardRRHH();
+            });
+        }
         
-        document.getElementById('gerencia-tab').addEventListener('shown.bs.tab', function() {
-            cargarDashboardGerencia();
-        });
+        const operacionesTab = document.getElementById('operaciones-tab');
+        if (operacionesTab) {
+            operacionesTab.addEventListener('shown.bs.tab', function() {
+                cargarDashboardOperaciones();
+            });
+        }
+        
+        const maquinariasTab = document.getElementById('maquinarias-tab');
+        if (maquinariasTab) {
+            maquinariasTab.addEventListener('shown.bs.tab', function() {
+                cargarDashboardMaquinarias();
+            });
+        }
+        
+        const gerenciaTab = document.getElementById('gerencia-tab');
+        if (gerenciaTab) {
+            gerenciaTab.addEventListener('shown.bs.tab', function() {
+                cargarDashboardGerencia();
+            });
+        }
     });
     
     // Funciones para cargar cada dashboard
     function cargarDashboardRRHH() {
+        console.log('[Dashboard RRHH] Función cargarDashboardRRHH llamada');
         const container = document.getElementById('rrhh-content');
-        if (container.dataset.loaded === 'true') return;
+        if (!container) {
+            console.error('[Dashboard RRHH] Contenedor no encontrado - El usuario puede no tener permiso para ver este dashboard');
+            return;
+        }
+        console.log('[Dashboard RRHH] Contenedor encontrado:', container);
         
-        fetch(API_RRHH)
-            .then(response => response.json())
+        if (container.dataset.loaded === 'true') {
+            console.log('[Dashboard RRHH] Ya está cargado, omitiendo...');
+            return;
+        }
+        
+        console.log('[Dashboard RRHH] Iniciando carga de datos desde:', API_RRHH);
+        
+        fetch(API_RRHH, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+            .then(response => {
+                console.log('[Dashboard RRHH] Respuesta recibida:', response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('[Dashboard RRHH] Datos recibidos:', data);
                 if (data.success) {
+                    console.log('[Dashboard RRHH] Renderizando dashboard...');
                     renderizarDashboardRRHH(data.data, container);
                     container.dataset.loaded = 'true';
+                    console.log('[Dashboard RRHH] Dashboard renderizado exitosamente');
                 } else {
-                    container.innerHTML = '<div class="alert alert-danger">Error al cargar datos: ' + data.error + '</div>';
+                    console.error('[Dashboard RRHH] Error en respuesta:', data.error);
+                    if (data.traceback) {
+                        console.error('[Dashboard RRHH] Traceback:', data.traceback);
+                    }
+                    container.innerHTML = '<div class="alert alert-danger">Error al cargar datos: ' + (data.error || 'Error desconocido') + '</div>';
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                container.innerHTML = '<div class="alert alert-danger">Error al cargar datos de RRHH</div>';
+                console.error('[Dashboard RRHH] Error en fetch:', error);
+                container.innerHTML = '<div class="alert alert-danger">Error al cargar datos de RRHH: ' + error.message + '</div>';
             });
     }
     

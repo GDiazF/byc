@@ -282,6 +282,17 @@ class Personal(models.Model):
     
     class Meta:
         db_table = 'Personal'
+        # Permisos personalizados para acciones específicas dentro del modelo Personal
+        # Estos permisos permiten control granular sobre qué acciones puede realizar cada usuario
+        permissions = [
+            # Permisos estándar (add, change, delete, view) se crean automáticamente por Django
+            # Permisos personalizados adicionales:
+            ('desactivar_personal', 'Puede desactivar personal'),  # Solo jefes pueden desactivar
+            ('activar_personal', 'Puede activar personal'),  # Solo jefes pueden activar
+            ('exportar_personal', 'Puede exportar datos de personal'),  # Para reportes
+            ('ver_salarios', 'Puede ver información salarial'),  # Información sensible
+            ('ver_historial_personal', 'Puede ver historial completo de personal'),  # Para ver historial de cambios
+        ]
 
     def save(self, *args, **kwargs):
         self.rut = self.rut.upper()

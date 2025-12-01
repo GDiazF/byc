@@ -287,9 +287,14 @@ def api_dashboard_rrhh(request):
         })
         
     except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"[ERROR API Dashboard RRHH]: {str(e)}")
+        print(f"[TRACEBACK]: {error_traceback}")
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'traceback': error_traceback if request.user.is_superuser else None  # Solo mostrar traceback a superusuarios
         }, status=500)
 
 

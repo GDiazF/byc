@@ -2,6 +2,12 @@
 // HISTORIAL DE PERSONAL
 // ============================================================================
 
+// Asegurar que permisos esté definido (por si acaso no se carga desde el template)
+if (typeof permisos === 'undefined') {
+    var permisos = {};
+    console.warn('permisos no está definido, usando objeto vacío');
+}
+
 // Función para obtener el color del badge según la acción
 function getBadgeColorAccionPersonal(accion) {
     const colores = {
@@ -27,6 +33,13 @@ function getBadgeColorAccionDocumento(accion) {
 
 // Función para mostrar el historial de un personal en un modal
 function verHistorialPersonal(personalId, nombrePersonal) {
+    // Verificar permisos antes de abrir el modal
+    const canVerHistorial = permisos && permisos.can_ver_historial_personal === true;
+    if (!canVerHistorial) {
+        alert('No tiene permiso para ver el historial de personal. Por favor, contacte al administrador si necesita acceso.');
+        return;
+    }
+    
     const modal = new bootstrap.Modal(document.getElementById('modalHistorialPersonal'));
     const modalBody = document.getElementById('modalHistorialPersonalBody');
     const modalTitle = document.getElementById('modalHistorialPersonalLabel');
@@ -262,6 +275,13 @@ function renderizarHistorialPersonalModal(data, container) {
 
 // Función para mostrar el historial de documentos de un personal en un modal
 function verHistorialDocumentosPersonal(personalId, nombrePersonal) {
+    // Verificar permisos antes de abrir el modal
+    const canVerHistorial = permisos && permisos.can_ver_historial_personal === true;
+    if (!canVerHistorial) {
+        alert('No tiene permiso para ver el historial de documentos de personal. Por favor, contacte al administrador si necesita acceso.');
+        return;
+    }
+    
     const modal = new bootstrap.Modal(document.getElementById('modalHistorialDocumentosPersonal'));
     const modalBody = document.getElementById('modalHistorialDocumentosPersonalBody');
     const modalTitle = document.getElementById('modalHistorialDocumentosPersonalLabel');

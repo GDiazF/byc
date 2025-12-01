@@ -33,6 +33,7 @@ from gen_settings.models import Empresa
 from rrhh_personal.models import Personal, InfoLaboral, Cargo, DeptoEmpresa
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
+from gen_permissions.decorators import permission_required_custom, permission_required_multiple
 from datetime import datetime, date, timedelta
 from calendar import monthrange
 
@@ -51,6 +52,8 @@ def obtener_nombre_completo_usuario(usuario):
     return usuario.username or 'Sistema'
 
 
+@login_required
+@permission_required_custom('maquinarias.view_equipo')
 def lista_equipos(request):
     """Vista principal para mostrar la tabla de equipos activos"""
     # Obtener datos para los filtros
@@ -69,6 +72,8 @@ def lista_equipos(request):
     return render(request, 'maquinarias/lista_equipos.html', context)
 
 
+@login_required
+@permission_required_custom('maquinarias.view_equipo')
 def equipos_desactivados(request):
     """Vista para mostrar equipos desactivados"""
     # Obtener datos para los filtros
@@ -85,6 +90,8 @@ def equipos_desactivados(request):
     return render(request, 'maquinarias/equipos_desactivados.html', context)
 
 
+@login_required
+@permission_required_custom('maquinarias.add_equipo')
 def crear_equipo(request):
     """Vista para mostrar el formulario de crear equipo"""
     empresas = Empresa.objects.all().order_by('nomFantasia')
@@ -99,6 +106,8 @@ def crear_equipo(request):
     return render(request, 'maquinarias/form_equipo.html', context)
 
 
+@login_required
+@permission_required_custom('maquinarias.change_equipo')
 def editar_equipo(request, equipo_id):
     """Vista para mostrar el formulario de editar equipo"""
     try:
@@ -128,6 +137,8 @@ def editar_equipo(request, equipo_id):
         return redirect('maquinarias:lista_equipos')
 
 
+@login_required
+@permission_required_custom('maquinarias.view_equipo', is_ajax=True)
 def api_listar_equipos(request):
     """API para listar equipos con filtros y paginación"""
     try:
@@ -235,6 +246,8 @@ def api_listar_equipos(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_multiple('maquinarias.add_equipo', 'maquinarias.change_equipo', require_all=False, is_ajax=True)
 @require_http_methods(["POST"])
 def api_guardar_equipo(request):
     """API unificada para crear o editar un equipo"""
@@ -327,6 +340,8 @@ def api_guardar_equipo(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('maquinarias.delete_equipo', is_ajax=True)
 @require_http_methods(["POST"])
 def api_eliminar_equipo(request, equipo_id):
     """API para eliminar un equipo"""
@@ -349,6 +364,8 @@ def api_eliminar_equipo(request, equipo_id):
 
 
 @csrf_exempt
+@login_required
+@permission_required_multiple('maquinarias.desactivar_equipo', 'maquinarias.activar_equipo', require_all=False, is_ajax=True)
 @require_http_methods(["POST"])
 def api_toggle_activo_equipo(request, equipo_id):
     """API para activar/desactivar un equipo"""
@@ -433,6 +450,7 @@ def api_modelos_equipo(request):
 
 
 @login_required
+@permission_required_custom('maquinarias.view_equipo')
 def documentacion_equipo(request, equipo_id):
     """Vista para mostrar la documentación del equipo"""
     try:
@@ -523,6 +541,7 @@ def api_documentos_equipo(request, equipo_id):
 
 @login_required
 @csrf_exempt
+@permission_required_custom('maquinarias.subir_documento', is_ajax=True)
 @require_http_methods(["POST"])
 def api_subir_documento_maquinaria(request, equipo_id):
     """API para subir/actualizar un documento de maquinaria con lógica de reemplazo automático"""
@@ -650,6 +669,7 @@ def api_subir_documento_maquinaria(request, equipo_id):
 
 @login_required
 @csrf_exempt
+@permission_required_custom('maquinarias.eliminar_documento', is_ajax=True)
 @require_http_methods(["DELETE"])
 def api_eliminar_documento_maquinaria(request, documento_id):
     """API para eliminar un documento de maquinaria (mueve el archivo a eliminados)"""
@@ -731,6 +751,7 @@ def api_eliminar_documento_maquinaria(request, documento_id):
 
 @login_required
 @csrf_exempt
+@permission_required_custom('maquinarias.ver_historial_documentos', is_ajax=True)
 def api_historial_documentos_equipo(request, equipo_id):
     """API para listar el historial de documentos de un equipo"""
     try:
@@ -1146,6 +1167,8 @@ def api_eliminar_tipo_reparacion(request, tipo_id):
 
 # ==================== VISTAS PARA PAUTAS DE MANTENIMIENTO ====================
 
+@login_required
+@permission_required_custom('maquinarias.view_pautamantenimientopreventivo')
 def lista_pautas_mantenimiento(request):
     """Vista principal para mostrar la tabla de pautas de mantenimiento"""
     # Obtener datos para filtros
@@ -1191,6 +1214,8 @@ def ver_pautas_modelo(request, modelo_id):
         return redirect('maquinarias:lista_pautas_mantenimiento')
 
 
+@login_required
+@permission_required_custom('maquinarias.add_pautamantenimientopreventivo')
 def crear_pauta_mantenimiento(request):
     """Vista para crear una nueva pauta de mantenimiento"""
     tipos_equipo = TipoEquipo.objects.all().order_by('tipoEquipo')
@@ -1222,6 +1247,8 @@ def crear_pauta_mantenimiento(request):
     return render(request, 'maquinarias/form_pauta_mantenimiento.html', context)
 
 
+@login_required
+@permission_required_custom('maquinarias.change_pautamantenimientopreventivo')
 def editar_pauta_mantenimiento(request, pauta_id):
     """Vista para editar una pauta de mantenimiento existente"""
     try:
@@ -1435,6 +1462,8 @@ def api_pautas_por_modelo(request, modelo_id):
 
 
 @csrf_exempt
+@login_required
+@permission_required_multiple('maquinarias.add_pautamantenimientopreventivo', 'maquinarias.change_pautamantenimientopreventivo', require_all=False, is_ajax=True)
 @require_http_methods(["POST"])
 def api_guardar_pauta_mantenimiento(request):
     """API para crear o actualizar una pauta de mantenimiento"""
@@ -1540,6 +1569,8 @@ def api_guardar_pauta_mantenimiento(request):
 
 
 @csrf_exempt
+@login_required
+@permission_required_multiple('maquinarias.desactivar_pauta', 'maquinarias.activar_pauta', require_all=False, is_ajax=True)
 @require_http_methods(["POST"])
 def api_toggle_activo_pauta(request, pauta_id):
     """API para activar/desactivar una pauta de mantenimiento"""
@@ -1569,6 +1600,8 @@ def api_toggle_activo_pauta(request, pauta_id):
 
 
 @csrf_exempt
+@login_required
+@permission_required_custom('maquinarias.delete_pautamantenimientopreventivo', is_ajax=True)
 @require_http_methods(["DELETE"])
 def api_eliminar_pauta(request, pauta_id):
     """API para eliminar una pauta de mantenimiento"""
@@ -2063,6 +2096,8 @@ def calendario_maquinarias(request):
 
 
 @login_required
+@login_required
+@permission_required_custom('maquinarias.add_ordentrabajo')
 def crear_orden_trabajo(request):
     """Vista para crear una nueva orden de trabajo"""
     empresas = Empresa.objects.all().order_by('nomFantasia')
@@ -2094,6 +2129,7 @@ def crear_orden_trabajo(request):
 
 
 @login_required
+@permission_required_custom('maquinarias.change_ordentrabajo')
 def editar_orden_trabajo(request, ot_id):
     """Vista para editar una orden de trabajo existente"""
     ot = get_object_or_404(OrdenTrabajo, ot_id=ot_id)
@@ -2147,6 +2183,8 @@ def editar_orden_trabajo(request, ot_id):
 # ============================================================================
 
 @csrf_exempt
+@login_required
+@permission_required_custom('maquinarias.view_ordentrabajo', is_ajax=True)
 @require_http_methods(["GET"])
 def api_listar_ordenes_trabajo(request):
     """API para listar ordenes de trabajo con filtros y paginación"""
@@ -2679,6 +2717,8 @@ def api_detalle_pauta_ot(request, pauta_id):
 
 
 @csrf_exempt
+@login_required
+@permission_required_multiple('maquinarias.add_ordentrabajo', 'maquinarias.change_ordentrabajo', require_all=False, is_ajax=True)
 @require_http_methods(["POST"])
 def api_guardar_orden_trabajo(request):
     """API para crear o actualizar una orden de trabajo"""
@@ -3086,6 +3126,9 @@ def api_guardar_orden_trabajo(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@csrf_exempt
+@login_required
+@permission_required_custom('maquinarias.agregar_observacion_ot', is_ajax=True)
 def api_agregar_observacion_ot(request, ot_id):
     """API para agregar una observación al historial de una OT"""
     try:
@@ -3254,6 +3297,9 @@ def api_detalle_ot(request, ot_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@csrf_exempt
+@login_required
+@permission_required_custom('maquinarias.ver_historial_ot', is_ajax=True)
 def api_historial_ot(request, ot_id):
     """API para obtener el historial completo de una OT en formato JSON"""
     try:
@@ -3309,6 +3355,8 @@ def api_historial_ot(request, ot_id):
 
 
 @login_required
+@login_required
+@permission_required_custom('maquinarias.generar_pdf_ot')
 def generar_pdf_ot(request, ot_id):
     """Generar PDF de una Orden de Trabajo"""
     if not REPORTLAB_AVAILABLE:
@@ -3772,6 +3820,9 @@ def generar_pdf_ot(request, ot_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@csrf_exempt
+@login_required
+@permission_required_custom('maquinarias.ver_historial_equipo', is_ajax=True)
 def api_historial_equipo(request, equipo_id):
     """API para obtener el historial completo de un equipo en formato JSON"""
     try:
