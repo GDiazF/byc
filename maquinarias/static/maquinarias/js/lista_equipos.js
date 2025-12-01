@@ -104,30 +104,37 @@ function renderizarEquipos(equipos) {
             <td>${equipo.empresa.nombre}</td>
             <td class="text-center">
                 <div class="btn-group btn-group-sm" role="group">
+                    ${window.userPermissions.canViewDocumentacion ? `
                     <a href="/maquinarias/equipos/${equipo.equipo_id}/documentacion/" 
                        class="btn btn-sm btn-primary" 
                        title="Ver Documentación">
                         <i class="bi bi-folder"></i>
                     </a>
+                    ` : ''}
+                    ${window.userPermissions.canEdit ? `
                     <a href="/maquinarias/equipos/${equipo.equipo_id}/editar/" 
                        class="btn btn-sm btn-secondary" 
                        title="Editar">
                         <i class="bi bi-pencil"></i>
                     </a>
+                    ` : ''}
+                    ${window.userPermissions.canViewHistorial ? `
                     <button type="button" class="btn btn-sm btn-info" onclick="verHistorialEquipo(${equipo.equipo_id}, '${equipo.nombreEquipo.replace(/'/g, "\\'")}')" title="Ver Historial">
                         <i class="bi bi-clock-history"></i>
                     </button>
+                    ` : ''}
                 </div>
             </td>
             <td class="text-center">
                 <div class="form-check form-switch d-inline-block">
                     <input class="form-check-input" type="checkbox" 
-                           style="cursor: pointer;"
+                           style="cursor: ${window.userPermissions.canDesactivar || window.userPermissions.canActivar ? 'pointer' : 'not-allowed'};"
                            data-equipo-id="${equipo.equipo_id}"
                            data-nombre-equipo="${equipo.nombreEquipo.replace(/'/g, "\\'")}"
                            ${equipo.activo ? 'checked' : ''} 
+                           ${(equipo.activo && !window.userPermissions.canDesactivar) || (!equipo.activo && !window.userPermissions.canActivar) ? 'disabled' : ''}
                            onchange="toggleEstadoEquipo(this)"
-                           title="${equipo.activo ? 'Desactivar equipo' : 'Activar equipo'}">
+                           title="${equipo.activo ? (window.userPermissions.canDesactivar ? 'Desactivar equipo' : 'No tiene permiso para desactivar') : (window.userPermissions.canActivar ? 'Activar equipo' : 'No tiene permiso para activar')}">
                 </div>
             </td>
         </tr>

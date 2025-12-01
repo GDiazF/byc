@@ -142,11 +142,17 @@ function renderizarModelos(modelos) {
                         </a>
                     </td>
                     <td class="text-center">
+                        ${window.userPermissions && window.userPermissions.canAdd ? `
                         <a href="/maquinarias/pautas-mantenimiento/crear/?modelo=${modelo.modeloEquipo.modeloEquipo_id}" 
                            class="btn btn-sm btn-success" 
                            title="Nueva pauta para este modelo">
                             <i class="bi bi-plus-circle"></i>
                         </a>
+                        ` : `
+                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para crear pautas de mantenimiento">
+                            <i class="bi bi-plus-circle"></i>
+                        </button>
+                        `}
                     </td>
                 </tr>
             `;

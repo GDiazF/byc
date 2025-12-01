@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}{% if es_edicion %}Editar{% else %}Nueva{% endif %} Pauta de Mantenimiento{% endblock %}
 
@@ -152,9 +153,27 @@
                     <a href="{% url 'maquinarias:lista_pautas_mantenimiento' %}" class="btn btn-secondary">
                         <i class="bi bi-x-circle me-1"></i>Cancelar
                     </a>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle me-1"></i>Guardar Pauta
-                    </button>
+                    {% if es_edicion %}
+                        {% if user|has_perm:'maquinarias.change_pautamantenimientopreventivo' %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-1"></i>Guardar Pauta
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn btn-success" disabled title="No tiene permiso para editar pautas">
+                            <i class="bi bi-check-circle me-1"></i>Guardar Pauta
+                        </button>
+                        {% endif %}
+                    {% else %}
+                        {% if user|has_perm:'maquinarias.add_pautamantenimientopreventivo' %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-1"></i>Guardar Pauta
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn btn-success" disabled title="No tiene permiso para crear pautas">
+                            <i class="bi bi-check-circle me-1"></i>Guardar Pauta
+                        </button>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
         </form>

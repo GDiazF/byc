@@ -291,9 +291,15 @@ var apiHistorialFaenaBase = "{% url 'calendario:api_historial_faena' 0 %}";
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if user|has_perm:'ope_calendario.add_faena' or user|has_perm:'ope_calendario.change_faena' %}
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-save me-2"></i>Guardar Faena
                     </button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para guardar faenas">
+                        <i class="bi bi-save me-2"></i>Guardar Faena
+                    </button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -422,6 +428,51 @@ var apiHistorialFaenaBase = "{% url 'calendario:api_historial_faena' 0 %}";
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i>Cerrar
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminación de Faena -->
+<div class="modal fade" id="modalConfirmarEliminarFaena" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">¿Está seguro que desea eliminar esta faena?</p>
+                <p class="mb-0"><strong id="confirmarEliminarFaena_nombre"></strong> será eliminada permanentemente.</p>
+                
+                <!-- Advertencia si tiene personal asignado -->
+                <div id="advertenciaPersonalAsignado" style="display: none;" class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Advertencia:</strong> Esta faena tiene <strong id="totalPersonalAsignado">0</strong> trabajador(es) asignado(s). 
+                    La eliminación de la faena también eliminará todas las asignaciones asociadas.
+                </div>
+                
+                <!-- Mensaje si no tiene personal -->
+                <div id="sinPersonalAsignado" style="display: none;" class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Esta faena no tiene personal asignado actualmente.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                {% if user|has_perm:'ope_calendario.delete_faena' %}
+                <button type="button" class="btn btn-danger" id="btnConfirmarEliminarFaena">
+                    <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+                {% else %}
+                <button type="button" class="btn btn-danger" id="btnConfirmarEliminarFaena" disabled title="No tiene permiso para eliminar faenas">
+                    <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>

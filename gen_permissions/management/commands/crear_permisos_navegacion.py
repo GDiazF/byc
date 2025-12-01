@@ -101,8 +101,26 @@ class Command(BaseCommand):
             ),
         ]
         
-        # Combinar ambas listas
-        todos_los_permisos = permisos_navegacion + permisos_dashboards
+        # Permisos específicos para reportes_auditoria
+        permisos_reportes = [
+            (
+                'reportes_auditoria.view_auditoria',
+                'Puede ver Auditoría',
+                'reportes_auditoria',
+                'view_auditoria',
+                'Permite acceder a la vista de Auditoría y ver los eventos de historial'
+            ),
+            (
+                'reportes_auditoria.view_reportabilidad',
+                'Puede ver Reportabilidad',
+                'reportes_auditoria',
+                'view_reportabilidad',
+                'Permite acceder a la vista de Reportabilidad (consultas estadísticas)'
+            ),
+        ]
+        
+        # Combinar todas las listas
+        todos_los_permisos = permisos_navegacion + permisos_dashboards + permisos_reportes
         
         creados = 0
         existentes = 0
@@ -162,20 +180,20 @@ class Command(BaseCommand):
                     if created:
                         creados += 1
                         self.stdout.write(
-                            self.style.SUCCESS(f'✓ Creado: {codigo}')
+                            self.style.SUCCESS(f'[OK] Creado: {codigo}')
                         )
                     else:
                         self.stdout.write(
-                            self.style.SUCCESS(f'✓ Actualizado (Permission asociado): {codigo}')
+                            self.style.SUCCESS(f'[OK] Actualizado (Permission asociado): {codigo}')
                         )
                 except Exception as e:
                     self.stdout.write(
-                        self.style.ERROR(f'✗ Error al crear Permission para {codigo}: {str(e)}')
+                        self.style.ERROR(f'[ERROR] Error al crear Permission para {codigo}: {str(e)}')
                     )
             else:
                 existentes += 1
                 self.stdout.write(
-                    self.style.WARNING(f'⚠ Ya existe: {codigo}')
+                    self.style.WARNING(f'[EXISTE] Ya existe: {codigo}')
                 )
         
         self.stdout.write(

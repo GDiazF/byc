@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Pautas de {{ modelo.modeloEquipo }}{% endblock %}
 
@@ -22,10 +23,16 @@
             <a href="{% url 'maquinarias:lista_pautas_mantenimiento' %}" class="btn btn-sm btn-secondary me-2">
                 <i class="bi bi-arrow-left me-1"></i>Volver
             </a>
+            {% if user|has_perm:'maquinarias.add_pautamantenimientopreventivo' %}
             <a href="{% url 'maquinarias:crear_pauta_mantenimiento' %}?modelo={{ modelo.modeloEquipo_id }}" 
                class="btn btn-success btn-sm">
                 <i class="bi bi-plus-circle me-1"></i>Nueva Pauta para este Modelo
             </a>
+            {% else %}
+            <button class="btn btn-success btn-sm" disabled title="No tiene permiso para crear pautas de mantenimiento">
+                <i class="bi bi-plus-circle me-1"></i>Nueva Pauta para este Modelo
+            </button>
+            {% endif %}
         </div>
         
         <!-- Información del modelo -->
@@ -107,22 +114,43 @@
                                 </small>
                             </div>
                             <div class="btn-group btn-group-sm">
+                                {% if user|has_perm:'maquinarias.change_pautamantenimientopreventivo' %}
                                 <div class="form-check form-switch me-2">
                                     <input class="form-check-input" type="checkbox" 
                                            {% if pauta.activo %}checked{% endif %} 
                                            onchange="toggleActivo({{ pauta.pauta_id }}, '{{ pauta.nombre }}', {{ pauta.activo|yesno:'true,false' }})"
                                            title="{% if pauta.activo %}Desactivar{% else %}Activar{% endif %} pauta">
                                 </div>
+                                {% else %}
+                                <div class="form-check form-switch me-2">
+                                    <input class="form-check-input" type="checkbox" 
+                                           {% if pauta.activo %}checked{% endif %} 
+                                           disabled
+                                           title="No tiene permiso para cambiar el estado de la pauta">
+                                </div>
+                                {% endif %}
+                                {% if user|has_perm:'maquinarias.change_pautamantenimientopreventivo' %}
                                 <a href="{% url 'maquinarias:editar_pauta_mantenimiento' pauta.pauta_id %}" 
                                    class="btn btn-sm btn-secondary" 
                                    title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                {% else %}
+                                <button class="btn btn-sm btn-secondary" disabled title="No tiene permiso para editar pautas">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                {% endif %}
+                                {% if user|has_perm:'maquinarias.delete_pautamantenimientopreventivo' %}
                                 <button class="btn btn-sm btn-danger" 
                                         onclick="mostrarModalEliminar({{ pauta.pauta_id }}, '{{ pauta.nombre }}')" 
                                         title="Eliminar">
                                     <i class="bi bi-trash-fill"></i>
                                 </button>
+                                {% else %}
+                                <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar pautas">
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -160,9 +188,15 @@
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i>Cancelar
                 </button>
+                {% if user|has_perm:'maquinarias.change_pautamantenimientopreventivo' %}
                 <button type="button" class="btn btn-warning btn-sm" onclick="confirmarCambioEstado()">
                     <i class="bi bi-toggle-off me-1"></i>Desactivar
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-warning btn-sm" disabled title="No tiene permiso para desactivar pautas">
+                    <i class="bi bi-toggle-off me-1"></i>Desactivar
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -189,9 +223,15 @@
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i>Cancelar
                 </button>
+                {% if user|has_perm:'maquinarias.change_pautamantenimientopreventivo' %}
                 <button type="button" class="btn btn-success btn-sm" onclick="confirmarCambioEstado()">
                     <i class="bi bi-toggle-on me-1"></i>Activar
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-success btn-sm" disabled title="No tiene permiso para activar pautas">
+                    <i class="bi bi-toggle-on me-1"></i>Activar
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -218,9 +258,15 @@
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i>Cancelar
                 </button>
+                {% if user|has_perm:'maquinarias.delete_pautamantenimientopreventivo' %}
                 <button type="button" class="btn btn-danger btn-sm" onclick="confirmarEliminar()">
                     <i class="bi bi-trash-fill me-1"></i>Eliminar
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-danger btn-sm" disabled title="No tiene permiso para eliminar pautas">
+                    <i class="bi bi-trash-fill me-1"></i>Eliminar
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -66,6 +66,46 @@
         height: 250px !important;
         max-width: 100% !important;
         width: 100% !important;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+        image-rendering: pixelated;
+    }
+    
+    /* Mejorar renderizado de leyendas de Chart.js */
+    /* Chart.js renderiza las leyendas como elementos HTML fuera del canvas */
+    .card-body canvas + div,
+    .card-body canvas + div ul,
+    .card-body canvas + div ul li,
+    .card-body canvas + div ul li span {
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        text-rendering: optimizeLegibility !important;
+        transform: none !important;
+        will-change: auto !important;
+    }
+    
+    /* Cursor pointer para indicar que las leyendas son clickeables */
+    .card-body canvas + div,
+    .card-body canvas + div ul,
+    .card-body canvas + div ul li,
+    .card-body canvas + div ul li span,
+    .card-body > div > ul li,
+    .card-body > div > ul li span {
+        cursor: pointer !important;
+    }
+    
+    .card-body canvas + div ul li:hover,
+    .card-body > div > ul li:hover {
+        opacity: 0.8;
+    }
+    
+    /* Asegurar que no haya transformaciones que afecten el renderizado */
+    .dashboard-card .card-body {
+        transform: none !important;
+    }
+    
+    .dashboard-card .card-body > * {
+        transform: none !important;
     }
     
     .dashboard-card {
@@ -742,6 +782,9 @@
                         </div>
                         <div class="card-body">
                             <canvas id="chart-rrhh-empresas"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -860,6 +903,16 @@
                                 size: window.innerWidth < 768 ? 9 : 11
                             },
                             padding: window.innerWidth < 768 ? 8 : 12
+                        },
+                        onHover: function(e, legendItem) {
+                            if (e.native && e.native.target) {
+                                e.native.target.style.cursor = 'pointer';
+                            }
+                        },
+                        onLeave: function(e, legendItem) {
+                            if (e.native && e.native.target) {
+                                e.native.target.style.cursor = 'default';
+                            }
                         }
                     },
                     tooltip: {
@@ -924,7 +977,18 @@
                             labels: {
                                 boxWidth: 12,
                                 font: {
-                                    size: 11
+                                    size: window.innerWidth < 768 ? 9 : 11
+                                },
+                                padding: window.innerWidth < 768 ? 8 : 12
+                            },
+                            onHover: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'pointer';
+                                }
+                            },
+                            onLeave: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'default';
                                 }
                             }
                         }
@@ -1160,6 +1224,9 @@
                         </div>
                         <div class="card-body">
                             <canvas id="chart-operaciones-equipos"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -1323,6 +1390,12 @@
                                 size: window.innerWidth < 768 ? 9 : 11
                             },
                             padding: window.innerWidth < 768 ? 8 : 12
+                        },
+                        onHover: function(e, legendItem) {
+                            e.native.target.style.cursor = 'pointer';
+                        },
+                        onLeave: function(e, legendItem) {
+                            e.native.target.style.cursor = 'default';
                         }
                     },
                     tooltip: {
@@ -1459,6 +1532,16 @@
                                 size: window.innerWidth < 768 ? 9 : 11
                             },
                             padding: window.innerWidth < 768 ? 8 : 12
+                        },
+                        onHover: function(e, legendItem) {
+                            if (e.native && e.native.target) {
+                                e.native.target.style.cursor = 'pointer';
+                            }
+                        },
+                        onLeave: function(e, legendItem) {
+                            if (e.native && e.native.target) {
+                                e.native.target.style.cursor = 'default';
+                            }
                         }
                     },
                     tooltip: {
@@ -1497,6 +1580,9 @@
                         </div>
                         <div class="card-body">
                             <canvas id="chart-maquinarias-ots"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -1507,6 +1593,9 @@
                         </div>
                         <div class="card-body">
                             <canvas id="chart-maquinarias-equipos"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -1663,7 +1752,18 @@
                             labels: {
                                 boxWidth: 12,
                                 font: {
-                                    size: 11
+                                    size: window.innerWidth < 768 ? 9 : 11
+                                },
+                                padding: window.innerWidth < 768 ? 8 : 12
+                            },
+                            onHover: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'pointer';
+                                }
+                            },
+                            onLeave: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'default';
                                 }
                             }
                         }
@@ -1782,6 +1882,16 @@
                                     size: window.innerWidth < 768 ? 9 : 11
                                 },
                                 padding: window.innerWidth < 768 ? 8 : 12
+                            },
+                            onHover: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'pointer';
+                                }
+                            },
+                            onLeave: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'default';
+                                }
                             }
                         }
                     },
@@ -2006,6 +2116,9 @@
                         </div>
                         <div class="card-body">
                             <canvas id="chart-gerencia-personal"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -2016,6 +2129,9 @@
                         </div>
                         <div class="card-body">
                             <canvas id="chart-gerencia-equipos"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -2030,6 +2146,9 @@
                         </div>
                         <div class="card-body">
                             <canvas id="chart-gerencia-preventivo-correctivo"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -2040,6 +2159,9 @@
                         </div>
                         <div class="card-body">
                             <canvas id="chart-gerencia-ots-estado"></canvas>
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">Haz clic en un segmento para ver detalles</small>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -2059,15 +2181,68 @@
                             ${data.alertas_criticas && data.alertas_criticas.length > 0 ? `
                                 <div class="list-group">
                                     ${data.alertas_criticas.map(alerta => `
-                                        <div class="list-group-item ${alerta.severidad === 'alta' ? 'list-group-item-danger' : alerta.severidad === 'media' ? 'list-group-item-warning' : 'list-group-item-info'}">
-                                            <div class="d-flex w-100 justify-content-between align-items-center">
-                                                <div>
-                                                    <i class="bi bi-${alerta.icono || 'exclamation-triangle'} me-2"></i>
-                                                    <strong>${alerta.tipo}</strong>
+                                        ${alerta.documentos && alerta.documentos.length > 0 ? `
+                                            <div class="list-group-item ${alerta.severidad === 'alta' ? 'list-group-item-danger' : alerta.severidad === 'media' ? 'list-group-item-warning' : 'list-group-item-info'} p-0">
+                                                <div class="p-3 border-bottom bg-light">
+                                                    <div class="d-flex w-100 justify-content-between align-items-center">
+                                                        <div>
+                                                            <i class="bi bi-${alerta.icono || 'exclamation-triangle'} me-2"></i>
+                                                            <strong>${alerta.tipo}</strong>
+                                                        </div>
+                                                        <span class="badge bg-dark rounded-pill">${alerta.cantidad}</span>
+                                                    </div>
                                                 </div>
-                                                <span class="badge bg-dark rounded-pill">${alerta.cantidad}</span>
+                                                <div class="p-0">
+                                                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                                        <table class="table table-sm table-hover mb-0">
+                                                            <thead class="table-light sticky-top">
+                                                                <tr>
+                                                                    <th style="font-size: 0.75rem; padding: 0.5rem;">Tipo</th>
+                                                                    <th style="font-size: 0.75rem; padding: 0.5rem;">Documento</th>
+                                                                    <th style="font-size: 0.75rem; padding: 0.5rem;">Nombre</th>
+                                                                    <th style="font-size: 0.75rem; padding: 0.5rem; text-align: center;">Vence</th>
+                                                                    <th style="font-size: 0.75rem; padding: 0.5rem; text-align: center;">Días</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                ${alerta.documentos.map(doc => `
+                                                                    <tr>
+                                                                        <td style="font-size: 0.8rem; padding: 0.5rem;">
+                                                                            <i class="bi bi-${doc.tipo === 'Personal' ? 'person-fill text-primary' : 'gear-fill text-info'}"></i>
+                                                                            <span class="ms-1">${doc.tipo}</span>
+                                                                        </td>
+                                                                        <td style="font-size: 0.8rem; padding: 0.5rem;">
+                                                                            <strong>${doc.tipo_documento}</strong>
+                                                                        </td>
+                                                                        <td style="font-size: 0.8rem; padding: 0.5rem;">
+                                                                            ${doc.nombre}
+                                                                        </td>
+                                                                        <td style="font-size: 0.8rem; padding: 0.5rem; text-align: center;">
+                                                                            ${doc.fecha_vencimiento}
+                                                                        </td>
+                                                                        <td style="font-size: 0.8rem; padding: 0.5rem; text-align: center;">
+                                                                            <span class="badge ${doc.dias_restantes <= 2 ? 'bg-danger' : 'bg-warning'}" style="font-size: 0.7rem;">
+                                                                                ${doc.dias_restantes} día${doc.dias_restantes !== 1 ? 's' : ''}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                `).join('')}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ` : `
+                                            <div class="list-group-item ${alerta.severidad === 'alta' ? 'list-group-item-danger' : alerta.severidad === 'media' ? 'list-group-item-warning' : 'list-group-item-info'}">
+                                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                                    <div>
+                                                        <i class="bi bi-${alerta.icono || 'exclamation-triangle'} me-2"></i>
+                                                        <strong>${alerta.tipo}</strong>
+                                                    </div>
+                                                    <span class="badge bg-dark rounded-pill">${alerta.cantidad}</span>
+                                                </div>
+                                            </div>
+                                        `}
                                     `).join('')}
                                 </div>
                             ` : `
@@ -2195,6 +2370,16 @@
                                     size: window.innerWidth < 768 ? 9 : 11
                                 },
                                 padding: window.innerWidth < 768 ? 8 : 12
+                            },
+                            onHover: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'pointer';
+                                }
+                            },
+                            onLeave: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'default';
+                                }
                             }
                         },
                         tooltip: {
@@ -2208,6 +2393,17 @@
                                 }
                             }
                         }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const labels = ['Disponible', 'En Faena', 'No Disponible'];
+                            const label = labels[index];
+                            mostrarDetallesPersonalGerencia(label, data);
+                        }
+                    },
+                    onHover: (event, elements) => {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
                     }
                 }
             });
@@ -2252,6 +2448,16 @@
                                     size: window.innerWidth < 768 ? 9 : 11
                                 },
                                 padding: window.innerWidth < 768 ? 8 : 12
+                            },
+                            onHover: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'pointer';
+                                }
+                            },
+                            onLeave: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'default';
+                                }
                             }
                         },
                         tooltip: {
@@ -2265,6 +2471,17 @@
                                 }
                             }
                         }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const labels = ['Disponibles', 'En Uso'];
+                            const label = labels[index];
+                            mostrarDetallesEquiposGerencia(label, data);
+                        }
+                    },
+                    onHover: (event, elements) => {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
                     }
                 }
             });
@@ -2304,6 +2521,16 @@
                                         size: window.innerWidth < 768 ? 9 : 11
                                     },
                                     padding: window.innerWidth < 768 ? 8 : 12
+                                },
+                                onHover: function(e, legendItem) {
+                                    if (e.native && e.native.target) {
+                                        e.native.target.style.cursor = 'pointer';
+                                    }
+                                },
+                                onLeave: function(e, legendItem) {
+                                    if (e.native && e.native.target) {
+                                        e.native.target.style.cursor = 'default';
+                                    }
                                 }
                             },
                             tooltip: {
@@ -2317,6 +2544,17 @@
                                     }
                                 }
                             }
+                        },
+                        onClick: (event, elements) => {
+                            if (elements.length > 0) {
+                                const index = elements[0].index;
+                                const labels = ['Preventivo', 'Correctivo'];
+                                const label = labels[index];
+                                mostrarDetallesPreventivoCorrectivo(label, data);
+                            }
+                        },
+                        onHover: (event, elements) => {
+                            event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
                         }
                     }
                 });
@@ -2332,7 +2570,7 @@
                     labels: ['Activas', 'Finalizadas'],
                     datasets: [{
                         data: [data.ots_activas || 0, data.ots_finalizadas || 0],
-                        backgroundColor: ['#ffc107', '#198754'] // warning y success (igual que otros dashboards)
+                        backgroundColor: ['#198754', '#ffc107'] // Activas: verde (success), Finalizadas: amarillo (warning)
                     }]
                 },
                 options: {
@@ -2356,6 +2594,16 @@
                                     size: window.innerWidth < 768 ? 9 : 11
                                 },
                                 padding: window.innerWidth < 768 ? 8 : 12
+                            },
+                            onHover: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'pointer';
+                                }
+                            },
+                            onLeave: function(e, legendItem) {
+                                if (e.native && e.native.target) {
+                                    e.native.target.style.cursor = 'default';
+                                }
                             }
                         },
                         tooltip: {
@@ -2369,10 +2617,467 @@
                                 }
                             }
                         }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const labels = ['Activas', 'Finalizadas'];
+                            const label = labels[index];
+                            mostrarDetallesOTsGerencia(label, data);
+                        }
+                    },
+                    onHover: (event, elements) => {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
                     }
                 }
             });
         }
+    }
+    
+    // Funciones para mostrar detalles de gráficos de gerencia
+    function mostrarDetallesPersonalGerencia(tipo, data) {
+        let titulo = '';
+        let detalles = [];
+        let modalHTML = '';
+        
+        if (tipo === 'En Faena') {
+            titulo = 'Personal en Faena';
+            detalles = data.detalles_personal_en_faena || [];
+            
+            if (detalles.length === 0) {
+                modalHTML = `
+                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">${titulo}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="text-muted">No hay personal en faena actualmente.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                modalHTML = `
+                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">${titulo}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nombre</th>
+                                                    <th>Faena</th>
+                                                    <th>Turno</th>
+                                                    <th>Fecha Inicio</th>
+                                                    <th>Fecha Fin</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${detalles.map(p => `
+                                                    <tr>
+                                                        <td>${p.nombre}</td>
+                                                        <td>${p.faena}</td>
+                                                        <td>${p.turno}</td>
+                                                        <td>${p.fecha_inicio}</td>
+                                                        <td>${p.fecha_fin}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } else if (tipo === 'No Disponible') {
+            titulo = 'Personal No Disponible';
+            detalles = data.detalles_personal_no_disponible || [];
+            
+            if (detalles.length === 0) {
+                modalHTML = `
+                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">${titulo}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="text-muted">No hay personal no disponible actualmente.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                modalHTML = `
+                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">${titulo}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nombre</th>
+                                                    <th>Tipo</th>
+                                                    <th>Detalle</th>
+                                                    <th>Fecha Fin</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${detalles.map(p => `
+                                                    <tr>
+                                                        <td>${p.nombre}</td>
+                                                        <td>${p.tipo}</td>
+                                                        <td>${p.tipo === 'Licencia Médica' ? p.tipo_licencia : p.tipo_ausentismo}</td>
+                                                        <td>${p.fecha_fin}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            // Disponible - no mostrar detalles
+            return;
+        }
+        
+        // Remover modal anterior si existe
+        const modalAnterior = document.getElementById('modalDetallesGerencia');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+        
+        // Agregar el nuevo modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('modalDetallesGerencia'));
+        modal.show();
+        
+        // Limpiar modal cuando se cierre
+        document.getElementById('modalDetallesGerencia').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+    }
+    
+    function mostrarDetallesEquiposGerencia(tipo, data) {
+        let titulo = '';
+        let detalles = [];
+        let modalHTML = '';
+        
+        if (tipo === 'En Uso') {
+            titulo = 'Equipos en Uso';
+            // Combinar todos los equipos en uso
+            detalles = [
+                ...(data.detalles_equipos_en_uso || []),
+                ...(data.detalles_equipos_shutdown || []),
+                ...(data.detalles_equipos_anomalias || [])
+            ];
+            
+            if (detalles.length === 0) {
+                modalHTML = `
+                    <div class="modal fade" id="modalDetallesEquiposGerencia" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">${titulo}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="text-muted">No hay equipos en uso actualmente.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                modalHTML = `
+                    <div class="modal fade" id="modalDetallesEquiposGerencia" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">${titulo}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Equipo</th>
+                                                    <th>Código</th>
+                                                    <th>Tipo</th>
+                                                    <th>Detalle</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${detalles.map(e => `
+                                                    <tr>
+                                                        <td>${e.nombre}</td>
+                                                        <td>${e.codigo || 'N/A'}</td>
+                                                        <td><span class="badge ${e.tipo === 'Shutdown' ? 'bg-danger' : e.tipo === 'Anomalía' ? 'bg-warning' : 'bg-info'}">${e.tipo}</span></td>
+                                                        <td>${e.faena || e.ot_folio || e.fecha_inicio || 'N/A'}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            // Disponibles - no mostrar detalles
+            return;
+        }
+        
+        // Remover modal anterior si existe
+        const modalAnterior = document.getElementById('modalDetallesEquiposGerencia');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+        
+        // Agregar el nuevo modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('modalDetallesEquiposGerencia'));
+        modal.show();
+        
+        // Limpiar modal cuando se cierre
+        document.getElementById('modalDetallesEquiposGerencia').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+    }
+    
+    function mostrarDetallesPreventivoCorrectivo(tipo, data) {
+        let titulo = '';
+        let detalles = [];
+        let modalHTML = '';
+        
+        if (tipo === 'Preventivo') {
+            titulo = 'Órdenes de Trabajo Preventivas (Últimos 30 días)';
+            detalles = data.detalles_ots_preventivas || [];
+        } else if (tipo === 'Correctivo') {
+            titulo = 'Órdenes de Trabajo Correctivas (Últimos 30 días)';
+            detalles = data.detalles_ots_correctivas || [];
+        } else {
+            return;
+        }
+        
+        if (detalles.length === 0) {
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesPreventivoCorrectivo" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">${titulo}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-muted">No hay órdenes de trabajo ${tipo.toLowerCase()} en los últimos 30 días.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesPreventivoCorrectivo" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">${titulo}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Folio</th>
+                                                <th>Equipo</th>
+                                                <th>Fecha Creación</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${detalles.map(ot => `
+                                                <tr>
+                                                    <td>${ot.folio}</td>
+                                                    <td>${ot.equipo}</td>
+                                                    <td>${ot.fecha_creacion}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Remover modal anterior si existe
+        const modalAnterior = document.getElementById('modalDetallesPreventivoCorrectivo');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+        
+        // Agregar el nuevo modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('modalDetallesPreventivoCorrectivo'));
+        modal.show();
+        
+        // Limpiar modal cuando se cierre
+        document.getElementById('modalDetallesPreventivoCorrectivo').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+    }
+    
+    function mostrarDetallesOTsGerencia(tipo, data) {
+        let titulo = '';
+        let detalles = [];
+        let modalHTML = '';
+        
+        if (tipo === 'Activas') {
+            titulo = 'Órdenes de Trabajo Activas';
+            detalles = data.detalles_ots_activas || [];
+        } else if (tipo === 'Finalizadas') {
+            titulo = 'Órdenes de Trabajo Finalizadas';
+            detalles = data.detalles_ots_finalizadas || [];
+        } else {
+            return;
+        }
+        
+        if (detalles.length === 0) {
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesOTsGerencia" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">${titulo}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-muted">No hay órdenes de trabajo ${tipo.toLowerCase()}.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            modalHTML = `
+                <div class="modal fade" id="modalDetallesOTsGerencia" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">${titulo}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Folio</th>
+                                                <th>Equipo</th>
+                                                <th>Estado</th>
+                                                <th>${tipo === 'Activas' ? 'Fecha Creación' : 'Fecha Fin'}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${detalles.map(ot => `
+                                                <tr>
+                                                    <td>${ot.folio}</td>
+                                                    <td>${ot.equipo}</td>
+                                                    <td><span class="badge bg-secondary">${ot.estado}</span></td>
+                                                    <td>${tipo === 'Activas' ? ot.fecha_creacion : ot.fecha_fin}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Remover modal anterior si existe
+        const modalAnterior = document.getElementById('modalDetallesOTsGerencia');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+        
+        // Agregar el nuevo modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('modalDetallesOTsGerencia'));
+        modal.show();
+        
+        // Limpiar modal cuando se cierre
+        document.getElementById('modalDetallesOTsGerencia').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
     }
 </script>
 {% endblock %}

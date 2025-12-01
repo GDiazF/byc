@@ -800,12 +800,16 @@ function renderizarPersonalAsignado() {
                 <td class="text-center">${estadoBadge}</td>
                 <td class="text-center">
                     <div class="btn-group btn-group-sm">
+                        ${window.userPermissions && window.userPermissions.canModificarAsignacion ? `
                         <button class="btn btn-sm btn-secondary" onclick="editarAsignacionDirecta(${asig.id})" title="Editar">
                             <i class="bi bi-pencil"></i>
                         </button>
+                        ` : ''}
+                        ${window.userPermissions && window.userPermissions.canDelete ? `
                         <button class="btn btn-sm btn-danger" onclick="eliminarAsignacionDirecta(${asig.id})" title="Eliminar">
                             <i class="bi bi-trash"></i>
                         </button>
+                        ` : ''}
                     </div>
                 </td>
             </tr>
@@ -2312,12 +2316,16 @@ function ordenarYRenderizarGestionar() {
                 <td class="text-center">${estadoBadge}</td>
                 <td class="text-center">
                     <div class="btn-group btn-group-sm">
+                        ${window.userPermissions && window.userPermissions.canModificarAsignacion ? `
                         <button class="btn btn-sm btn-secondary" onclick="editarAsignacionDirecta(${asig.id})" title="Editar">
                             <i class="bi bi-pencil"></i>
                         </button>
+                        ` : ''}
+                        ${window.userPermissions && window.userPermissions.canDelete ? `
                         <button class="btn btn-sm btn-danger" onclick="eliminarAsignacionDirecta(${asig.id})" title="Eliminar">
                             <i class="bi bi-trash"></i>
                         </button>
+                        ` : ''}
                     </div>
                 </td>
             </tr>

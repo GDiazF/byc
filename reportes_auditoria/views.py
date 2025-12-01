@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from datetime import datetime, timedelta
 from django.core.paginator import Paginator
+from gen_permissions.decorators import permission_required_custom
 
 # Importar modelos de historial
 from rrhh_personal.models import HistorialPersonal, HistorialDocumentoPersonal, Personal
@@ -14,6 +15,7 @@ from ope_calendario.models import HistorialFaena, Faena
 
 
 @login_required
+@permission_required_custom('reportes_auditoria.view_auditoria')
 def auditoria_view(request):
     """Vista principal de auditoría - muestra todos los historiales consolidados"""
     # Obtener lista de usuarios para el filtro
@@ -26,6 +28,7 @@ def auditoria_view(request):
 
 
 @login_required
+@permission_required_custom('reportes_auditoria.view_reportabilidad')
 def reportabilidad_view(request):
     """Vista principal de reportabilidad - consultas estadísticas"""
     return render(request, 'reportes_auditoria/reportabilidad.html')
@@ -33,6 +36,7 @@ def reportabilidad_view(request):
 
 @csrf_exempt
 @login_required
+@permission_required_custom('reportes_auditoria.view_auditoria', is_ajax=True)
 @require_http_methods(["GET"])
 def api_auditoria(request):
     """
@@ -308,6 +312,7 @@ def api_auditoria(request):
 
 @csrf_exempt
 @login_required
+@permission_required_custom('reportes_auditoria.view_reportabilidad', is_ajax=True)
 @require_http_methods(["GET"])
 def api_reportabilidad(request):
     """

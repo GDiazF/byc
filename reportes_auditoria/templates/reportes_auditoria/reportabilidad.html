@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Reportabilidad - Sistema BYC{% endblock %}
 
@@ -54,9 +55,15 @@
                             <p class="card-text text-muted flex-grow-1 small">
                                 Consulta todas las faenas activas en un rango de fechas específico con su estado actual, personal asignado y equipos.
                             </p>
+                            {% if user|has_perm:'reportes_auditoria.view_reportabilidad' %}
                             <button class="btn btn-primary btn-sm mt-auto" onclick="abrirReporte('faenas_activas')">
                                 <i class="bi bi-search me-2"></i>Generar Reporte
                             </button>
+                            {% else %}
+                            <button class="btn btn-primary btn-sm mt-auto" disabled title="No tiene permiso para generar reportes">
+                                <i class="bi bi-search me-2"></i>Generar Reporte
+                            </button>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -167,9 +174,15 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                {% if user|has_perm:'reportes_auditoria.view_reportabilidad' %}
                 <button type="button" class="btn btn-primary" id="btnGenerarReporte">
                     <i class="bi bi-file-earmark-pdf me-2"></i>Generar Reporte
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-primary" disabled title="No tiene permiso para generar reportes">
+                    <i class="bi bi-file-earmark-pdf me-2"></i>Generar Reporte
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>

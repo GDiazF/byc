@@ -483,6 +483,7 @@ def documentacion_equipo(request, equipo_id):
 # ============================================================================
 
 @login_required
+@permission_required_custom('maquinarias.view_equipo', is_ajax=True)
 @csrf_exempt
 def api_tipos_documentos_maquinaria(request):
     """API para listar tipos de documentos de maquinaria activos"""
@@ -501,6 +502,7 @@ def api_tipos_documentos_maquinaria(request):
 
 
 @login_required
+@permission_required_custom('maquinarias.view_equipo', is_ajax=True)
 @csrf_exempt
 def api_documentos_equipo(request, equipo_id):
     """API para listar documentos de un equipo"""
@@ -805,6 +807,8 @@ def api_historial_documentos_equipo(request, equipo_id):
 
 # ==================== VISTAS PARA SECCIONES ====================
 
+@login_required
+@permission_required_custom('maquinarias.view_seccion')
 def lista_secciones(request):
     """Vista principal para mostrar la tabla de secciones"""
     return render(request, 'maquinarias/lista_secciones.html')
@@ -971,6 +975,8 @@ def api_eliminar_seccion(request, seccion_id):
 
 # ==================== VISTAS PARA TIPOS DE REPARACIÓN ====================
 
+@login_required
+@permission_required_custom('maquinarias.view_tiporeparacion')
 def lista_tipos_reparacion(request):
     """Vista principal para mostrar la tabla de tipos de reparación"""
     secciones = Seccion.objects.all().order_by('nombre')
@@ -1187,6 +1193,8 @@ def lista_pautas_mantenimiento(request):
     return render(request, 'maquinarias/lista_pautas_mantenimiento.html', context)
 
 
+@login_required
+@permission_required_custom('maquinarias.view_pautamantenimientopreventivo')
 def ver_pautas_modelo(request, modelo_id):
     """Vista para ver todas las pautas de un modelo específico"""
     try:
@@ -1707,6 +1715,7 @@ def api_detalle_pauta(request, pauta_id):
 # ============================================================================
 
 @login_required
+@permission_required_custom('maquinarias.view_ordentrabajo')
 def lista_ordenes_trabajo(request):
     """Vista principal para mostrar la lista de ordenes de trabajo"""
     empresas = Empresa.objects.all().order_by('nomFantasia')
@@ -1954,6 +1963,7 @@ def obtener_calendario_maquinarias_optimizado(year, month, empresa_filter='', ti
 
 
 @login_required
+@permission_required_custom('maquinarias.view_ordentrabajo')
 def calendario_maquinarias(request):
     """Vista para mostrar el calendario de maquinarias con órdenes de trabajo"""
     
@@ -2095,7 +2105,6 @@ def calendario_maquinarias(request):
     return render(request, 'maquinarias/calendario_maquinarias.html', context)
 
 
-@login_required
 @login_required
 @permission_required_custom('maquinarias.add_ordentrabajo')
 def crear_orden_trabajo(request):

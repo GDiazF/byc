@@ -84,16 +84,20 @@ function renderizarTiposReparacion(tipos) {
             <td>${tipo.descripcion || '<span class="text-muted">Sin descripción</span>'}</td>
             <td class="text-center">
                 <div class="btn-group btn-group-sm" role="group">
+                    ${window.userPermissions.canChange ? `
                     <button class="btn btn-sm btn-secondary" 
                             onclick="mostrarModalEditar(${tipo.tipoReparacion_id})" 
                             title="Editar">
                         <i class="bi bi-pencil"></i>
                     </button>
+                    ` : ''}
+                    ${window.userPermissions.canDelete ? `
                     <button class="btn btn-sm btn-danger" 
                             onclick="mostrarModalEliminar(${tipo.tipoReparacion_id}, '${tipo.nombre}')" 
                             title="Eliminar">
                         <i class="bi bi-trash-fill"></i>
                     </button>
+                    ` : ''}
                 </div>
             </td>
         </tr>

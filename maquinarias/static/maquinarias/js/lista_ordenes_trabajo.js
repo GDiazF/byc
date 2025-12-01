@@ -219,26 +219,40 @@ function renderizarOrdenes(ordenes) {
                 <td>${fechaFin}</td>
                 <td class="text-center">
                     ${ot.estado_ot && (ot.estado_ot.toUpperCase().includes('FINALIZADA') || ot.estado_ot.toUpperCase().includes('CANCELADA')) 
-                        ? `<button type="button" 
+                        ? (window.userPermissions && window.userPermissions.canView ? `
+                        <button type="button" 
                             class="btn btn-info btn-sm" 
                             onclick="verDetalleOT(${ot.ot_id})"
                             title="Ver Detalle">
                             <i class="bi bi-eye"></i> Ver
-                        </button>`
-                        : `<a href="/maquinarias/ordenes-trabajo/${ot.ot_id}/editar/" 
+                        </button>` : '')
+                        : (window.userPermissions && window.userPermissions.canChange ? `
+                        <a href="/maquinarias/ordenes-trabajo/${ot.ot_id}/editar/" 
                             class="btn btn-primary btn-sm" 
                             title="Actualizar">
                             <i class="bi bi-pencil"></i> Actualizar
-                        </a>`
+                        </a>` : (window.userPermissions && window.userPermissions.canView ? `
+                        <button type="button" 
+                            class="btn btn-info btn-sm" 
+                            onclick="verDetalleOT(${ot.ot_id})"
+                            title="Ver Detalle">
+                            <i class="bi bi-eye"></i> Ver
+                        </button>` : ''))
                     }
                 </td>
                 <td class="text-center">
+                    ${window.userPermissions && window.userPermissions.canGenerarPDF ? `
                     <a href="/maquinarias/ordenes-trabajo/${ot.ot_id}/pdf/" 
                        class="btn btn-danger btn-sm" 
                        title="Descargar PDF"
                        target="_blank">
                         <i class="bi bi-file-pdf"></i> PDF
                     </a>
+                    ` : `
+                    <button class="btn btn-danger btn-sm" disabled title="No tiene permiso para descargar PDF">
+                        <i class="bi bi-file-pdf"></i> PDF
+                    </button>
+                    `}
                 </td>
             </tr>
         `;
@@ -298,20 +312,28 @@ function renderizarOrdenesFinalizadas(ordenes) {
                 <td>${estadoEquipoBadge}</td>
                 <td>${fechaFin}</td>
                 <td class="text-center">
+                    ${window.userPermissions && window.userPermissions.canView ? `
                     <button type="button" 
                         class="btn btn-info btn-sm" 
                         onclick="verDetalleOT(${ot.ot_id})"
                         title="Ver Detalle">
                         <i class="bi bi-eye"></i> Ver
                     </button>
+                    ` : ''}
                 </td>
                 <td class="text-center">
+                    ${window.userPermissions && window.userPermissions.canGenerarPDF ? `
                     <a href="/maquinarias/ordenes-trabajo/${ot.ot_id}/pdf/" 
                        class="btn btn-danger btn-sm" 
                        title="Descargar PDF"
                        target="_blank">
                         <i class="bi bi-file-pdf"></i> PDF
                     </a>
+                    ` : `
+                    <button class="btn btn-danger btn-sm" disabled title="No tiene permiso para descargar PDF">
+                        <i class="bi bi-file-pdf"></i> PDF
+                    </button>
+                    `}
                 </td>
             </tr>
         `;

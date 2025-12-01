@@ -2440,6 +2440,7 @@ def gestionar_faenas(request):
     permisos = {
         'can_add_faena': user.has_perm('ope_calendario.add_faena'),
         'can_change_faena': user.has_perm('ope_calendario.change_faena'),
+        'can_delete_faena': user.has_perm('ope_calendario.delete_faena'),
         'can_view_faena': user.has_perm('ope_calendario.view_faena'),
         'can_add_asignacionfaena': user.has_perm('ope_calendario.add_asignacionfaena'),
         'can_add_asignacionequipofaena': user.has_perm('ope_calendario.add_asignacionequipofaena'),

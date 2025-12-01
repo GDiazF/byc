@@ -1118,6 +1118,25 @@ def documentation_view(request, pk):
     permisos = {
         'can_view_personal': user.has_perm('rrhh_personal.view_personal'),
         'can_change_personal': user.has_perm('rrhh_personal.change_personal'),
+        # Permisos para documentos personales
+        'can_upload_document': user.has_perm('rrhh_personal.change_personal'),
+        'can_delete_document': user.has_perm('rrhh_personal.change_personal'),
+        # Permisos para licencias de conducir
+        'can_add_license': user.has_perm('rrhh_personal.add_licenciaporpersonal'),
+        'can_change_license': user.has_perm('rrhh_personal.change_licenciaporpersonal'),
+        'can_delete_license': user.has_perm('rrhh_personal.delete_licenciaporpersonal'),
+        # Permisos para licencias internas
+        'can_add_internal_license': user.has_perm('rrhh_personal.add_licenciainternaporpersonal'),
+        'can_change_internal_license': user.has_perm('rrhh_personal.change_licenciainternaporpersonal'),
+        'can_delete_internal_license': user.has_perm('rrhh_personal.delete_licenciainternaporpersonal'),
+        # Permisos para certificaciones
+        'can_add_certification': user.has_perm('rrhh_personal.add_certificacion'),
+        'can_change_certification': user.has_perm('rrhh_personal.change_certificacion'),
+        'can_delete_certification': user.has_perm('rrhh_personal.delete_certificacion'),
+        # Permisos para exámenes
+        'can_add_exam': user.has_perm('rrhh_personal.add_examen'),
+        'can_change_exam': user.has_perm('rrhh_personal.change_examen'),
+        'can_delete_exam': user.has_perm('rrhh_personal.delete_examen'),
         # Historial de Documentos Personales - puede ver si tiene permisos de historial o de documentos personales
         'can_ver_historial_documentos_personales': (
             user.has_perm('rrhh_personal.view_historialdocumentopersonal') or

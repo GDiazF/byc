@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Asignar Equipos - {{ faena_nombre }}{% endblock %}
 
@@ -14,6 +15,14 @@ initDataEquipos(
     {% if faena_fecha_inicio %}'{{ faena_fecha_inicio|date:"Y-m-d" }}'{% else %}null{% endif %},
     {% if faena_fecha_fin %}'{{ faena_fecha_fin|date:"Y-m-d" }}'{% else %}null{% endif %}
 );
+
+// Permisos del usuario para validar en JavaScript
+window.userPermissions = {
+    canAdd: {% if user|has_perm:'ope_calendario.add_asignacionequipofaena' %}true{% else %}false{% endif %},
+    canChange: {% if user|has_perm:'ope_calendario.change_asignacionequipofaena' %}true{% else %}false{% endif %},
+    canDelete: {% if user|has_perm:'ope_calendario.delete_asignacionequipofaena' %}true{% else %}false{% endif %},
+    canModificarAsignacion: {% if user|has_perm:'ope_calendario.modificar_asignacion_equipo' %}true{% else %}false{% endif %}
+};
 
 </script>
 {% endblock %}
@@ -224,9 +233,15 @@ initDataEquipos(
                             </div>
                             
                             <div class="text-end mt-3">
+                                {% if user|has_perm:'ope_calendario.add_asignacionequipofaena' %}
                                 <button type="submit" class="btn btn-success btn-sm" id="btnAsignarEquiposMasivo" disabled>
                                     <i class="bi bi-check-circle me-1"></i>Asignar Equipos Seleccionados
                                 </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-success btn-sm" disabled title="No tiene permiso para asignar equipos">
+                                    <i class="bi bi-check-circle me-1"></i>Asignar Equipos Seleccionados
+                                </button>
+                                {% endif %}
                             </div>
                         </form>
                     </div>
@@ -309,9 +324,15 @@ initDataEquipos(
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="bi bi-x-circle me-1"></i>Cancelar
                     </button>
+                    {% if user|has_perm:'ope_calendario.modificar_asignacion_equipo' %}
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-save me-1"></i>Guardar
                     </button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para editar asignaciones de equipos">
+                        <i class="bi bi-save me-1"></i>Guardar
+                    </button>
+                    {% endif %}
                 </div>
             </form>
         </div>

@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Gestión de Pautas de Mantenimiento{% endblock %}
 
@@ -134,6 +135,12 @@
 {% endblock %}
 
 {% block extrajs %}
+<script>
+    // Permisos del usuario para validar en JavaScript
+    window.userPermissions = {
+        canAdd: {% if user|has_perm:'maquinarias.add_pautamantenimientopreventivo' %}true{% else %}false{% endif %}
+    };
+</script>
 <script src="{% static 'maquinarias/js/lista_pautas_mantenimiento.js' %}"></script>
 {% endblock %}
 

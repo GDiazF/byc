@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}{% if es_edicion %}Editar{% else %}Nueva{% endif %} Orden de Trabajo{% endblock %}
 
@@ -451,9 +452,27 @@
                     <a href="{% url 'maquinarias:lista_ordenes_trabajo' %}" class="btn btn-secondary">
                         <i class="bi bi-x-circle me-1"></i>Cancelar
                     </a>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle me-1"></i>Guardar Orden de Trabajo
-                    </button>
+                    {% if es_edicion %}
+                        {% if user|has_perm:'maquinarias.change_ordentrabajo' %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-1"></i>Guardar Orden de Trabajo
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn btn-success" disabled title="No tiene permiso para editar órdenes de trabajo">
+                            <i class="bi bi-check-circle me-1"></i>Guardar Orden de Trabajo
+                        </button>
+                        {% endif %}
+                    {% else %}
+                        {% if user|has_perm:'maquinarias.add_ordentrabajo' %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-1"></i>Guardar Orden de Trabajo
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn btn-success" disabled title="No tiene permiso para crear órdenes de trabajo">
+                            <i class="bi bi-check-circle me-1"></i>Guardar Orden de Trabajo
+                        </button>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
         </form>

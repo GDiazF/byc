@@ -98,16 +98,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.curriculum.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('curriculum', 'Curriculum Vitae')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('curriculum')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('curriculum', 'Curriculum Vitae')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -127,16 +145,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.certificado_antecedentes.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_antecedentes', 'Certificado de Antecedentes')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_antecedentes')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_antecedentes', 'Certificado de Antecedentes')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -156,16 +192,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.hoja_vida_conductor.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('hoja_vida_conductor', 'Hoja de Vida del Conductor')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('hoja_vida_conductor')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('hoja_vida_conductor', 'Hoja de Vida del Conductor')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -185,16 +239,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.foto_carnet.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('foto_carnet', 'Foto Carnet')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('foto_carnet')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('foto_carnet', 'Foto Carnet')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -214,16 +286,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.certificado_afp.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_afp', 'Certificado AFP')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_afp')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_afp', 'Certificado AFP')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -243,16 +333,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.certificado_salud.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_salud', 'Certificado de Salud')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_salud')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_salud', 'Certificado de Salud')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -272,16 +380,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.certificado_estudios.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_estudios', 'Certificado de Estudios')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_estudios')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_estudios', 'Certificado de Estudios')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -301,16 +427,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.certificado_residencia.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('certificado_residencia', 'Certificado de Residencia')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('certificado_residencia')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('certificado_residencia', 'Certificado de Residencia')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -330,16 +474,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.fotocopia_carnet.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-warning me-1" onclick="showUploadCarnetModal()">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-warning me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('fotocopia_carnet')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadCarnetModal()">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -359,16 +521,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.fotocopia_finiquito.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('fotocopia_finiquito', 'Fotocopia Finiquito')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('fotocopia_finiquito')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('fotocopia_finiquito', 'Fotocopia Finiquito')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -388,16 +568,34 @@ var permisosHistorial = {{ permisos_json|safe }};
                                         <a href="{{ personal.comprobante_banco.url }}" target="_blank" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-secondary me-1" onclick="showUploadModal('comprobante_banco', 'Comprobante Banco')">
                                             <i class="bi bi-arrow-repeat"></i> Reemplazar
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para subir/reemplazar documentos">
+                                            <i class="bi bi-arrow-repeat"></i> Reemplazar
+                                        </button>
+                                        {% endif %}
+                                        {% if permisos.can_delete_document %}
                                         <button class="btn btn-sm btn-danger" onclick="deletePersonalDocument('comprobante_banco')">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     {% else %}
+                                        {% if permisos.can_upload_document %}
                                         <button class="btn btn-sm btn-success" onclick="showUploadModal('comprobante_banco', 'Comprobante Banco')">
                                             <i class="bi bi-upload"></i> Subir
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-success" disabled title="No tiene permiso para subir documentos">
+                                            <i class="bi bi-upload"></i> Subir
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                             </tr>
@@ -446,10 +644,17 @@ var permisosHistorial = {{ permisos_json|safe }};
             <!-- Licencias Tab -->
             <div class="tab-pane fade" id="licenses" role="tabpanel" aria-labelledby="licenses-tab">
                 <div class="mb-3">
+                    {% if permisos.can_add_license %}
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addLicenseModal">
                         <i class="bi bi-plus-square me-1"></i>
                         Agregar Licencia
                     </button>
+                    {% else %}
+                    <button type="button" class="btn btn-success btn-sm" disabled title="No tiene permiso para agregar licencias">
+                        <i class="bi bi-plus-square me-1"></i>
+                        Agregar Licencia
+                    </button>
+                    {% endif %}
                 </div>
                 
                 <div class="table-responsive">
@@ -489,12 +694,24 @@ var permisosHistorial = {{ permisos_json|safe }};
                                             <i class="bi bi-eye"></i>
                                         </a>
                                     {% endif %}
+                                    {% if permisos.can_change_license %}
                                     <button class="btn btn-sm btn-secondary me-1 edit-license" data-id="{{ licencia.licenciaPorPersonal_id }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para editar licencias">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if permisos.can_delete_license %}
                                     <button class="btn btn-sm btn-danger delete-license" data-id="{{ licencia.licenciaPorPersonal_id }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar licencias">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
@@ -549,10 +766,17 @@ var permisosHistorial = {{ permisos_json|safe }};
             <!-- Licencias Internas Tab -->
             <div class="tab-pane fade" id="internal-licenses" role="tabpanel" aria-labelledby="internal-licenses-tab">
                 <div class="mb-3">
+                    {% if permisos.can_add_internal_license %}
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addInternalLicenseModal">
                         <i class="bi bi-plus-square me-1"></i>
                         Agregar Licencia Interna
                     </button>
+                    {% else %}
+                    <button type="button" class="btn btn-success btn-sm" disabled title="No tiene permiso para agregar licencias internas">
+                        <i class="bi bi-plus-square me-1"></i>
+                        Agregar Licencia Interna
+                    </button>
+                    {% endif %}
                 </div>
                 
                 <div class="table-responsive">
@@ -591,12 +815,24 @@ var permisosHistorial = {{ permisos_json|safe }};
                                             <i class="bi bi-eye"></i>
                                         </a>
                                     {% endif %}
+                                    {% if permisos.can_change_internal_license %}
                                     <button class="btn btn-sm btn-secondary me-1 edit-internal-license" data-id="{{ licencia.licenciaInterna_id }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para editar licencias internas">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if permisos.can_delete_internal_license %}
                                     <button class="btn btn-sm btn-danger delete-internal-license" data-id="{{ licencia.licenciaInterna_id }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar licencias internas">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
@@ -651,10 +887,17 @@ var permisosHistorial = {{ permisos_json|safe }};
             <!-- Certificaciones Tab -->
             <div class="tab-pane fade" id="certifications" role="tabpanel" aria-labelledby="certifications-tab">
                 <div class="mb-3">
+                    {% if permisos.can_add_certification %}
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addCertificationModal">
                         <i class="bi bi-plus-square me-1"></i>
                         Agregar Certificación
                     </button>
+                    {% else %}
+                    <button type="button" class="btn btn-success btn-sm" disabled title="No tiene permiso para agregar certificaciones">
+                        <i class="bi bi-plus-square me-1"></i>
+                        Agregar Certificación
+                    </button>
+                    {% endif %}
                 </div>
                 
                 <div class="table-responsive">
@@ -693,12 +936,24 @@ var permisosHistorial = {{ permisos_json|safe }};
                                             <i class="bi bi-eye"></i>
                                         </a>
                                     {% endif %}
+                                    {% if permisos.can_change_certification %}
                                     <button class="btn btn-sm btn-secondary me-1 edit-certification" data-id="{{ certificacion.certif_id }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para editar certificaciones">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if permisos.can_delete_certification %}
                                     <button class="btn btn-sm btn-danger delete-certification" data-id="{{ certificacion.certif_id }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar certificaciones">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
@@ -753,10 +1008,17 @@ var permisosHistorial = {{ permisos_json|safe }};
             <!-- Exámenes Tab -->
             <div class="tab-pane fade" id="exams" role="tabpanel" aria-labelledby="exams-tab">
                 <div class="mb-3">
+                    {% if permisos.can_add_exam %}
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addExamModal">
                         <i class="bi bi-plus-square me-1"></i>
                         Agregar Examen
                     </button>
+                    {% else %}
+                    <button type="button" class="btn btn-success btn-sm" disabled title="No tiene permiso para agregar exámenes">
+                        <i class="bi bi-plus-square me-1"></i>
+                        Agregar Examen
+                    </button>
+                    {% endif %}
                 </div>
                 
                 <div class="table-responsive">
@@ -805,12 +1067,24 @@ var permisosHistorial = {{ permisos_json|safe }};
                                             <i class="bi bi-eye"></i>
                                         </a>
                                     {% endif %}
+                                    {% if permisos.can_change_exam %}
                                     <button class="btn btn-sm btn-secondary me-1 edit-exam" data-id="{{ examen.examen_id }}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-secondary me-1" disabled title="No tiene permiso para editar exámenes">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if permisos.can_delete_exam %}
                                     <button class="btn btn-sm btn-danger delete-exam" data-id="{{ examen.examen_id }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar exámenes">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
@@ -922,7 +1196,11 @@ var permisosHistorial = {{ permisos_json|safe }};
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if permisos.can_add_license %}
                     <button type="submit" class="btn btn-primary">Guardar</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para guardar licencias">Guardar</button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -1001,7 +1279,11 @@ var permisosHistorial = {{ permisos_json|safe }};
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if permisos.can_add_internal_license %}
                     <button type="submit" class="btn btn-primary">Guardar</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para guardar licencias internas">Guardar</button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -1057,7 +1339,11 @@ var permisosHistorial = {{ permisos_json|safe }};
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if permisos.can_add_exam %}
                     <button type="submit" class="btn btn-primary">Guardar</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para guardar exámenes">Guardar</button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -1077,7 +1363,11 @@ var permisosHistorial = {{ permisos_json|safe }};
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                {% if permisos.can_delete_license or permisos.can_delete_internal_license or permisos.can_delete_certification or permisos.can_delete_exam %}
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+                {% else %}
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled title="No tiene permiso para eliminar">Eliminar</button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -1128,7 +1418,11 @@ var permisosHistorial = {{ permisos_json|safe }};
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if permisos.can_add_certification %}
                     <button type="submit" class="btn btn-primary">Guardar</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para guardar certificaciones">Guardar</button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -1155,7 +1449,11 @@ var permisosHistorial = {{ permisos_json|safe }};
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if permisos.can_upload_document %}
                     <button type="submit" class="btn btn-primary">Subir</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para subir documentos">Subir</button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -1186,7 +1484,11 @@ var permisosHistorial = {{ permisos_json|safe }};
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if permisos.can_upload_document %}
                     <button type="submit" class="btn btn-primary">Guardar</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para guardar documentos">Guardar</button>
+                    {% endif %}
                 </div>
             </form>
         </div>

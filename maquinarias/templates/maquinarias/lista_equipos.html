@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Gestión de Equipos{% endblock %}
 
@@ -20,9 +21,15 @@
         <!-- Botón Nuevo Equipo -->
         <div class="row mb-3 align-items-center">
             <div class="col-md-6">
+                {% if user|has_perm:'maquinarias.add_equipo' %}
                 <a href="{% url 'maquinarias:crear_equipo' %}" class="btn btn-success btn-sm">
                     <i class="bi bi-plus-square me-1"></i>Crear Equipo
                 </a>
+                {% else %}
+                <button class="btn btn-success btn-sm" disabled title="No tiene permiso para crear equipos">
+                    <i class="bi bi-plus-square me-1"></i>Crear Equipo
+                </button>
+                {% endif %}
             </div>
             <div class="col-md-6 text-end">
                 <span class="small text-muted">
@@ -164,9 +171,15 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                {% if user|has_perm:'maquinarias.desactivar_equipo' %}
                 <button type="button" class="btn btn-warning" id="btnConfirmarDesactivar">
                     <i class="bi bi-toggle-off me-1"></i>Sí, Desactivar Equipo
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-warning" disabled title="No tiene permiso para desactivar equipos">
+                    <i class="bi bi-toggle-off me-1"></i>Sí, Desactivar Equipo
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -206,6 +219,15 @@
     window.csrfToken = "{{ csrf_token }}";
     // URL base para API de historial de equipos
     var apiHistorialEquipoBase = "{% url 'maquinarias:api_historial_equipo' 0 %}";
+    // Permisos del usuario para validar en JavaScript
+    window.userPermissions = {
+        canEdit: {% if user|has_perm:'maquinarias.change_equipo' %}true{% else %}false{% endif %},
+        canDelete: {% if user|has_perm:'maquinarias.delete_equipo' %}true{% else %}false{% endif %},
+        canDesactivar: {% if user|has_perm:'maquinarias.desactivar_equipo' %}true{% else %}false{% endif %},
+        canActivar: {% if user|has_perm:'maquinarias.activar_equipo' %}true{% else %}false{% endif %},
+        canViewDocumentacion: {% if user|has_perm:'maquinarias.view_equipo' %}true{% else %}false{% endif %},
+        canViewHistorial: {% if user|has_perm:'maquinarias.view_equipo' %}true{% else %}false{% endif %}
+    };
 </script>
 <script src="{% static 'maquinarias/js/historial_equipo.js' %}"></script>
 <script src="{% static 'maquinarias/js/lista_equipos.js' %}"></script>

@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Auditoría - Sistema BYC{% endblock %}
 
@@ -76,7 +77,8 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Eventos de Auditoría</h5>
             <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-success btn-sm" id="btnExportarExcel" disabled>
+                <button type="button" class="btn btn-success btn-sm" id="btnExportarExcel" 
+                    {% if not user|has_perm:'reportes_auditoria.exportar_auditoria' %}disabled title="No tiene permiso para exportar auditoría"{% else %}disabled{% endif %}>
                     <i class="bi bi-file-earmark-excel me-1"></i>Exportar a Excel
                 </button>
                 <label class="form-label small me-2 mb-0">Mostrar:</label>
@@ -173,7 +175,12 @@
         // Eventos
         document.getElementById('btnAplicarFiltros').addEventListener('click', aplicarFiltros);
         document.getElementById('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
-        document.getElementById('btnExportarExcel').addEventListener('click', exportarAExcel);
+        
+        // Solo agregar event listener si el botón existe (usuario tiene permiso)
+        const btnExportar = document.getElementById('btnExportarExcel');
+        if (btnExportar) {
+            btnExportar.addEventListener('click', exportarAExcel);
+        }
         document.getElementById('selectPerPage').addEventListener('change', function() {
             porPagina = parseInt(this.value);
             paginaActual = 1;
@@ -263,7 +270,10 @@
         filtros = {};
         paginaActual = 1;
         eventosActuales = [];
-        document.getElementById('btnExportarExcel').disabled = true;
+        const btnExportar = document.getElementById('btnExportarExcel');
+        if (btnExportar) {
+            btnExportar.disabled = true;
+        }
         mostrarMensajeVacio();
     }
     
@@ -355,16 +365,25 @@
                     renderizarEventos(data.eventos);
                     renderizarPaginacion(data.pagination);
                     // Habilitar botón de exportar si hay eventos
-                    document.getElementById('btnExportarExcel').disabled = data.eventos.length === 0;
+                    const btnExportar = document.getElementById('btnExportarExcel');
+                    if (btnExportar) {
+                        btnExportar.disabled = data.eventos.length === 0;
+                    }
                 } else {
                     tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error: ${data.error || 'Error desconocido'}</td></tr>`;
-                    document.getElementById('btnExportarExcel').disabled = true;
+                    const btnExportar = document.getElementById('btnExportarExcel');
+                    if (btnExportar) {
+                        btnExportar.disabled = true;
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error al cargar eventos:', error);
                 tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error al cargar eventos: ${error.message}</td></tr>`;
-                document.getElementById('btnExportarExcel').disabled = true;
+                const btnExportar = document.getElementById('btnExportarExcel');
+                if (btnExportar) {
+                    btnExportar.disabled = true;
+                }
             });
     }
     

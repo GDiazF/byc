@@ -121,7 +121,7 @@ def user_rol(user):
         user: Usuario a verificar (objeto User de Django)
     
     Returns:
-        str: Nombre del rol del usuario, o 'Sin rol' si no tiene rol asignado
+        str: Nombre del rol del usuario, o 'Sin rol asignado' si no tiene rol asignado
     
     Ejemplo en template:
         {% load permissions_tags %}
@@ -130,7 +130,7 @@ def user_rol(user):
     """
     # Si no hay usuario o no está autenticado, no tiene rol
     if not user or not user.is_authenticated:
-        return 'Sin rol'
+        return 'Sin rol asignado'
     
     # Intentar obtener el perfil del usuario
     try:
@@ -139,5 +139,5 @@ def user_rol(user):
     except:
         pass
     
-    return 'Sin rol'
+    return 'Sin rol asignado'
 

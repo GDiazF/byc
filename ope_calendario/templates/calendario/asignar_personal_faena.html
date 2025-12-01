@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Asignar Personal - {{ faena_nombre }}{% endblock %}
 
@@ -15,6 +16,16 @@ initData(
     {% if faena_fecha_inicio %}'{{ faena_fecha_inicio|date:"Y-m-d" }}'{% else %}null{% endif %},
     {% if faena_fecha_fin %}'{{ faena_fecha_fin|date:"Y-m-d" }}'{% else %}null{% endif %}
 );
+
+// Permisos del usuario para validar en JavaScript
+window.userPermissions = {
+    canAdd: {% if user|has_perm:'ope_calendario.add_asignacionfaena' %}true{% else %}false{% endif %},
+    canChange: {% if user|has_perm:'ope_calendario.change_asignacionfaena' %}true{% else %}false{% endif %},
+    canDelete: {% if user|has_perm:'ope_calendario.delete_asignacionfaena' %}true{% else %}false{% endif %},
+    canAsignarEstadoManual: {% if user|has_perm:'ope_calendario.asignar_estado_manual' %}true{% else %}false{% endif %},
+    canEliminarEstadoManual: {% if user|has_perm:'ope_calendario.eliminar_estado_manual' %}true{% else %}false{% endif %},
+    canModificarAsignacion: {% if user|has_perm:'ope_calendario.modificar_asignacion_personal' %}true{% else %}false{% endif %}
+};
 
 </script>
 {% endblock %}
@@ -265,7 +276,11 @@ initData(
                     </div>
                     
                     <div class="text-end mt-3">
+                        {% if user|has_perm:'ope_calendario.add_asignacionfaena' %}
                         <button type="submit" class="btn btn-success btn-sm" id="btnAsignarMasivo" disabled>
+                        {% else %}
+                        <button type="submit" class="btn btn-success btn-sm" disabled title="No tiene permiso para asignar personal">
+                        {% endif %}
                             <i class="bi bi-check-circle me-1"></i>Asignar Personal Seleccionado
                         </button>
                     </div>
@@ -335,7 +350,11 @@ initData(
                             
                             <div class="col-md-3">
                                 <label class="form-label small fw-bold">&nbsp;</label>
+                                {% if user|has_perm:'ope_calendario.asignar_estado_manual' %}
                                 <button type="button" class="btn btn-primary btn-sm w-100" id="btnAsignarManual" onclick="asignarEstadoManualTab()" disabled>
+                                {% else %}
+                                <button type="button" class="btn btn-primary btn-sm w-100" disabled title="No tiene permiso para asignar estados manuales">
+                                {% endif %}
                                     <i class="bi bi-check-circle me-1"></i>Asignar
                                 </button>
                             </div>
@@ -654,11 +673,17 @@ initData(
                                         </span>
                                     </td>
                                     <td class="text-center">
+                                        {% if user|has_perm:'ope_calendario.eliminar_estado_manual' %}
                                         <button class="btn btn-sm btn-danger" 
                                                 onclick="eliminarEstadoManual({{ item.estado.id }}, '{{ item.estado.personal.nombre }} {{ item.estado.personal.apepat }}')"
                                                 title="Eliminar estado manual">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-danger" disabled title="No tiene permiso para eliminar estados manuales">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -711,9 +736,15 @@ initData(
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i>Cancelar
                 </button>
+                {% if user|has_perm:'ope_calendario.delete_asignacionfaena' %}
                 <button type="button" class="btn btn-danger" id="btnConfirmarEliminar">
                     <i class="bi bi-trash me-1"></i>Eliminar
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-danger" disabled title="No tiene permiso para eliminar asignaciones">
+                    <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -783,9 +814,15 @@ initData(
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="bi bi-x-circle me-1"></i>Cancelar
                     </button>
+                    {% if user|has_perm:'ope_calendario.change_asignacionfaena' %}
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-save me-1"></i>Guardar
                     </button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para editar asignaciones">
+                        <i class="bi bi-save me-1"></i>Guardar
+                    </button>
+                    {% endif %}
                 </div>
             </form>
         </div>

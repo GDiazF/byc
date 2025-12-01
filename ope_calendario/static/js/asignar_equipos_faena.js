@@ -472,12 +472,16 @@ function renderizarEquiposAsignados() {
                 <td>${asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Indefinida'}</td>
                 <td class="text-center">
                     <div class="btn-group btn-group-sm">
+                        ${window.userPermissions && window.userPermissions.canModificarAsignacion ? `
                         <button class="btn btn-sm btn-primary" onclick="editarAsignacionEquipo(${asig.id})" title="Editar asignación">
                             <i class="bi bi-pencil"></i>
                         </button>
+                        ` : ''}
+                        ${window.userPermissions && window.userPermissions.canDelete ? `
                         <button class="btn btn-sm btn-danger" onclick="eliminarAsignacionEquipo(${asig.id})" title="Eliminar asignación">
                             <i class="bi bi-trash"></i>
                         </button>
+                        ` : ''}
                     </div>
                 </td>
             </tr>

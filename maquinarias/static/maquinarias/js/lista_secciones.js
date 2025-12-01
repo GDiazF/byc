@@ -81,16 +81,20 @@ function renderizarSecciones(secciones) {
             </td>
             <td class="text-center">
                 <div class="btn-group btn-group-sm" role="group">
+                    ${window.userPermissions.canChange ? `
                     <button class="btn btn-sm btn-secondary" 
                             onclick="mostrarModalEditar(${seccion.seccion_id})" 
                             title="Editar">
                         <i class="bi bi-pencil"></i>
                     </button>
+                    ` : ''}
+                    ${window.userPermissions.canDelete ? `
                     <button class="btn btn-sm btn-danger" 
                             onclick="mostrarModalEliminar(${seccion.seccion_id}, '${seccion.nombre}')" 
                             title="Eliminar">
                         <i class="bi bi-trash-fill"></i>
                     </button>
+                    ` : ''}
                 </div>
             </td>
         </tr>

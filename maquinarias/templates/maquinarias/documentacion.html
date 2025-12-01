@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Documentación - {{ equipo.nombreEquipo }}{% endblock %}
 
@@ -36,6 +37,12 @@
     window.DOCUMENTOS_URL = '{% url "maquinarias:api_documentos_equipo" equipo.equipo_id %}';
     window.ELIMINAR_DOCUMENTO_URL = '{% url "maquinarias:api_eliminar_documento_maquinaria" 0 %}';
     window.HISTORIAL_URL = '{% url "maquinarias:api_historial_documentos_equipo" equipo.equipo_id %}';
+    // Permisos del usuario para validar en JavaScript
+    window.userPermissions = {
+        canSubir: {% if user|has_perm:'maquinarias.subir_documento' %}true{% else %}false{% endif %},
+        canEliminar: {% if user|has_perm:'maquinarias.eliminar_documento' %}true{% else %}false{% endif %},
+        canVerHistorial: {% if user|has_perm:'maquinarias.ver_historial_documentos' %}true{% else %}false{% endif %}
+    };
 </script>
 <script src="{% static 'maquinarias/js/documentacion.js' %}?v=1.0"></script>
 {% endblock %}
@@ -122,9 +129,15 @@
                 </div>
                 <div class="row">
                     <div class="col-md-12">
+                        {% if user|has_perm:'maquinarias.subir_documento' %}
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-upload me-2"></i>Subir Documento
                         </button>
+                        {% else %}
+                        <button type="submit" class="btn btn-primary" disabled title="No tiene permiso para subir documentos">
+                            <i class="bi bi-upload me-2"></i>Subir Documento
+                        </button>
+                        {% endif %}
                         <button type="reset" class="btn btn-secondary ms-2" id="btnLimpiarForm">
                             <i class="bi bi-x-circle me-2"></i>Limpiar
                         </button>
@@ -216,9 +229,15 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                {% if user|has_perm:'maquinarias.eliminar_documento' %}
                 <button type="button" class="btn btn-danger" id="btnConfirmarEliminacion">
                     <i class="bi bi-trash me-2"></i>Eliminar
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-danger" disabled title="No tiene permiso para eliminar documentos">
+                    <i class="bi bi-trash me-2"></i>Eliminar
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>

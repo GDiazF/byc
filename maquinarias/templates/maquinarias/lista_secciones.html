@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Gestión de Secciones{% endblock %}
 
@@ -19,9 +20,15 @@
         <!-- Botón Nueva Sección -->
         <div class="row mb-3 align-items-center">
             <div class="col-md-6">
+                {% if user|has_perm:'maquinarias.add_seccion' %}
                 <button class="btn btn-success btn-sm" onclick="mostrarModalCrear()">
                     <i class="bi bi-plus-square me-1"></i>Nueva Sección
                 </button>
+                {% else %}
+                <button class="btn btn-success btn-sm" disabled title="No tiene permiso para crear secciones">
+                    <i class="bi bi-plus-square me-1"></i>Nueva Sección
+                </button>
+                {% endif %}
             </div>
             <div class="col-md-6 text-end">
                 <span class="small text-muted">
@@ -129,9 +136,15 @@
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i>Cancelar
                 </button>
+                {% if user|has_perm:'maquinarias.add_seccion' or user|has_perm:'maquinarias.change_seccion' %}
                 <button type="button" class="btn btn-success btn-sm" onclick="guardarSeccion()">
                     <i class="bi bi-check-circle me-1"></i>Guardar
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-success btn-sm" disabled title="No tiene permiso para guardar secciones">
+                    <i class="bi bi-check-circle me-1"></i>Guardar
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -159,9 +172,15 @@
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i>Cancelar
                 </button>
+                {% if user|has_perm:'maquinarias.delete_seccion' %}
                 <button type="button" class="btn btn-danger btn-sm" onclick="confirmarEliminar()">
                     <i class="bi bi-trash-fill me-1"></i>Eliminar
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-danger btn-sm" disabled title="No tiene permiso para eliminar secciones">
+                    <i class="bi bi-trash-fill me-1"></i>Eliminar
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -170,6 +189,14 @@
 {% endblock %}
 
 {% block extrajs %}
+<script>
+    // Permisos del usuario para validar en JavaScript
+    window.userPermissions = {
+        canAdd: {% if user|has_perm:'maquinarias.add_seccion' %}true{% else %}false{% endif %},
+        canChange: {% if user|has_perm:'maquinarias.change_seccion' %}true{% else %}false{% endif %},
+        canDelete: {% if user|has_perm:'maquinarias.delete_seccion' %}true{% else %}false{% endif %}
+    };
+</script>
 <script src="{% static 'maquinarias/js/lista_secciones.js' %}"></script>
 {% endblock %}
 

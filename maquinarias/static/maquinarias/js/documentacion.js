@@ -204,9 +204,11 @@ function renderizarDocumentos(documentos) {
                             <i class="bi bi-eye"></i>
                         </a>
                     ` : ''}
+                    ${window.userPermissions && window.userPermissions.canEliminar ? `
                     <button class="btn btn-sm btn-danger" onclick="mostrarModalEliminacion(${doc.id})" title="Eliminar documento">
                         <i class="bi bi-trash"></i>
                     </button>
+                    ` : ''}
                 </td>
             </tr>
         `;

@@ -685,6 +685,13 @@ let faenaAEliminar = null;
 
 // Mostrar modal de confirmación para eliminar faena
 function confirmarEliminarFaena(faenaId) {
+    // Verificar permisos antes de abrir el modal
+    const canDelete = permisos && permisos.can_delete_faena === true;
+    if (!canDelete) {
+        alert('No tiene permiso para eliminar faenas. Por favor, contacte al administrador si necesita acceso.');
+        return;
+    }
+    
     const faena = faenas.find(f => f.id === faenaId);
     if (!faena) return;
     

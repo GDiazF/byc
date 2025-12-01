@@ -42,8 +42,7 @@
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
-                    <div class="login-footer">
-                        <a href="#" class="forgot-password">¿Olvidó su contraseña?</a>
+                    <div class="login-footer d-flex justify-content-center">
                         <a href="{% url 'admin:index' %}" class="admin-login">Ingreso Administrador</a>
                     </div>
                     <input type="hidden" name="next" value="{{ next }}">

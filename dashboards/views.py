@@ -5,6 +5,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q, Count, Sum, Avg, F
 from datetime import datetime, timedelta, date
+from gen_permissions.decorators import permission_required_custom, permission_required_multiple
 
 # Importar modelos necesarios
 from rrhh_personal.models import (
@@ -17,6 +18,13 @@ from ope_calendario.models import Faena, AsignacionFaena
 
 
 @login_required
+@permission_required_multiple(
+    'dashboards.view_dashboard_rrhh',
+    'dashboards.view_dashboard_operaciones',
+    'dashboards.view_dashboard_maquinarias',
+    'dashboards.view_dashboard_gerencia',
+    require_all=False  # Requiere al menos uno de los permisos
+)
 def dashboards_view(request):
     """Vista principal de dashboards con tabs por área"""
     return render(request, 'dashboards/dashboards.html')
@@ -24,6 +32,7 @@ def dashboards_view(request):
 
 @csrf_exempt
 @login_required
+@permission_required_custom('dashboards.view_dashboard_rrhh', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_rrhh(request):
     """
@@ -300,6 +309,7 @@ def api_dashboard_rrhh(request):
 
 @csrf_exempt
 @login_required
+@permission_required_custom('dashboards.view_dashboard_operaciones', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_operaciones(request):
     """
@@ -951,6 +961,7 @@ def api_dashboard_operaciones(request):
 
 @csrf_exempt
 @login_required
+@permission_required_custom('dashboards.view_dashboard_maquinarias', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_maquinarias(request):
     """
@@ -1253,6 +1264,7 @@ def api_dashboard_maquinarias(request):
 
 @csrf_exempt
 @login_required
+@permission_required_custom('dashboards.view_dashboard_gerencia', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_gerencia(request):
     """
@@ -1462,27 +1474,230 @@ def api_dashboard_gerencia(request):
                     'icono': 'exclamation-circle'
                 })
         
-        # Documentos críticos por vencer (≤5 días)
-        documentos_criticos_personal = Examen.objects.filter(
+        # Documentos críticos por vencer (≤5 días) - obtener documentos completos
+        documentos_criticos_personal_list = Examen.objects.filter(
             personal_id__activo=True,
             fechaVencimiento__gte=hoy,
             fechaVencimiento__lte=fecha_limite_5_dias
-        ).count()
+        ).select_related('personal_id', 'tipoEx_id').order_by('fechaVencimiento')[:10]  # Limitar a 10 para no sobrecargar
         
-        documentos_criticos_equipos = DocumentoMaquinaria.objects.filter(
+        documentos_criticos_equipos_list = DocumentoMaquinaria.objects.filter(
             equipo_id__activo=True,
             fecha_vencimiento__gte=hoy,
             fecha_vencimiento__lte=fecha_limite_5_dias
-        ).count()
+        ).select_related('equipo_id', 'tipo_documento_id').order_by('fecha_vencimiento')[:10]  # Limitar a 10 para no sobrecargar
         
-        total_documentos_criticos = documentos_criticos_personal + documentos_criticos_equipos
+        # Crear lista de documentos detallados
+        documentos_detalle = []
+        
+        for examen in documentos_criticos_personal_list:
+            dias_restantes = (examen.fechaVencimiento - hoy).days
+            nombre_personal = f"{examen.personal_id.nombre} {examen.personal_id.apepat}"
+            if examen.personal_id.apemat:
+                nombre_personal += f" {examen.personal_id.apemat}"
+            documentos_detalle.append({
+                'tipo': 'Personal',
+                'tipo_documento': examen.tipoEx_id.tipoExamen if examen.tipoEx_id else 'Examen',
+                'nombre': nombre_personal,
+                'fecha_vencimiento': examen.fechaVencimiento.strftime('%d/%m/%Y'),
+                'dias_restantes': dias_restantes
+            })
+        
+        for doc in documentos_criticos_equipos_list:
+            dias_restantes = (doc.fecha_vencimiento - hoy).days
+            documentos_detalle.append({
+                'tipo': 'Equipo',
+                'tipo_documento': doc.tipo_documento_id.nombre if hasattr(doc.tipo_documento_id, 'nombre') else 'Documento',
+                'nombre': doc.equipo_id.nombreEquipo if hasattr(doc.equipo_id, 'nombreEquipo') else str(doc.equipo_id),
+                'fecha_vencimiento': doc.fecha_vencimiento.strftime('%d/%m/%Y'),
+                'dias_restantes': dias_restantes
+            })
+        
+        total_documentos_criticos = len(documentos_detalle)
         if total_documentos_criticos > 0:
             alertas_criticas.append({
-                'tipo': 'Documentos por Vencer (≤5 días)',
+                'tipo': 'Documentos por Vencer los Próximos 5 Días',
                 'cantidad': total_documentos_criticos,
                 'severidad': 'alta',
-                'icono': 'calendar-x'
+                'icono': 'calendar-x',
+                'documentos': documentos_detalle
             })
+        
+        # ========== DETALLES PARA MODALES ==========
+        # Detalles de personal en faena
+        personal_en_faena_detalle = []
+        asignaciones_faena = AsignacionFaena.objects.filter(
+            activo=True,
+            personal__activo=True,
+            fecha_inicio__lte=hoy
+        ).filter(
+            Q(fecha_fin__gte=hoy) | Q(fecha_fin__isnull=True)
+        ).select_related('personal', 'faena', 'turno')[:50]  # Limitar a 50 para no sobrecargar
+        
+        for asignacion in asignaciones_faena:
+            nombre_personal = f"{asignacion.personal.nombre} {asignacion.personal.apepat}"
+            if asignacion.personal.apemat:
+                nombre_personal += f" {asignacion.personal.apemat}"
+            personal_en_faena_detalle.append({
+                'nombre': nombre_personal,
+                'faena': asignacion.faena.nombre if asignacion.faena else 'N/A',
+                'turno': asignacion.turno.nombre if asignacion.turno else 'N/A',
+                'fecha_inicio': asignacion.fecha_inicio.strftime('%d/%m/%Y') if asignacion.fecha_inicio else 'N/A',
+                'fecha_fin': asignacion.fecha_fin.strftime('%d/%m/%Y') if asignacion.fecha_fin else 'Indefinido'
+            })
+        
+        # Detalles de personal no disponible (licencias/ausentismo)
+        personal_no_disponible_detalle = []
+        personal_con_licencia = LicenciaMedicaPorPersonal.objects.filter(
+            personal_id__activo=True,
+            fecha_fin_licencia__gte=hoy
+        ).select_related('personal_id', 'tipoLicenciaMedica_id')[:30]
+        
+        for licencia in personal_con_licencia:
+            nombre_personal = f"{licencia.personal_id.nombre} {licencia.personal_id.apepat}"
+            if licencia.personal_id.apemat:
+                nombre_personal += f" {licencia.personal_id.apemat}"
+            personal_no_disponible_detalle.append({
+                'nombre': nombre_personal,
+                'tipo': 'Licencia Médica',
+                'tipo_licencia': licencia.tipoLicenciaMedica_id.tipoLicenciaMedica if licencia.tipoLicenciaMedica_id else 'N/A',
+                'fecha_fin': licencia.fecha_fin_licencia.strftime('%d/%m/%Y') if licencia.fecha_fin_licencia else 'N/A'
+            })
+        
+        personal_con_ausentismo = Ausentismo.objects.filter(
+            personal_id__activo=True,
+            fechafin__gte=hoy
+        ).select_related('personal_id', 'tipoausen_id')[:30]
+        
+        for ausentismo in personal_con_ausentismo:
+            nombre_personal = f"{ausentismo.personal_id.nombre} {ausentismo.personal_id.apepat}"
+            if ausentismo.personal_id.apemat:
+                nombre_personal += f" {ausentismo.personal_id.apemat}"
+            personal_no_disponible_detalle.append({
+                'nombre': nombre_personal,
+                'tipo': 'Ausentismo',
+                'tipo_ausentismo': ausentismo.tipoausen_id.tipoAusentismo if ausentismo.tipoausen_id else 'N/A',
+                'fecha_fin': ausentismo.fechafin.strftime('%d/%m/%Y') if ausentismo.fechafin else 'N/A'
+            })
+        
+        # Detalles de equipos en uso
+        equipos_en_uso_detalle = []
+        equipos_en_faena_detalle = Equipo.objects.filter(
+            equipo_id__in=list(equipos_en_faena)[:30]
+        ).values('equipo_id', 'nombreEquipo', 'codigoInterno')
+        
+        for equipo in equipos_en_faena_detalle:
+            # Obtener la faena asignada
+            asignacion = AsignacionEquipoFaena.objects.filter(
+                equipo_id=equipo['equipo_id'],
+                activo=True,
+                fecha_inicio__lte=hoy
+            ).filter(
+                Q(fecha_fin__gte=hoy) | Q(fecha_fin__isnull=True)
+            ).select_related('faena').first()
+            
+            equipos_en_uso_detalle.append({
+                'nombre': equipo['nombreEquipo'],
+                'codigo': equipo['codigoInterno'],
+                'tipo': 'En Faena',
+                'faena': asignacion.faena.nombre if asignacion and asignacion.faena else 'N/A'
+            })
+        
+        # Detalles de equipos con shutdown
+        equipos_shutdown_detalle = []
+        if estado_shutdown_calendario:
+            shutdown_equipos = EstadoManualEquipo.objects.filter(
+                estado=estado_shutdown_calendario,
+                fecha_inicio__lte=hoy
+            ).filter(
+                Q(fecha_fin__gte=hoy) | Q(fecha_fin__isnull=True)
+            ).select_related('equipo')[:30]
+            
+            for estado_manual in shutdown_equipos:
+                equipos_shutdown_detalle.append({
+                    'nombre': estado_manual.equipo.nombreEquipo,
+                    'codigo': estado_manual.equipo.codigoInterno,
+                    'tipo': 'Shutdown',
+                    'fecha_inicio': estado_manual.fecha_inicio.strftime('%d/%m/%Y') if estado_manual.fecha_inicio else 'N/A',
+                    'fecha_fin': estado_manual.fecha_fin.strftime('%d/%m/%Y') if estado_manual.fecha_fin else 'Indefinido'
+                })
+        
+        # Detalles de equipos con anomalías
+        equipos_anomalias_detalle = []
+        if estado_anomalias:
+            anomalias_equipos = OrdenTrabajo.objects.filter(
+                estado_equipo_id=estado_anomalias,
+                fecha_inicio__lte=hoy,
+                fecha_fin__gte=hoy
+            ).exclude(
+                estado_ot_id__in=estados_finalizados_ids
+            ).select_related('equipo_id')[:30]
+            
+            for ot in anomalias_equipos:
+                equipos_anomalias_detalle.append({
+                    'nombre': ot.equipo_id.nombreEquipo,
+                    'codigo': ot.equipo_id.codigoInterno,
+                    'tipo': 'Anomalía',
+                    'ot_folio': ot.folio if hasattr(ot, 'folio') else 'N/A'
+                })
+        
+        # Detalles de OTs activas
+        ots_activas_detalle = []
+        ots_activas_list = OrdenTrabajo.objects.exclude(
+            estado_ot_id__in=estados_finalizados_ids
+        ).select_related('equipo_id', 'estado_ot_id')[:50]
+        
+        for ot in ots_activas_list:
+            ots_activas_detalle.append({
+                'folio': ot.folio if hasattr(ot, 'folio') else f'OT-{ot.ot_id}',
+                'equipo': ot.equipo_id.nombreEquipo if ot.equipo_id else 'N/A',
+                'estado': ot.estado_ot_id.nombre if ot.estado_ot_id else 'N/A',
+                'fecha_creacion': ot.fecha_creacion.strftime('%d/%m/%Y') if ot.fecha_creacion else 'N/A'
+            })
+        
+        # Detalles de OTs finalizadas
+        ots_finalizadas_detalle = []
+        ots_finalizadas_list = OrdenTrabajo.objects.filter(
+            estado_ot_id__in=estados_finalizados_ids
+        ).select_related('equipo_id', 'estado_ot_id')[:50]
+        
+        for ot in ots_finalizadas_list:
+            ots_finalizadas_detalle.append({
+                'folio': ot.folio if hasattr(ot, 'folio') else f'OT-{ot.ot_id}',
+                'equipo': ot.equipo_id.nombreEquipo if ot.equipo_id else 'N/A',
+                'estado': ot.estado_ot_id.nombre if ot.estado_ot_id else 'N/A',
+                'fecha_fin': ot.fecha_fin.strftime('%d/%m/%Y') if ot.fecha_fin else 'N/A'
+            })
+        
+        # Detalles de OTs preventivas y correctivas
+        ots_preventivas_detalle = []
+        ots_correctivas_detalle = []
+        
+        if tipos_preventivos.exists():
+            ots_preventivas_list = OrdenTrabajo.objects.filter(
+                tipo_mantenimiento_id__in=tipos_preventivos,
+                fecha_creacion__gte=fecha_30_dias_atras
+            ).select_related('equipo_id')[:30]
+            
+            for ot in ots_preventivas_list:
+                ots_preventivas_detalle.append({
+                    'folio': ot.folio if hasattr(ot, 'folio') else f'OT-{ot.ot_id}',
+                    'equipo': ot.equipo_id.nombreEquipo if ot.equipo_id else 'N/A',
+                    'fecha_creacion': ot.fecha_creacion.strftime('%d/%m/%Y') if ot.fecha_creacion else 'N/A'
+                })
+        
+        if tipos_correctivos.exists():
+            ots_correctivas_list = OrdenTrabajo.objects.filter(
+                tipo_mantenimiento_id__in=tipos_correctivos,
+                fecha_creacion__gte=fecha_30_dias_atras
+            ).select_related('equipo_id')[:30]
+            
+            for ot in ots_correctivas_list:
+                ots_correctivas_detalle.append({
+                    'folio': ot.folio if hasattr(ot, 'folio') else f'OT-{ot.ot_id}',
+                    'equipo': ot.equipo_id.nombreEquipo if ot.equipo_id else 'N/A',
+                    'fecha_creacion': ot.fecha_creacion.strftime('%d/%m/%Y') if ot.fecha_creacion else 'N/A'
+                })
         
         # ========== RESUMEN EJECUTIVO ==========
         resumen_ejecutivo = {
@@ -1525,7 +1740,18 @@ def api_dashboard_gerencia(request):
                 'alertas_criticas': alertas_criticas,
                 
                 # Resumen ejecutivo
-                'resumen_ejecutivo': resumen_ejecutivo
+                'resumen_ejecutivo': resumen_ejecutivo,
+                
+                # Detalles para modales
+                'detalles_personal_en_faena': personal_en_faena_detalle,
+                'detalles_personal_no_disponible': personal_no_disponible_detalle,
+                'detalles_equipos_en_uso': equipos_en_uso_detalle,
+                'detalles_equipos_shutdown': equipos_shutdown_detalle,
+                'detalles_equipos_anomalias': equipos_anomalias_detalle,
+                'detalles_ots_activas': ots_activas_detalle,
+                'detalles_ots_finalizadas': ots_finalizadas_detalle,
+                'detalles_ots_preventivas': ots_preventivas_detalle,
+                'detalles_ots_correctivas': ots_correctivas_detalle
             }
         })
         

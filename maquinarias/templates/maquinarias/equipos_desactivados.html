@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}Equipos Desactivados{% endblock %}
 
@@ -163,9 +164,15 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                {% if user|has_perm:'maquinarias.activar_equipo' %}
                 <button type="button" class="btn btn-success" id="btnConfirmarActivar">
                     <i class="bi bi-check-circle me-1"></i>Sí, Activar Equipo
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-success" disabled title="No tiene permiso para activar equipos">
+                    <i class="bi bi-check-circle me-1"></i>Sí, Activar Equipo
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -176,6 +183,10 @@
 {% block extrajs %}
 <script>
     window.csrfToken = "{{ csrf_token }}";
+    // Permisos del usuario para validar en JavaScript
+    window.userPermissions = {
+        canActivar: {% if user|has_perm:'maquinarias.activar_equipo' %}true{% else %}false{% endif %}
+    };
 </script>
 <script src="{% static 'maquinarias/js/equipos_desactivados.js' %}"></script>
 {% endblock %}

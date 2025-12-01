@@ -1,5 +1,6 @@
 {% extends 'home/index.html' %}
 {% load static %}
+{% load permissions_tags %}
 
 {% block title %}{% if es_edicion %}Editar{% else %}Crear{% endif %} Equipo{% endblock %}
 
@@ -166,9 +167,27 @@
                     <a href="{% url 'maquinarias:lista_equipos' %}" class="btn btn-secondary">
                         <i class="bi bi-arrow-left me-1"></i>Volver
                     </a>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-lg me-1"></i>{% if es_edicion %}Actualizar{% else %}Crear{% endif %} Equipo
-                    </button>
+                    {% if es_edicion %}
+                        {% if user|has_perm:'maquinarias.change_equipo' %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-1"></i>Actualizar Equipo
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn btn-success" disabled title="No tiene permiso para editar equipos">
+                            <i class="bi bi-check-lg me-1"></i>Actualizar Equipo
+                        </button>
+                        {% endif %}
+                    {% else %}
+                        {% if user|has_perm:'maquinarias.add_equipo' %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-1"></i>Crear Equipo
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn btn-success" disabled title="No tiene permiso para crear equipos">
+                            <i class="bi bi-check-lg me-1"></i>Crear Equipo
+                        </button>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
         </form>
