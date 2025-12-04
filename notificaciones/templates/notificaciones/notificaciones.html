@@ -1,0 +1,382 @@
+{% extends 'home/index.html' %}
+{% load static %}
+{% load permissions_tags %}
+
+{% block title %}Panel de Notificaciones{% endblock %}
+
+{% block extrastyles %}
+<link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
+<style>
+    .notification-item.unread {
+        background-color: #e7f1ff;
+    }
+    .notification-item.unread:hover {
+        background-color: #d0e7ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <!-- Card principal -->
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <a href="{% url 'home:home' %}" class="btn btn-light btn-sm" title="Volver al inicio">
+                                    <i class="bi bi-arrow-left"></i>
+                                </a>
+                                <h5 class="mb-0"><i class="bi bi-bell me-2"></i>Panel de Notificaciones</h5>
+                            </div>
+                            <button class="btn btn-sm btn-light" id="btnMarcarTodasLeidas">
+                                <i class="bi bi-check-all me-1"></i>Marcar todas como leídas
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Tabs para Notificaciones -->
+                        <ul class="nav nav-tabs mb-3" id="notificacionesTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {% if request.GET.archivada != 'true' %}active{% endif %}" id="tab-no-archivadas" data-bs-toggle="tab" data-bs-target="#pane-no-archivadas" type="button" role="tab" aria-controls="pane-no-archivadas" aria-selected="true">
+                                    <i class="bi bi-bell me-1"></i>No Archivadas
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {% if request.GET.archivada == 'true' %}active{% endif %}" id="tab-archivadas" data-bs-toggle="tab" data-bs-target="#pane-archivadas" type="button" role="tab" aria-controls="pane-archivadas" aria-selected="false">
+                                    <i class="bi bi-archive me-1"></i>Archivadas
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="notificacionesTabContent">
+                            <!-- Tab No Archivadas -->
+                            <div class="tab-pane fade {% if request.GET.archivada != 'true' %}show active{% endif %}" id="pane-no-archivadas" role="tabpanel" aria-labelledby="tab-no-archivadas">
+                                <!-- Filtros -->
+                                <form method="get" class="row mb-3 align-items-center" id="filtrosForm">
+                                    <input type="hidden" name="archivada" value="false">
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Estado</label>
+                                        <select name="leida" class="form-select form-select-sm" id="filtroLeida">
+                                            <option value="">Todas</option>
+                                            <option value="false" {% if request.GET.leida == 'false' %}selected{% endif %}>No leídas</option>
+                                            <option value="true" {% if request.GET.leida == 'true' %}selected{% endif %}>Leídas</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Categoría</label>
+                                        <select name="categoria" class="form-select form-select-sm" id="filtroCategoria">
+                                            <option value="">Todas</option>
+                                            <option value="RRHH" {% if request.GET.categoria == 'RRHH' %}selected{% endif %}>RRHH</option>
+                                            <option value="MAQUINARIAS" {% if request.GET.categoria == 'MAQUINARIAS' %}selected{% endif %}>Maquinarias</option>
+                                            <option value="PLANIFICACION" {% if request.GET.categoria == 'PLANIFICACION' %}selected{% endif %}>Planificación</option>
+                                            <option value="GENERAL" {% if request.GET.categoria == 'GENERAL' %}selected{% endif %}>General</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">&nbsp;</label>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarFiltros()">
+                                            <i class="bi bi-x-circle me-1"></i>Limpiar filtros
+                                        </button>
+                                    </div>
+                                </form>
+                                
+                                <!-- Tabla de notificaciones no archivadas -->
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover table-bordered rrhh-table">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th style="width: 5%;">Estado</th>
+                                                <th style="width: 25%;">Título</th>
+                                                <th style="width: 40%;">Mensaje</th>
+                                                <th style="width: 15%;">Categoría</th>
+                                                <th style="width: 10%;">Fecha</th>
+                                                <th style="width: 5%;" class="text-center">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% if notificaciones and request.GET.archivada != 'true' %}
+                                            {% for notif in notificaciones %}
+                                                {% if not notif.archivada %}
+                                                    <tr class="notification-item {% if not notif.leida %}unread{% endif %}" data-notificacion-id="{{ notif.id }}">
+                                                        <td class="text-center">
+                                                            {% if not notif.leida %}
+                                                                <span class="badge bg-primary">Nueva</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">Leída</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td><strong>{{ notif.titulo }}</strong></td>
+                                                        <td>{{ notif.mensaje|truncatewords:15 }}</td>
+                                                        <td>
+                                                            <span class="badge bg-secondary">{{ notif.tipo_notificacion.categoria }}</span>
+                                                        </td>
+                                                        <td>
+                                                            <small class="text-muted">
+                                                                <i class="bi bi-clock me-1"></i>{{ notif.fecha_creacion|date:"d/m/Y H:i" }}
+                                                            </small>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="btn-group btn-group-sm">
+                                                                {% if not notif.leida %}
+                                                                    <button class="btn btn-primary btn-sm marcar-leida" data-id="{{ notif.id }}" title="Marcar como leída">
+                                                                        <i class="bi bi-check"></i>
+                                                                    </button>
+                                                                {% endif %}
+                                                                <button class="btn btn-secondary btn-sm archivar" data-id="{{ notif.id }}" title="Archivar">
+                                                                    <i class="bi bi-archive"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% elif request.GET.archivada != 'true' %}
+                                            <tr>
+                                                <td colspan="6" class="text-center py-5">
+                                                    <i class="bi bi-bell-slash" style="font-size: 2rem; color: #6c757d;"></i>
+                                                    <p class="text-muted mt-2 mb-0">No hay notificaciones no archivadas</p>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- Tab Archivadas -->
+                            <div class="tab-pane fade {% if request.GET.archivada == 'true' %}show active{% endif %}" id="pane-archivadas" role="tabpanel" aria-labelledby="tab-archivadas">
+                                <!-- Filtros para archivadas -->
+                                <form method="get" class="row mb-3 align-items-center" id="filtrosFormArchivadas">
+                                    <input type="hidden" name="archivada" value="true">
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Estado</label>
+                                        <select name="leida" class="form-select form-select-sm" id="filtroLeidaArchivadas">
+                                            <option value="">Todas</option>
+                                            <option value="false" {% if request.GET.leida == 'false' %}selected{% endif %}>No leídas</option>
+                                            <option value="true" {% if request.GET.leida == 'true' %}selected{% endif %}>Leídas</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Categoría</label>
+                                        <select name="categoria" class="form-select form-select-sm" id="filtroCategoriaArchivadas">
+                                            <option value="">Todas</option>
+                                            <option value="RRHH" {% if request.GET.categoria == 'RRHH' %}selected{% endif %}>RRHH</option>
+                                            <option value="MAQUINARIAS" {% if request.GET.categoria == 'MAQUINARIAS' %}selected{% endif %}>Maquinarias</option>
+                                            <option value="PLANIFICACION" {% if request.GET.categoria == 'PLANIFICACION' %}selected{% endif %}>Planificación</option>
+                                            <option value="GENERAL" {% if request.GET.categoria == 'GENERAL' %}selected{% endif %}>General</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">&nbsp;</label>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarFiltrosArchivadas()">
+                                            <i class="bi bi-x-circle me-1"></i>Limpiar filtros
+                                        </button>
+                                    </div>
+                                </form>
+                                
+                                <!-- Tabla de notificaciones archivadas -->
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover table-bordered rrhh-table">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th style="width: 5%;">Estado</th>
+                                                <th style="width: 25%;">Título</th>
+                                                <th style="width: 40%;">Mensaje</th>
+                                                <th style="width: 15%;">Categoría</th>
+                                                <th style="width: 10%;">Fecha</th>
+                                                <th style="width: 5%;" class="text-center">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% if notificaciones and request.GET.archivada == 'true' %}
+                                            {% for notif in notificaciones %}
+                                                {% if notif.archivada %}
+                                                    <tr class="notification-item {% if not notif.leida %}unread{% endif %}" data-notificacion-id="{{ notif.id }}">
+                                                        <td class="text-center">
+                                                            {% if not notif.leida %}
+                                                                <span class="badge bg-primary">Nueva</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">Leída</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td><strong>{{ notif.titulo }}</strong></td>
+                                                        <td>{{ notif.mensaje|truncatewords:15 }}</td>
+                                                        <td>
+                                                            <span class="badge bg-secondary">{{ notif.tipo_notificacion.categoria }}</span>
+                                                        </td>
+                                                        <td>
+                                                            <small class="text-muted">
+                                                                <i class="bi bi-clock me-1"></i>{{ notif.fecha_creacion|date:"d/m/Y H:i" }}
+                                                            </small>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="btn-group btn-group-sm">
+                                                                {% if not notif.leida %}
+                                                                    <button class="btn btn-primary btn-sm marcar-leida" data-id="{{ notif.id }}" title="Marcar como leída">
+                                                                        <i class="bi bi-check"></i>
+                                                                    </button>
+                                                                {% endif %}
+                                                                <button class="btn btn-warning btn-sm desarchivar" data-id="{{ notif.id }}" title="Desarchivar">
+                                                                    <i class="bi bi-archive-fill"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% elif request.GET.archivada == 'true' %}
+                                            <tr>
+                                                <td colspan="6" class="text-center py-5">
+                                                    <i class="bi bi-archive" style="font-size: 2rem; color: #6c757d;"></i>
+                                                    <p class="text-muted mt-2 mb-0">No hay notificaciones archivadas</p>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extrajs %}
+    <script>
+        // Manejar cambio de tabs
+        const tabNoArchivadas = document.getElementById('tab-no-archivadas');
+        const tabArchivadas = document.getElementById('tab-archivadas');
+        
+        tabNoArchivadas.addEventListener('shown.bs.tab', function() {
+            window.location.href = '/notificaciones/?archivada=false';
+        });
+        
+        tabArchivadas.addEventListener('shown.bs.tab', function() {
+            window.location.href = '/notificaciones/?archivada=true';
+        });
+        
+        // Aplicar filtros automáticamente al cambiar los selects (No Archivadas)
+        const filtroLeida = document.getElementById('filtroLeida');
+        const filtroCategoria = document.getElementById('filtroCategoria');
+        
+        if (filtroLeida) {
+            filtroLeida.addEventListener('change', function() {
+                document.getElementById('filtrosForm').submit();
+            });
+        }
+        
+        if (filtroCategoria) {
+            filtroCategoria.addEventListener('change', function() {
+                document.getElementById('filtrosForm').submit();
+            });
+        }
+        
+        // Aplicar filtros automáticamente al cambiar los selects (Archivadas)
+        const filtroLeidaArchivadas = document.getElementById('filtroLeidaArchivadas');
+        const filtroCategoriaArchivadas = document.getElementById('filtroCategoriaArchivadas');
+        
+        if (filtroLeidaArchivadas) {
+            filtroLeidaArchivadas.addEventListener('change', function() {
+                document.getElementById('filtrosFormArchivadas').submit();
+            });
+        }
+        
+        if (filtroCategoriaArchivadas) {
+            filtroCategoriaArchivadas.addEventListener('change', function() {
+                document.getElementById('filtrosFormArchivadas').submit();
+            });
+        }
+        
+        // Función para limpiar filtros (No Archivadas)
+        function limpiarFiltros() {
+            document.getElementById('filtroLeida').value = '';
+            document.getElementById('filtroCategoria').value = '';
+            window.location.href = '/notificaciones/?archivada=false';
+        }
+        
+        // Función para limpiar filtros (Archivadas)
+        function limpiarFiltrosArchivadas() {
+            document.getElementById('filtroLeidaArchivadas').value = '';
+            document.getElementById('filtroCategoriaArchivadas').value = '';
+            window.location.href = '/notificaciones/?archivada=true';
+        }
+        
+        // Marcar como leída
+        document.querySelectorAll('.marcar-leida').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const notifId = this.dataset.id;
+                fetch(`/notificaciones/api/${notifId}/marcar-leida/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                });
+            });
+        });
+        
+        // Archivar
+        document.querySelectorAll('.archivar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const notifId = this.dataset.id;
+                fetch(`/notificaciones/api/${notifId}/archivar/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                });
+            });
+        });
+        
+        // Desarchivar
+        document.querySelectorAll('.desarchivar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const notifId = this.dataset.id;
+                fetch(`/notificaciones/api/${notifId}/desarchivar/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                });
+            });
+        });
+        
+        // Marcar todas como leídas
+        document.getElementById('btnMarcarTodasLeidas').addEventListener('click', function() {
+            fetch('/notificaciones/api/marcar-todas-leidas/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        });
+    </script>
+{% endblock %}

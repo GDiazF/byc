@@ -34,8 +34,15 @@
         #notificationsDropdown:hover {
             opacity: 0.8;
         }
-        #notificationsDropdown .badge {
-            font-size: 0.5rem !important;
+        #notificationsBadge {
+            font-size: 0.65rem !important;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            line-height: 1 !important;
+            padding: 0 !important;
         }
         .nav-link.disabled-permission {
             color: #adb5bd !important; /* Gris más claro para mejor contraste sobre fondo negro */
@@ -80,7 +87,7 @@
             </div>
             
             <!-- Navbar superior derecha -->
-            <ul class="navbar-nav ms-auto d-flex align-items-center">
+            <ul class="navbar-nav d-flex align-items-center" style="margin-left: auto; margin-right: 2rem;">
                 <!-- Dropdown de usuario -->
                 <li class="nav-item dropdown">
                     <a class="nav-link d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem 1rem;">
@@ -114,22 +121,22 @@
                 
                 <!-- Campanita de notificaciones -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link position-relative d-flex align-items-center" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem 1rem;">
+                    <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem 0.5rem;">
                         <i class="bi bi-bell text-white" style="font-size: 1.1rem;"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.5rem; padding: 0.15rem 0.3rem; display: none;">
+                        <span class="position-absolute badge rounded-pill bg-danger d-flex align-items-center justify-content-center" id="notificationsBadge" style="font-size: 0.65rem; padding: 0; min-width: 1.3rem; height: 1.3rem; display: none; top: 0.05rem; right: 0.1rem; z-index: 10; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); line-height: 1;">
                             0
                         </span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown" style="min-width: 300px; max-width: 400px;">
                         <li class="dropdown-header">
                             <div class="d-flex justify-content-between align-items-center">
-                                <span>Notificaciones</span>
-                                <button class="btn btn-sm btn-link text-decoration-none p-0" style="font-size: 0.75rem;">Marcar todas como leídas</button>
+                                <a href="/notificaciones/" class="btn btn-sm btn-link text-decoration-none p-0" style="font-size: 0.75rem;">Panel de notificaciones</a>
+                                <button class="btn btn-sm btn-link text-decoration-none p-0" style="font-size: 0.75rem;" id="btnMarcarTodasLeidasDropdown">Marcar todas como leídas</button>
                             </div>
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li class="px-3 py-2 text-center text-muted" style="font-size: 0.875rem;">
-                            No hay notificaciones nuevas
+                            No hay notificaciones
                         </li>
                     </ul>
                 </li>
@@ -381,6 +388,8 @@
            <script src="{% static 'js/index.js' %}"></script>
            <!-- Date Picker Chileno - Global -->
            <script src="{% static 'js/datePickerChile.js' %}"></script>
+           <!-- Notificaciones -->
+           <script src="{% static 'notificaciones/js/notificaciones.js' %}"></script>
            
            {% block extrajs %}{% endblock %}
 </body>

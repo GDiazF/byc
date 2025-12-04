@@ -17,6 +17,40 @@ from .models import Rol, PermisoVista, PermisoModelo, PermisoAccion, UserProfile
 from .utils import es_permiso_tabla_maestra, formatear_nombre_permiso
 
 
+# Inline para gestionar notificaciones por rol
+class ConfiguracionNotificacionRolInline(admin.TabularInline):
+    """
+    Inline para gestionar qué tipos de notificaciones puede recibir un rol.
+    """
+    model = None  # Se asignará dinámicamente
+    extra = 0
+    fields = ('tipo_notificacion', 'activo')
+    verbose_name = 'Tipo de Notificación'
+    verbose_name_plural = 'Tipos de Notificaciones'
+    
+    def __init__(self, *args, **kwargs):
+        # Importar aquí para evitar imports circulares
+        try:
+            from notificaciones.models import ConfiguracionNotificacionRol
+            self.model = ConfiguracionNotificacionRol
+        except ImportError:
+            # Si la app notificaciones no está disponible, no hacer nada
+            pass
+        super().__init__(*args, **kwargs)
+    
+    def has_add_permission(self, request, obj=None):
+        """Permitir agregar configuraciones"""
+        return True
+    
+    def has_change_permission(self, request, obj=None):
+        """Permitir cambiar configuraciones"""
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        """Permitir eliminar configuraciones"""
+        return True
+
+
 # Formulario personalizado para Rol que formatea los nombres de permisos
 class RolForm(ModelForm):
     """
@@ -56,6 +90,7 @@ class RolAdmin(admin.ModelAdmin):
     Permite crear roles y asignarles permisos usando un widget mejorado
     (filter_horizontal) que facilita la selección de múltiples permisos.
     Los permisos de tablas maestras se muestran con la etiqueta "(Maestra)".
+    También permite gestionar qué tipos de notificaciones puede recibir cada rol.
     """
     # Usar formulario personalizado que formatea los nombres de permisos
     form = RolForm
@@ -71,6 +106,20 @@ class RolAdmin(admin.ModelAdmin):
     # Nuestro widget personalizado PermisosFilteredSelectMultiple extiende FilteredSelectMultiple
     # y se aplica mediante el formulario personalizado RolForm
     filter_horizontal = ('permisos',)
+    
+    # Inline para gestionar notificaciones
+    inlines = []
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Agregar inline de notificaciones si la app está disponible
+        try:
+            from notificaciones.models import ConfiguracionNotificacionRol
+            if ConfiguracionNotificacionRolInline.model:
+                self.inlines = [ConfiguracionNotificacionRolInline]
+        except ImportError:
+            pass
+    
     # Organización de campos en el formulario
     fieldsets = (
         ('Información Básica', {

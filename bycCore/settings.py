@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'gen_permissions',  # App para gestión de roles y permisos
     'reportes_auditoria',
     'dashboards',
+    'notificaciones',  # App para sistema de notificaciones
+    'django_apscheduler',  # Para tareas periódicas
     # 'storages',  # Solo para producción con S3
     'django.contrib.admin',
     'django.contrib.auth',
@@ -244,3 +246,11 @@ DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 # Static files configuration (mantener en el servidor)
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
+# ============================================================================
+# CONFIGURACIÓN DE APSCHEDULER (Tareas periódicas)
+# ============================================================================
+# Configuración para django-apscheduler
+# El scheduler se ejecuta en background y gestiona tareas periódicas
+SCHEDULER_AUTOSTART = True  # Iniciar automáticamente cuando Django arranca
+SCHEDULER_API_ENABLED = True  # Habilitar API REST para gestionar trabajos (opcional)
