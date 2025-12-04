@@ -10,8 +10,9 @@ from gen_permissions.decorators import permission_required_custom
 
 # Importar modelos de historial
 from rrhh_personal.models import HistorialPersonal, HistorialDocumentoPersonal, Personal
-from maquinarias.models import HistorialEquipo, HistorialOT, Equipo, OrdenTrabajo
-from ope_calendario.models import HistorialFaena, Faena
+from maquinarias.models import HistorialEquipo, HistorialOT, Equipo, OrdenTrabajo, EstadoEquipo
+from ope_calendario.models import HistorialFaena, Faena, AsignacionFaena, AsignacionEquipoFaena
+from django.utils.dateparse import parse_date
 
 
 @login_required
@@ -320,20 +321,329 @@ def api_reportabilidad(request):
     """
     try:
         tipo_reporte = request.GET.get('tipo_reporte', None)
-        fecha_desde = request.GET.get('fecha_desde', None)
-        fecha_hasta = request.GET.get('fecha_hasta', None)
+        fecha_desde_str = request.GET.get('fecha_desde', None)
+        fecha_hasta_str = request.GET.get('fecha_hasta', None)
+        fecha_str = request.GET.get('fecha', None)
         
-        # Por ahora retornar estructura básica
-        # Aquí se implementarán los diferentes tipos de reportes
+        # Convertir fechas de formato DD/MM/YYYY a objetos date
+        fecha_desde = None
+        fecha_hasta = None
+        fecha = None
+        
+        if fecha_desde_str:
+            try:
+                # Formato esperado: DD/MM/YYYY
+                partes = fecha_desde_str.split('/')
+                if len(partes) == 3:
+                    fecha_desde = datetime(int(partes[2]), int(partes[1]), int(partes[0])).date()
+            except:
+                pass
+        
+        if fecha_hasta_str:
+            try:
+                partes = fecha_hasta_str.split('/')
+                if len(partes) == 3:
+                    fecha_hasta = datetime(int(partes[2]), int(partes[1]), int(partes[0])).date()
+            except:
+                pass
+        
+        if fecha_str:
+            try:
+                partes = fecha_str.split('/')
+                if len(partes) == 3:
+                    fecha = datetime(int(partes[2]), int(partes[1]), int(partes[0])).date()
+            except:
+                pass
+        
+        # Parámetros adicionales según el tipo de reporte
+        incluir_personal = request.GET.get('incluir_personal', 'true').lower() == 'true'
+        incluir_equipos = request.GET.get('incluir_equipos', 'true').lower() == 'true'
+        tipo_estado = request.GET.get('tipo_estado', '')
+        tipo_asignacion = request.GET.get('tipo_asignacion', '')
+        estado_ot = request.GET.get('estado_ot', '')
+        
+        if not tipo_reporte:
+            return JsonResponse({
+                'success': False,
+                'error': 'Tipo de reporte no especificado'
+            }, status=400)
+        
+        datos = []
+        columnas = []
+        
+        if tipo_reporte == 'faenas_activas':
+            # Reporte de Faenas Activas
+            faenas = Faena.objects.filter(activo=True)
+            
+            if fecha_desde:
+                faenas = faenas.filter(fecha_inicio__lte=fecha_hasta if fecha_hasta else datetime.now().date())
+            if fecha_hasta:
+                faenas = faenas.filter(fecha_fin__gte=fecha_desde if fecha_desde else datetime.now().date())
+            
+            columnas = ['Código', 'Nombre', 'Ubicación', 'Fecha Inicio', 'Fecha Fin', 'Estado']
+            if incluir_personal:
+                columnas.append('Personal Asignado')
+            if incluir_equipos:
+                columnas.append('Equipos Asignados')
+            
+            for faena in faenas:
+                fila = {
+                    'Código': faena.codigo,
+                    'Nombre': faena.nombre,
+                    'Ubicación': faena.ubicacion or '',
+                    'Fecha Inicio': faena.fecha_inicio.strftime('%d/%m/%Y'),
+                    'Fecha Fin': faena.fecha_fin.strftime('%d/%m/%Y') if faena.fecha_fin else 'Indefinido',
+                    'Estado': 'Activa' if faena.activo else 'Inactiva'
+                }
+                
+                if incluir_personal:
+                    asignaciones = AsignacionFaena.objects.filter(
+                        faena=faena,
+                        activo=True
+                    ).select_related('personal', 'turno')
+                    if fecha_desde or fecha_hasta:
+                        if fecha_desde:
+                            asignaciones = asignaciones.filter(fecha_inicio__lte=fecha_hasta if fecha_hasta else datetime.now().date())
+                        if fecha_hasta:
+                            asignaciones = asignaciones.filter(
+                                Q(fecha_fin__gte=fecha_desde if fecha_desde else datetime.now().date()) | Q(fecha_fin__isnull=True)
+                            )
+                    personal_list = [f"{a.personal.nombre} {a.personal.apepat} ({a.turno.nombre})" for a in asignaciones]
+                    fila['Personal Asignado'] = ', '.join(personal_list) if personal_list else 'Ninguno'
+                
+                if incluir_equipos:
+                    asignaciones_eq = AsignacionEquipoFaena.objects.filter(
+                        faena=faena,
+                        activo=True
+                    ).select_related('equipo')
+                    if fecha_desde or fecha_hasta:
+                        if fecha_desde:
+                            asignaciones_eq = asignaciones_eq.filter(fecha_inicio__lte=fecha_hasta if fecha_hasta else datetime.now().date())
+                        if fecha_hasta:
+                            asignaciones_eq = asignaciones_eq.filter(
+                                Q(fecha_fin__gte=fecha_desde if fecha_desde else datetime.now().date()) | Q(fecha_fin__isnull=True)
+                            )
+                    equipos_list = [a.equipo.nombreEquipo for a in asignaciones_eq]
+                    fila['Equipos Asignados'] = ', '.join(equipos_list) if equipos_list else 'Ninguno'
+                
+                datos.append(fila)
+        
+        elif tipo_reporte == 'personal_activo':
+            # Reporte de Personal Activo
+            if fecha:
+                # Una fecha específica
+                asignaciones = AsignacionFaena.objects.filter(
+                    activo=True,
+                    fecha_inicio__lte=fecha,
+                ).filter(
+                    Q(fecha_fin__gte=fecha) | Q(fecha_fin__isnull=True)
+                ).select_related('personal', 'faena', 'turno')
+            elif fecha_desde and fecha_hasta:
+                # Rango de fechas
+                asignaciones = AsignacionFaena.objects.filter(
+                    activo=True,
+                    fecha_inicio__lte=fecha_hasta,
+                ).filter(
+                    Q(fecha_fin__gte=fecha_desde) | Q(fecha_fin__isnull=True)
+                ).select_related('personal', 'faena', 'turno')
+            else:
+                # Fecha actual
+                hoy = datetime.now().date()
+                asignaciones = AsignacionFaena.objects.filter(
+                    activo=True,
+                    fecha_inicio__lte=hoy,
+                ).filter(
+                    Q(fecha_fin__gte=hoy) | Q(fecha_fin__isnull=True)
+                ).select_related('personal', 'faena', 'turno')
+            
+            columnas = ['RUT', 'Nombre Completo', 'Faena', 'Turno', 'Fecha Inicio', 'Fecha Fin']
+            
+            personal_visto = set()
+            for asignacion in asignaciones:
+                personal_id = asignacion.personal.personal_id
+                if personal_id not in personal_visto:
+                    personal_visto.add(personal_id)
+                    datos.append({
+                        'RUT': f"{asignacion.personal.rut}-{asignacion.personal.dvrut}",
+                        'Nombre Completo': f"{asignacion.personal.nombre} {asignacion.personal.apepat} {asignacion.personal.apemat}".strip(),
+                        'Faena': asignacion.faena.nombre,
+                        'Turno': asignacion.turno.nombre,
+                        'Fecha Inicio': asignacion.fecha_inicio.strftime('%d/%m/%Y'),
+                        'Fecha Fin': asignacion.fecha_fin.strftime('%d/%m/%Y') if asignacion.fecha_fin else 'Indefinido'
+                    })
+        
+        elif tipo_reporte == 'equipos_mantencion':
+            # Reporte de Equipos en Mantención
+            # El estado del equipo se obtiene a través de las OTs activas
+            hoy = datetime.now().date()
+            fecha_filtro_desde = fecha_desde if fecha_desde else hoy
+            fecha_filtro_hasta = fecha_hasta if fecha_hasta else hoy
+            
+            # Obtener equipos activos
+            equipos_query = Equipo.objects.filter(activo=True).select_related('modeloEquipo_id')
+            
+            # Obtener estados de equipos que coincidan con el filtro
+            estados_filtro = None
+            if tipo_estado == 'mantencion':
+                estados_filtro = EstadoEquipo.objects.filter(
+                    Q(nombre__icontains='mantención') | Q(nombre__icontains='mantencion')
+                )
+            elif tipo_estado == 'detenido':
+                estados_filtro = EstadoEquipo.objects.filter(nombre__icontains='detenido')
+            
+            columnas = ['Código', 'Nombre', 'Modelo', 'Estado', 'OT Folio', 'Fecha Inicio OT', 'Fecha Fin OT']
+            
+            equipos_con_estado = set()
+            
+            for equipo in equipos_query:
+                # Buscar OTs activas del equipo en el rango de fechas
+                ots_activas = OrdenTrabajo.objects.filter(
+                    equipo_id=equipo,
+                    fecha_inicio__lte=fecha_filtro_hasta
+                ).filter(
+                    Q(fecha_fin__gte=fecha_filtro_desde) | Q(fecha_fin__isnull=True)
+                ).select_related('estado_equipo_id').order_by('-fecha_inicio')
+                
+                # Si hay filtro de tipo de estado, filtrar las OTs
+                if estados_filtro:
+                    ots_activas = ots_activas.filter(estado_equipo_id__in=estados_filtro)
+                
+                # Si no hay filtro o hay OTs que coinciden, agregar al reporte
+                if not estados_filtro or ots_activas.exists():
+                    for ot in ots_activas:
+                        estado_nombre = ot.estado_equipo_id.nombre if ot.estado_equipo_id else 'N/A'
+                        
+                        # Evitar duplicados si un equipo tiene múltiples OTs
+                        clave = f"{equipo.equipo_id}_{ot.ot_id}"
+                        if clave not in equipos_con_estado:
+                            equipos_con_estado.add(clave)
+                            datos.append({
+                                'Código': equipo.codigoInterno,
+                                'Nombre': equipo.nombreEquipo,
+                                'Modelo': str(equipo.modeloEquipo_id),
+                                'Estado': estado_nombre,
+                                'OT Folio': ot.folio,
+                                'Fecha Inicio OT': ot.fecha_inicio.strftime('%d/%m/%Y') if ot.fecha_inicio else 'N/A',
+                                'Fecha Fin OT': ot.fecha_fin.strftime('%d/%m/%Y') if ot.fecha_fin else 'Indefinido'
+                            })
+        
+        elif tipo_reporte == 'asignaciones_personal':
+            # Reporte de Asignaciones de Personal
+            asignaciones = AsignacionFaena.objects.filter(activo=True).select_related('personal', 'faena', 'turno')
+            
+            if fecha_desde:
+                asignaciones = asignaciones.filter(fecha_inicio__lte=fecha_hasta if fecha_hasta else datetime.now().date())
+            if fecha_hasta:
+                asignaciones = asignaciones.filter(
+                    Q(fecha_fin__gte=fecha_desde if fecha_desde else datetime.now().date()) | Q(fecha_fin__isnull=True)
+                )
+            
+            columnas = ['RUT', 'Nombre Completo', 'Faena', 'Turno', 'Fecha Inicio', 'Fecha Fin']
+            
+            for asignacion in asignaciones:
+                datos.append({
+                    'RUT': f"{asignacion.personal.rut}-{asignacion.personal.dvrut}",
+                    'Nombre Completo': f"{asignacion.personal.nombre} {asignacion.personal.apepat} {asignacion.personal.apemat}".strip(),
+                    'Faena': asignacion.faena.nombre,
+                    'Turno': asignacion.turno.nombre,
+                    'Fecha Inicio': asignacion.fecha_inicio.strftime('%d/%m/%Y'),
+                    'Fecha Fin': asignacion.fecha_fin.strftime('%d/%m/%Y') if asignacion.fecha_fin else 'Indefinido'
+                })
+        
+        elif tipo_reporte == 'asignaciones_equipos':
+            # Reporte de Asignaciones de Equipos
+            if tipo_asignacion == 'faena':
+                asignaciones = AsignacionEquipoFaena.objects.filter(activo=True).select_related('equipo', 'faena')
+            elif tipo_asignacion == 'ot':
+                # Asignaciones a OTs (a través de la relación en OrdenTrabajo)
+                ots = OrdenTrabajo.objects.filter(
+                    equipo_id__isnull=False
+                ).select_related('equipo_id')
+                
+                if fecha_desde:
+                    ots = ots.filter(fecha_creacion__gte=fecha_desde)
+                if fecha_hasta:
+                    ots = ots.filter(fecha_creacion__lte=fecha_hasta)
+                
+                columnas = ['Equipo', 'Código', 'OT Folio', 'Fecha Creación', 'Estado']
+                for ot in ots:
+                    datos.append({
+                        'Equipo': ot.equipo_id.nombreEquipo if ot.equipo_id else 'N/A',
+                        'Código': ot.equipo_id.codigoInterno if ot.equipo_id else 'N/A',
+                        'OT Folio': ot.folio,
+                        'Fecha Creación': ot.fecha_creacion.strftime('%d/%m/%Y') if ot.fecha_creacion else 'N/A',
+                        'Estado': ot.estado_ot_id.nombreEstado if ot.estado_ot_id else 'N/A'
+                    })
+                
+                return JsonResponse({
+                    'success': True,
+                    'tipo_reporte': tipo_reporte,
+                    'columnas': columnas,
+                    'datos': datos,
+                    'total': len(datos)
+                })
+            else:
+                # Todas las asignaciones (faenas)
+                asignaciones = AsignacionEquipoFaena.objects.filter(activo=True).select_related('equipo', 'faena')
+            
+            if fecha_desde:
+                asignaciones = asignaciones.filter(fecha_inicio__lte=fecha_hasta if fecha_hasta else datetime.now().date())
+            if fecha_hasta:
+                asignaciones = asignaciones.filter(
+                    Q(fecha_fin__gte=fecha_desde if fecha_desde else datetime.now().date()) | Q(fecha_fin__isnull=True)
+                )
+            
+            columnas = ['Equipo', 'Código', 'Faena', 'Fecha Inicio', 'Fecha Fin']
+            
+            for asignacion in asignaciones:
+                datos.append({
+                    'Equipo': asignacion.equipo.nombreEquipo,
+                    'Código': asignacion.equipo.codigoInterno,
+                    'Faena': asignacion.faena.nombre,
+                    'Fecha Inicio': asignacion.fecha_inicio.strftime('%d/%m/%Y'),
+                    'Fecha Fin': asignacion.fecha_fin.strftime('%d/%m/%Y') if asignacion.fecha_fin else 'Indefinido'
+                })
+        
+        elif tipo_reporte == 'ordenes_trabajo':
+            # Reporte de Órdenes de Trabajo
+            ots = OrdenTrabajo.objects.select_related('equipo_id', 'estado_ot_id', 'tipo_mantenimiento_id')
+            
+            if fecha_desde:
+                ots = ots.filter(fecha_creacion__gte=fecha_desde)
+            if fecha_hasta:
+                ots = ots.filter(fecha_creacion__lte=fecha_hasta)
+            if estado_ot:
+                ots = ots.filter(estado_ot_id__nombre__icontains=estado_ot)
+            
+            columnas = ['Folio', 'Equipo', 'Tipo Mantención', 'Estado', 'Fecha Creación']
+            
+            for ot in ots:
+                datos.append({
+                    'Folio': ot.folio,
+                    'Equipo': ot.equipo_id.nombreEquipo if ot.equipo_id else 'N/A',
+                    'Tipo Mantención': ot.tipo_mantenimiento_id.nombre if ot.tipo_mantenimiento_id else 'N/A',
+                    'Estado': ot.estado_ot_id.nombre if ot.estado_ot_id else 'N/A',
+                    'Fecha Creación': ot.fecha_creacion.strftime('%d/%m/%Y') if ot.fecha_creacion else 'N/A'
+                })
+        
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': f'Tipo de reporte desconocido: {tipo_reporte}'
+            }, status=400)
         
         return JsonResponse({
             'success': True,
-            'message': 'API de reportabilidad - En desarrollo',
-            'tipo_reporte': tipo_reporte
+            'tipo_reporte': tipo_reporte,
+            'columnas': columnas,
+            'datos': datos,
+            'total': len(datos)
         })
         
     except Exception as e:
+        import traceback
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'traceback': traceback.format_exc()
         }, status=500)

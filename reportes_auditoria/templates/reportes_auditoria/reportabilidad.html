@@ -25,6 +25,15 @@
         font-weight: 500;
         margin-bottom: 0.5rem;
     }
+    /* Posicionar modales centrados horizontalmente pero más arriba verticalmente */
+    .modal-dialog {
+        margin: 3rem auto;
+    }
+    @media (max-width: 768px) {
+        .modal-dialog {
+            margin: 1rem auto;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -36,10 +45,10 @@
         </h5>
     </div>
     <div class="card-body p-4">
-        <div class="alert alert-info mb-4">
-            <i class="bi bi-info-circle me-2"></i>
-            <strong>Genera reportes específicos y consultas filtradas</strong><br>
-            Selecciona el tipo de reporte que necesitas para obtener información detallada y exportable.
+        <div class="bg-info bg-opacity-10 border border-info border-opacity-25 rounded p-3 mb-4">
+            <i class="bi bi-info-circle text-info me-2"></i>
+            <strong class="text-info">Genera reportes específicos y consultas filtradas</strong><br>
+            <span class="text-muted">Selecciona el tipo de reporte que necesitas para obtener información detallada y exportable.</span>
         </div>
             
             <!-- Grid de reportes disponibles -->
@@ -162,18 +171,18 @@
 </div>
 
 <!-- Modal para configurar reporte -->
-<div class="modal fade" id="modalReporte" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<div class="modal fade" id="modalReporte" tabindex="-1" aria-labelledby="modalReporteTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg" id="modalDialogReporte">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header bg-dark text-white">
                 <h5 class="modal-title" id="modalReporteTitle">Configurar Reporte</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="modalReporteBody">
                 <!-- Contenido dinámico según el tipo de reporte -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 {% if user|has_perm:'reportes_auditoria.view_reportabilidad' %}
                 <button type="button" class="btn btn-primary" id="btnGenerarReporte">
                     <i class="bi bi-file-earmark-pdf me-2"></i>Generar Reporte
@@ -191,8 +200,35 @@
 
 {% block extrajs %}
 <script>
+    // Función para limpiar backdrops de Bootstrap
+    function limpiarBackdrops() {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        // Remover clase modal-open del body si no hay modales abiertos
+        const modalesAbiertos = document.querySelectorAll('.modal.show');
+        if (modalesAbiertos.length === 0) {
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        }
+    }
+    
+    // Limpiar backdrops cuando se carga la página
+    document.addEventListener('DOMContentLoaded', function() {
+        limpiarBackdrops();
+        
+        // Agregar listener global para limpiar backdrop cuando se cierre cualquier modal
+        document.addEventListener('hidden.bs.modal', function(event) {
+            limpiarBackdrops();
+        });
+    });
+    
     function abrirReporte(tipoReporte) {
-        const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+        // Limpiar backdrops antes de abrir un nuevo modal
+        limpiarBackdrops();
+        
+        const modalElement = document.getElementById('modalReporte');
+        const modal = new bootstrap.Modal(modalElement);
         const modalTitle = document.getElementById('modalReporteTitle');
         const modalBody = document.getElementById('modalReporteBody');
         
@@ -323,8 +359,15 @@
             modalTitle.textContent = config.titulo;
             modalBody.innerHTML = config.contenido;
             
+            // Cambiar tamaño del modal a pequeño (modal-lg) para configuración
+            const modalDialog = document.getElementById('modalDialogReporte');
+            modalDialog.classList.remove('modal-xl', 'modal-fullscreen');
+            modalDialog.classList.add('modal-lg');
+            
             // Guardar el tipo de reporte en el botón
-            document.getElementById('btnGenerarReporte').setAttribute('data-tipo-reporte', tipoReporte);
+            const btnGenerar = document.getElementById('btnGenerarReporte');
+            btnGenerar.setAttribute('data-tipo-reporte', tipoReporte);
+            btnGenerar.style.display = 'inline-block'; // Mostrar botón al abrir modal
             
             // Inicializar date pickers
             if (window.DatePickerChile) {
@@ -333,6 +376,11 @@
                 }, 100);
             }
             
+            // Agregar event listeners para limpiar backdrop al cerrar
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                limpiarBackdrops();
+            });
+            
             modal.show();
         }
     }
@@ -340,9 +388,215 @@
     // Evento para generar reporte
     document.getElementById('btnGenerarReporte')?.addEventListener('click', function() {
         const tipoReporte = this.getAttribute('data-tipo-reporte');
-        // Aquí se implementará la lógica para generar el reporte
-        alert('Generando reporte: ' + tipoReporte + '\n\nEsta funcionalidad estará disponible próximamente.');
+        generarReporte(tipoReporte);
     });
+    
+    function generarReporte(tipoReporte) {
+        const btnGenerar = document.getElementById('btnGenerarReporte');
+        const modalBody = document.getElementById('modalReporteBody');
+        
+        // Obtener valores del formulario según el tipo de reporte
+        let params = {
+            tipo_reporte: tipoReporte
+        };
+        
+        // Obtener fechas según el tipo de reporte
+        if (tipoReporte === 'personal_activo') {
+            const fecha = document.getElementById('reporteFecha')?.value;
+            const fechaDesde = document.getElementById('reporteFechaDesde')?.value;
+            const fechaHasta = document.getElementById('reporteFechaHasta')?.value;
+            
+            if (fecha) {
+                params.fecha = fecha;
+            } else if (fechaDesde && fechaHasta) {
+                params.fecha_desde = fechaDesde;
+                params.fecha_hasta = fechaHasta;
+            }
+        } else {
+            const fechaDesde = document.getElementById('reporteFechaDesde')?.value;
+            const fechaHasta = document.getElementById('reporteFechaHasta')?.value;
+            
+            if (fechaDesde) params.fecha_desde = fechaDesde;
+            if (fechaHasta) params.fecha_hasta = fechaHasta;
+        }
+        
+        // Parámetros adicionales según el tipo
+        if (tipoReporte === 'faenas_activas') {
+            const incluirPersonal = document.getElementById('incluirPersonal')?.checked;
+            const incluirEquipos = document.getElementById('incluirEquipos')?.checked;
+            if (incluirPersonal !== undefined) params.incluir_personal = incluirPersonal;
+            if (incluirEquipos !== undefined) params.incluir_equipos = incluirEquipos;
+        } else if (tipoReporte === 'equipos_mantencion') {
+            const tipoEstado = document.getElementById('tipoEstado')?.value;
+            if (tipoEstado) params.tipo_estado = tipoEstado;
+        } else if (tipoReporte === 'asignaciones_equipos') {
+            const tipoAsignacion = document.getElementById('tipoAsignacion')?.value;
+            if (tipoAsignacion) params.tipo_asignacion = tipoAsignacion;
+        } else if (tipoReporte === 'ordenes_trabajo') {
+            const estadoOT = document.getElementById('estadoOT')?.value;
+            if (estadoOT) params.estado_ot = estadoOT;
+        }
+        
+        // Deshabilitar botón y mostrar loading
+        btnGenerar.disabled = true;
+        btnGenerar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generando...';
+        
+        // Construir URL con parámetros
+        const url = new URL('{% url "reportes_auditoria:api_reportabilidad" %}', window.location.origin);
+        Object.keys(params).forEach(key => {
+            if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+                url.searchParams.append(key, params[key]);
+            }
+        });
+        
+        // Realizar petición
+        fetch(url.toString(), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            btnGenerar.disabled = false;
+            btnGenerar.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>Generar Reporte';
+            
+            if (data.success) {
+                mostrarResultadosReporte(data, tipoReporte);
+            } else {
+                alert('Error al generar el reporte: ' + (data.error || 'Error desconocido'));
+            }
+        })
+        .catch(error => {
+            btnGenerar.disabled = false;
+            btnGenerar.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>Generar Reporte';
+            alert('Error al generar el reporte: ' + error.message);
+        });
+    }
+    
+    function mostrarResultadosReporte(data, tipoReporte) {
+        const modalBody = document.getElementById('modalReporteBody');
+        const btnGenerar = document.getElementById('btnGenerarReporte');
+        const modalDialog = document.getElementById('modalDialogReporte');
+        
+        // Cambiar tamaño del modal a grande (modal-xl) para mostrar resultados
+        modalDialog.classList.remove('modal-lg', 'modal-fullscreen');
+        modalDialog.classList.add('modal-xl');
+        
+        if (!data.datos || data.datos.length === 0) {
+            // Mantener tamaño pequeño si no hay datos
+            modalDialog.classList.remove('modal-xl', 'modal-fullscreen');
+            modalDialog.classList.add('modal-lg');
+            
+            modalBody.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>No se encontraron datos para el reporte seleccionado con los filtros aplicados.
+                </div>
+            `;
+            btnGenerar.style.display = 'none';
+            return;
+        }
+        
+        // Crear tabla con resultados
+        let tablaHTML = `
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Total de registros: <strong>${data.total}</strong></span>
+                    <div>
+                        <button class="btn btn-sm btn-secondary me-2" onclick="volverAConfigurar()">
+                            <i class="bi bi-arrow-left me-2"></i>Nueva Búsqueda
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="exportarReporte('${tipoReporte}')">
+                            <i class="bi bi-download me-2"></i>Exportar CSV
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-sm table-hover table-striped" id="tablaReporte">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                ${data.columnas.map(col => `<th>${col}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.datos.map(fila => `
+                                <tr>
+                                    ${data.columnas.map(col => `<td>${fila[col] || ''}</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        modalBody.innerHTML = tablaHTML;
+        btnGenerar.style.display = 'none'; // Ocultar botón de generar después de mostrar resultados
+        
+        // Guardar tipo de reporte para poder volver
+        window.tipoReporteActual = tipoReporte;
+        
+        // Guardar datos para exportación
+        window.reporteActual = data;
+    }
+    
+    function exportarReporte(tipoReporte) {
+        if (!window.reporteActual || !window.reporteActual.datos) {
+            alert('No hay datos para exportar');
+            return;
+        }
+        
+        const data = window.reporteActual;
+        const columnas = data.columnas;
+        const datos = data.datos;
+        
+        // Crear CSV
+        let csv = columnas.join(',') + '\n';
+        
+        datos.forEach(fila => {
+            const valores = columnas.map(col => {
+                const valor = fila[col] || '';
+                // Escapar comillas y envolver en comillas si contiene comas
+                const valorStr = String(valor).replace(/"/g, '""');
+                return valorStr.includes(',') ? `"${valorStr}"` : valorStr;
+            });
+            csv += valores.join(',') + '\n';
+        });
+        
+        // Crear blob y descargar
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `reporte_${tipoReporte}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    function volverAConfigurar() {
+        if (window.tipoReporteActual) {
+            // Cerrar modal actual y limpiar backdrop
+            const modalElement = document.getElementById('modalReporte');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+            limpiarBackdrops();
+            
+            // Esperar un momento antes de abrir el nuevo modal
+            setTimeout(() => {
+                // Cambiar tamaño del modal de vuelta a pequeño antes de abrir
+                const modalDialog = document.getElementById('modalDialogReporte');
+                modalDialog.classList.remove('modal-xl', 'modal-fullscreen');
+                modalDialog.classList.add('modal-lg');
+                
+                abrirReporte(window.tipoReporteActual);
+            }, 300);
+        }
+    }
 </script>
 <script src="{% static 'gen_settings/js/datePickerChile.js' %}"></script>
 {% endblock %}

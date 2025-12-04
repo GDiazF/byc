@@ -451,10 +451,15 @@
         background-color: #fff3cd !important;
     }
     
+    /* Posicionar modales centrados horizontalmente pero más arriba verticalmente */
+    .modal-dialog {
+        margin: 3rem auto;
+    }
+    
     /* Asegurar que los modales también sean responsivos */
     @media (max-width: 768px) {
         .modal-dialog {
-            margin: 0.5rem;
+            margin: 1rem auto;
             max-width: calc(100% - 1rem);
         }
         
@@ -1012,7 +1017,7 @@
             titulo = 'Detalles de Ausentismos';
             modalHTML = `
                 <div class="modal fade" id="modalDetallesDistribucion" tabindex="-1" aria-labelledby="modalDetallesDistribucionLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header bg-dark text-white">
                                 <h5 class="modal-title" id="modalDetallesDistribucionLabel">${titulo}</h5>
@@ -1061,7 +1066,7 @@
             titulo = 'Detalles de Licencias Médicas';
             modalHTML = `
                 <div class="modal fade" id="modalDetallesDistribucion" tabindex="-1" aria-labelledby="modalDetallesDistribucionLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header bg-dark text-white">
                                 <h5 class="modal-title" id="modalDetallesDistribucionLabel">${titulo}</h5>
@@ -1110,7 +1115,7 @@
             titulo = 'Personal en Faenas';
             modalHTML = `
                 <div class="modal fade" id="modalDetallesDistribucion" tabindex="-1" aria-labelledby="modalDetallesDistribucionLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered modal-xl">
+                    <div class="modal-dialog modal-xl">
                         <div class="modal-content">
                             <div class="modal-header bg-dark text-white">
                                 <h5 class="modal-title" id="modalDetallesDistribucionLabel">${titulo}</h5>
@@ -1927,7 +1932,7 @@
             titulo = 'Equipos en Faena';
             modalHTML = `
                 <div class="modal fade" id="modalDetallesEquipos" tabindex="-1" aria-labelledby="modalDetallesEquiposLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-xl" style="margin-top: 2rem;">
+                    <div class="modal-dialog modal-xl">
                         <div class="modal-content">
                             <div class="modal-header bg-dark text-white">
                                 <h5 class="modal-title" id="modalDetallesEquiposLabel">${titulo}</h5>
@@ -1978,7 +1983,7 @@
             titulo = 'Equipos Operativos con Anomalías';
             modalHTML = `
                 <div class="modal fade" id="modalDetallesEquipos" tabindex="-1" aria-labelledby="modalDetallesEquiposLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-xl" style="margin-top: 2rem;">
+                    <div class="modal-dialog modal-xl">
                         <div class="modal-content">
                             <div class="modal-header bg-dark text-white">
                                 <h5 class="modal-title" id="modalDetallesEquiposLabel">${titulo}</h5>
@@ -2029,7 +2034,7 @@
             titulo = 'Equipos en Shutdown';
             modalHTML = `
                 <div class="modal fade" id="modalDetallesEquipos" tabindex="-1" aria-labelledby="modalDetallesEquiposLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-xl" style="margin-top: 2rem;">
+                    <div class="modal-dialog modal-xl">
                         <div class="modal-content">
                             <div class="modal-header bg-dark text-white">
                                 <h5 class="modal-title" id="modalDetallesEquiposLabel">${titulo}</h5>
@@ -2646,12 +2651,12 @@
             
             if (detalles.length === 0) {
                 modalHTML = `
-                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1">
+                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1" aria-labelledby="modalDetallesGerenciaLabel" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">${titulo}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                <div class="modal-header bg-dark text-white">
+                                    <h5 class="modal-title" id="modalDetallesGerenciaLabel">${titulo}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <p class="text-muted">No hay personal en faena actualmente.</p>
@@ -2665,12 +2670,12 @@
                 `;
             } else {
                 modalHTML = `
-                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1">
+                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1" aria-labelledby="modalDetallesGerenciaLabel" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">${titulo}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                <div class="modal-header bg-dark text-white">
+                                    <h5 class="modal-title" id="modalDetallesGerenciaLabel">${titulo}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <div class="table-responsive">
@@ -2712,12 +2717,12 @@
             
             if (detalles.length === 0) {
                 modalHTML = `
-                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1">
+                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1" aria-labelledby="modalDetallesGerenciaLabel" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">${titulo}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                <div class="modal-header bg-dark text-white">
+                                    <h5 class="modal-title" id="modalDetallesGerenciaLabel">${titulo}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <p class="text-muted">No hay personal no disponible actualmente.</p>
@@ -2731,12 +2736,12 @@
                 `;
             } else {
                 modalHTML = `
-                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1">
+                    <div class="modal fade" id="modalDetallesGerencia" tabindex="-1" aria-labelledby="modalDetallesGerenciaLabel" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">${titulo}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                <div class="modal-header bg-dark text-white">
+                                    <h5 class="modal-title" id="modalDetallesGerenciaLabel">${titulo}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <div class="table-responsive">
@@ -2810,12 +2815,12 @@
             
             if (detalles.length === 0) {
                 modalHTML = `
-                    <div class="modal fade" id="modalDetallesEquiposGerencia" tabindex="-1">
+                    <div class="modal fade" id="modalDetallesEquiposGerencia" tabindex="-1" aria-labelledby="modalDetallesEquiposGerenciaLabel" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">${titulo}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                <div class="modal-header bg-dark text-white">
+                                    <h5 class="modal-title" id="modalDetallesEquiposGerenciaLabel">${titulo}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <p class="text-muted">No hay equipos en uso actualmente.</p>
@@ -2829,12 +2834,12 @@
                 `;
             } else {
                 modalHTML = `
-                    <div class="modal fade" id="modalDetallesEquiposGerencia" tabindex="-1">
+                    <div class="modal fade" id="modalDetallesEquiposGerencia" tabindex="-1" aria-labelledby="modalDetallesEquiposGerenciaLabel" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">${titulo}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                <div class="modal-header bg-dark text-white">
+                                    <h5 class="modal-title" id="modalDetallesEquiposGerenciaLabel">${titulo}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <div class="table-responsive">
@@ -2909,12 +2914,12 @@
         
         if (detalles.length === 0) {
             modalHTML = `
-                <div class="modal fade" id="modalDetallesPreventivoCorrectivo" tabindex="-1">
+                <div class="modal fade" id="modalDetallesPreventivoCorrectivo" tabindex="-1" aria-labelledby="modalDetallesPreventivoCorrectivoLabel" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">${titulo}</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesPreventivoCorrectivoLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <p class="text-muted">No hay órdenes de trabajo ${tipo.toLowerCase()} en los últimos 30 días.</p>
@@ -2928,12 +2933,12 @@
             `;
         } else {
             modalHTML = `
-                <div class="modal fade" id="modalDetallesPreventivoCorrectivo" tabindex="-1">
+                <div class="modal fade" id="modalDetallesPreventivoCorrectivo" tabindex="-1" aria-labelledby="modalDetallesPreventivoCorrectivoLabel" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">${titulo}</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesPreventivoCorrectivoLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <div class="table-responsive">
@@ -3002,12 +3007,12 @@
         
         if (detalles.length === 0) {
             modalHTML = `
-                <div class="modal fade" id="modalDetallesOTsGerencia" tabindex="-1">
+                <div class="modal fade" id="modalDetallesOTsGerencia" tabindex="-1" aria-labelledby="modalDetallesOTsGerenciaLabel" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">${titulo}</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesOTsGerenciaLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <p class="text-muted">No hay órdenes de trabajo ${tipo.toLowerCase()}.</p>
@@ -3021,12 +3026,12 @@
             `;
         } else {
             modalHTML = `
-                <div class="modal fade" id="modalDetallesOTsGerencia" tabindex="-1">
+                <div class="modal fade" id="modalDetallesOTsGerencia" tabindex="-1" aria-labelledby="modalDetallesOTsGerenciaLabel" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">${titulo}</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title" id="modalDetallesOTsGerenciaLabel">${titulo}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <div class="table-responsive">
