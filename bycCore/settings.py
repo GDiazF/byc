@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'reportes_auditoria',
     'dashboards',
     'notificaciones',  # App para sistema de notificaciones
+    'vencimientos_documentos',  # App para gestión de vencimientos de documentos
     'django_apscheduler',  # Para tareas periódicas
     # 'storages',  # Solo para producción con S3
     'django.contrib.admin',

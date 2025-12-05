@@ -118,32 +118,59 @@
                 }
                 
                 item.innerHTML = `
-                    <div class="d-flex align-items-start">
-                        <div class="flex-grow-1">
+                    <div class="d-flex align-items-start" style="gap: 0.5rem;">
+                        <div class="flex-grow-1" style="min-width: 0;">
                             <div class="fw-bold" style="font-size: 0.875rem;">${notif.titulo}</div>
                             <div class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem;">${notif.mensaje.substring(0, 60)}${notif.mensaje.length > 60 ? '...' : ''}</div>
                             <small class="text-muted" style="font-size: 0.65rem;">${notif.fecha_creacion}</small>
                         </div>
+                        <button class="btn btn-sm btn-link p-0 text-muted ver-detalle-btn" 
+                                style="flex-shrink: 0; padding: 0.25rem !important; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;"
+                                title="Ver detalles"
+                                data-notif-id="${notif.id}">
+                            <i class="bi bi-eye" style="font-size: 0.875rem;"></i>
+                        </button>
                     </div>
                 `;
                 
                 // Guardar datos completos de la notificación en el elemento
                 item.setAttribute('data-notif-data', JSON.stringify(notif));
                 
-                // Agregar evento click para marcar como leída y mostrar detalles
+                // Evento click en el item: solo marcar como leída
                 item.addEventListener('click', function(e) {
+                    // Si el clic fue en el botón de ver detalles, no hacer nada aquí
+                    if (e.target.closest('.ver-detalle-btn')) {
+                        return;
+                    }
+                    
                     e.preventDefault();
                     e.stopPropagation();
                     
                     // Solo marcar como leída si NO está leída actualmente
                     if (!notif.leida) {
-                        // Marcar como leída inmediatamente
                         marcarComoLeida(notif.id);
                     }
-                    
-                    // Mostrar modal con detalles completos
-                    mostrarDetalleNotificacion(notif);
                 });
+                
+                // Evento click en el botón de ver detalles: mostrar modal
+                const verDetalleBtn = item.querySelector('.ver-detalle-btn');
+                if (verDetalleBtn) {
+                    verDetalleBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Obtener los datos de la notificación
+                        const notifData = JSON.parse(item.getAttribute('data-notif-data'));
+                        
+                        // Mostrar modal con detalles completos
+                        mostrarDetalleNotificacion(notifData);
+                        
+                        // Opcional: marcar como leída al ver detalles
+                        if (!notifData.leida) {
+                            marcarComoLeida(notifData.id);
+                        }
+                    });
+                }
                 
                 contenedorNotificaciones.appendChild(item);
             });
@@ -271,10 +298,199 @@
         return cookieValue;
     }
     
-    // Variables para polling adaptativo
-    let intervaloPolling = 15000; // Empezar con 15 segundos
+    // Variables para SSE (Server-Sent Events)
+    let eventSource = null;
     let ultimoContador = null; // null inicialmente para detectar primera carga
-    let timeoutPolling = null;
+    let reconexionTimeout = null;
+    let intentosReconexion = 0;
+    const MAX_INTENTOS_RECONEXION = 5;
+    const DELAY_RECONEXION = 3000; // 3 segundos
+    
+    // Función para iniciar conexión SSE
+    function iniciarSSE() {
+        // Cerrar conexión anterior si existe
+        if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+        }
+        
+        // Verificar si el navegador soporta EventSource
+        if (typeof EventSource === 'undefined') {
+            console.warn('EventSource no está disponible, usando polling como fallback');
+            iniciarPollingFallback();
+            return;
+        }
+        
+        try {
+            // Crear nueva conexión SSE
+            eventSource = new EventSource('/notificaciones/api/sse/');
+            
+            // Evento cuando se establece la conexión
+            eventSource.addEventListener('connected', function(e) {
+                intentosReconexion = 0; // Resetear contador de intentos
+                try {
+                    const data = JSON.parse(e.data);
+                    ultimoContador = data.count;
+                    actualizarBadge(data.count);
+                    console.log('Conexión SSE establecida:', data.message, 'Contador:', data.count);
+                } catch (error) {
+                    console.error('Error al procesar evento connected:', error);
+                }
+            });
+            
+            // Evento cuando llega una nueva notificación
+            eventSource.addEventListener('notification', function(e) {
+                try {
+                    const message = JSON.parse(e.data);
+                    // El mensaje tiene estructura: {type: 'notification', data: {...}, timestamp: ...}
+                    const data = message.data || message; // Compatibilidad con ambos formatos
+                    const notificacion = data.notificacion;
+                    const nuevoContador = data.count;
+                    
+                    if (!notificacion) {
+                        console.warn('Evento de notificación recibido sin datos de notificación:', message);
+                        return;
+                    }
+                    
+                    // Reproducir sonido siempre que llegue una notificación nueva
+                    inicializarAudio();
+                    reproducirSonidoNotificacion();
+                    
+                    // Actualizar contador
+                    ultimoContador = nuevoContador;
+                    actualizarBadge(nuevoContador);
+                    
+                    // Recargar notificaciones solo si el dropdown no está abierto
+                    const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
+                    const isOpen = dropdownMenu && dropdownMenu.classList.contains('show');
+                    if (!isOpen) {
+                        cargarNotificaciones();
+                    }
+                    
+                    console.log('Notificación recibida en tiempo real:', notificacion.titulo, 'Contador:', nuevoContador);
+                } catch (error) {
+                    console.error('Error al procesar evento de notificación:', error, 'Datos recibidos:', e.data);
+                }
+            });
+            
+            // Evento cuando se actualiza el contador (marcar como leída, etc.)
+            eventSource.addEventListener('count_update', function(e) {
+                try {
+                    const message = JSON.parse(e.data);
+                    // El mensaje tiene estructura: {type: 'count_update', data: {...}, timestamp: ...}
+                    const data = message.data || message; // Compatibilidad con ambos formatos
+                    ultimoContador = data.count;
+                    actualizarBadge(data.count);
+                    console.log('Contador actualizado vía SSE:', data.count);
+                } catch (error) {
+                    console.error('Error al procesar evento count_update:', error);
+                }
+            });
+            
+            // Evento de heartbeat (mantener conexión viva)
+            eventSource.addEventListener('heartbeat', function(e) {
+                // Solo para mantener la conexión viva, no hacer nada
+            });
+            
+            // Evento de timeout
+            eventSource.addEventListener('timeout', function(e) {
+                const data = JSON.parse(e.data);
+                console.log('Conexión SSE cerrada por timeout:', data.message);
+                // Reconectar después de un delay
+                programarReconexion();
+            });
+            
+            // Evento de error
+            eventSource.addEventListener('error', function(e) {
+                console.error('Error en conexión SSE:', e);
+                // Cerrar conexión y reconectar
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+                programarReconexion();
+            });
+            
+            // Manejar errores generales
+            eventSource.onerror = function(e) {
+                console.error('Error general en SSE. Estado:', eventSource.readyState, e);
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    // Conexión cerrada, intentar reconectar
+                    console.log('Conexión SSE cerrada, intentando reconectar...');
+                    programarReconexion();
+                } else if (eventSource.readyState === EventSource.CONNECTING) {
+                    console.log('Reconectando SSE...');
+                }
+            };
+            
+            // Log cuando se abre la conexión
+            eventSource.onopen = function(e) {
+                console.log('Conexión SSE abierta');
+            };
+            
+        } catch (error) {
+            console.error('Error al iniciar SSE:', error);
+            // Fallback a polling si SSE falla
+            iniciarPollingFallback();
+        }
+    }
+    
+    // Función para programar reconexión
+    function programarReconexion() {
+        if (reconexionTimeout) {
+            clearTimeout(reconexionTimeout);
+        }
+        
+        if (intentosReconexion < MAX_INTENTOS_RECONEXION) {
+            intentosReconexion++;
+            const delay = DELAY_RECONEXION * intentosReconexion; // Delay exponencial
+            console.log(`Reintentando conexión SSE en ${delay/1000} segundos (intento ${intentosReconexion}/${MAX_INTENTOS_RECONEXION})`);
+            
+            reconexionTimeout = setTimeout(function() {
+                iniciarSSE();
+            }, delay);
+        } else {
+            console.warn('Máximo de intentos de reconexión alcanzado, usando polling como fallback');
+            iniciarPollingFallback();
+        }
+    }
+    
+    // Función de fallback a polling (si SSE no está disponible)
+    function iniciarPollingFallback() {
+        console.log('Usando polling como método de actualización');
+        let intervaloPolling = 15000;
+        let timeoutPolling = null;
+        
+        function ejecutarPolling() {
+            const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
+            const isOpen = dropdownMenu && dropdownMenu.classList.contains('show');
+            
+            if (!isOpen) {
+                actualizarContadorDesdeServidor().then(function(count) {
+                    const contadorAnterior = ultimoContador;
+                    if (contadorAnterior === null || count !== contadorAnterior) {
+                        ultimoContador = count;
+                        cargarNotificaciones();
+                        intervaloPolling = 5000;
+                    } else {
+                        intervaloPolling = Math.min(intervaloPolling + 5000, 30000);
+                    }
+                    timeoutPolling = setTimeout(ejecutarPolling, intervaloPolling);
+                });
+            } else {
+                timeoutPolling = setTimeout(ejecutarPolling, 5000);
+            }
+        }
+        
+        // Cargar inicialmente
+        actualizarContadorDesdeServidor().then(function(count) {
+            ultimoContador = count;
+        });
+        cargarNotificaciones();
+        
+        // Iniciar polling
+        timeoutPolling = setTimeout(ejecutarPolling, intervaloPolling);
+    }
     
     // Cargar notificaciones al cargar la página
     if (document.readyState === 'loading') {
@@ -285,8 +501,8 @@
             });
             // Luego cargar las notificaciones
             cargarNotificaciones();
-            // Iniciar polling adaptativo
-            iniciarPolling();
+            // Iniciar SSE
+            iniciarSSE();
         });
     } else {
         // Cargar contador primero
@@ -295,53 +511,19 @@
         });
         // Luego cargar las notificaciones
         cargarNotificaciones();
-        iniciarPolling();
+        iniciarSSE();
     }
     
-    // Función para iniciar polling adaptativo de notificaciones
-    function iniciarPolling() {
-        function ejecutarPolling() {
-            // Solo actualizar si el dropdown no está abierto (para no interrumpir al usuario)
-            const dropdown = document.querySelector('#notificationsDropdown');
-            const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
-            const isOpen = dropdownMenu && dropdownMenu.classList.contains('show');
-            
-            if (!isOpen) {
-                // Actualizar solo el contador (más ligero que cargar todas las notificaciones)
-                actualizarContadorDesdeServidor().then(function(count) {
-                    const contadorAnterior = ultimoContador;
-                    // Si el contador cambió, recargar las notificaciones también
-                    if (contadorAnterior === null || count !== contadorAnterior) {
-                        ultimoContador = count;
-                        // Recargar notificaciones siempre que haya cambio (incluyendo primera carga)
-                        cargarNotificaciones();
-                        // Si hay cambios, usar intervalo más corto (5 segundos)
-                        intervaloPolling = 5000;
-                    } else {
-                        // Si no hay cambios, aumentar gradualmente el intervalo (hasta 30 segundos máximo)
-                        intervaloPolling = Math.min(intervaloPolling + 5000, 30000);
-                    }
-                    
-                    // Programar siguiente polling
-                    timeoutPolling = setTimeout(ejecutarPolling, intervaloPolling);
-                });
-            } else {
-                // Si el dropdown está abierto, esperar un poco más
-                timeoutPolling = setTimeout(ejecutarPolling, 5000);
-            }
+    // Cerrar conexión SSE cuando se cierra la página
+    window.addEventListener('beforeunload', function() {
+        if (eventSource) {
+            eventSource.close();
+            eventSource = null;
         }
-        
-        // Iniciar el primer polling después de 15 segundos
-        timeoutPolling = setTimeout(ejecutarPolling, intervaloPolling);
-    }
-    
-    // Función para detener el polling (útil si se implementa SSE o WebSockets en el futuro)
-    function detenerPolling() {
-        if (timeoutPolling) {
-            clearTimeout(timeoutPolling);
-            timeoutPolling = null;
+        if (reconexionTimeout) {
+            clearTimeout(reconexionTimeout);
         }
-    }
+    });
     
     // Recargar cuando se abre el dropdown
     const dropdownToggle = document.querySelector('#notificationsDropdown');
@@ -359,71 +541,118 @@
         });
     }
     
-    // Función simple para reproducir sonido de notificación
-    function reproducirSonidoNotificacion() {
-        try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // Reanudar si está suspendido (async)
-            if (audioContext.state === 'suspended') {
-                audioContext.resume().then(() => {
-                    crearBeep(audioContext);
-                }).catch(() => {
-                    crearBeep(audioContext);
-                });
-            } else {
-                crearBeep(audioContext);
-            }
-        } catch (error) {
-            // Si falla, no hacer nada
-        }
-    }
+    // Audio context global para reutilizar
+    let audioContextGlobal = null;
+    let audioInicializado = false;
     
     // Inicializar audio con cualquier interacción del usuario
-    let audioInicializado = false;
     function inicializarAudio() {
         if (!audioInicializado) {
             try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
+                audioContextGlobal = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContextGlobal.state === 'suspended') {
+                    audioContextGlobal.resume().catch(function(e) {
+                        console.warn('No se pudo reanudar el audio context:', e);
+                    });
                 }
                 audioInicializado = true;
+                console.log('Audio inicializado correctamente');
             } catch (e) {
-                // Ignorar errores
+                console.warn('Error al inicializar audio:', e);
             }
         }
     }
     
-    // Función auxiliar para crear el beep
-    function crearBeep(audioContext) {
+    // Función para reproducir sonido de notificación estilo moderno (como Facebook/WhatsApp)
+    function reproducirSonidoNotificacion() {
         try {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            // Si no está inicializado, intentar inicializar
+            if (!audioInicializado || !audioContextGlobal) {
+                inicializarAudio();
+            }
             
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            // Si aún no hay audioContext, crear uno temporal
+            let audioContext = audioContextGlobal;
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
             
-            // Sonido simple de beep
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
-            
-            const now = audioContext.currentTime;
-            gainNode.gain.setValueAtTime(0, now);
-            gainNode.gain.linearRampToValueAtTime(0.5, now + 0.01);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-            
-            oscillator.start(now);
-            oscillator.stop(now + 0.2);
+            // Reanudar si está suspendido
+            if (audioContext.state === 'suspended') {
+                audioContext.resume().then(function() {
+                    crearSonidoNotificacionModerno(audioContext);
+                }).catch(function() {
+                    // Si falla, intentar crear sonido de todas formas
+                    crearSonidoNotificacionModerno(audioContext);
+                });
+            } else {
+                crearSonidoNotificacionModerno(audioContext);
+            }
         } catch (error) {
-            // Si falla, no hacer nada
+            console.warn('Error al reproducir sonido de notificación:', error);
         }
     }
     
-    // Inicializar con cualquier interacción
-    ['click', 'keydown', 'touchstart', 'mousedown'].forEach(evento => {
+    // Función para crear sonido de notificación moderno (suave y agradable)
+    function crearSonidoNotificacionModerno(audioContext) {
+        try {
+            const now = audioContext.currentTime;
+            
+            // Crear un sonido más suave y melódico, similar a Facebook/WhatsApp
+            // Usamos frecuencias más agradables y un patrón más suave
+            
+            // Primer tono - más suave y bajo
+            const osc1 = audioContext.createOscillator();
+            const gain1 = audioContext.createGain();
+            osc1.connect(gain1);
+            gain1.connect(audioContext.destination);
+            
+            osc1.frequency.setValueAtTime(523.25, now); // Nota C5 (más agradable)
+            osc1.type = 'sine'; // Onda senoidal para sonido más suave
+            
+            // Envelope suave del primer tono
+            gain1.gain.setValueAtTime(0, now);
+            gain1.gain.linearRampToValueAtTime(0.15, now + 0.05); // Subida más suave
+            gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+            
+            osc1.start(now);
+            osc1.stop(now + 0.12);
+            
+            // Segundo tono - más alto pero suave, con ligera variación
+            const osc2 = audioContext.createOscillator();
+            const gain2 = audioContext.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioContext.destination);
+            
+            osc2.frequency.setValueAtTime(659.25, now + 0.08); // Nota E5 (quinta perfecta, más armoniosa)
+            osc2.type = 'sine';
+            
+            // Envelope suave del segundo tono (empieza antes de que termine el primero)
+            const startTime2 = now + 0.08;
+            gain2.gain.setValueAtTime(0, startTime2);
+            gain2.gain.linearRampToValueAtTime(0.15, startTime2 + 0.05);
+            gain2.gain.exponentialRampToValueAtTime(0.01, startTime2 + 0.15);
+            
+            osc2.start(startTime2);
+            osc2.stop(startTime2 + 0.15);
+            
+        } catch (error) {
+            console.warn('Error al crear sonido de notificación:', error);
+        }
+    }
+    
+    // Inicializar con cualquier interacción (múltiples eventos para asegurar)
+    ['click', 'keydown', 'touchstart', 'mousedown', 'scroll'].forEach(evento => {
         document.addEventListener(evento, inicializarAudio, { once: true });
     });
+    
+    // También intentar inicializar al cargar la página
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializarAudio);
+    } else {
+        // Si ya está cargado, inicializar inmediatamente
+        setTimeout(inicializarAudio, 100);
+    }
     
     // Función para actualizar el contador desde el servidor (más confiable)
     function actualizarContadorDesdeServidor() {
@@ -486,38 +715,87 @@
         actualizarContadorDesdeServidor();
     }
     
-    // Botón "Marcar todas como leídas" en el dropdown
-    const btnMarcarTodas = document.querySelector('#btnMarcarTodasLeidasDropdown');
-    if (btnMarcarTodas) {
-        btnMarcarTodas.addEventListener('click', function(e) {
-            e.stopPropagation();
-            fetch('/notificaciones/api/marcar-todas-leidas/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                }
-            })
-            .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // El servidor retorna el nuevo contador, usarlo directamente
-                if (data.count !== undefined) {
-                    actualizarBadge(data.count);
-                } else {
-                    // Si no viene el contador, consultarlo
-                    actualizarContadorDesdeServidor();
-                }
-                // Recargar notificaciones para actualizar el estado visual
-                setTimeout(() => {
-                    cargarNotificaciones();
-                }, 300); // Pequeño delay para que se vea el cambio
-            }
-        })
-            .catch(error => {
-                console.error('Error al marcar todas como leídas:', error);
-            });
+    // Función para configurar el listener del botón "Marcar todas como leídas"
+    function configurarBotonMarcarTodas() {
+        const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
+        if (!dropdownMenu) return;
+        
+        // Remover listener anterior si existe
+        const nuevoBoton = dropdownMenu.querySelector('#btnMarcarTodasLeidasDropdown');
+        if (nuevoBoton && !nuevoBoton.hasAttribute('data-listener-configurado')) {
+            nuevoBoton.setAttribute('data-listener-configurado', 'true');
+            
+            nuevoBoton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                console.log('Marcando todas las notificaciones como leídas...');
+                
+                fetch('/notificaciones/api/marcar-todas-leidas/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        console.log('Todas las notificaciones marcadas como leídas. Nuevo contador:', data.count);
+                        
+                        // Actualizar el contador
+                        if (data.count !== undefined) {
+                            ultimoContador = data.count;
+                            actualizarBadge(data.count);
+                        } else {
+                            // Si no viene el contador, consultarlo
+                            actualizarContadorDesdeServidor();
+                        }
+                        
+                        // Recargar notificaciones para actualizar el estado visual
+                        setTimeout(() => {
+                            cargarNotificaciones();
+                        }, 200);
+                    } else {
+                        console.error('Error al marcar todas como leídas:', data.error || 'Error desconocido');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al marcar todas como leídas:', error);
+                });
+                
+                return false;
+            }, true); // Usar capture phase
+        }
+    }
+    
+    // Configurar el botón cuando se carga la página
+    configurarBotonMarcarTodas();
+    
+    // También configurar cuando se abre el dropdown (por si se recrea dinámicamente)
+    const dropdownToggleMarcarTodas = document.querySelector('#notificationsDropdown');
+    if (dropdownToggleMarcarTodas) {
+        dropdownToggleMarcarTodas.addEventListener('shown.bs.dropdown', function() {
+            setTimeout(configurarBotonMarcarTodas, 50);
         });
     }
     
+    // También usar event delegation como respaldo
+    document.addEventListener('click', function(e) {
+        const btnMarcarTodas = e.target.closest('#btnMarcarTodasLeidasDropdown');
+        if (btnMarcarTodas) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        }
+    }, true);
+    
 })();
+
 

@@ -133,4 +133,20 @@ body.loaded .content-loading {
     .main-content {
         margin-left: 0;
     }
+    
+    /* Ajustar contenedor del navbar en móviles */
+    .navbar .container-fluid > div:first-child {
+        width: auto !important;
+        min-width: 60px;
+    }
+    
+    /* Estilos para el logo en el sidebar móvil */
+    .sidebar .d-md-none {
+        padding: 1rem 0.75rem;
+    }
+    
+    .sidebar .d-md-none a {
+        display: block;
+        text-align: center;
+    }
 }

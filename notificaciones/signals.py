@@ -7,6 +7,9 @@ from django.dispatch import receiver
 from django.contrib.auth.signals import user_logged_in
 from django.contrib.auth.models import User
 from .utils import crear_notificacion_por_tipo, crear_notificacion_para_usuario
+from .sse_manager import sse_manager
+from .utils import contar_notificaciones_no_leidas
+from .models import Notificacion
 
 
 # ============================================================================
@@ -346,4 +349,64 @@ def notificar_asignacion_personal_faena(sender, instance, created, **kwargs):
 # - Cambio de contraseña: main_home/views.py -> cambiar_contraseña_view()
 # - Login fallido: main_login/views.py -> CustomLoginView
 # Esto es más eficiente que usar signals que se disparan en cada login
+
+
+# ============================================================================
+# SIGNAL PARA ENVIAR EVENTOS SSE CUANDO SE CREA UNA NOTIFICACIÓN
+# ============================================================================
+
+@receiver(post_save, sender=Notificacion)
+def enviar_evento_sse_notificacion(sender, instance, created, **kwargs):
+    """
+    Envía un evento SSE cuando se crea una nueva notificación.
+    Esto permite que el cliente reciba la notificación en tiempo real.
+    """
+    if created:
+        try:
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            # Asegurar que el tipo_notificacion esté cargado
+            try:
+                # Recargar desde la base de datos para asegurar que tenemos todos los datos
+                instance.refresh_from_db()
+            except Exception as e:
+                logger.warning(f'No se pudo refrescar notificación {instance.id}: {str(e)}')
+            
+            # Preparar datos de la notificación para el evento
+            notificacion_data = {
+                'id': instance.id,
+                'titulo': instance.titulo,
+                'mensaje': instance.mensaje,
+                'tipo': instance.tipo_notificacion.nombre if instance.tipo_notificacion else 'Sin tipo',
+                'codigo_tipo': instance.tipo_notificacion.codigo if instance.tipo_notificacion else '',
+                'categoria': instance.tipo_notificacion.categoria if instance.tipo_notificacion else 'GENERAL',
+                'prioridad': instance.prioridad,
+                'leida': instance.leida,
+                'archivada': instance.archivada,
+                'fecha_creacion': instance.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+                'datos_adicionales': instance.datos_adicionales
+            }
+            
+            # Obtener el nuevo contador de notificaciones no leídas
+            nuevo_contador = contar_notificaciones_no_leidas(instance.usuario)
+            
+            logger.info(f'Enviando evento SSE para notificación {instance.id} al usuario {instance.usuario.id} (contador: {nuevo_contador})')
+            
+            # Enviar evento SSE al usuario
+            sse_manager.send_to_user(
+                user_id=instance.usuario.id,
+                event_type='notification',
+                data={
+                    'notificacion': notificacion_data,
+                    'count': nuevo_contador
+                }
+            )
+            
+            logger.info(f'Evento SSE enviado correctamente para notificación {instance.id}')
+        except Exception as e:
+            # Loggear el error pero no fallar la creación de la notificación
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error al enviar evento SSE para notificación {instance.id}: {str(e)}', exc_info=True)
 

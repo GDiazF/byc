@@ -1,0 +1,302 @@
+{% extends 'home/index.html' %}
+{% load static %}
+{% load permissions_tags %}
+
+{% block title %}Vencimientos de Documentos - Sistema BYC{% endblock %}
+
+{% block extrastyles %}
+<script>
+    // Permisos del usuario para validar en JavaScript
+    window.userPermissions = {
+        canViewVencimientos: {% if user|has_perm:'vencimientos_documentos.view_vencimientos' %}true{% else %}false{% endif %},
+        canEditPersonal: {% if user|has_perm:'rrhh_personal.change_personal' %}true{% else %}false{% endif %},
+        canEditMaquinarias: {% if user|has_perm:'maquinarias.subir_documento' or user|has_perm:'maquinarias.change_equipo' %}true{% else %}false{% endif %}
+    };
+</script>
+<style>
+    /* Estilos consistentes con el sistema */
+    .table-responsive {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    .badge-estado {
+        font-size: 0.875rem;
+        padding: 0.35em 0.65em;
+        font-weight: 500;
+    }
+    .filtros-card {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .filtros-card .form-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+    .filtros-card .form-control,
+    .filtros-card .form-select {
+        font-size: 0.875rem;
+    }
+    .btn-editar {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    .tab-content {
+        padding-top: 1.5rem;
+    }
+    .nav-tabs {
+        border-bottom: 2px solid #dee2e6;
+    }
+    .nav-tabs .nav-link {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #495057;
+        padding: 0.75rem 1rem;
+    }
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+        border-bottom-width: 3px;
+    }
+    .estadisticas-card {
+        border-left: 4px solid;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .estadisticas-card .card-body {
+        padding: 1rem;
+    }
+    .estadisticas-card .card-subtitle {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    .estadisticas-card .card-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0;
+    }
+    .estadisticas-card.verde {
+        border-left-color: #28a745;
+    }
+    .estadisticas-card.amarillo {
+        border-left-color: #ffc107;
+    }
+    .estadisticas-card.naranja {
+        border-left-color: #fd7e14;
+    }
+    .estadisticas-card.rojo {
+        border-left-color: #dc3545;
+    }
+    .card-header h5 {
+        font-size: 1.125rem;
+        font-weight: 600;
+    }
+    .table {
+        font-size: 0.875rem;
+    }
+    .table thead th {
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: 0.75rem;
+    }
+    .table tbody td {
+        padding: 0.75rem;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-calendar-x me-2"></i>Vencimientos de Documentos
+            </h5>
+        </div>
+        <div class="card-body">
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-4" id="vencimientosTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
+                        <i class="bi bi-people me-2"></i>Personal
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="maquinarias-tab" data-bs-toggle="tab" data-bs-target="#maquinarias" type="button" role="tab" aria-controls="maquinarias" aria-selected="false">
+                        <i class="bi bi-tools me-2"></i>Maquinarias
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="vencimientosTabContent">
+                <!-- Tab Personal -->
+                <div class="tab-pane fade show active" id="personal" role="tabpanel" aria-labelledby="personal-tab">
+                    <!-- Filtros -->
+                    <div class="filtros-card">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="filtroBuscarPersonal" class="form-label">Buscar</label>
+                                <input type="text" class="form-control" id="filtroBuscarPersonal" placeholder="Nombre o RUT">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="filtroEstadoPersonal" class="form-label">Estado</label>
+                                <select class="form-select" id="filtroEstadoPersonal">
+                                    <option value="todos">Todos</option>
+                                    <option value="vencidos">Vencidos</option>
+                                    <option value="por_vencer">Por Vencer</option>
+                                    <option value="vigentes">Vigentes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="filtroDiasPersonal" class="form-label">Días máx.</label>
+                                <input type="number" class="form-control" id="filtroDiasPersonal" placeholder="Ej: 30" min="1">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="filtroSoloActivosPersonal" class="form-label d-block">&nbsp;</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="filtroSoloActivosPersonal" checked>
+                                    <label class="form-check-label" for="filtroSoloActivosPersonal">Solo activos</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-primary me-2" onclick="cargarDocumentosPersonal()">
+                                    <i class="bi bi-search me-2"></i>Buscar
+                                </button>
+                                {% if user|has_perm:'vencimientos_documentos.view_vencimientos' %}
+                                <button class="btn btn-success" onclick="exportarExcelPersonal()">
+                                    <i class="bi bi-file-earmark-excel me-2"></i>Exportar
+                                </button>
+                                {% else %}
+                                <button class="btn btn-success" disabled title="No tiene permiso para exportar">
+                                    <i class="bi bi-file-earmark-excel me-2"></i>Exportar
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estadísticas -->
+                    <div class="row mb-3" id="estadisticasPersonal">
+                        <!-- Se llenará con JavaScript -->
+                    </div>
+
+                    <!-- Tabla -->
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped" id="tablaPersonal">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Personal</th>
+                                    <th>RUT</th>
+                                    <th>Tipo Documento</th>
+                                    <th>Nombre Documento</th>
+                                    <th>Fecha Vencimiento</th>
+                                    <th>Días Restantes</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyPersonal">
+                                <tr>
+                                    <td colspan="8" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab Maquinarias -->
+                <div class="tab-pane fade" id="maquinarias" role="tabpanel" aria-labelledby="maquinarias-tab">
+                    <!-- Filtros -->
+                    <div class="filtros-card">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="filtroBuscarMaquinarias" class="form-label">Buscar</label>
+                                <input type="text" class="form-control" id="filtroBuscarMaquinarias" placeholder="Nombre, código o patente">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="filtroEstadoMaquinarias" class="form-label">Estado</label>
+                                <select class="form-select" id="filtroEstadoMaquinarias">
+                                    <option value="todos">Todos</option>
+                                    <option value="vencidos">Vencidos</option>
+                                    <option value="por_vencer">Por Vencer</option>
+                                    <option value="vigentes">Vigentes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="filtroDiasMaquinarias" class="form-label">Días máx.</label>
+                                <input type="number" class="form-control" id="filtroDiasMaquinarias" placeholder="Ej: 30" min="1">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="filtroSoloActivosMaquinarias" class="form-label d-block">&nbsp;</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="filtroSoloActivosMaquinarias" checked>
+                                    <label class="form-check-label" for="filtroSoloActivosMaquinarias">Solo activos</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-primary me-2" onclick="cargarDocumentosMaquinarias()">
+                                    <i class="bi bi-search me-2"></i>Buscar
+                                </button>
+                                {% if user|has_perm:'vencimientos_documentos.view_vencimientos' %}
+                                <button class="btn btn-success" onclick="exportarExcelMaquinarias()">
+                                    <i class="bi bi-file-earmark-excel me-2"></i>Exportar
+                                </button>
+                                {% else %}
+                                <button class="btn btn-success" disabled title="No tiene permiso para exportar">
+                                    <i class="bi bi-file-earmark-excel me-2"></i>Exportar
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estadísticas -->
+                    <div class="row mb-3" id="estadisticasMaquinarias">
+                        <!-- Se llenará con JavaScript -->
+                    </div>
+
+                    <!-- Tabla -->
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped" id="tablaMaquinarias">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Equipo</th>
+                                    <th>Código</th>
+                                    <th>Patente</th>
+                                    <th>Tipo Documento</th>
+                                    <th>Fecha Vencimiento</th>
+                                    <th>Días Restantes</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyMaquinarias">
+                                <tr>
+                                    <td colspan="8" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'vencimientos_documentos/js/vencimientos.js' %}"></script>
+{% endblock %}
+

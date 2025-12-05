@@ -72,14 +72,14 @@
     <nav class="navbar navbar-expand navbar-dark fixed-top" style="background-color: #212529;">
         <div class="container-fluid">
             <!-- Contenedor izquierdo alineado con sidebar -->
-            <div style="width: 250px; display: flex; align-items: center;">
+            <div class="d-flex align-items-center" style="width: 250px; min-width: 60px;">
                 <!-- Botón hamburguesa para mostrar/ocultar sidebar -->
                 <button class="btn btn-dark" type="button" id="sidebarToggle">
                     <i class="bi bi-list"></i>
                 </button>
                 
-                <!-- Logo o nombre del sitio -->
-                <a class="navbar-brand ms-2" href="{% url 'home:home' %}" style="flex: 1; display: flex; justify-content: center;">
+                <!-- Logo o nombre del sitio - Oculto en móviles -->
+                <a class="navbar-brand ms-2 d-none d-md-flex" href="{% url 'home:home' %}" style="flex: 1; justify-content: center;">
                     <div style="background-color: #ced3d8; padding: 4px 8px; border-radius: 6px;">
                         <img src="{% static 'img/logoGruas.png' %}" alt="Logo" style="height: 28px; width: auto;">
                     </div>
@@ -88,6 +88,28 @@
             
             <!-- Navbar superior derecha -->
             <ul class="navbar-nav d-flex align-items-center" style="margin-left: auto; margin-right: 2rem;">
+                <!-- Campanita de notificaciones -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem 0.5rem;">
+                        <i class="bi bi-bell text-white" style="font-size: 1.1rem;"></i>
+                        <span class="position-absolute badge rounded-pill bg-danger d-flex align-items-center justify-content-center" id="notificationsBadge" style="font-size: 0.65rem; padding: 0; min-width: 1.3rem; height: 1.3rem; display: none !important; visibility: hidden; top: 0.05rem; right: 0.1rem; z-index: 10; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); line-height: 1;">
+                            0
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown" data-bs-auto-close="outside" style="min-width: 300px; max-width: 400px;">
+                        <li class="dropdown-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="/notificaciones/" class="btn btn-sm btn-link text-decoration-none p-0" style="font-size: 0.75rem;">Panel de notificaciones</a>
+                                <button class="btn btn-sm btn-link text-decoration-none p-0" style="font-size: 0.75rem;" id="btnMarcarTodasLeidasDropdown">Marcar todas como leídas</button>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="px-3 py-2 text-center text-muted" style="font-size: 0.875rem;">
+                            No hay notificaciones
+                        </li>
+                    </ul>
+                </li>
+                
                 <!-- Dropdown de usuario -->
                 <li class="nav-item dropdown">
                     <a class="nav-link d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem 1rem;">
@@ -118,34 +140,21 @@
                         </li>
                     </ul>
                 </li>
-                
-                <!-- Campanita de notificaciones -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem 0.5rem;">
-                        <i class="bi bi-bell text-white" style="font-size: 1.1rem;"></i>
-                        <span class="position-absolute badge rounded-pill bg-danger d-flex align-items-center justify-content-center" id="notificationsBadge" style="font-size: 0.65rem; padding: 0; min-width: 1.3rem; height: 1.3rem; display: none; top: 0.05rem; right: 0.1rem; z-index: 10; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); line-height: 1;">
-                            0
-                        </span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown" style="min-width: 300px; max-width: 400px;">
-                        <li class="dropdown-header">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <a href="/notificaciones/" class="btn btn-sm btn-link text-decoration-none p-0" style="font-size: 0.75rem;">Panel de notificaciones</a>
-                                <button class="btn btn-sm btn-link text-decoration-none p-0" style="font-size: 0.75rem;" id="btnMarcarTodasLeidasDropdown">Marcar todas como leídas</button>
-                            </div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li class="px-3 py-2 text-center text-muted" style="font-size: 0.875rem;">
-                            No hay notificaciones
-                        </li>
-                    </ul>
-                </li>
             </ul>
         </div>
     </nav>
     
     <!-- Sidebar vertical -->
     <div class="sidebar" id="sidebar">
+        <!-- Logo en sidebar - Solo visible en móviles -->
+        <div class="d-md-none text-center py-3 mb-2" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <a href="{% url 'home:home' %}" style="text-decoration: none; display: inline-block;">
+                <div style="background-color: #ced3d8; padding: 6px 12px; border-radius: 8px; display: inline-block;">
+                    <img src="{% static 'img/logoGruas.png' %}" alt="Logo" style="height: 32px; width: auto;">
+                </div>
+            </a>
+        </div>
+        
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link active" href="{% url 'home:home' %}">
@@ -285,6 +294,21 @@
             <li class="nav-item disabled-section">
                 <span class="nav-link disabled-permission" title="No tiene permiso para acceder a esta sección">
                     <i class="bi bi-file-earmark-text me-2"></i> Reportes
+                </span>
+            </li>
+            {% endif %}
+            
+            <!-- Menú de Vencimientos -->
+            {% if user|has_perm:'vencimientos_documentos.view_vencimientos' %}
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'vencimientos_documentos:vencimientos' %}">
+                    <i class="bi bi-calendar-x me-2"></i>Vencimientos
+                </a>
+            </li>
+            {% else %}
+            <li class="nav-item disabled-section">
+                <span class="nav-link disabled-permission" title="No tiene permiso para acceder a esta sección">
+                    <i class="bi bi-calendar-x me-2"></i>Vencimientos
                 </span>
             </li>
             {% endif %}
