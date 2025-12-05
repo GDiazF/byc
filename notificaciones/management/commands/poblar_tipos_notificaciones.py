@@ -13,9 +13,18 @@ class Command(BaseCommand):
         tipos_notificaciones = [
             # RRHH
             {
+                'codigo': 'RRHH_PERSONAL_CREADO',
+                'nombre': 'Personal Creado',
+                'descripcion': 'Se genera cuando se crea un nuevo personal',
+                'categoria': 'RRHH',
+                'prioridad': 'MEDIA',
+                'template_titulo': 'Personal creado: {nombre}',
+                'template_mensaje': 'Se ha creado el personal {nombre} {apellido} (RUT: {rut}).'
+            },
+            {
                 'codigo': 'RRHH_PERSONAL_ACTIVADO',
                 'nombre': 'Personal Activado',
-                'descripcion': 'Se genera cuando se activa un personal',
+                'descripcion': 'Se genera cuando se activa un personal previamente desactivado',
                 'categoria': 'RRHH',
                 'prioridad': 'MEDIA',
                 'template_titulo': 'Personal activado: {nombre}',
@@ -67,6 +76,15 @@ class Command(BaseCommand):
                 'template_mensaje': 'El documento "{tipo_documento}" de {nombre} vence en 30 días ({fecha_vencimiento}).'
             },
             {
+                'codigo': 'RRHH_DOCUMENTO_VENCIMIENTO_20D',
+                'nombre': 'Documento Vence en 20 Días',
+                'descripcion': 'Se genera cuando un documento vence en 20 días',
+                'categoria': 'RRHH',
+                'prioridad': 'MEDIA',
+                'template_titulo': 'Vencimiento próximo: {tipo_documento}',
+                'template_mensaje': 'El documento "{tipo_documento}" de {nombre} vence en 20 días ({fecha_vencimiento}).'
+            },
+            {
                 'codigo': 'RRHH_DOCUMENTO_VENCIMIENTO_15D',
                 'nombre': 'Documento Vence en 15 Días',
                 'descripcion': 'Se genera cuando un documento vence en 15 días',
@@ -76,13 +94,22 @@ class Command(BaseCommand):
                 'template_mensaje': 'El documento "{tipo_documento}" de {nombre} vence en 15 días ({fecha_vencimiento}).'
             },
             {
-                'codigo': 'RRHH_DOCUMENTO_VENCIMIENTO_5D',
-                'nombre': 'Documento Vence en 5 Días',
-                'descripcion': 'Se genera cuando un documento vence en 5 días',
+                'codigo': 'RRHH_DOCUMENTO_VENCIMIENTO_10D',
+                'nombre': 'Documento Vence en 10 Días',
+                'descripcion': 'Se genera cuando un documento vence en 10 días',
                 'categoria': 'RRHH',
                 'prioridad': 'ALTA',
                 'template_titulo': 'Vencimiento próximo: {tipo_documento}',
-                'template_mensaje': 'El documento "{tipo_documento}" de {nombre} vence en 5 días ({fecha_vencimiento}).'
+                'template_mensaje': 'El documento "{tipo_documento}" de {nombre} vence en 10 días ({fecha_vencimiento}).'
+            },
+            {
+                'codigo': 'RRHH_DOCUMENTO_VENCIMIENTO_CRITICO',
+                'nombre': 'Documento Vence en Menos de 10 Días',
+                'descripcion': 'Se genera diariamente cuando un documento vence en 9 días o menos',
+                'categoria': 'RRHH',
+                'prioridad': 'ALTA',
+                'template_titulo': '⚠️ Vencimiento crítico: {tipo_documento}',
+                'template_mensaje': '⚠️ El documento "{tipo_documento}" de {nombre} vence en {dias_restantes} día(s) ({fecha_vencimiento}).'
             },
             
             # MAQUINARIAS
@@ -159,6 +186,15 @@ class Command(BaseCommand):
                 'template_mensaje': 'El documento "{tipo_documento}" del equipo {equipo} vence en 30 días ({fecha_vencimiento}).'
             },
             {
+                'codigo': 'MAQUINARIAS_DOCUMENTO_VENCIMIENTO_20D',
+                'nombre': 'Documento de Equipo Vence en 20 Días',
+                'descripcion': 'Se genera cuando un documento de equipo vence en 20 días',
+                'categoria': 'MAQUINARIAS',
+                'prioridad': 'MEDIA',
+                'template_titulo': 'Vencimiento próximo: {tipo_documento}',
+                'template_mensaje': 'El documento "{tipo_documento}" del equipo {equipo} vence en 20 días ({fecha_vencimiento}).'
+            },
+            {
                 'codigo': 'MAQUINARIAS_DOCUMENTO_VENCIMIENTO_15D',
                 'nombre': 'Documento de Equipo Vence en 15 Días',
                 'descripcion': 'Se genera cuando un documento de equipo vence en 15 días',
@@ -168,13 +204,22 @@ class Command(BaseCommand):
                 'template_mensaje': 'El documento "{tipo_documento}" del equipo {equipo} vence en 15 días ({fecha_vencimiento}).'
             },
             {
-                'codigo': 'MAQUINARIAS_DOCUMENTO_VENCIMIENTO_5D',
-                'nombre': 'Documento de Equipo Vence en 5 Días',
-                'descripcion': 'Se genera cuando un documento de equipo vence en 5 días',
+                'codigo': 'MAQUINARIAS_DOCUMENTO_VENCIMIENTO_10D',
+                'nombre': 'Documento de Equipo Vence en 10 Días',
+                'descripcion': 'Se genera cuando un documento de equipo vence en 10 días',
                 'categoria': 'MAQUINARIAS',
                 'prioridad': 'ALTA',
                 'template_titulo': 'Vencimiento próximo: {tipo_documento}',
-                'template_mensaje': 'El documento "{tipo_documento}" del equipo {equipo} vence en 5 días ({fecha_vencimiento}).'
+                'template_mensaje': 'El documento "{tipo_documento}" del equipo {equipo} vence en 10 días ({fecha_vencimiento}).'
+            },
+            {
+                'codigo': 'MAQUINARIAS_DOCUMENTO_VENCIMIENTO_CRITICO',
+                'nombre': 'Documento de Equipo Vence en Menos de 10 Días',
+                'descripcion': 'Se genera diariamente cuando un documento de equipo vence en 9 días o menos',
+                'categoria': 'MAQUINARIAS',
+                'prioridad': 'ALTA',
+                'template_titulo': '⚠️ Vencimiento crítico: {tipo_documento}',
+                'template_mensaje': '⚠️ El documento "{tipo_documento}" del equipo {equipo} vence en {dias_restantes} día(s) ({fecha_vencimiento}).'
             },
             
             # PLANIFICACIÓN

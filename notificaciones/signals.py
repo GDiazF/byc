@@ -13,71 +13,8 @@ from .utils import crear_notificacion_por_tipo, crear_notificacion_para_usuario
 # SIGNALS DE RRHH
 # ============================================================================
 
-@receiver(post_save, sender='rrhh_personal.Personal')
-def notificar_cambio_estado_personal(sender, instance, created, **kwargs):
-    """
-    Notifica cuando se activa o desactiva personal.
-    """
-    if created:
-        # Personal nuevo activado
-        crear_notificacion_por_tipo(
-            codigo_tipo='RRHH_PERSONAL_ACTIVADO',
-            titulo=f'Personal activado: {instance.nombre} {instance.apepat}',
-            mensaje=(
-                f"Se ha activado el personal {instance.nombre} {instance.apepat} "
-                f"(RUT: {instance.rut}-{instance.dvrut})."
-            ),
-            datos_adicionales={
-                'personal_id': instance.personal_id,
-                'rut': f"{instance.rut}-{instance.dvrut}"
-            }
-        )
-    else:
-        # Verificar si cambió el estado activo
-        if hasattr(instance, '_previous_activo'):
-            if instance._previous_activo and not instance.activo:
-                # Se desactivó
-                crear_notificacion_por_tipo(
-                    codigo_tipo='RRHH_PERSONAL_DESACTIVADO',
-                    titulo=f'Personal desactivado: {instance.nombre} {instance.apepat}',
-                    mensaje=(
-                        f"Se ha desactivado el personal {instance.nombre} {instance.apepat} "
-                        f"(RUT: {instance.rut}-{instance.dvrut})."
-                    ),
-                    datos_adicionales={
-                        'personal_id': instance.personal_id,
-                        'rut': f"{instance.rut}-{instance.dvrut}"
-                    }
-                )
-            elif not instance._previous_activo and instance.activo:
-                # Se activó
-                crear_notificacion_por_tipo(
-                    codigo_tipo='RRHH_PERSONAL_ACTIVADO',
-                    titulo=f'Personal activado: {instance.nombre} {instance.apepat}',
-                    mensaje=(
-                        f"Se ha activado el personal {instance.nombre} {instance.apepat} "
-                        f"(RUT: {instance.rut}-{instance.dvrut})."
-                    ),
-                    datos_adicionales={
-                        'personal_id': instance.personal_id,
-                        'rut': f"{instance.rut}-{instance.dvrut}"
-                    }
-                )
-
-
-@receiver(pre_save, sender='rrhh_personal.Personal')
-def guardar_estado_previo_personal(sender, instance, **kwargs):
-    """
-    Guarda el estado previo del personal para detectar cambios.
-    """
-    if instance.pk:
-        try:
-            old_instance = sender.objects.get(pk=instance.pk)
-            instance._previous_activo = old_instance.activo
-        except sender.DoesNotExist:
-            instance._previous_activo = None
-    else:
-        instance._previous_activo = None
+# NOTA: Las señales de Personal (activado/desactivado/creado) están manejadas en rrhh_personal/signals.py
+# para evitar duplicación de notificaciones. Esta señal fue deshabilitada.
 
 
 @receiver(post_save, sender='rrhh_personal.LicenciaMedicaPorPersonal')
@@ -404,14 +341,9 @@ def notificar_asignacion_personal_faena(sender, instance, created, **kwargs):
 # SIGNALS GENERALES
 # ============================================================================
 
-@receiver(user_logged_in)
-def notificar_cambio_password(sender, request, user, **kwargs):
-    """
-    Notifica cuando un usuario cambia su contraseña.
-    Nota: Este signal se dispara en cada login, pero podemos detectar cambios
-    de contraseña verificando si la última modificación del password es reciente.
-    """
-    # Este signal se ejecuta en cada login, así que no es ideal para detectar cambios de password
-    # Mejor usar un signal específico o middleware personalizado
-    pass
+# Nota: Las notificaciones de cambio de contraseña y login fallido
+# se manejan directamente en las vistas personalizadas:
+# - Cambio de contraseña: main_home/views.py -> cambiar_contraseña_view()
+# - Login fallido: main_login/views.py -> CustomLoginView
+# Esto es más eficiente que usar signals que se disparan en cada login
 

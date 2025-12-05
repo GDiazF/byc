@@ -35,6 +35,23 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
                 'activo': instance.activo,
             }
         )
+        
+        # Crear notificación de personal creado
+        try:
+            from notificaciones.utils import crear_notificacion_por_tipo
+            crear_notificacion_por_tipo(
+                codigo_tipo='RRHH_PERSONAL_CREADO',
+                titulo=f'Personal creado: {instance.nombre} {instance.apepat}',
+                mensaje=f'Se ha creado el personal {instance.nombre} {instance.apepat} (RUT: {instance.rut}-{instance.dvrut}).',
+                datos_adicionales={
+                    'personal_id': instance.personal_id,
+                    'rut': f'{instance.rut}-{instance.dvrut}',
+                    'nombre_completo': f'{instance.nombre} {instance.apepat} {instance.apemat or ""}'.strip(),
+                    'url_accion': f'/rrhh/personal/{instance.personal_id}/'
+                }
+            )
+        except ImportError:
+            pass  # La app de notificaciones no está disponible
     else:
         # Personal modificado - verificar cambios importantes
         if hasattr(instance, '_previous_state'):
@@ -52,6 +69,23 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
                         datos_previos={'activo': False},
                         datos_nuevos={'activo': True}
                     )
+                    
+                    # Crear notificación de personal activado
+                    try:
+                        from notificaciones.utils import crear_notificacion_por_tipo
+                        crear_notificacion_por_tipo(
+                            codigo_tipo='RRHH_PERSONAL_ACTIVADO',
+                            titulo=f'Personal activado: {instance.nombre} {instance.apepat}',
+                            mensaje=f'Se ha activado el personal {instance.nombre} {instance.apepat} (RUT: {instance.rut}-{instance.dvrut}).',
+                            datos_adicionales={
+                                'personal_id': instance.personal_id,
+                                'rut': f'{instance.rut}-{instance.dvrut}',
+                                'nombre_completo': f'{instance.nombre} {instance.apepat} {instance.apemat or ""}'.strip(),
+                                'url_accion': f'/rrhh/personal/{instance.personal_id}/'
+                            }
+                        )
+                    except ImportError:
+                        pass  # La app de notificaciones no está disponible
                 else:
                     HistorialPersonal.registrar(
                         personal=instance,
@@ -61,6 +95,23 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
                         datos_previos={'activo': True},
                         datos_nuevos={'activo': False}
                     )
+                    
+                    # Crear notificación de personal desactivado
+                    try:
+                        from notificaciones.utils import crear_notificacion_por_tipo
+                        crear_notificacion_por_tipo(
+                            codigo_tipo='RRHH_PERSONAL_DESACTIVADO',
+                            titulo=f'Personal desactivado: {instance.nombre} {instance.apepat}',
+                            mensaje=f'Se ha desactivado el personal {instance.nombre} {instance.apepat} (RUT: {instance.rut}-{instance.dvrut}).',
+                            datos_adicionales={
+                                'personal_id': instance.personal_id,
+                                'rut': f'{instance.rut}-{instance.dvrut}',
+                                'nombre_completo': f'{instance.nombre} {instance.apepat} {instance.apemat or ""}'.strip(),
+                                'url_accion': f'/rrhh/personal/{instance.personal_id}/'
+                            }
+                        )
+                    except ImportError:
+                        pass  # La app de notificaciones no está disponible
             else:
                 # Otros cambios
                 cambios_detallados = []

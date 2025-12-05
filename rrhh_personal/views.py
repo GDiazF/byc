@@ -238,10 +238,16 @@ class PersonalCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView
         
         if not labor_form.is_valid():
             # Si la info laboral no es válida, NO crear el personal
-            messages.error(
-                self.request, 
-                'Error en la información laboral. Todos los campos laborales son obligatorios.'
-            )
+            # Mostrar errores específicos del formulario laboral
+            errores_labor = []
+            for field, errors in labor_form.errors.items():
+                field_label = labor_form.fields[field].label if field in labor_form.fields else field
+                for error in errors:
+                    errores_labor.append(f"{field_label}: {error}")
+            
+            error_msg = 'Error en la información laboral: ' + '; '.join(errores_labor)
+            messages.error(self.request, error_msg)
+            
             context = self.get_context_data(form=form)
             context['labor_form'] = labor_form  # Pasar el formulario con errores
             return self.render_to_response(context)
@@ -271,7 +277,19 @@ class PersonalCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView
             return self.form_invalid(form)
 
     def form_invalid(self, form):
-        messages.error(self.request, 'Error en el formulario. Por favor revise los datos ingresados.')
+        # Mostrar errores específicos del formulario principal
+        errores = []
+        for field, errors in form.errors.items():
+            field_label = form.fields[field].label if field in form.fields else field
+            for error in errors:
+                errores.append(f"{field_label}: {error}")
+        
+        if errores:
+            error_msg = 'Errores en el formulario: ' + '; '.join(errores)
+        else:
+            error_msg = 'Error en el formulario. Por favor revise los datos ingresados.'
+        
+        messages.error(self.request, error_msg)
         context = self.get_context_data(form=form)
         context['labor_form'] = InfoLaboralPersonalForm(self.request.POST)
         return self.render_to_response(context)

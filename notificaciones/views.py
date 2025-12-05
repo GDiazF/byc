@@ -79,13 +79,22 @@ def api_contar_notificaciones_no_leidas(request):
 def api_marcar_leida(request, notificacion_id):
     """
     API para marcar una notificación como leída.
+    Retorna el nuevo contador de notificaciones no leídas.
     """
     try:
         notificacion = Notificacion.objects.get(id=notificacion_id, usuario=request.user)
-        notificacion.marcar_como_leida()
+        
+        # Solo marcar como leída si no está leída
+        if not notificacion.leida:
+            notificacion.marcar_como_leida()
+        
+        # Obtener el nuevo contador después de marcar como leída
+        nuevo_contador = contar_notificaciones_no_leidas(request.user)
+        
         return JsonResponse({
             'success': True,
-            'message': 'Notificación marcada como leída'
+            'message': 'Notificación marcada como leída',
+            'count': nuevo_contador  # Retornar el nuevo contador
         })
     except Notificacion.DoesNotExist:
         return JsonResponse({
@@ -100,15 +109,21 @@ def api_marcar_leida(request, notificacion_id):
 def api_marcar_todas_leidas(request):
     """
     API para marcar todas las notificaciones del usuario como leídas.
+    Retorna el nuevo contador (debería ser 0).
     """
     try:
-        Notificacion.objects.filter(usuario=request.user, leida=False).update(
+        Notificacion.objects.filter(usuario=request.user, leida=False, archivada=False).update(
             leida=True,
             fecha_leida=timezone.now()
         )
+        
+        # Obtener el nuevo contador después de marcar todas como leídas
+        nuevo_contador = contar_notificaciones_no_leidas(request.user)
+        
         return JsonResponse({
             'success': True,
-            'message': 'Todas las notificaciones marcadas como leídas'
+            'message': 'Todas las notificaciones marcadas como leídas',
+            'count': nuevo_contador  # Retornar el nuevo contador
         })
     except Exception as e:
         return JsonResponse({

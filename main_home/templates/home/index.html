@@ -378,6 +378,24 @@
         {% endblock %}
     </div>
     
+           <!-- Modal de Detalles de Notificación -->
+           <div class="modal fade" id="modalDetalleNotificacion" tabindex="-1" aria-labelledby="modalDetalleNotificacionLabel" aria-hidden="true">
+               <div class="modal-dialog modal-dialog-scrollable" style="margin-top: 5rem;">
+                   <div class="modal-content">
+                       <div class="modal-header bg-dark text-white">
+                           <h6 class="modal-title fw-bold" id="modalDetalleNotificacionLabel">Detalle de Notificación</h6>
+                           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                       </div>
+                       <div class="modal-body" id="modalDetalleNotificacionBody">
+                           <!-- Contenido dinámico -->
+                       </div>
+                       <div class="modal-footer">
+                           <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           
            <!-- Bootstrap JS Bundle with Popper -->
            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
            <!-- Manejo global de errores de permisos (debe cargarse antes de otros scripts AJAX) -->

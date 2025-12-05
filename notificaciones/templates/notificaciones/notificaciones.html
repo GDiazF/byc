@@ -13,6 +13,12 @@
     .notification-item.unread:hover {
         background-color: #d0e7ff;
     }
+    .notification-item:hover {
+        background-color: #f8f9fa;
+    }
+    .notification-item {
+        transition: background-color 0.2s ease;
+    }
 </style>
 {% endblock %}
 
@@ -25,9 +31,9 @@
                     <div class="card-header bg-dark text-white">
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center gap-3">
-                                <a href="{% url 'home:home' %}" class="btn btn-light btn-sm" title="Volver al inicio">
+                                <button onclick="window.history.back(); return false;" class="btn btn-light btn-sm" title="Volver">
                                     <i class="bi bi-arrow-left"></i>
-                                </a>
+                                </button>
                                 <h5 class="mb-0"><i class="bi bi-bell me-2"></i>Panel de Notificaciones</h5>
                             </div>
                             <button class="btn btn-sm btn-light" id="btnMarcarTodasLeidas">
@@ -99,7 +105,12 @@
                                         {% if notificaciones and request.GET.archivada != 'true' %}
                                             {% for notif in notificaciones %}
                                                 {% if not notif.archivada %}
-                                                    <tr class="notification-item {% if not notif.leida %}unread{% endif %}" data-notificacion-id="{{ notif.id }}">
+                                                    <tr class="notification-item {% if not notif.leida %}unread{% endif %}" 
+                                                        data-notificacion-id="{{ notif.id }}"
+                                                        data-titulo="{{ notif.titulo }}"
+                                                        data-mensaje="{{ notif.mensaje }}"
+                                                        data-fecha="{{ notif.fecha_creacion|date:'d/m/Y H:i' }}"
+                                                        style="cursor: pointer;">
                                                         <td class="text-center">
                                                             {% if not notif.leida %}
                                                                 <span class="badge bg-primary">Nueva</span>
@@ -117,7 +128,7 @@
                                                                 <i class="bi bi-clock me-1"></i>{{ notif.fecha_creacion|date:"d/m/Y H:i" }}
                                                             </small>
                                                         </td>
-                                                        <td class="text-center">
+                                                        <td class="text-center" onclick="event.stopPropagation();">
                                                             <div class="btn-group btn-group-sm">
                                                                 {% if not notif.leida %}
                                                                     <button class="btn btn-primary btn-sm marcar-leida" data-id="{{ notif.id }}" title="Marcar como leída">
@@ -193,7 +204,12 @@
                                         {% if notificaciones and request.GET.archivada == 'true' %}
                                             {% for notif in notificaciones %}
                                                 {% if notif.archivada %}
-                                                    <tr class="notification-item {% if not notif.leida %}unread{% endif %}" data-notificacion-id="{{ notif.id }}">
+                                                    <tr class="notification-item {% if not notif.leida %}unread{% endif %}" 
+                                                        data-notificacion-id="{{ notif.id }}"
+                                                        data-titulo="{{ notif.titulo }}"
+                                                        data-mensaje="{{ notif.mensaje }}"
+                                                        data-fecha="{{ notif.fecha_creacion|date:'d/m/Y H:i' }}"
+                                                        style="cursor: pointer;">
                                                         <td class="text-center">
                                                             {% if not notif.leida %}
                                                                 <span class="badge bg-primary">Nueva</span>
@@ -211,7 +227,7 @@
                                                                 <i class="bi bi-clock me-1"></i>{{ notif.fecha_creacion|date:"d/m/Y H:i" }}
                                                             </small>
                                                         </td>
-                                                        <td class="text-center">
+                                                        <td class="text-center" onclick="event.stopPropagation();">
                                                             <div class="btn-group btn-group-sm">
                                                                 {% if not notif.leida %}
                                                                     <button class="btn btn-primary btn-sm marcar-leida" data-id="{{ notif.id }}" title="Marcar como leída">
@@ -376,6 +392,86 @@
                 if (data.success) {
                     location.reload();
                 }
+            });
+        });
+        
+        // Función auxiliar para escapar HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Función para mostrar detalles de la notificación en un modal
+        function mostrarDetalleNotificacion(notif) {
+            const modal = document.getElementById('modalDetalleNotificacion');
+            const modalBody = document.getElementById('modalDetalleNotificacionBody');
+            
+            if (!modal || !modalBody) return;
+            
+            // Construir el contenido del modal (solo lo esencial)
+            let contenido = `
+                <div class="mb-3">
+                    <h6 class="fw-bold mb-3">${escapeHtml(notif.titulo)}</h6>
+                    <div class="bg-light p-3 rounded">
+                        <p class="mb-0" style="white-space: pre-wrap; line-height: 1.6;">${escapeHtml(notif.mensaje)}</p>
+                    </div>
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-clock me-1"></i>${notif.fecha_creacion}
+                </div>
+            `;
+            
+            // Actualizar contenido del modal
+            modalBody.innerHTML = contenido;
+            
+            // Mostrar el modal usando Bootstrap 5
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        }
+        
+        // Hacer las filas clickeables (excepto la columna de acciones)
+        document.querySelectorAll('.notification-item').forEach(row => {
+            row.addEventListener('click', function(e) {
+                // No hacer nada si se hizo clic en un botón
+                if (e.target.closest('button') || e.target.closest('.btn-group')) {
+                    return;
+                }
+                
+                const notifId = this.dataset.notificacionId;
+                const titulo = this.dataset.titulo;
+                const mensaje = this.dataset.mensaje;
+                const fecha = this.dataset.fecha;
+                
+                // Marcar como leída si no está leída
+                const isUnread = this.classList.contains('unread');
+                if (isUnread) {
+                    fetch(`/notificaciones/api/${notifId}/marcar-leida/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Actualizar visualmente la fila
+                            this.classList.remove('unread');
+                            const badge = this.querySelector('.badge');
+                            if (badge) {
+                                badge.className = 'badge bg-secondary';
+                                badge.textContent = 'Leída';
+                            }
+                        }
+                    });
+                }
+                
+                // Mostrar modal con detalles
+                mostrarDetalleNotificacion({
+                    titulo: titulo,
+                    mensaje: mensaje,
+                    fecha_creacion: fecha
+                });
             });
         });
     </script>

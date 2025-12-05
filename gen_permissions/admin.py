@@ -13,42 +13,57 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.utils.html import format_html
 from django.forms import ModelForm
+from django import forms
+from django.forms.models import ModelFormMetaclass
 from .models import Rol, PermisoVista, PermisoModelo, PermisoAccion, UserProfile
 from .utils import es_permiso_tabla_maestra, formatear_nombre_permiso
 
 
 # Inline para gestionar notificaciones por rol
-class ConfiguracionNotificacionRolInline(admin.TabularInline):
-    """
-    Inline para gestionar qué tipos de notificaciones puede recibir un rol.
-    """
-    model = None  # Se asignará dinámicamente
-    extra = 0
-    fields = ('tipo_notificacion', 'activo')
-    verbose_name = 'Tipo de Notificación'
-    verbose_name_plural = 'Tipos de Notificaciones'
+# Solo se define si la app notificaciones está disponible
+try:
+    from notificaciones.models import ConfiguracionNotificacionRol, TipoNotificacion
     
-    def __init__(self, *args, **kwargs):
-        # Importar aquí para evitar imports circulares
-        try:
-            from notificaciones.models import ConfiguracionNotificacionRol
-            self.model = ConfiguracionNotificacionRol
-        except ImportError:
-            # Si la app notificaciones no está disponible, no hacer nada
-            pass
-        super().__init__(*args, **kwargs)
-    
-    def has_add_permission(self, request, obj=None):
-        """Permitir agregar configuraciones"""
-        return True
-    
-    def has_change_permission(self, request, obj=None):
-        """Permitir cambiar configuraciones"""
-        return True
-    
-    def has_delete_permission(self, request, obj=None):
-        """Permitir eliminar configuraciones"""
-        return True
+    class ConfiguracionNotificacionRolInline(admin.TabularInline):
+        """
+        Inline para gestionar qué tipos de notificaciones puede recibir un rol.
+        """
+        model = ConfiguracionNotificacionRol
+        extra = 1
+        verbose_name = 'Tipo de Notificación'
+        verbose_name_plural = 'Tipos de Notificaciones'
+        fields = ('tipo_notificacion', 'activo')
+        
+        class Media:
+            js = ('gen_permissions/js/notificaciones_inline.js',)
+        
+        def formfield_for_foreignkey(self, db_field, request, **kwargs):
+            """
+            Personaliza el campo tipo_notificacion para mostrar todos los tipos activos.
+            El JavaScript se encargará de ocultar los duplicados dinámicamente.
+            """
+            if db_field.name == "tipo_notificacion":
+                # Mostrar todos los tipos de notificación activos
+                kwargs["queryset"] = TipoNotificacion.objects.filter(
+                    activo=True
+                ).order_by('categoria', 'nombre')
+            
+            return super().formfield_for_foreignkey(db_field, request, **kwargs)
+        
+        def has_add_permission(self, request, obj=None):
+            """Permitir agregar configuraciones"""
+            return True
+        
+        def has_change_permission(self, request, obj=None):
+            """Permitir cambiar configuraciones"""
+            return True
+        
+        def has_delete_permission(self, request, obj=None):
+            """Permitir eliminar configuraciones"""
+            return True
+except ImportError:
+    # Si la app notificaciones no está disponible, crear una clase dummy
+    ConfiguracionNotificacionRolInline = None
 
 
 # Formulario personalizado para Rol que formatea los nombres de permisos
@@ -57,6 +72,7 @@ class RolForm(ModelForm):
     Formulario personalizado para Rol que usa un widget personalizado
     para mostrar etiquetas "(Maestra)" en permisos de tablas maestras.
     """
+    
     class Meta:
         model = Rol
         fields = '__all__'
@@ -67,6 +83,7 @@ class RolForm(ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
         # Configurar widget personalizado para el campo permisos
         if 'permisos' in self.fields:
             # Importar el widget personalizado
@@ -107,20 +124,16 @@ class RolAdmin(admin.ModelAdmin):
     # y se aplica mediante el formulario personalizado RolForm
     filter_horizontal = ('permisos',)
     
-    # Inline para gestionar notificaciones
+    # Usar inline para gestionar notificaciones
     inlines = []
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Agregar inline de notificaciones si la app está disponible
-        try:
-            from notificaciones.models import ConfiguracionNotificacionRol
-            if ConfiguracionNotificacionRolInline.model:
-                self.inlines = [ConfiguracionNotificacionRolInline]
-        except ImportError:
-            pass
+        # Agregar el inline de notificaciones solo si está disponible
+        if ConfiguracionNotificacionRolInline is not None and ConfiguracionNotificacionRolInline not in self.inlines:
+            self.inlines.append(ConfiguracionNotificacionRolInline)
     
-    # Organización de campos en el formulario
+    # Fieldsets solo para campos del modelo
     fieldsets = (
         ('Información Básica', {
             'fields': ('nombre', 'descripcion', 'activo'),
@@ -162,6 +175,7 @@ class RolAdmin(admin.ModelAdmin):
         return obj.userprofile_set.count()
     usuarios_count.short_description = 'Usuarios con este Rol'
     usuarios_count.admin_order_field = 'userprofile'
+    
 
 
 @admin.register(UserProfile)

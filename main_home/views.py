@@ -41,6 +41,31 @@ def cambiar_contraseña_view(request):
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)  # Importante: actualiza la sesión para evitar logout
+            
+            # Crear notificación de cambio de contraseña
+            try:
+                from notificaciones.utils import crear_notificacion_para_usuario
+                from django.utils import timezone
+                
+                fecha_cambio = timezone.now().strftime('%d/%m/%Y %H:%M')
+                crear_notificacion_para_usuario(
+                    usuario=user,
+                    codigo_tipo='GENERAL_CAMBIO_PASSWORD',
+                    titulo='Contraseña cambiada',
+                    mensaje=f'Tu contraseña ha sido cambiada el {fecha_cambio}. Si no fuiste tú, contacta al administrador.',
+                    datos_adicionales={
+                        'fecha_cambio': timezone.now().isoformat(),
+                        'ip_address': request.META.get('REMOTE_ADDR', ''),
+                        'user_agent': request.META.get('HTTP_USER_AGENT', '')[:200]
+                    },
+                    prioridad='MEDIA'
+                )
+            except Exception as e:
+                # Si falla la notificación, no fallar el cambio de contraseña
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error al crear notificación de cambio de contraseña: {str(e)}")
+            
             messages.success(request, 'Tu contraseña ha sido actualizada exitosamente.')
             return redirect('home:perfil')
         else:

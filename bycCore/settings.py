@@ -119,7 +119,7 @@ DATABASES = {
 # }
 
 # Cache configuration
-# Configuración de caché para optimizar rendimiento del calendario
+# Configuración de caché para optimizar rendimiento del calendario y notificaciones
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -130,7 +130,7 @@ CACHES = {
     }
 }
 
-# Para producción, se recomienda usar Memcached o Redis:
+# Para producción con múltiples instancias, se recomienda usar Memcached o Redis:
 # CACHES = {
 #     'default': {
 #         'BACKEND': 'django.core.cache.backends.redis.RedisCache',

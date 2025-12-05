@@ -6,6 +6,7 @@ para diferenciar permisos de tablas maestras de permisos de tablas principales.
 """
 
 from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.forms import Widget
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from .utils import es_permiso_tabla_maestra
@@ -95,4 +96,95 @@ class PermisosFilteredSelectMultiple(FilteredSelectMultiple):
             'all': ('gen_permissions/css/admin_permisos.css',)
         }
         js = ('gen_permissions/js/admin_permisos.js',)
+
+
+class NotificacionesCheckboxWidget(Widget):
+    """
+    Widget personalizado que muestra checkboxes de notificaciones agrupadas por categoría.
+    
+    Muestra todas las notificaciones existentes como checkboxes organizadas por categoría
+    (RRHH, MAQUINARIAS, PLANIFICACION, GENERAL) para facilitar la selección.
+    """
+    
+    template_name = 'gen_permissions/widgets/notificaciones_checkboxes.html'
+    
+    def __init__(self, attrs=None):
+        super().__init__(attrs)
+        self.choices = None
+    
+    def get_context(self, name, value, attrs):
+        """
+        Obtiene el contexto para renderizar el widget.
+        """
+        context = super().get_context(name, value, attrs)
+        
+        # Obtener todas las notificaciones activas agrupadas por categoría
+        try:
+            from notificaciones.models import TipoNotificacion
+            
+            # Obtener todas las notificaciones activas ordenadas por categoría
+            notificaciones = TipoNotificacion.objects.filter(activo=True).order_by('categoria', 'nombre')
+            
+            # Agrupar por categoría
+            notificaciones_por_categoria = {}
+            for notif in notificaciones:
+                categoria = notif.get_categoria_display()
+                if categoria not in notificaciones_por_categoria:
+                    notificaciones_por_categoria[categoria] = []
+                notificaciones_por_categoria[categoria].append({
+                    'id': notif.id,
+                    'codigo': notif.codigo,
+                    'nombre': notif.nombre,
+                    'descripcion': notif.descripcion,
+                    'prioridad': notif.get_prioridad_display(),
+                })
+            
+            context['notificaciones_por_categoria'] = notificaciones_por_categoria
+        except ImportError:
+            context['notificaciones_por_categoria'] = {}
+        
+        # Convertir value a lista si es necesario
+        if value is None:
+            value = []
+        elif not isinstance(value, (list, tuple)):
+            value = [value] if value else []
+        
+        # Asegurar que todos los valores sean enteros
+        selected_values = []
+        for v in value:
+            if v:
+                try:
+                    selected_values.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+        
+        context['selected_values'] = selected_values
+        context['widget']['name'] = name
+        
+        return context
+    
+    def value_from_datadict(self, data, files, name):
+        """
+        Obtiene los valores seleccionados del formulario.
+        Los checkboxes con el mismo name envían múltiples valores.
+        """
+        # Obtener todos los valores con el mismo nombre (múltiples checkboxes)
+        values = data.getlist(name)
+        
+        # Convertir a enteros y filtrar valores vacíos
+        result = []
+        for v in values:
+            if v:
+                try:
+                    result.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+        
+        return result if result else []
+    
+    class Media:
+        css = {
+            'all': ('gen_permissions/css/notificaciones_checkboxes.css',)
+        }
+        js = ('gen_permissions/js/notificaciones_checkboxes.js',)
 

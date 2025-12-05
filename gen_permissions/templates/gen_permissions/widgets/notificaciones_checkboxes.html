@@ -1,0 +1,39 @@
+{% load static %}
+
+<div class="notificaciones-checkboxes-widget">
+    {% if notificaciones_por_categoria %}
+        {% for categoria, notificaciones in notificaciones_por_categoria.items %}
+            <div class="notificaciones-categoria">
+                <h4 class="categoria-header">{{ categoria }}</h4>
+                <div class="notificaciones-list">
+                    {% for notif in notificaciones %}
+                        <div class="notificacion-checkbox-item">
+                            <label>
+                                <input type="checkbox" 
+                                       name="{{ widget.name }}" 
+                                       value="{{ notif.id }}"
+                                       {% if notif.id in selected_values %}checked{% endif %}
+                                       class="notificacion-checkbox">
+                                <span class="notificacion-nombre">{{ notif.nombre }}</span>
+                                {% if notif.descripcion %}
+                                    <span class="notificacion-descripcion">- {{ notif.descripcion|truncatewords:10 }}</span>
+                                {% endif %}
+                                <span class="notificacion-prioridad badge badge-{{ notif.prioridad|lower }}">
+                                    {{ notif.prioridad }}
+                                </span>
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd;">
+            <small class="text-muted">
+                <strong>Total seleccionadas:</strong> <span id="notificaciones-seleccionadas-count">0</span>
+            </small>
+        </div>
+    {% else %}
+        <p class="text-muted">No hay tipos de notificaciones disponibles. Crea tipos de notificaciones primero.</p>
+    {% endif %}
+</div>
+
