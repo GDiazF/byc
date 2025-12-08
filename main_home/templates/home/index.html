@@ -302,47 +302,13 @@
             {% if user|has_perm:'vencimientos_documentos.view_vencimientos' %}
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'vencimientos_documentos:vencimientos' %}">
-                    <i class="bi bi-calendar-x me-2"></i>Vencimientos
+                    <i class="bi bi-calendar-x me-2"></i> Vencimientos
                 </a>
             </li>
             {% else %}
             <li class="nav-item disabled-section">
                 <span class="nav-link disabled-permission" title="No tiene permiso para acceder a esta sección">
-                    <i class="bi bi-calendar-x me-2"></i>Vencimientos
-                </span>
-            </li>
-            {% endif %}
-            
-            <!-- Menú de Bases -->
-            {% if user|has_perm:'gen_settings.navigate_bases' %}
-            <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="collapse" href="#submenuBases" role="button" aria-expanded="false" aria-controls="submenuBases">
-                    <i class="bi bi-sliders2 me-2"></i> Bases
-                </a>
-                <div class="collapse" id="submenuBases">
-                    <ul class="nav flex-column ps-4">
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'empresa_list' %}"> <i class="bi bi-buildings me-2"></i> Empresas</a>
-                            <a class="nav-link" data-bs-toggle="collapse" href="#submenuTablas" role="button" aria-expanded="false" aria-controls="submenuTablas">
-                                <i class="bi bi-table me-2"></i> Tablas
-                            </a>
-                        </li>
-                        <div class="collapse" id="submenuTablas">
-                            <ul class="nav flex-column ps-4">
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{% url 'region_list' %}">Regiones</a>
-                                    <a class="nav-link" href="{% url 'comuna_list' %}">Comunas</a>
-                                    <a class="nav-link" href="{% url 'unidad_medida_list' %}">Unidades de medida</a>
-                                </li>
-                            </ul>
-                        </div>
-                    </ul>
-                </div>
-            </li>
-            {% else %}
-            <li class="nav-item disabled-section">
-                <span class="nav-link disabled-permission" title="No tiene permiso para acceder a esta sección">
-                    <i class="bi bi-sliders2 me-2"></i> Bases
+                    <i class="bi bi-calendar-x me-2"></i> Vencimientos
                 </span>
             </li>
             {% endif %}

@@ -38,6 +38,7 @@ from .views import (
     api_historial_personal,
     api_historial_documentos_personal,
     api_obtener_info_personal,
+    descargar_documentacion_zip,
 )
 
 urlpatterns = [
@@ -92,4 +93,6 @@ urlpatterns = [
     path('api/personal/<int:personal_id>/historial/documentos/', api_historial_documentos_personal, name='api_historial_documentos_personal'),
     # API para obtener información completa del personal
     path('api/personal/<int:personal_id>/info/', api_obtener_info_personal, name='api_obtener_info_personal'),
+    # Descarga de documentación en ZIP
+    path('personal/descargar-documentacion-zip/', descargar_documentacion_zip, name='descargar_documentacion_zip'),
 ]

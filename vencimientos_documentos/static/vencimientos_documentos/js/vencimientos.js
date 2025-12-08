@@ -6,6 +6,7 @@ const API_PERSONAL = '/vencimientos/api/personal/';
 const API_MAQUINARIAS = '/vencimientos/api/maquinarias/';
 const API_EXPORTAR_PERSONAL = '/vencimientos/api/exportar/personal/';
 const API_EXPORTAR_MAQUINARIAS = '/vencimientos/api/exportar/maquinarias/';
+const API_EJECUTAR_PROCESAMIENTO = '/vencimientos/api/ejecutar-procesamiento/';
 
 let documentosPersonal = [];
 let documentosMaquinarias = [];
@@ -36,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Event listeners para Enter en filtros
-    const filtrosPersonal = ['filtroBuscarPersonal', 'filtroEstadoPersonal', 'filtroDiasPersonal'];
+    const filtrosPersonal = ['filtroBuscarPersonal'];
     filtrosPersonal.forEach(id => {
         const elemento = document.getElementById(id);
         if (elemento) {
@@ -48,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    const filtrosMaquinarias = ['filtroBuscarMaquinarias', 'filtroEstadoMaquinarias', 'filtroDiasMaquinarias'];
+    const filtrosMaquinarias = ['filtroBuscarMaquinarias'];
     filtrosMaquinarias.forEach(id => {
         const elemento = document.getElementById(id);
         if (elemento) {
@@ -71,7 +72,7 @@ function cargarDocumentosPersonal() {
     // Mostrar loading
     tbody.innerHTML = `
         <tr>
-            <td colspan="8" class="text-center">
+            <td colspan="7" class="text-center">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Cargando...</span>
                 </div>
@@ -85,9 +86,7 @@ function cargarDocumentosPersonal() {
     // Construir URL con parámetros
     const params = new URLSearchParams();
     if (filtros.buscar) params.append('buscar', filtros.buscar);
-    if (filtros.estado !== 'todos') params.append('estado', filtros.estado);
-    if (filtros.dias) params.append('dias', filtros.dias);
-    params.append('solo_activos', filtros.solo_activos);
+    params.append('solo_activos', 'true');  // Siempre solo activos
     
     const url = API_PERSONAL + (params.toString() ? '?' + params.toString() : '');
     
@@ -107,13 +106,12 @@ function cargarDocumentosPersonal() {
         if (data.success) {
             documentosPersonal = data.documentos;
             renderizarTablaPersonal(documentosPersonal);
-            actualizarEstadisticasPersonal(documentosPersonal);
         } else {
             const errorMsg = data.error || 'Error al cargar documentos de personal';
             console.error('Error en respuesta:', errorMsg);
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center text-danger">
+                    <td colspan="7" class="text-center text-danger">
                         <i class="bi bi-exclamation-triangle me-2"></i>${escapeHtml(errorMsg)}
                     </td>
                 </tr>
@@ -142,7 +140,7 @@ function cargarDocumentosMaquinarias() {
     // Mostrar loading
     tbody.innerHTML = `
         <tr>
-            <td colspan="8" class="text-center">
+            <td colspan="7" class="text-center">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Cargando...</span>
                 </div>
@@ -156,9 +154,7 @@ function cargarDocumentosMaquinarias() {
     // Construir URL con parámetros
     const params = new URLSearchParams();
     if (filtros.buscar) params.append('buscar', filtros.buscar);
-    if (filtros.estado !== 'todos') params.append('estado', filtros.estado);
-    if (filtros.dias) params.append('dias', filtros.dias);
-    params.append('solo_activos', filtros.solo_activos);
+    params.append('solo_activos', 'true');  // Siempre solo activos
     
     const url = API_MAQUINARIAS + (params.toString() ? '?' + params.toString() : '');
     
@@ -178,13 +174,12 @@ function cargarDocumentosMaquinarias() {
         if (data.success) {
             documentosMaquinarias = data.documentos;
             renderizarTablaMaquinarias(documentosMaquinarias);
-            actualizarEstadisticasMaquinarias(documentosMaquinarias);
         } else {
             const errorMsg = data.error || 'Error al cargar documentos de maquinarias';
             console.error('Error en respuesta:', errorMsg);
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center text-danger">
+                    <td colspan="7" class="text-center text-danger">
                         <i class="bi bi-exclamation-triangle me-2"></i>${escapeHtml(errorMsg)}
                     </td>
                 </tr>
@@ -209,9 +204,7 @@ function cargarDocumentosMaquinarias() {
 function obtenerFiltrosPersonal() {
     return {
         buscar: document.getElementById('filtroBuscarPersonal')?.value.trim() || '',
-        estado: document.getElementById('filtroEstadoPersonal')?.value || 'todos',
-        dias: document.getElementById('filtroDiasPersonal')?.value || '',
-        solo_activos: document.getElementById('filtroSoloActivosPersonal')?.checked !== false
+        solo_activos: true  // Siempre solo activos
     };
 }
 
@@ -221,9 +214,7 @@ function obtenerFiltrosPersonal() {
 function obtenerFiltrosMaquinarias() {
     return {
         buscar: document.getElementById('filtroBuscarMaquinarias')?.value.trim() || '',
-        estado: document.getElementById('filtroEstadoMaquinarias')?.value || 'todos',
-        dias: document.getElementById('filtroDiasMaquinarias')?.value || '',
-        solo_activos: document.getElementById('filtroSoloActivosMaquinarias')?.checked !== false
+        solo_activos: true  // Siempre solo activos
     };
 }
 
@@ -237,7 +228,7 @@ function renderizarTablaPersonal(documentos) {
     if (documentos.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center text-muted">
+                <td colspan="7" class="text-center text-muted">
                     <i class="bi bi-inbox me-2"></i>No se encontraron documentos
                 </td>
             </tr>
@@ -245,16 +236,8 @@ function renderizarTablaPersonal(documentos) {
         return;
     }
     
-        const canEdit = window.userPermissions && window.userPermissions.canEditPersonal;
         tbody.innerHTML = documentos.map(doc => {
         const colorFila = obtenerColorFila(doc.dias_restantes);
-        const botonEditar = canEdit 
-            ? `<a href="${doc.url_editar}" class="btn btn-sm btn-outline-primary btn-editar" title="Editar documentación">
-                    <i class="bi bi-pencil-square"></i>
-                </a>`
-            : `<button class="btn btn-sm btn-outline-secondary btn-editar" disabled title="No tiene permiso para editar documentación">
-                    <i class="bi bi-pencil-square"></i>
-                </button>`;
         return `
             <tr class="${colorFila}">
                 <td>${escapeHtml(doc.personal_nombre)}</td>
@@ -264,12 +247,9 @@ function renderizarTablaPersonal(documentos) {
                 <td>${doc.fecha_vencimiento || 'N/A'}</td>
                 <td>${doc.dias_restantes !== null ? doc.dias_restantes : 'N/A'}</td>
                 <td>
-                    <span class="badge ${doc.badge_class} badge-estado">
+                    <span class="badge ${doc.badge_class} ${doc.estado === 'amarillo' ? 'amarillo' : doc.estado === 'naranja' ? 'naranja' : ''} badge-estado">
                         ${doc.icono} ${doc.texto_estado}
                     </span>
-                </td>
-                <td>
-                    ${botonEditar}
                 </td>
             </tr>
         `;
@@ -286,7 +266,7 @@ function renderizarTablaMaquinarias(documentos) {
     if (documentos.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center text-muted">
+                <td colspan="7" class="text-center text-muted">
                     <i class="bi bi-inbox me-2"></i>No se encontraron documentos
                 </td>
             </tr>
@@ -294,16 +274,8 @@ function renderizarTablaMaquinarias(documentos) {
         return;
     }
     
-        const canEdit = window.userPermissions && window.userPermissions.canEditMaquinarias;
         tbody.innerHTML = documentos.map(doc => {
         const colorFila = obtenerColorFila(doc.dias_restantes);
-        const botonEditar = canEdit 
-            ? `<a href="${doc.url_editar}" class="btn btn-sm btn-outline-primary btn-editar" title="Editar documentación">
-                    <i class="bi bi-pencil-square"></i>
-                </a>`
-            : `<button class="btn btn-sm btn-outline-secondary btn-editar" disabled title="No tiene permiso para editar documentación">
-                    <i class="bi bi-pencil-square"></i>
-                </button>`;
         return `
             <tr class="${colorFila}">
                 <td>${escapeHtml(doc.equipo_nombre)}</td>
@@ -313,12 +285,9 @@ function renderizarTablaMaquinarias(documentos) {
                 <td>${doc.fecha_vencimiento || 'N/A'}</td>
                 <td>${doc.dias_restantes !== null ? doc.dias_restantes : 'N/A'}</td>
                 <td>
-                    <span class="badge ${doc.badge_class} badge-estado">
+                    <span class="badge ${doc.badge_class} ${doc.estado === 'amarillo' ? 'amarillo' : doc.estado === 'naranja' ? 'naranja' : ''} badge-estado">
                         ${doc.icono} ${doc.texto_estado}
                     </span>
-                </td>
-                <td>
-                    ${botonEditar}
                 </td>
             </tr>
         `;
@@ -331,127 +300,10 @@ function renderizarTablaMaquinarias(documentos) {
 function obtenerColorFila(diasRestantes) {
     if (diasRestantes === null) return '';
     if (diasRestantes < 0) return 'table-danger';  // Vencido
-    if (diasRestantes < 15) return 'table-danger';  // Crítico
-    if (diasRestantes < 30) return 'table-warning';  // Naranja
-    if (diasRestantes < 45) return 'table-info';  // Amarillo
-    return '';  // Verde (sin color)
-}
-
-/**
- * Actualiza las estadísticas de documentos de personal.
- */
-function actualizarEstadisticasPersonal(documentos) {
-    const container = document.getElementById('estadisticasPersonal');
-    if (!container) return;
-    
-    const estadisticas = calcularEstadisticas(documentos);
-    
-    container.innerHTML = `
-        <div class="col-md-3">
-            <div class="card estadisticas-card verde">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Vigentes (45+ días)</h6>
-                    <h3 class="card-title text-success">${estadisticas.verde}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card estadisticas-card amarillo">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Amarillo (30-44 días)</h6>
-                    <h3 class="card-title text-info">${estadisticas.amarillo}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card estadisticas-card naranja">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Naranja (15-29 días)</h6>
-                    <h3 class="card-title text-warning">${estadisticas.naranja}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card estadisticas-card rojo">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Crítico/Vencido (&lt;15 días)</h6>
-                    <h3 class="card-title text-danger">${estadisticas.rojo}</h3>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Actualiza las estadísticas de documentos de maquinarias.
- */
-function actualizarEstadisticasMaquinarias(documentos) {
-    const container = document.getElementById('estadisticasMaquinarias');
-    if (!container) return;
-    
-    const estadisticas = calcularEstadisticas(documentos);
-    
-    container.innerHTML = `
-        <div class="col-md-3">
-            <div class="card estadisticas-card verde">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Vigentes (45+ días)</h6>
-                    <h3 class="card-title text-success">${estadisticas.verde}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card estadisticas-card amarillo">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Amarillo (30-44 días)</h6>
-                    <h3 class="card-title text-info">${estadisticas.amarillo}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card estadisticas-card naranja">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Naranja (15-29 días)</h6>
-                    <h3 class="card-title text-warning">${estadisticas.naranja}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card estadisticas-card rojo">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Crítico/Vencido (&lt;15 días)</h6>
-                    <h3 class="card-title text-danger">${estadisticas.rojo}</h3>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Calcula las estadísticas de documentos.
- */
-function calcularEstadisticas(documentos) {
-    let verde = 0;
-    let amarillo = 0;
-    let naranja = 0;
-    let rojo = 0;
-    
-    documentos.forEach(doc => {
-        const dias = doc.dias_restantes;
-        if (dias === null) return;
-        
-        if (dias < 0 || dias < 15) {
-            rojo++;
-        } else if (dias < 30) {
-            naranja++;
-        } else if (dias < 45) {
-            amarillo++;
-        } else {
-            verde++;
-        }
-    });
-    
-    return { verde, amarillo, naranja, rojo };
+    if (diasRestantes <= 14) return 'table-danger';  // Crítico (rojo) - 14 hacia abajo
+    if (diasRestantes <= 29) return 'table-warning naranja';  // Naranja (29-15 días)
+    if (diasRestantes <= 44) return 'table-warning amarillo';  // Amarillo (44-30 días)
+    return '';  // Más de 45 días (no se muestran)
 }
 
 /**
@@ -461,9 +313,7 @@ function exportarExcelPersonal() {
     const filtros = obtenerFiltrosPersonal();
     const params = new URLSearchParams();
     if (filtros.buscar) params.append('buscar', filtros.buscar);
-    if (filtros.estado !== 'todos') params.append('estado', filtros.estado);
-    if (filtros.dias) params.append('dias', filtros.dias);
-    params.append('solo_activos', filtros.solo_activos);
+    params.append('solo_activos', 'true');  // Siempre solo activos
     
     const url = API_EXPORTAR_PERSONAL + (params.toString() ? '?' + params.toString() : '');
     window.location.href = url;
@@ -476,9 +326,7 @@ function exportarExcelMaquinarias() {
     const filtros = obtenerFiltrosMaquinarias();
     const params = new URLSearchParams();
     if (filtros.buscar) params.append('buscar', filtros.buscar);
-    if (filtros.estado !== 'todos') params.append('estado', filtros.estado);
-    if (filtros.dias) params.append('dias', filtros.dias);
-    params.append('solo_activos', filtros.solo_activos);
+    params.append('solo_activos', 'true');  // Siempre solo activos
     
     const url = API_EXPORTAR_MAQUINARIAS + (params.toString() ? '?' + params.toString() : '');
     window.location.href = url;
@@ -518,5 +366,45 @@ function mostrarError(mensaje) {
     // Puedes implementar un sistema de notificaciones aquí
     console.error(mensaje);
     alert(mensaje);
+}
+
+/**
+ * Ejecuta el procesamiento de vencimientos manualmente (solo para pruebas).
+ */
+function ejecutarProcesamientoVencimientos() {
+    if (!confirm('¿Está seguro de ejecutar el procesamiento de vencimientos? Esto creará notificaciones para todos los documentos próximos a vencer.')) {
+        return;
+    }
+    
+    // Deshabilitar el botón mientras se procesa
+    const boton = event.target.closest('button');
+    const textoOriginal = boton.innerHTML;
+    boton.disabled = true;
+    boton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Procesando...';
+    
+    fetch(API_EJECUTAR_PROCESAMIENTO, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        boton.disabled = false;
+        boton.innerHTML = textoOriginal;
+        
+        if (data.success) {
+            alert('✓ ' + data.message);
+        } else {
+            alert('✗ Error: ' + (data.error || 'Error desconocido'));
+        }
+    })
+    .catch(error => {
+        boton.disabled = false;
+        boton.innerHTML = textoOriginal;
+        console.error('Error:', error);
+        alert('✗ Error al ejecutar el procesamiento: ' + error.message);
+    });
 }
 

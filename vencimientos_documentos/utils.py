@@ -44,8 +44,8 @@ def calcular_estado_vencimiento(fecha_vencimiento: Optional[date]) -> Dict[str, 
             'icono': '✗',
             'texto': f'Vencido hace {abs(dias_restantes)} día(s)'
         }
-    elif dias_restantes < 15:
-        # Crítico (rojo)
+    elif dias_restantes <= 14:
+        # Crítico (rojo) - 14 días hacia abajo
         return {
             'dias_restantes': dias_restantes,
             'estado': 'critico',
@@ -54,7 +54,7 @@ def calcular_estado_vencimiento(fecha_vencimiento: Optional[date]) -> Dict[str, 
             'icono': '⚠️',
             'texto': f'{dias_restantes} día(s)'
         }
-    elif dias_restantes < 30:
+    elif dias_restantes <= 29:
         # Naranja (29-15 días)
         return {
             'dias_restantes': dias_restantes,
@@ -64,14 +64,14 @@ def calcular_estado_vencimiento(fecha_vencimiento: Optional[date]) -> Dict[str, 
             'icono': '⚠️',
             'texto': f'{dias_restantes} día(s)'
         }
-    elif dias_restantes < 45:
+    elif dias_restantes <= 44:
         # Amarillo (44-30 días)
         return {
             'dias_restantes': dias_restantes,
             'estado': 'amarillo',
-            'color': 'info',
-            'badge_class': 'bg-info',
-            'icono': '✓',
+            'color': 'warning',
+            'badge_class': 'bg-warning',
+            'icono': '⚠️',
             'texto': f'{dias_restantes} día(s)'
         }
     else:
@@ -105,8 +105,8 @@ def obtener_color_fila(dias_restantes: Optional[int]) -> str:
         return 'table-danger'  # Rojo para críticos
     elif dias_restantes < 30:
         return 'table-warning'  # Naranja/Amarillo
-    elif dias_restantes < 45:
-        return 'table-info'  # Amarillo claro
+    elif dias_restantes <= 44:
+        return 'table-warning'  # Amarillo
     else:
-        return ''  # Sin color (verde implícito)
+        return ''  # Sin color (más de 45 días, no se muestran)
 

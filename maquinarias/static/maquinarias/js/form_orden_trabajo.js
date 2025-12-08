@@ -23,26 +23,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const empresaSelect = document.getElementById('empresa_id');
     if (empresaSelect) {
         empresaSelect.addEventListener('change', function() {
+            limpiarPautaMantenimiento();
+            // Reiniciar todos los filtros en cascada: tipo, marca, modelo y equipo
+            reiniciarFiltrosDesdeTipo();
             filtrarEquipos();
         });
     }
     
     const tipoEquipoSelect = document.getElementById('tipo_equipo_id');
     if (tipoEquipoSelect) {
-        tipoEquipoSelect.addEventListener('change', filtrarMarcasPorTipo);
+        tipoEquipoSelect.addEventListener('change', function() {
+            limpiarPautaMantenimiento();
+            filtrarMarcasPorTipo();
+        });
     }
     
     const marcaEquipoSelect = document.getElementById('marca_equipo_id');
     if (marcaEquipoSelect) {
-        marcaEquipoSelect.addEventListener('change', filtrarModelosPorTipoYMarca);
+        marcaEquipoSelect.addEventListener('change', function() {
+            limpiarPautaMantenimiento();
+            filtrarModelosPorTipoYMarca();
+        });
     }
     
     const modeloEquipoSelect = document.getElementById('modelo_equipo_id');
     if (modeloEquipoSelect) {
         modeloEquipoSelect.addEventListener('change', function() {
-            filtrarEquipos();
+            limpiarPautaMantenimiento();
+            // Reiniciar equipo cuando cambia el modelo
+            const equipoSelect = document.getElementById('equipo_id');
+            if (equipoSelect) {
+                equipoSelect.value = '';
+                equipoSelect.disabled = true;
+                equipoSelect.innerHTML = '<option value="">Cargando equipos...</option>';
+            }
             // Actualizar modeloEquipoSeleccionado cuando cambia el select de modelo
             modeloEquipoSeleccionado = modeloEquipoSelect.value || null;
+            // Filtrar equipos con el nuevo modelo
+            filtrarEquipos();
             // Si corresponde_pauta está marcado como "Sí", cargar pautas
             const correspondePautaSi = document.getElementById('corresponde_pauta_si');
             if (correspondePautaSi && correspondePautaSi.checked && modeloEquipoSeleccionado) {
@@ -53,7 +71,35 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const equipoSelect = document.getElementById('equipo_id');
     if (equipoSelect) {
-        equipoSelect.addEventListener('change', cargarDatosEquipo);
+        equipoSelect.addEventListener('change', function() {
+            cargarDatosEquipo();
+            validarDisponibilidad();
+        });
+    }
+    
+    // Event listeners para validación de fechas
+    const fechaInicioInput = document.getElementById('fecha_inicio');
+    if (fechaInicioInput) {
+        fechaInicioInput.addEventListener('change', validarDisponibilidad);
+        fechaInicioInput.addEventListener('blur', validarDisponibilidad);
+    }
+    
+    const fechaFinInput = document.getElementById('fecha_fin');
+    if (fechaFinInput) {
+        fechaFinInput.addEventListener('change', function() {
+            validarFechaFin();
+            validarDisponibilidad();
+        });
+        fechaFinInput.addEventListener('blur', function() {
+            validarFechaFin();
+            validarDisponibilidad();
+        });
+    }
+    
+    const fechaFinEdicionInput = document.getElementById('fecha_fin_edicion');
+    if (fechaFinEdicionInput) {
+        fechaFinEdicionInput.addEventListener('change', validarFechaFinEdicion);
+        fechaFinEdicionInput.addEventListener('blur', validarFechaFinEdicion);
     }
     
     const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');
@@ -190,6 +236,30 @@ function debounce(func, wait) {
 // ============================================================================
 // FILTROS EN CASCADA DE EQUIPOS (Tipo -> Marca -> Modelo -> Equipo)
 // ============================================================================
+
+// Función para reiniciar filtros desde tipo (reinicia tipo, marca, modelo y equipo)
+function reiniciarFiltrosDesdeTipo() {
+    const tipoSelect = document.getElementById('tipo_equipo_id');
+    const marcaSelect = document.getElementById('marca_equipo_id');
+    const modeloSelect = document.getElementById('modelo_equipo_id');
+    const equipoSelect = document.getElementById('equipo_id');
+    
+    if (tipoSelect) {
+        tipoSelect.value = '';
+    }
+    if (marcaSelect) {
+        marcaSelect.innerHTML = '<option value="">Todas</option>';
+        marcaSelect.disabled = true;
+    }
+    if (modeloSelect) {
+        modeloSelect.innerHTML = '<option value="">Primero seleccione marca...</option>';
+        modeloSelect.disabled = true;
+    }
+    if (equipoSelect) {
+        equipoSelect.innerHTML = '<option value="">Primero seleccione modelo...</option>';
+        equipoSelect.disabled = true;
+    }
+}
 
 // Filtrar marcas según tipo seleccionado
 function filtrarMarcasPorTipo() {
@@ -339,14 +409,13 @@ function cargarDatosEquipo() {
         document.getElementById('horometro_superestructura').value = '';
         modeloEquipoSeleccionado = null;
         
-        // Si corresponde_pauta está marcado, limpiar pautas
-        const correspondePautaSi = document.getElementById('corresponde_pauta_si');
-        if (correspondePautaSi && correspondePautaSi.checked) {
-            const pautaSelect = document.getElementById('pauta_id');
-            if (pautaSelect) {
-                pautaSelect.innerHTML = '<option value="">Primero seleccione un equipo...</option>';
-            }
+        // Limpiar pauta seleccionada y ocultar secciones
+        limpiarPautaMantenimiento();
+        const pautaSelect = document.getElementById('pauta_id');
+        if (pautaSelect) {
+            pautaSelect.innerHTML = '<option value="">Primero seleccione un equipo...</option>';
         }
+        
         return;
     }
     
@@ -355,6 +424,7 @@ function cargarDatosEquipo() {
     document.getElementById('odometro').value = option.dataset.odometro || '';
     document.getElementById('horometro_superestructura').value = option.dataset.horometroSuperEstructural || '';
     
+    const modeloAnterior = modeloEquipoSeleccionado;
     modeloEquipoSeleccionado = option.dataset.modeloId;
     
     // También actualizar el select de modelo si está disponible
@@ -368,7 +438,12 @@ function cargarDatosEquipo() {
         console.warn('No se pudo obtener modelo_id del equipo seleccionado');
     }
     
-    // Si hay pauta seleccionada, recargar pautas para este modelo
+    // Si cambió el modelo del equipo, limpiar pauta seleccionada y ocultar secciones
+    if (modeloAnterior && modeloAnterior !== modeloEquipoSeleccionado) {
+        limpiarPautaMantenimiento();
+    }
+    
+    // Si hay pauta seleccionada y corresponde_pauta está marcado, recargar pautas para este modelo
     const correspondePautaSi = document.getElementById('corresponde_pauta_si');
     if (correspondePautaSi && correspondePautaSi.checked && modeloEquipoSeleccionado) {
         cargarPautasPorModelo(modeloEquipoSeleccionado);
@@ -378,6 +453,28 @@ function cargarDatosEquipo() {
 // ============================================================================
 // TIPO DE MANTENIMIENTO Y PAUTAS
 // ============================================================================
+
+// Función para limpiar la pauta de mantenimiento preventivo
+function limpiarPautaMantenimiento() {
+    const pautaSelect = document.getElementById('pauta_id');
+    if (pautaSelect) {
+        pautaSelect.value = '';
+        // No limpiar las opciones, solo el valor seleccionado
+    }
+    
+    // Ocultar secciones de pauta cargadas
+    const seccionesPautaContainer = document.querySelector('#seccionPreventivo #seccionesPautaContainer') || 
+                                     document.getElementById('seccionesPautaContainer');
+    if (seccionesPautaContainer) {
+        seccionesPautaContainer.style.display = 'none';
+        seccionesPautaContainer.classList.add('hidden-section');
+        const seccionesPautaList = document.querySelector('#seccionPreventivo #seccionesPautaList') || 
+                                    document.getElementById('seccionesPautaList');
+        if (seccionesPautaList) {
+            seccionesPautaList.innerHTML = '';
+        }
+    }
+}
 
 // Cambiar tipo de mantenimiento
 function cambiarTipoMantenimiento() {
@@ -894,6 +991,11 @@ function togglePersonalSeleccionado(checkbox) {
     }
     
     actualizarPersonalSeleccionado();
+    
+    // Validar disponibilidad cuando cambia el personal
+    if (!window.esEdicion) {
+        validarDisponibilidad();
+    }
 }
 
 // Seleccionar/deseleccionar todo el personal visible
@@ -1339,6 +1441,218 @@ function cargarDatosEdicion() {
 // ============================================================================
 
 // Agregar observación (solo en modo edición)
+// Función para validar que fecha_fin no sea antes de fecha_inicio
+function validarFechaFin() {
+    const fechaInicioInput = document.getElementById('fecha_inicio');
+    const fechaFinInput = document.getElementById('fecha_fin');
+    const fechaFinError = document.getElementById('fecha_fin_error');
+    
+    if (!fechaInicioInput || !fechaFinInput) return;
+    
+    let fechaInicio = null;
+    let fechaFin = null;
+    
+    if (typeof DatePickerChile !== 'undefined') {
+        fechaInicio = DatePickerChile.getValor('fecha_inicio');
+        fechaFin = DatePickerChile.getValor('fecha_fin');
+    } else {
+        fechaInicio = fechaInicioInput.value || null;
+        fechaFin = fechaFinInput.value || null;
+    }
+    
+    if (fechaInicio && fechaFin) {
+        const fechaInicioDate = new Date(fechaInicio);
+        const fechaFinDate = new Date(fechaFin);
+        
+        if (fechaFinDate < fechaInicioDate) {
+            fechaFinInput.classList.add('is-invalid');
+            if (fechaFinError) {
+                fechaFinError.textContent = 'La fecha de fin no puede ser anterior a la fecha de inicio';
+            }
+            return false;
+        } else {
+            fechaFinInput.classList.remove('is-invalid');
+            if (fechaFinError) {
+                fechaFinError.textContent = '';
+            }
+            return true;
+        }
+    }
+    
+    return true;
+}
+
+// Función para validar fecha fin en modo edición
+function validarFechaFinEdicion() {
+    const fechaFinInput = document.getElementById('fecha_fin_edicion');
+    
+    if (!fechaFinInput || !window.otData || !window.otData.fecha_inicio) return;
+    
+    let fechaFin = null;
+    
+    if (typeof DatePickerChile !== 'undefined') {
+        fechaFin = DatePickerChile.getValor('fecha_fin_edicion');
+    } else {
+        fechaFin = fechaFinInput.value || null;
+    }
+    
+    if (fechaFin) {
+        const fechaInicio = new Date(window.otData.fecha_inicio);
+        const fechaFinDate = new Date(fechaFin);
+        
+        if (fechaFinDate < fechaInicio) {
+            fechaFinInput.classList.add('is-invalid');
+            alert('La fecha de fin no puede ser anterior a la fecha de inicio');
+            return false;
+        } else {
+            fechaFinInput.classList.remove('is-invalid');
+            return true;
+        }
+    }
+    
+    return true;
+}
+
+// Función para validar disponibilidad de equipo y mecánico
+async function validarDisponibilidad() {
+    // Solo validar en modo creación
+    if (window.esEdicion) return;
+    
+    const equipoSelect = document.getElementById('equipo_id');
+    const fechaInicioInput = document.getElementById('fecha_inicio');
+    const fechaFinInput = document.getElementById('fecha_fin');
+    const validacionDiv = document.getElementById('validacionDisponibilidad');
+    const alertDiv = document.getElementById('alertDisponibilidad');
+    
+    if (!equipoSelect || !fechaInicioInput || !validacionDiv || !alertDiv) return;
+    
+    const equipoId = equipoSelect.value;
+    const personalIds = personalSeleccionados;
+    
+    let fechaInicio = null;
+    let fechaFin = null;
+    
+    if (typeof DatePickerChile !== 'undefined') {
+        fechaInicio = DatePickerChile.getValor('fecha_inicio');
+        fechaFin = DatePickerChile.getValor('fecha_fin');
+    } else {
+        fechaInicio = fechaInicioInput.value || null;
+        fechaFin = fechaFinInput.value || null;
+    }
+    
+    // Si no hay fecha de inicio, no validar
+    if (!fechaInicio) {
+        validacionDiv.style.display = 'none';
+        return;
+    }
+    
+    // Convertir fecha al formato YYYY-MM-DD si es necesario
+    if (fechaInicio && fechaInicio.includes('/')) {
+        const parts = fechaInicio.split('/');
+        fechaInicio = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    if (fechaFin && fechaFin.includes('/')) {
+        const parts = fechaFin.split('/');
+        fechaFin = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    
+    // Si no hay equipo seleccionado, no validar
+    if (!equipoId && personalIds.length === 0) {
+        validacionDiv.style.display = 'none';
+        return;
+    }
+    
+    try {
+        const response = await fetch(window.apiValidarDisponibilidad, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify({
+                equipo_id: equipoId || null,
+                personal_ids: personalIds,
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin || null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const conflictos = data.conflictos;
+            const conflictosEquipo = conflictos.equipo || [];
+            const conflictosPersonal = conflictos.personal || [];
+            
+            // Limpiar clases de error
+            if (equipoSelect) {
+                equipoSelect.classList.remove('is-invalid');
+            }
+            
+            // Mostrar mensajes de conflicto
+            let mensajes = [];
+            
+            if (conflictosEquipo.length > 0) {
+                equipoSelect.classList.add('is-invalid');
+                const equipoError = document.getElementById('equipo_id_error');
+                if (equipoError) {
+                    equipoError.textContent = 'El equipo tiene conflictos de disponibilidad';
+                }
+                
+                conflictosEquipo.forEach(conflicto => {
+                    if (conflicto.tipo === 'faena') {
+                        mensajes.push(`Equipo asignado a faena "${conflicto.faena}" del ${conflicto.fecha_inicio} al ${conflicto.fecha_fin}`);
+                    } else if (conflicto.tipo === 'ot') {
+                        mensajes.push(`Equipo asignado a OT ${conflicto.folio} del ${conflicto.fecha_inicio} al ${conflicto.fecha_fin}`);
+                    }
+                });
+            } else {
+                const equipoError = document.getElementById('equipo_id_error');
+                if (equipoError) {
+                    equipoError.textContent = '';
+                }
+            }
+            
+            // Agrupar conflictos de personal por personal_id
+            const conflictosPorPersonal = {};
+            conflictosPersonal.forEach(conflicto => {
+                if (!conflictosPorPersonal[conflicto.personal_id]) {
+                    conflictosPorPersonal[conflicto.personal_id] = [];
+                }
+                conflictosPorPersonal[conflicto.personal_id].push(conflicto);
+            });
+            
+            Object.keys(conflictosPorPersonal).forEach(personalId => {
+                const conflictos = conflictosPorPersonal[personalId];
+                const personal = personalDisponible.find(p => p.personal_id == personalId);
+                const nombrePersonal = personal ? `${personal.nombre} ${personal.apepat}` : `ID: ${personalId}`;
+                
+                conflictos.forEach(conflicto => {
+                    if (conflicto.tipo === 'faena') {
+                        mensajes.push(`Mecánico "${nombrePersonal}" asignado a faena "${conflicto.faena}" del ${conflicto.fecha_inicio} al ${conflicto.fecha_fin}`);
+                    } else if (conflicto.tipo === 'ot') {
+                        mensajes.push(`Mecánico "${nombrePersonal}" asignado a OT ${conflicto.folio} del ${conflicto.fecha_inicio} al ${conflicto.fecha_fin}`);
+                    }
+                });
+            });
+            
+            if (mensajes.length > 0) {
+                alertDiv.innerHTML = '<strong>Conflictos de disponibilidad detectados:</strong><ul class="mb-0 mt-2">' +
+                    mensajes.map(msg => `<li>${msg}</li>`).join('') +
+                    '</ul>';
+                alertDiv.className = 'alert alert-warning';
+                validacionDiv.style.display = 'block';
+            } else {
+                validacionDiv.style.display = 'none';
+            }
+        } else {
+            console.error('Error al validar disponibilidad:', data.message);
+        }
+    } catch (error) {
+        console.error('Error al validar disponibilidad:', error);
+    }
+}
+
 function agregarObservacion() {
     const nuevaObservacion = document.getElementById('nuevaObservacion');
     const observacionTexto = nuevaObservacion.value.trim();
@@ -1393,7 +1707,7 @@ function agregarObservacion() {
     });
 }
 
-function guardarOrdenTrabajo(event) {
+async function guardarOrdenTrabajo(event) {
     event.preventDefault();
     
     // Si es edición, solo actualizar estados y fecha_fin
@@ -1545,6 +1859,48 @@ function guardarOrdenTrabajo(event) {
         }
     }
     
+    // Validar disponibilidad antes de guardar
+    if (equipoId && fechaInicio) {
+        // Convertir fecha al formato YYYY-MM-DD si es necesario
+        let fechaInicioFormato = fechaInicio;
+        let fechaFinFormato = fechaFin;
+        
+        if (fechaInicio && fechaInicio.includes('/')) {
+            const parts = fechaInicio.split('/');
+            fechaInicioFormato = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        if (fechaFin && fechaFin.includes('/')) {
+            const parts = fechaFin.split('/');
+            fechaFinFormato = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        
+        try {
+            const response = await fetch(window.apiValidarDisponibilidad, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': window.csrfToken
+                },
+                body: JSON.stringify({
+                    equipo_id: equipoId,
+                    personal_ids: personalSeleccionados,
+                    fecha_inicio: fechaInicioFormato,
+                    fecha_fin: fechaFinFormato || null
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && !data.disponible) {
+                mostrarModalConflictos(data.conflictos);
+                return;
+            }
+        } catch (error) {
+            console.error('Error al validar disponibilidad:', error);
+            // Continuar con el guardado si hay error en la validación
+        }
+    }
+    
     // Recolectar datos del formulario
     const observacionesElement = document.getElementById('observaciones');
     const observacionesValue = observacionesElement ? observacionesElement.value.trim() : '';
@@ -1675,4 +2031,68 @@ function recolectarItemsSecciones() {
 function mostrarError(mensaje) {
     alert('Error: ' + mensaje);
     console.error(mensaje);
+}
+
+// Función para mostrar modal de conflictos de disponibilidad
+function mostrarModalConflictos(conflictos) {
+    const contenidoDiv = document.getElementById('contenidoConflictos');
+    if (!contenidoDiv) return;
+    
+    let html = '';
+    
+    // Conflictos de equipo
+    if (conflictos.equipo && conflictos.equipo.length > 0) {
+        html += '<div class="mb-4">';
+        html += '<h6 class="text-danger mb-3"><i class="bi bi-tools me-2"></i><strong>EQUIPO:</strong></h6>';
+        html += '<ul class="list-group">';
+        conflictos.equipo.forEach(c => {
+            if (c.tipo === 'faena') {
+                html += `<li class="list-group-item">
+                    <i class="bi bi-building me-2 text-warning"></i>
+                    <strong>Asignado a faena:</strong> "${c.faena}"<br>
+                    <small class="text-muted">Del ${c.fecha_inicio} al ${c.fecha_fin}</small>
+                </li>`;
+            } else if (c.tipo === 'ot') {
+                html += `<li class="list-group-item">
+                    <i class="bi bi-clipboard-check me-2 text-danger"></i>
+                    <strong>Asignado a OT:</strong> ${c.folio}<br>
+                    <small class="text-muted">Del ${c.fecha_inicio} al ${c.fecha_fin}</small>
+                </li>`;
+            }
+        });
+        html += '</ul></div>';
+    }
+    
+    // Conflictos de personal
+    if (conflictos.personal && conflictos.personal.length > 0) {
+        html += '<div class="mb-4">';
+        html += '<h6 class="text-danger mb-3"><i class="bi bi-people me-2"></i><strong>MECÁNICOS:</strong></h6>';
+        html += '<ul class="list-group">';
+        conflictos.personal.forEach(c => {
+            const nombrePersonal = c.personal_nombre || `ID: ${c.personal_id}`;
+            if (c.tipo === 'faena') {
+                html += `<li class="list-group-item">
+                    <i class="bi bi-building me-2 text-warning"></i>
+                    <strong>${nombrePersonal}:</strong> Asignado a faena "${c.faena}"<br>
+                    <small class="text-muted">Del ${c.fecha_inicio} al ${c.fecha_fin}</small>
+                </li>`;
+            } else if (c.tipo === 'ot') {
+                html += `<li class="list-group-item">
+                    <i class="bi bi-clipboard-check me-2 text-danger"></i>
+                    <strong>${nombrePersonal}:</strong> Asignado a OT ${c.folio}<br>
+                    <small class="text-muted">Del ${c.fecha_inicio} al ${c.fecha_fin}</small>
+                </li>`;
+            }
+        });
+        html += '</ul></div>';
+    }
+    
+    contenidoDiv.innerHTML = html;
+    
+    // Mostrar el modal
+    const modalElement = document.getElementById('modalConflictosDisponibilidad');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    }
 }

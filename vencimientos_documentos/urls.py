@@ -13,5 +13,6 @@ urlpatterns = [
     path('api/maquinarias/', views.api_vencimientos_maquinarias, name='api_vencimientos_maquinarias'),
     path('api/exportar/personal/', views.exportar_excel_personal, name='exportar_excel_personal'),
     path('api/exportar/maquinarias/', views.exportar_excel_maquinarias, name='exportar_excel_maquinarias'),
+    path('api/ejecutar-procesamiento/', views.ejecutar_procesar_vencimientos, name='ejecutar_procesar_vencimientos'),
 ]
 

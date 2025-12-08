@@ -70,6 +70,7 @@ urlpatterns = [
     
     # APIs para Orden de Trabajo
     path('api/ordenes-trabajo/', views.api_listar_ordenes_trabajo, name='api_listar_ordenes_trabajo'),
+    path('api/ordenes-trabajo/validar-disponibilidad/', views.api_validar_disponibilidad_ot, name='api_validar_disponibilidad_ot'),
     path('api/ordenes-trabajo/guardar/', views.api_guardar_orden_trabajo, name='api_guardar_orden_trabajo'),
     path('api/ordenes-trabajo/<int:ot_id>/observacion/', views.api_agregar_observacion_ot, name='api_agregar_observacion_ot'),
     path('api/equipos-filtrados/', views.api_equipos_filtrados, name='api_equipos_filtrados'),
@@ -84,5 +85,7 @@ urlpatterns = [
     
     # APIs para historial de equipos
     path('api/equipos/<int:equipo_id>/historial/', views.api_historial_equipo, name='api_historial_equipo'),
+    # Descarga de documentación en ZIP
+    path('equipos/descargar-documentacion-zip/', views.descargar_documentacion_zip_equipos, name='descargar_documentacion_zip_equipos'),
 ]
 

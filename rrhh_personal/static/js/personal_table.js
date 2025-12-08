@@ -73,6 +73,49 @@ function inicializarEventListeners() {
         originalState = false;
         changeConfirmed = false;
     });
+    
+    // Inicializar modal de selección de personal para descarga
+    const btnSeleccionarPersonal = document.getElementById('btnSeleccionarPersonal');
+    if (btnSeleccionarPersonal) {
+        btnSeleccionarPersonal.addEventListener('click', function() {
+            const modalElement = document.getElementById('modalSeleccionarPersonal');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+                personalSeleccionado = [];
+                actualizarVistaSeleccionados();
+            }
+        });
+    }
+    
+    // Búsqueda en modal
+    const buscarPersonalModal = document.getElementById('buscarPersonalModal');
+    if (buscarPersonalModal) {
+        buscarPersonalModal.addEventListener('input', function() {
+            buscarPersonalEnModal(this.value);
+        });
+    }
+    
+    // Botón limpiar selección
+    const btnLimpiarSeleccion = document.getElementById('btnLimpiarSeleccion');
+    if (btnLimpiarSeleccion) {
+        btnLimpiarSeleccion.addEventListener('click', function() {
+            personalSeleccionado = [];
+            actualizarVistaSeleccionados();
+            const resultadosDiv = document.getElementById('resultadosBusquedaPersonal');
+            if (resultadosDiv) {
+                resultadosDiv.innerHTML = '<p class="text-muted text-center mb-0">Ingrese un término de búsqueda...</p>';
+            }
+        });
+    }
+    
+    // Botón descargar ZIP
+    const btnDescargarZip = document.getElementById('btnDescargarZip');
+    if (btnDescargarZip) {
+        btnDescargarZip.addEventListener('click', function() {
+            descargarDocumentacionZip();
+        });
+    }
 }
 
 // ============================================================================
@@ -762,4 +805,211 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// ============================================================================
+// MODAL DE SELECCIÓN DE PERSONAL PARA DESCARGA
+// ============================================================================
+
+let personalSeleccionado = []; // Array de objetos {id, nombre, rut, cargo}
+
+// Buscar personal en el modal
+function buscarPersonalEnModal(termino) {
+    const resultadosDiv = document.getElementById('resultadosBusquedaPersonal');
+    
+    if (!termino || termino.trim() === '') {
+        resultadosDiv.innerHTML = '<p class="text-muted text-center mb-0">Ingrese un término de búsqueda...</p>';
+        return;
+    }
+    
+    const terminoLower = termino.toLowerCase();
+    const resultados = personal.filter(p => {
+        return p.nombre.toLowerCase().includes(terminoLower) ||
+               p.rut.toLowerCase().includes(terminoLower) ||
+               p.cargo.toLowerCase().includes(terminoLower) ||
+               p.empresa.toLowerCase().includes(terminoLower);
+    });
+    
+    if (resultados.length === 0) {
+        resultadosDiv.innerHTML = '<p class="text-muted text-center mb-0">No se encontraron resultados</p>';
+        return;
+    }
+    
+    let html = '<div class="list-group">';
+    resultados.forEach(p => {
+        const yaSeleccionado = personalSeleccionado.some(ps => ps.id === p.id);
+        html += `
+            <div class="list-group-item list-group-item-action ${yaSeleccionado ? 'bg-light' : ''}" 
+                 style="cursor: pointer;" 
+                 data-personal-id="${p.id}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${p.nombre}</h6>
+                        <small class="text-muted">RUT: ${p.rut} | ${p.cargo} | ${p.empresa}</small>
+                    </div>
+                    ${yaSeleccionado 
+                        ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Seleccionado</span>'
+                        : '<button class="btn btn-sm btn-primary btn-agregar-personal" data-personal-id="' + p.id + '"><i class="bi bi-plus-circle me-1"></i>Agregar</button>'
+                    }
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    resultadosDiv.innerHTML = html;
+    
+    // Agregar event listeners a los botones y items
+    resultadosDiv.querySelectorAll('.btn-agregar-personal').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const personalId = parseInt(this.dataset.personalId);
+            agregarPersonalSeleccionado(personalId);
+        });
+    });
+    
+    resultadosDiv.querySelectorAll('.list-group-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const personalId = parseInt(this.dataset.personalId);
+            if (!personalSeleccionado.some(ps => ps.id === personalId)) {
+                agregarPersonalSeleccionado(personalId);
+            }
+        });
+    });
+}
+
+// Agregar personal a la lista de seleccionados
+function agregarPersonalSeleccionado(personalId) {
+    const persona = personal.find(p => p.id === personalId);
+    if (!persona) return;
+    
+    // Verificar si ya está seleccionado
+    if (personalSeleccionado.some(ps => ps.id === personalId)) {
+        return;
+    }
+    
+    personalSeleccionado.push({
+        id: persona.id,
+        nombre: persona.nombre,
+        rut: persona.rut,
+        cargo: persona.cargo,
+        empresa: persona.empresa
+    });
+    
+    actualizarVistaSeleccionados();
+    
+    // Actualizar la vista de resultados para mostrar que está seleccionado
+    const termino = document.getElementById('buscarPersonalModal').value;
+    if (termino) {
+        buscarPersonalEnModal(termino);
+    }
+}
+
+// Remover personal de la lista de seleccionados
+function removerPersonalSeleccionado(personalId) {
+    personalSeleccionado = personalSeleccionado.filter(ps => ps.id !== personalId);
+    actualizarVistaSeleccionados();
+    
+    // Actualizar la vista de resultados
+    const termino = document.getElementById('buscarPersonalModal').value;
+    if (termino) {
+        buscarPersonalEnModal(termino);
+    }
+}
+
+// Actualizar la vista de personal seleccionado
+function actualizarVistaSeleccionados() {
+    const contador = document.getElementById('contadorSeleccionados');
+    const vistaSeleccionados = document.getElementById('personalSeleccionado');
+    const btnDescargarZip = document.getElementById('btnDescargarZip');
+    
+    if (!vistaSeleccionados) return; // Si el modal no está abierto, no hacer nada
+    
+    if (contador) {
+        contador.textContent = personalSeleccionado.length;
+    }
+    
+    if (btnDescargarZip) {
+        btnDescargarZip.disabled = personalSeleccionado.length === 0;
+    }
+    
+    if (personalSeleccionado.length === 0) {
+        vistaSeleccionados.innerHTML = '<p class="text-muted text-center mb-0">No hay personal seleccionado</p>';
+        return;
+    }
+    
+    let html = '<div class="list-group">';
+    personalSeleccionado.forEach(p => {
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${p.nombre}</h6>
+                        <small class="text-muted">RUT: ${p.rut} | ${p.cargo}</small>
+                    </div>
+                    <button class="btn btn-sm btn-danger btn-remover-personal" data-personal-id="${p.id}">
+                        <i class="bi bi-x-circle me-1"></i>Quitar
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    vistaSeleccionados.innerHTML = html;
+    
+    // Agregar event listeners a los botones de quitar
+    vistaSeleccionados.querySelectorAll('.btn-remover-personal').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const personalId = parseInt(this.dataset.personalId);
+            removerPersonalSeleccionado(personalId);
+        });
+    });
+}
+
+// Descargar documentación en ZIP
+function descargarDocumentacionZip() {
+    if (personalSeleccionado.length === 0) {
+        alert('Por favor seleccione al menos un personal');
+        return;
+    }
+    
+    const personalIds = personalSeleccionado.map(p => p.id);
+    
+    // Crear formulario para enviar POST
+    const form = document.createElement('form');
+    form.method = 'POST';
+    // Usar la URL desde el template o la ruta correcta
+    form.action = window.descargarDocumentacionZipUrl || '/users/personal/descargar-documentacion-zip/';
+    
+    // Agregar CSRF token
+    const csrfToken = getCookie('csrftoken');
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = csrfToken;
+    form.appendChild(csrfInput);
+    
+    // Agregar IDs del personal
+    personalIds.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'personal_ids';
+        input.value = id;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+    
+    // Cerrar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarPersonal'));
+    if (modal) {
+        modal.hide();
+    }
+    
+    // Limpiar selección
+    personalSeleccionado = [];
+    actualizarVistaSeleccionados();
 }

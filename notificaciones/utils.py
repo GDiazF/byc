@@ -47,12 +47,19 @@ def crear_notificacion_por_tipo(
     if usuarios_especificos:
         # Si se especifican usuarios, solo notificar a esos
         usuarios_destinatarios = set(usuarios_especificos)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Usando usuarios específicos: {len(usuarios_destinatarios)} usuarios")
     else:
         # Buscar usuarios con roles que tienen este tipo de notificación habilitado
         configuraciones = ConfiguracionNotificacionRol.objects.filter(
             tipo_notificacion=tipo_notificacion,
             activo=True
         ).select_related('rol')
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Buscando configuraciones para tipo {codigo_tipo}: {configuraciones.count()} configuraciones encontradas")
         
         for config in configuraciones:
             # Obtener todos los usuarios con este rol
@@ -61,8 +68,14 @@ def crear_notificacion_por_tipo(
                 user__is_active=True
             ).select_related('user')
             
+            logger.info(f"Rol {config.rol.nombre}: {usuarios_con_rol.count()} usuarios activos")
+            
             for user_profile in usuarios_con_rol:
                 usuarios_destinatarios.add(user_profile.user)
+        
+        logger.info(f"Total de usuarios destinatarios encontrados: {len(usuarios_destinatarios)}")
+        if len(usuarios_destinatarios) == 0:
+            logger.warning(f"⚠ No se encontraron usuarios con roles configurados para el tipo de notificación {codigo_tipo}")
     
     # Crear notificaciones para cada usuario
     notificaciones_creadas = []

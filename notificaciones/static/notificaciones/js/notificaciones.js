@@ -64,6 +64,10 @@
         // Restaurar el header
         if (headerHTML) {
             dropdown.insertAdjacentHTML('beforeend', headerHTML);
+            // Reconfigurar el botón después de restaurar el header
+            setTimeout(() => {
+                configurarBotonMarcarTodas();
+            }, 10);
         }
         
         // Agregar divisor después del header
@@ -118,14 +122,14 @@
                 }
                 
                 item.innerHTML = `
-                    <div class="d-flex align-items-start" style="gap: 0.5rem;">
-                        <div class="flex-grow-1" style="min-width: 0;">
-                            <div class="fw-bold" style="font-size: 0.875rem;">${notif.titulo}</div>
-                            <div class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem;">${notif.mensaje.substring(0, 60)}${notif.mensaje.length > 60 ? '...' : ''}</div>
-                            <small class="text-muted" style="font-size: 0.65rem;">${notif.fecha_creacion}</small>
+                    <div class="d-flex align-items-start" style="gap: 0.5rem; position: relative;">
+                        <div class="flex-grow-1" style="min-width: 0; overflow: hidden; padding-right: 0.25rem;">
+                            <div class="fw-bold" style="font-size: 0.875rem; word-wrap: break-word; overflow-wrap: break-word;">${notif.titulo}</div>
+                            <div class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3;">${notif.mensaje.substring(0, 60)}${notif.mensaje.length > 60 ? '...' : ''}</div>
+                            <small class="text-muted" style="font-size: 0.65rem; display: block; margin-top: 0.25rem;">${notif.fecha_creacion}</small>
                         </div>
                         <button class="btn btn-sm btn-link p-0 text-muted ver-detalle-btn" 
-                                style="flex-shrink: 0; padding: 0.25rem !important; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;"
+                                style="flex-shrink: 0; padding: 0.25rem !important; min-width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10; background-color: rgba(255, 255, 255, 0.9); border-radius: 4px;"
                                 title="Ver detalles"
                                 data-notif-id="${notif.id}">
                             <i class="bi bi-eye" style="font-size: 0.875rem;"></i>
@@ -720,59 +724,70 @@
         const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
         if (!dropdownMenu) return;
         
-        // Remover listener anterior si existe
         const nuevoBoton = dropdownMenu.querySelector('#btnMarcarTodasLeidasDropdown');
-        if (nuevoBoton && !nuevoBoton.hasAttribute('data-listener-configurado')) {
-            nuevoBoton.setAttribute('data-listener-configurado', 'true');
+        if (!nuevoBoton) return;
+        
+        // Si el botón ya tiene el atributo, significa que ya tiene un listener configurado
+        // pero como el botón puede haber sido recreado, siempre reconfiguramos
+        // Clonar el botón para remover todos los listeners anteriores
+        const nuevoBotonClon = nuevoBoton.cloneNode(true);
+        nuevoBoton.parentNode.replaceChild(nuevoBotonClon, nuevoBoton);
+        
+        // Agregar el listener al nuevo botón
+        nuevoBotonClon.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
             
-            nuevoBoton.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                
-                console.log('Marcando todas las notificaciones como leídas...');
-                
-                fetch('/notificaciones/api/marcar-todas-leidas/', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        console.log('Todas las notificaciones marcadas como leídas. Nuevo contador:', data.count);
-                        
-                        // Actualizar el contador
-                        if (data.count !== undefined) {
-                            ultimoContador = data.count;
-                            actualizarBadge(data.count);
-                        } else {
-                            // Si no viene el contador, consultarlo
-                            actualizarContadorDesdeServidor();
-                        }
-                        
-                        // Recargar notificaciones para actualizar el estado visual
-                        setTimeout(() => {
-                            cargarNotificaciones();
-                        }, 200);
+            // Marcar como manejado para evitar que el event delegation lo maneje también
+            this.setAttribute('data-handled', 'true');
+            
+            console.log('Marcando todas las notificaciones como leídas...');
+            
+            fetch('/notificaciones/api/marcar-todas-leidas/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log('Todas las notificaciones marcadas como leídas. Nuevo contador:', data.count);
+                    
+                    // Actualizar el contador
+                    if (data.count !== undefined) {
+                        ultimoContador = data.count;
+                        actualizarBadge(data.count);
                     } else {
-                        console.error('Error al marcar todas como leídas:', data.error || 'Error desconocido');
+                        // Si no viene el contador, consultarlo
+                        actualizarContadorDesdeServidor();
                     }
-                })
-                .catch(error => {
-                    console.error('Error al marcar todas como leídas:', error);
-                });
-                
-                return false;
-            }, true); // Usar capture phase
-        }
+                    
+                    // Recargar notificaciones para actualizar el estado visual
+                    setTimeout(() => {
+                        cargarNotificaciones();
+                        // Remover el atributo para permitir futuros clicks
+                        this.removeAttribute('data-handled');
+                    }, 200);
+                } else {
+                    console.error('Error al marcar todas como leídas:', data.error || 'Error desconocido');
+                    this.removeAttribute('data-handled');
+                }
+            })
+            .catch(error => {
+                console.error('Error al marcar todas como leídas:', error);
+                this.removeAttribute('data-handled');
+            });
+            
+            return false;
+        }, false); // Usar bubble phase para que no interfiera con el event delegation
     }
     
     // Configurar el botón cuando se carga la página
@@ -786,15 +801,61 @@
         });
     }
     
-    // También usar event delegation como respaldo
+    // Event delegation como respaldo (solo se ejecuta si el listener directo no funciona)
+    // Usar bubble phase y verificar que no haya sido manejado por el listener directo
     document.addEventListener('click', function(e) {
         const btnMarcarTodas = e.target.closest('#btnMarcarTodasLeidasDropdown');
-        if (btnMarcarTodas) {
+        if (btnMarcarTodas && !btnMarcarTodas.hasAttribute('data-handled')) {
+            // Marcar como manejado para evitar múltiples ejecuciones
+            btnMarcarTodas.setAttribute('data-handled', 'true');
+            
             e.preventDefault();
             e.stopPropagation();
-            e.stopImmediatePropagation();
+            
+            console.log('Marcando todas las notificaciones como leídas (event delegation)...');
+            
+            fetch('/notificaciones/api/marcar-todas-leidas/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log('Todas las notificaciones marcadas como leídas. Nuevo contador:', data.count);
+                    
+                    // Actualizar el contador
+                    if (data.count !== undefined) {
+                        ultimoContador = data.count;
+                        actualizarBadge(data.count);
+                    } else {
+                        actualizarContadorDesdeServidor();
+                    }
+                    
+                    // Recargar notificaciones para actualizar el estado visual
+                    setTimeout(() => {
+                        cargarNotificaciones();
+                        // Remover el atributo para permitir futuros clicks
+                        btnMarcarTodas.removeAttribute('data-handled');
+                    }, 200);
+                } else {
+                    console.error('Error al marcar todas como leídas:', data.error || 'Error desconocido');
+                    btnMarcarTodas.removeAttribute('data-handled');
+                }
+            })
+            .catch(error => {
+                console.error('Error al marcar todas como leídas:', error);
+                btnMarcarTodas.removeAttribute('data-handled');
+            });
         }
-    }, true);
+    }, false); // Bubble phase - se ejecuta después del listener directo
     
 })();
 

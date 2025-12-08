@@ -1,3 +1,14 @@
+﻿# ============================================================================
+# VISTAS PARA DASHBOARDS
+# ============================================================================
+# Este archivo contiene todas las vistas para la aplicacion de dashboards.
+# Incluye la vista principal y las APIs que proporcionan datos para cada area:
+# - RRHH: Recursos Humanos
+# - Operaciones: Planificacion y faenas
+# - Maquinarias: Equipos y ordenes de trabajo
+# - Gerencia: Metricas consolidadas y KPIs
+# ============================================================================
+
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -26,7 +37,8 @@ from ope_calendario.models import Faena, AsignacionFaena
     require_all=False  # Requiere al menos uno de los permisos
 )
 def dashboards_view(request):
-    """Vista principal de dashboards con tabs por área"""
+    # Vista principal de dashboards con tabs por area.
+    # Muestra diferentes dashboards segun los permisos del usuario.
     return render(request, 'dashboards/dashboards.html')
 
 
@@ -35,14 +47,13 @@ def dashboards_view(request):
 @permission_required_custom('dashboards.view_dashboard_rrhh', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_rrhh(request):
-    """
-    API para obtener datos del dashboard de RRHH
-    """
+    # API para obtener datos del dashboard de RRHH.
+    # Retorna estadisticas de personal, documentos por vencer, faenas activas, etc.
     try:
         hoy = date.today()
         fecha_limite_30_dias = hoy + timedelta(days=30)
         
-        # Estadísticas básicas
+        # Estadisticas basicas
         total_personal = Personal.objects.filter(activo=True).count()
         total_personal_inactivo = Personal.objects.filter(activo=False).count()
         
@@ -57,7 +68,7 @@ def api_dashboard_rrhh(request):
         
         personal_en_faena_count = len(personal_en_faena_ids)
         
-        # Personal con licencia médica activa
+        # Personal con licencia medica activa
         personal_con_licencia_ids = LicenciaMedicaPorPersonal.objects.filter(
             personal_id__activo=True,
             fecha_fin_licencia__gte=hoy
@@ -77,10 +88,10 @@ def api_dashboard_rrhh(request):
         personal_no_disponible_ids = set(personal_en_faena_ids) | set(personal_con_licencia_ids) | set(personal_con_ausentismo_ids)
         personal_disponible_count = total_personal - len(personal_no_disponible_ids)
         
-        # Documentos por vencer en 30 días
+        # Documentos por vencer en 30 dias
         documentos_por_vencer = []
         
-        # Exámenes por vencer
+        # Examenes por vencer
         examenes_por_vencer = Examen.objects.filter(
             personal_id__activo=True,
             fechaVencimiento__gte=hoy,
@@ -108,7 +119,7 @@ def api_dashboard_rrhh(request):
         for cert in certificaciones_por_vencer:
             dias_restantes = (cert.fechaVencimiento - hoy).days
             documentos_por_vencer.append({
-                'tipo': 'Certificación',
+                'tipo': 'Certificacion',
                 'nombre': f"{cert.tipoCertificacion_id}",
                 'personal': f"{cert.personal_id.nombre} {cert.personal_id.apepat} {cert.personal_id.apemat}",
                 'personal_rut': f"{cert.personal_id.rut}-{cert.personal_id.dvrut}",
@@ -171,7 +182,7 @@ def api_dashboard_rrhh(request):
                 'dias_restantes': dias_restantes
             })
         
-        # Ordenar por días restantes
+        # Ordenar por dias restantes
         documentos_por_vencer.sort(key=lambda x: x['dias_restantes'])
         
         # Personal por empresa (si existe InfoLaboral)
@@ -184,13 +195,13 @@ def api_dashboard_rrhh(request):
             total=Count('personal_id')
         ).order_by('-total')[:5]
         
-        # Cambios recientes (últimos 30 días)
+        # Cambios recientes (ultimos 30 dias)
         fecha_limite = datetime.now() - timedelta(days=30)
         cambios_recientes = HistorialPersonal.objects.filter(
             fecha_hora__gte=fecha_limite
         ).count()
         
-        # Personal activado/desactivado en el último mes
+        # Personal activado/desactivado en el ultimo mes
         activaciones = HistorialPersonal.objects.filter(
             fecha_hora__gte=fecha_limite,
             accion__icontains='ACTIVADO'
@@ -215,7 +226,7 @@ def api_dashboard_rrhh(request):
                     'cantidad': count
                 })
         
-        # Tipos de licencia médica con conteo de personal activo
+        # Tipos de licencia medica con conteo de personal activo
         tipos_licencia_detalle = []
         for tipo_licencia in TipoLicenciaMedica.objects.all():
             count = LicenciaMedicaPorPersonal.objects.filter(
@@ -286,7 +297,7 @@ def api_dashboard_rrhh(request):
                 'tipos_ausentismo': tipos_ausentismo_detalle,
                 'tipos_licencia_medica': tipos_licencia_detalle,
                 'faenas_con_personal': faenas_con_personal,
-                'documentos_por_vencer': documentos_por_vencer[:20],  # Limitar a 20 más urgentes
+                'documentos_por_vencer': documentos_por_vencer[:20],  # Limitar a 20 mas urgentes
                 'total_documentos_por_vencer': len(documentos_por_vencer),
                 'personal_por_empresa': list(personal_por_empresa),
                 'cambios_recientes': cambios_recientes,
@@ -312,9 +323,8 @@ def api_dashboard_rrhh(request):
 @permission_required_custom('dashboards.view_dashboard_operaciones', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_operaciones(request):
-    """
-    API para obtener datos del dashboard de Operaciones/Planificaciones
-    """
+    # API para obtener datos del dashboard de Operaciones/Planificaciones.
+    # Incluye datos de personal, equipos, faenas y documentos por vencer.
     try:
         hoy = date.today()
         fecha_limite_30_dias = hoy + timedelta(days=30)
@@ -333,7 +343,7 @@ def api_dashboard_operaciones(request):
         
         personal_en_faena_count = len(personal_en_faena_ids)
         
-        # Personal con licencia médica activa
+        # Personal con licencia medica activa
         personal_con_licencia_ids = LicenciaMedicaPorPersonal.objects.filter(
             personal_id__activo=True,
             fecha_fin_licencia__gte=hoy
@@ -420,8 +430,8 @@ def api_dashboard_operaciones(request):
             if fuente.estado_calendario.activo:
                 mapeos_fuente[fuente.estado_equipo.estadoEquipo_id] = fuente.estado_calendario
         
-        # También crear un diccionario de fallback: nombre_estado_equipo -> estado_calendario
-        # para búsqueda rápida cuando no hay mapeo directo
+        # Tambien crear un diccionario de fallback: nombre_estado_equipo -> estado_calendario
+        # para busqueda rapida cuando no hay mapeo directo
         estados_calendario_por_nombre = {}
         estados_calendario_activos = EstadoCalendarioEquipo.objects.filter(activo=True)
         for estado_cal in estados_calendario_activos:
@@ -432,7 +442,7 @@ def api_dashboard_operaciones(request):
             activo=True, es_predeterminado=True
         ).first()
         
-        # Crear diccionarios para acceso rápido
+        # Crear diccionarios para acceso rapido
         estados_manuales_por_equipo = {}
         for em in estados_manuales_hoy:
             if em.equipo.equipo_id not in estados_manuales_por_equipo:
@@ -451,7 +461,7 @@ def api_dashboard_operaciones(request):
                 ot_por_equipo[ot.equipo_id.equipo_id] = []
             ot_por_equipo[ot.equipo_id.equipo_id].append(ot)
         
-        # Calcular distribución de equipos por estado
+        # Calcular distribucion de equipos por estado
         equipos_por_estado = {}
         equipos_disponibles_count = 0
         equipos_en_faena_count = 0
@@ -460,7 +470,7 @@ def api_dashboard_operaciones(request):
             equipo_id = equipo.equipo_id
             estado_actual = None
             
-            # 1. Prioridad: Estados manuales (más alta prioridad)
+            # 1. Prioridad: Estados manuales (mas alta prioridad)
             if equipo_id in estados_manuales_por_equipo:
                 manuales = estados_manuales_por_equipo[equipo_id]
                 bloqueantes = [em for em in manuales if em.estado.es_bloqueante]
@@ -485,7 +495,7 @@ def api_dashboard_operaciones(request):
                             nombre_estado_lower = ot.estado_equipo_id.nombre.lower()
                             estado_calendario = estados_calendario_por_nombre.get(nombre_estado_lower)
                         
-                        # Si aún no hay estado de calendario, crear uno temporal usando el nombre del estado de equipo
+                        # Si aun no hay estado de calendario, crear uno temporal usando el nombre del estado de equipo
                         if not estado_calendario:
                             # Crear un objeto temporal que simule un EstadoCalendarioEquipo
                             # Usaremos el nombre del estado de equipo directamente
@@ -527,7 +537,7 @@ def api_dashboard_operaciones(request):
                     equipos_por_estado[estado_nombre] = 0
                 equipos_por_estado[estado_nombre] += 1
                 
-                # Contar específicamente disponibles y en faena para las categorías principales
+                # Contar especificamente disponibles y en faena para las categorias principales
                 if estado_lower in ['disponible', 'disponibles']:
                     equipos_disponibles_count += 1
                 elif 'asignado' in estado_lower or 'faena' in estado_lower:
@@ -573,7 +583,7 @@ def api_dashboard_operaciones(request):
                 if not tiene_estado_especial:
                     equipos_en_uso_count += 1
         
-        # Preparar datos de distribución para el gráfico
+        # Preparar datos de distribucion para el grafico
         distribucion_equipos = {
             'Disponibles': equipos_disponibles_count,
             'En Uso': equipos_en_uso_count,
@@ -581,18 +591,18 @@ def api_dashboard_operaciones(request):
             'Inactivos': equipos_inactivos
         }
         
-        # Agregar TODOS los estados encontrados (como Shutdown, Operativo con anomalías, etc.)
-        # Excluyendo solo los que ya están en las categorías principales
+        # Agregar TODOS los estados encontrados (como Shutdown, Operativo con anomalias, etc.)
+        # Excluyendo solo los que ya estan en las categorias principales
         estados_ya_incluidos = {'Disponibles', 'En Uso', 'En Faena', 'Inactivos', 'Disponible'}
         
-        # Preparar información detallada de equipos por estado para modales
+        # Preparar informacion detallada de equipos por estado para modales
         equipos_en_faena_detalle = []
         equipos_con_anomalias_detalle = []
         equipos_shutdown_detalle = []
         
         for estado_nombre, cantidad in equipos_por_estado.items():
             estado_lower = estado_nombre.lower()
-            # Solo agregar estados que NO están en las categorías principales
+            # Solo agregar estados que NO estan en las categorias principales
             # y que tienen una cantidad mayor a 0
             es_disponible = 'disponible' in estado_lower
             es_asignado = 'asignado' in estado_lower
@@ -608,7 +618,7 @@ def api_dashboard_operaciones(request):
                 not es_faena and
                 not es_en_uso and
                 not es_inactivo):
-                # Es un estado especial (Shutdown, Operativo con anomalías, En Mantenimiento, etc.)
+                # Es un estado especial (Shutdown, Operativo con anomalias, En Mantenimiento, etc.)
                 # Agregar directamente con su cantidad
                 distribucion_equipos[estado_nombre] = cantidad
         
@@ -624,10 +634,10 @@ def api_dashboard_operaciones(request):
                 'fecha_fin': asig.fecha_fin.strftime('%d/%m/%Y') if asig.fecha_fin else 'Sin fecha fin'
             })
         
-        # Obtener detalles de equipos con anomalías (Operativo con anomalías)
-        # Buscar todos los estados de equipo que contengan "anomalía" o "anomalia"
+        # Obtener detalles de equipos con anomalias (Operativo con anomalias)
+        # Buscar todos los estados de equipo que contengan "anomalia" o "anomalia"
         estados_anomalias = EstadoEquipo.objects.filter(
-            Q(nombre__icontains='anomalía') | Q(nombre__icontains='anomalia')
+            Q(nombre__icontains='anomalia') | Q(nombre__icontains='anomalia')
         )
         
         if estados_anomalias.exists():
@@ -680,7 +690,7 @@ def api_dashboard_operaciones(request):
                         'observaciones': em.observaciones or 'Sin observaciones'
                     })
         
-        # 2. También buscar en OTs con estado shutdown (si existe EstadoEquipo shutdown)
+        # 2. Tambien buscar en OTs con estado shutdown (si existe EstadoEquipo shutdown)
         estados_shutdown_equipo = EstadoEquipo.objects.filter(
             Q(nombre__icontains='shutdown')
         )
@@ -691,7 +701,7 @@ def api_dashboard_operaciones(request):
             ).select_related('equipo_id')
             
             for ot in ots_shutdown:
-                # Solo agregar si no está ya en la lista de shutdown manual
+                # Solo agregar si no esta ya en la lista de shutdown manual
                 if ot.equipo_id.equipo_id not in equipos_shutdown_ids:
                     equipos_shutdown_ids.add(ot.equipo_id.equipo_id)
                     codigo = ot.equipo_id.codigoInterno if hasattr(ot.equipo_id, 'codigoInterno') and ot.equipo_id.codigoInterno else 'N/A'
@@ -704,10 +714,10 @@ def api_dashboard_operaciones(request):
                         'observaciones': ot.observaciones or 'Sin observaciones'
                     })
         
-        # ========== DOCUMENTOS POR VENCER DE PERSONAL (30 días) ==========
+        # ========== DOCUMENTOS POR VENCER DE PERSONAL (30 dias) ==========
         documentos_personal_por_vencer = []
         
-        # Exámenes por vencer
+        # Examenes por vencer
         examenes_por_vencer = Examen.objects.filter(
             personal_id__activo=True,
             fechaVencimiento__gte=hoy,
@@ -735,7 +745,7 @@ def api_dashboard_operaciones(request):
         for cert in certificaciones_por_vencer:
             dias_restantes = (cert.fechaVencimiento - hoy).days
             documentos_personal_por_vencer.append({
-                'tipo': 'Certificación',
+                'tipo': 'Certificacion',
                 'nombre': f"{cert.tipoCertificacion_id}",
                 'personal': f"{cert.personal_id.nombre} {cert.personal_id.apepat} {cert.personal_id.apemat}",
                 'personal_rut': f"{cert.personal_id.rut}-{cert.personal_id.dvrut}",
@@ -798,10 +808,10 @@ def api_dashboard_operaciones(request):
                 'dias_restantes': dias_restantes
             })
         
-        # Ordenar por días restantes
+        # Ordenar por dias restantes
         documentos_personal_por_vencer.sort(key=lambda x: x['dias_restantes'])
         
-        # ========== DOCUMENTOS POR VENCER DE MAQUINARIAS (30 días) ==========
+        # ========== DOCUMENTOS POR VENCER DE MAQUINARIAS (30 dias) ==========
         documentos_maquinarias_por_vencer = []
         
         documentos_maquinarias = DocumentoMaquinaria.objects.filter(
@@ -820,7 +830,7 @@ def api_dashboard_operaciones(request):
                 'dias_restantes': dias_restantes
             })
         
-        # Ordenar por días restantes
+        # Ordenar por dias restantes
         documentos_maquinarias_por_vencer.sort(key=lambda x: x['dias_restantes'])
         
         # Tipos de ausentismo con conteo de personal activo (para modal)
@@ -837,7 +847,7 @@ def api_dashboard_operaciones(request):
                     'cantidad': count
                 })
         
-        # Tipos de licencia médica con conteo de personal activo (para modal)
+        # Tipos de licencia medica con conteo de personal activo (para modal)
         tipos_licencia_detalle = []
         for tipo_licencia in TipoLicenciaMedica.objects.all():
             count = LicenciaMedicaPorPersonal.objects.filter(
@@ -899,7 +909,7 @@ def api_dashboard_operaciones(request):
         # Faenas activas
         faenas_activas = Faena.objects.filter(activo=True).count()
         
-        # Faenas por estado (próximas, activas, finalizadas)
+        # Faenas por estado (proximas, activas, finalizadas)
         faenas_proximas = Faena.objects.filter(
             activo=True,
             fecha_inicio__gt=hoy
@@ -964,9 +974,8 @@ def api_dashboard_operaciones(request):
 @permission_required_custom('dashboards.view_dashboard_maquinarias', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_maquinarias(request):
-    """
-    API para obtener datos del dashboard de Maquinarias
-    """
+    # API para obtener datos del dashboard de Maquinarias.
+    # Incluye estadisticas de equipos, ordenes de trabajo y documentos por vencer.
     try:
         from maquinarias.models import EstadoOT, EstadoEquipo, EstadoCalendarioEquipo, EstadoFuenteEquipo, EstadoManualEquipo, DocumentoMaquinaria
         from ope_calendario.models import AsignacionEquipoFaena
@@ -979,7 +988,7 @@ def api_dashboard_maquinarias(request):
         equipos_activos = Equipo.objects.filter(activo=True).count()
         equipos_inactivos = Equipo.objects.filter(activo=False).count()
         
-        # Órdenes de trabajo por estado (excluyendo finalizadas)
+        # Ordenes de trabajo por estado (excluyendo finalizadas)
         estados_ot = EstadoOT.objects.filter(activo=True)
         estado_finalizada = EstadoOT.objects.filter(nombre__iexact='FINALIZADA').first()
         estado_cancelada = EstadoOT.objects.filter(nombre__iexact='CANCELADA').first()
@@ -1002,14 +1011,14 @@ def api_dashboard_maquinarias(request):
                         'total': total
                     })
         
-        # Distribución de equipos (similar a operaciones)
+        # distribucion de equipos (similar a operaciones)
         equipos_query = Equipo.objects.filter(activo=True)
         equipos_por_estado = {}
         
         for equipo in equipos_query:
             estado_actual = None
             
-            # 1. Verificar estados manuales (prioridad más alta)
+            # 1. Verificar estados manuales (prioridad mas alta)
             estado_manual = EstadoManualEquipo.objects.filter(
                 equipo=equipo,
                 fecha_inicio__lte=hoy
@@ -1070,7 +1079,7 @@ def api_dashboard_maquinarias(request):
             else:
                 equipos_por_estado[estado_actual] = 1
         
-        # Construir distribución de equipos
+        # Construir distribucion de equipos
         distribucion_equipos = {}
         equipos_disponibles_count = equipos_por_estado.get('Disponible', 0)
         equipos_en_faena_count = equipos_por_estado.get('En Faena', 0)
@@ -1085,7 +1094,7 @@ def api_dashboard_maquinarias(request):
             if estado_nombre not in ['Disponible', 'En Faena'] and cantidad > 0:
                 distribucion_equipos[estado_nombre] = cantidad
         
-        # Documentos de maquinarias por vencer (30 días)
+        # Documentos de maquinarias por vencer (30 dias)
         documentos_maquinarias_por_vencer = []
         documentos_maquinarias = DocumentoMaquinaria.objects.filter(
             equipo_id__activo=True,
@@ -1103,10 +1112,10 @@ def api_dashboard_maquinarias(request):
                 'dias_restantes': dias_restantes
             })
         
-        # Ordenar por días restantes
+        # Ordenar por dias restantes
         documentos_maquinarias_por_vencer.sort(key=lambda x: x['dias_restantes'])
         
-        # Preparar información detallada de equipos por estado para modales
+        # Preparar informacion detallada de equipos por estado para modales
         equipos_en_faena_detalle = []
         equipos_con_anomalias_detalle = []
         equipos_shutdown_detalle = []
@@ -1129,10 +1138,10 @@ def api_dashboard_maquinarias(request):
                 'fecha_fin': asig.fecha_fin.strftime('%d/%m/%Y') if asig.fecha_fin else 'Sin fecha fin'
             })
         
-        # Obtener detalles de equipos con anomalías (Operativo con anomalías)
-        # Buscar todos los estados de equipo que contengan "anomalía" o "anomalia"
+        # Obtener detalles de equipos con anomalias (Operativo con anomalias)
+        # Buscar todos los estados de equipo que contengan "anomalia" o "anomalia"
         estados_anomalias = EstadoEquipo.objects.filter(
-            Q(nombre__icontains='anomalía') | Q(nombre__icontains='anomalia')
+            Q(nombre__icontains='anomalia') | Q(nombre__icontains='anomalia')
         )
         
         if estados_anomalias.exists():
@@ -1189,7 +1198,7 @@ def api_dashboard_maquinarias(request):
                         'observaciones': em.observaciones or 'Sin observaciones'
                     })
         
-        # 2. También buscar en OTs con estado shutdown (si existe EstadoEquipo shutdown)
+        # 2. Tambien buscar en OTs con estado shutdown (si existe EstadoEquipo shutdown)
         estados_shutdown_equipo = EstadoEquipo.objects.filter(
             Q(nombre__icontains='shutdown')
         )
@@ -1205,7 +1214,7 @@ def api_dashboard_maquinarias(request):
             ).select_related('equipo_id')
             
             for ot in ots_shutdown:
-                # Solo agregar si no está ya en la lista de shutdown manual
+                # Solo agregar si no esta ya en la lista de shutdown manual
                 if ot.equipo_id.equipo_id not in equipos_shutdown_ids:
                     equipos_shutdown_ids.add(ot.equipo_id.equipo_id)
                     equipos_shutdown_detalle.append({
@@ -1217,7 +1226,7 @@ def api_dashboard_maquinarias(request):
                         'observaciones': ot.observaciones or 'Sin observaciones'
                     })
         
-        # Ranking de equipos más intervenidos (más OTs históricas)
+        # Ranking de equipos mas intervenidos (mas OTs historicas)
         ranking_equipos_intervenidos = Equipo.objects.filter(
             activo=True
         ).annotate(
@@ -1267,9 +1276,8 @@ def api_dashboard_maquinarias(request):
 @permission_required_custom('dashboards.view_dashboard_gerencia', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_gerencia(request):
-    """
-    API para obtener datos del dashboard de Gerencia (métricas estratégicas consolidadas)
-    """
+    # API para obtener datos del dashboard de Gerencia.
+    # Proporciona metricas estrategicas consolidadas de todas las areas.
     try:
         from maquinarias.models import EstadoOT, EstadoEquipo, EstadoCalendarioEquipo, EstadoFuenteEquipo, EstadoManualEquipo, DocumentoMaquinaria, TipoMantenimiento
         from ope_calendario.models import AsignacionEquipoFaena, AsignacionFaena
@@ -1316,7 +1324,7 @@ def api_dashboard_gerencia(request):
             Q(fecha_fin__gte=hoy) | Q(fecha_fin__isnull=True)
         ).values_list('equipo_id', flat=True).distinct()
         
-        # Equipos con estados especiales (shutdown, anomalías)
+        # Equipos con estados especiales (shutdown, anomalias)
         equipos_shutdown_ids = set()
         equipos_anomalias_ids = set()
         
@@ -1333,7 +1341,7 @@ def api_dashboard_gerencia(request):
                 Q(fecha_fin__gte=hoy) | Q(fecha_fin__isnull=True)
             ).values_list('equipo_id', flat=True).distinct())
         
-        estado_anomalias = EstadoEquipo.objects.filter(nombre__icontains='anomalía').first()
+        estado_anomalias = EstadoEquipo.objects.filter(nombre__icontains='anomalia').first()
         if estado_anomalias:
             estado_finalizada = EstadoOT.objects.filter(nombre__iexact='FINALIZADA').first()
             estado_cancelada = EstadoOT.objects.filter(nombre__iexact='CANCELADA').first()
@@ -1354,7 +1362,7 @@ def api_dashboard_gerencia(request):
         equipos_no_disponibles_ids = set(equipos_en_faena) | equipos_shutdown_ids | equipos_anomalias_ids
         equipos_disponibles_count = total_equipos - len(equipos_no_disponibles_ids)
         
-        # Tasa de utilización general
+        # Tasa de utilizacion general
         recursos_totales = total_personal + total_equipos
         recursos_ocupados = len(personal_no_disponible_ids) + len(equipos_no_disponibles_ids)
         tasa_utilizacion = (recursos_ocupados / recursos_totales * 100) if recursos_totales > 0 else 0
@@ -1378,7 +1386,7 @@ def api_dashboard_gerencia(request):
         
         faenas_activas = faenas_en_curso + faenas_planificadas  # Total de faenas activas (no finalizadas)
         
-        # ========== ANÁLISIS DE OTs ==========
+        # ========== ANALISIS DE OTs ==========
         estado_finalizada = EstadoOT.objects.filter(nombre__iexact='FINALIZADA').first()
         estado_cancelada = EstadoOT.objects.filter(nombre__iexact='CANCELADA').first()
         estados_finalizados_ids = []
@@ -1392,7 +1400,7 @@ def api_dashboard_gerencia(request):
         ots_finalizadas = OrdenTrabajo.objects.filter(estado_ot_id__in=estados_finalizados_ids).count() if estados_finalizados_ids else 0
         ots_activas = OrdenTrabajo.objects.exclude(estado_ot_id__in=estados_finalizados_ids).count() if estados_finalizados_ids else total_ots
         
-        # Tasa de cumplimiento (últimos 30 días)
+        # Tasa de cumplimiento (ultimos 30 dias)
         fecha_30_dias_atras = hoy - timedelta(days=30)
         ots_creadas_30_dias = OrdenTrabajo.objects.filter(fecha_creacion__gte=fecha_30_dias_atras).count()
         ots_finalizadas_30_dias = OrdenTrabajo.objects.filter(
@@ -1419,7 +1427,7 @@ def api_dashboard_gerencia(request):
             if tiempos:
                 tiempo_promedio_dias = sum(tiempos) / len(tiempos)
         
-        # Preventivo vs Correctivo (últimos 30 días)
+        # Preventivo vs Correctivo (ultimos 30 dias)
         tipos_preventivos = TipoMantenimiento.objects.filter(
             nombre__icontains='preventivo'
         ).values_list('tipoMantenimiento_id', flat=True)
@@ -1438,7 +1446,7 @@ def api_dashboard_gerencia(request):
             fecha_creacion__gte=fecha_30_dias_atras
         ).count() if tipos_correctivos.exists() else 0
         
-        # ========== ALERTAS CRÍTICAS ==========
+        # ========== ALERTAS Criticas ==========
         alertas_criticas = []
         
         # Equipos en shutdown
@@ -1457,7 +1465,7 @@ def api_dashboard_gerencia(request):
                     'icono': 'exclamation-triangle'
                 })
         
-        # Equipos con anomalías
+        # Equipos con anomalias
         if estado_anomalias:
             equipos_anomalias = OrdenTrabajo.objects.filter(
                 estado_equipo_id=estado_anomalias,
@@ -1468,13 +1476,13 @@ def api_dashboard_gerencia(request):
             ).values_list('equipo_id', flat=True).distinct().count()
             if equipos_anomalias > 0:
                 alertas_criticas.append({
-                    'tipo': 'Equipos con Anomalías',
+                    'tipo': 'Equipos con anomalias',
                     'cantidad': equipos_anomalias,
                     'severidad': 'media',
                     'icono': 'exclamation-circle'
                 })
         
-        # Documentos críticos por vencer (≤5 días) - obtener documentos completos
+        # Documentos Criticos por vencer (≤5 dias) - obtener documentos completos
         documentos_criticos_personal_list = Examen.objects.filter(
             personal_id__activo=True,
             fechaVencimiento__gte=hoy,
@@ -1516,7 +1524,7 @@ def api_dashboard_gerencia(request):
         total_documentos_criticos = len(documentos_detalle)
         if total_documentos_criticos > 0:
             alertas_criticas.append({
-                'tipo': 'Documentos por Vencer los Próximos 5 Días',
+                'tipo': 'Documentos por Vencer los Proximos 5 dias',
                 'cantidad': total_documentos_criticos,
                 'severidad': 'alta',
                 'icono': 'calendar-x',
@@ -1559,7 +1567,7 @@ def api_dashboard_gerencia(request):
                 nombre_personal += f" {licencia.personal_id.apemat}"
             personal_no_disponible_detalle.append({
                 'nombre': nombre_personal,
-                'tipo': 'Licencia Médica',
+                'tipo': 'Licencia medica',
                 'tipo_licencia': licencia.tipoLicenciaMedica_id.tipoLicenciaMedica if licencia.tipoLicenciaMedica_id else 'N/A',
                 'fecha_fin': licencia.fecha_fin_licencia.strftime('%d/%m/%Y') if licencia.fecha_fin_licencia else 'N/A'
             })
@@ -1622,7 +1630,7 @@ def api_dashboard_gerencia(request):
                     'fecha_fin': estado_manual.fecha_fin.strftime('%d/%m/%Y') if estado_manual.fecha_fin else 'Indefinido'
                 })
         
-        # Detalles de equipos con anomalías
+        # Detalles de equipos con anomalias
         equipos_anomalias_detalle = []
         if estado_anomalias:
             anomalias_equipos = OrdenTrabajo.objects.filter(
@@ -1637,7 +1645,7 @@ def api_dashboard_gerencia(request):
                 equipos_anomalias_detalle.append({
                     'nombre': ot.equipo_id.nombreEquipo,
                     'codigo': ot.equipo_id.codigoInterno,
-                    'tipo': 'Anomalía',
+                    'tipo': 'anomalia',
                     'ot_folio': ot.folio if hasattr(ot, 'folio') else 'N/A'
                 })
         
@@ -1724,7 +1732,7 @@ def api_dashboard_gerencia(request):
                 'tiempo_promedio_ots_dias': round(tiempo_promedio_dias, 1) if tiempo_promedio_dias else None,
                 'total_alertas_criticas': len(alertas_criticas),
                 
-                # Análisis de OTs
+                # ANALISIS de OTs
                 'ots_preventivas_30_dias': ots_preventivas_30_dias,
                 'ots_correctivas_30_dias': ots_correctivas_30_dias,
                 'ots_activas': ots_activas,
@@ -1736,7 +1744,7 @@ def api_dashboard_gerencia(request):
                 'faenas_planificadas': faenas_planificadas,
                 'faenas_finalizadas': faenas_finalizadas,
                 
-                # Alertas críticas
+                # Alertas Criticas
                 'alertas_criticas': alertas_criticas,
                 
                 # Resumen ejecutivo
@@ -1761,3 +1769,4 @@ def api_dashboard_gerencia(request):
             'success': False,
             'error': str(e) + '\n' + traceback.format_exc()
         }, status=500)
+

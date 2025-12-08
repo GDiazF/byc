@@ -16,6 +16,9 @@ from rrhh_personal.models import (
 )
 from maquinarias.models import Equipo, DocumentoMaquinaria
 from .utils import calcular_estado_vencimiento
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -87,10 +90,8 @@ def _obtener_documentos_personal(request):
         buscar = request.GET.get('buscar', '').strip()
         solo_activos = request.GET.get('solo_activos', 'true').lower() == 'true'
         
-        # Query base para personal
-        personal_query = Personal.objects.all()
-        if solo_activos:
-            personal_query = personal_query.filter(activo=True)
+        # Query base para personal - SOLO ACTIVOS
+        personal_query = Personal.objects.filter(activo=True)
         
         # Aplicar búsqueda
         if buscar:
@@ -118,9 +119,11 @@ def _obtener_documentos_personal(request):
         if personal.fecha_vencimiento_carnet:
             estado = calcular_estado_vencimiento(personal.fecha_vencimiento_carnet)
             
-            # Aplicar filtros
-            if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'CARNET'):
-                documentos.append({
+            # Solo mostrar si tiene <= 45 días restantes
+            if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
+                # Aplicar filtros
+                if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'CARNET'):
+                    documentos.append({
                     'tipo': 'DOCUMENTO_PERSONAL',
                     'tipo_nombre': 'Carnet',
                     'nombre': 'Fotocopia Carnet',
@@ -137,7 +140,7 @@ def _obtener_documentos_personal(request):
                     'texto_estado': estado['texto'],
                     'identificador': f"carnet_{personal.personal_id}",
                     'url_editar': f"/rrhh/personal/{personal.personal_id}/documentation/"
-                })
+                    })
     
     # 2. Licencias de conducir (múltiples por personal)
     licencias_conducir = LicenciaPorPersonal.objects.filter(
@@ -152,25 +155,27 @@ def _obtener_documentos_personal(request):
             tipos_list = list(licencia.tipos.all())
             tipos_str = ", ".join([t.tipoLicencia for t in tipos_list]) if tipos_list else ""
         
-            if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'LICENCIA_CONDUCIR'):
-                documentos.append({
-                    'tipo': 'LICENCIA_CONDUCIR',
-                    'tipo_nombre': 'Licencia de Conducir',
-                    'nombre': f'Licencia de Conducir ({tipos_str})' if tipos_str else 'Licencia de Conducir',
-                    'personal_id': licencia.personal_id.personal_id,
-                    'personal_nombre': f"{licencia.personal_id.nombre} {licencia.personal_id.apepat} {licencia.personal_id.apemat or ''}".strip(),
-                    'personal_rut': f"{licencia.personal_id.rut}-{licencia.personal_id.dvrut}",
-                    'fecha_vencimiento': licencia.fechaVencimiento.strftime('%d/%m/%Y'),
-                    'fecha_vencimiento_iso': licencia.fechaVencimiento.isoformat(),
-                    'dias_restantes': estado['dias_restantes'],
-                    'estado': estado['estado'],
-                    'color': estado['color'],
-                    'badge_class': estado['badge_class'],
-                    'icono': estado['icono'],
-                    'texto_estado': estado['texto'],
-                    'identificador': f"licencia_conducir_{licencia.licenciaPorPersonal_id}",
-                    'url_editar': f"/rrhh/personal/{licencia.personal_id.personal_id}/documentation/"
-                })
+            # Solo mostrar si tiene <= 45 días restantes
+            if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
+                if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'LICENCIA_CONDUCIR'):
+                    documentos.append({
+                        'tipo': 'LICENCIA_CONDUCIR',
+                        'tipo_nombre': 'Licencia de Conducir',
+                        'nombre': f'Licencia de Conducir ({tipos_str})' if tipos_str else 'Licencia de Conducir',
+                        'personal_id': licencia.personal_id.personal_id,
+                        'personal_nombre': f"{licencia.personal_id.nombre} {licencia.personal_id.apepat} {licencia.personal_id.apemat or ''}".strip(),
+                        'personal_rut': f"{licencia.personal_id.rut}-{licencia.personal_id.dvrut}",
+                        'fecha_vencimiento': licencia.fechaVencimiento.strftime('%d/%m/%Y'),
+                        'fecha_vencimiento_iso': licencia.fechaVencimiento.isoformat(),
+                        'dias_restantes': estado['dias_restantes'],
+                        'estado': estado['estado'],
+                        'color': estado['color'],
+                        'badge_class': estado['badge_class'],
+                        'icono': estado['icono'],
+                        'texto_estado': estado['texto'],
+                        'identificador': f"licencia_conducir_{licencia.licenciaPorPersonal_id}",
+                        'url_editar': f"/rrhh/personal/{licencia.personal_id.personal_id}/documentation/"
+                    })
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
@@ -188,8 +193,10 @@ def _obtener_documentos_personal(request):
         estado = calcular_estado_vencimiento(licencia.fechaVencimiento)
         tipo_nombre = licencia.tipoLicenciaInterna_id.tipoLicenciaInterna if licencia.tipoLicenciaInterna_id else 'N/A'
         
-        if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'LICENCIA_INTERNA'):
-            documentos.append({
+        # Solo mostrar si tiene <= 45 días restantes
+        if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
+            if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'LICENCIA_INTERNA'):
+                documentos.append({
                 'tipo': 'LICENCIA_INTERNA',
                 'tipo_nombre': 'Licencia Interna',
                 'nombre': f'Licencia Interna: {tipo_nombre}',
@@ -206,38 +213,10 @@ def _obtener_documentos_personal(request):
                 'texto_estado': estado['texto'],
                 'identificador': f"licencia_interna_{licencia.licenciaInterna_id}",
                 'url_editar': f"/rrhh/personal/{licencia.personal_id.personal_id}/documentation/"
-            })
+                })
     
-    # 4. Licencias médicas (múltiples por personal)
-    licencias_medicas = LicenciaMedicaPorPersonal.objects.filter(
-        personal_id__in=[p.personal_id for p in personal_list]
-    ).select_related('personal_id', 'tipoLicenciaMedica_id')
-    
-    for licencia in licencias_medicas:
-        if not licencia.fecha_fin_licencia or not licencia.personal_id:
-            continue
-        estado = calcular_estado_vencimiento(licencia.fecha_fin_licencia)
-        tipo_nombre = licencia.tipoLicenciaMedica_id.tipoLicenciaMedica if licencia.tipoLicenciaMedica_id else 'N/A'
-        
-        if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'LICENCIA_MEDICA'):
-            documentos.append({
-                'tipo': 'LICENCIA_MEDICA',
-                'tipo_nombre': 'Licencia Médica',
-                'nombre': f'Licencia Médica: {tipo_nombre}',
-                'personal_id': licencia.personal_id.personal_id,
-                'personal_nombre': f"{licencia.personal_id.nombre} {licencia.personal_id.apepat} {licencia.personal_id.apemat or ''}".strip(),
-                'personal_rut': f"{licencia.personal_id.rut}-{licencia.personal_id.dvrut}",
-                'fecha_vencimiento': licencia.fecha_fin_licencia.strftime('%d/%m/%Y'),
-                'fecha_vencimiento_iso': licencia.fecha_fin_licencia.isoformat(),
-                'dias_restantes': estado['dias_restantes'],
-                'estado': estado['estado'],
-                'color': estado['color'],
-                'badge_class': estado['badge_class'],
-                'icono': estado['icono'],
-                'texto_estado': estado['texto'],
-                'identificador': f"licencia_medica_{licencia.licenciaMedicaPorPersonal_id}",
-                'url_editar': f"/rrhh/personal/{licencia.personal_id.personal_id}/documentation/"
-            })
+    # NOTA: Las licencias médicas NO se muestran en vencimientos
+    # porque es normal que venzan. Solo se notifica su creación (ver signals.py)
     
     # 5. Certificaciones (múltiples por personal)
     certificaciones = Certificacion.objects.filter(
@@ -250,8 +229,10 @@ def _obtener_documentos_personal(request):
         estado = calcular_estado_vencimiento(cert.fechaVencimiento)
         tipo_nombre = cert.tipoCertificacion_id.tipoCertificacion if cert.tipoCertificacion_id else 'N/A'
         
-        if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'CERTIFICACION'):
-            documentos.append({
+        # Solo mostrar si tiene <= 45 días restantes
+        if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
+            if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'CERTIFICACION'):
+                documentos.append({
                 'tipo': 'CERTIFICACION',
                 'tipo_nombre': 'Certificación',
                 'nombre': f'Certificación: {tipo_nombre}',
@@ -268,7 +249,7 @@ def _obtener_documentos_personal(request):
                 'texto_estado': estado['texto'],
                 'identificador': f"certificacion_{cert.certif_id}",
                 'url_editar': f"/rrhh/personal/{cert.personal_id.personal_id}/documentation/"
-            })
+                })
     
     # 6. Exámenes (múltiples por personal)
     examenes = Examen.objects.filter(
@@ -281,8 +262,10 @@ def _obtener_documentos_personal(request):
         estado = calcular_estado_vencimiento(examen.fechaVencimiento)
         tipo_nombre = examen.tipoEx_id.tipoExamen if examen.tipoEx_id else 'N/A'
         
-        if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'EXAMEN'):
-            documentos.append({
+        # Solo mostrar si tiene <= 45 días restantes
+        if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
+            if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'EXAMEN'):
+                documentos.append({
                 'tipo': 'EXAMEN',
                 'tipo_nombre': 'Examen',
                 'nombre': f'Examen: {tipo_nombre}',
@@ -299,7 +282,7 @@ def _obtener_documentos_personal(request):
                 'texto_estado': estado['texto'],
                 'identificador': f"examen_{examen.examen_id}",
                 'url_editar': f"/rrhh/personal/{examen.personal_id.personal_id}/documentation/"
-            })
+                })
     
     # Ordenar por días restantes (más críticos primero, luego por fecha)
     documentos.sort(key=lambda x: (
@@ -355,10 +338,8 @@ def _obtener_documentos_maquinarias(request):
     
     documentos = []
     
-    # Query base para equipos
-    equipos_query = Equipo.objects.all()
-    if solo_activos:
-        equipos_query = equipos_query.filter(activo=True)
+    # Query base para equipos - SOLO ACTIVOS
+    equipos_query = Equipo.objects.filter(activo=True)
     
     # Aplicar búsqueda
     if buscar:
@@ -379,10 +360,16 @@ def _obtener_documentos_maquinarias(request):
     ).select_related('equipo_id', 'tipo_documento_id')
     
     for doc in documentos_maquinarias:
+        # Solo mostrar documentos con fecha de vencimiento
+        if not doc.fecha_vencimiento:
+            continue
+            
         estado = calcular_estado_vencimiento(doc.fecha_vencimiento)
         
-        if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'DOCUMENTO_MAQUINARIA'):
-            documentos.append({
+        # Solo mostrar si tiene <= 45 días restantes
+        if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
+            if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'DOCUMENTO_MAQUINARIA'):
+                documentos.append({
                 'tipo': 'DOCUMENTO_MAQUINARIA',
                 'tipo_nombre': 'Documento de Maquinaria',
                 'nombre': doc.tipo_documento_id.nombre,
@@ -400,7 +387,7 @@ def _obtener_documentos_maquinarias(request):
                 'texto_estado': estado['texto'],
                 'identificador': f"doc_maquinaria_{doc.documento_id}",
                 'url_editar': f"/maquinarias/equipos/{doc.equipo_id.equipo_id}/documentacion/"
-            })
+                })
     
     # Ordenar por días restantes (más críticos primero)
     documentos.sort(key=lambda x: (
@@ -592,3 +579,31 @@ def exportar_excel_maquinarias(request):
     
     wb.save(response)
     return response
+
+
+@login_required
+@permission_required_custom('vencimientos_documentos.view_vencimientos')
+@require_http_methods(["POST"])
+def ejecutar_procesar_vencimientos(request):
+    """
+    Vista para ejecutar manualmente el procesamiento de vencimientos y crear notificaciones.
+    Solo para pruebas.
+    """
+    try:
+        from notificaciones.tasks import procesar_vencimientos_documentos
+        
+        # Ejecutar el procesamiento con forzar_creacion=True para permitir recrear notificaciones en pruebas
+        procesar_vencimientos_documentos(forzar_creacion=True)
+        
+        logger.info("Procesamiento de vencimientos ejecutado manualmente por usuario: %s", request.user.username)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Procesamiento de vencimientos ejecutado correctamente. Las notificaciones se han creado.'
+        })
+    except Exception as e:
+        logger.error(f"Error al ejecutar procesamiento de vencimientos manualmente: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al ejecutar el procesamiento: {str(e)}'
+        }, status=500)

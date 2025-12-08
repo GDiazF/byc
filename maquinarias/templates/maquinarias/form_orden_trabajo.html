@@ -31,6 +31,73 @@
             <input type="hidden" id="folio" value="{{ ot.folio }}">
             {% endif %}
             
+            {% if es_edicion %}
+            <!-- En modo edición, mostrar información de solo lectura -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-calendar-event me-2"></i>
+                    <span>Información de la Orden de Trabajo</span>
+                </div>
+                <div class="form-section-body">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Folio</label>
+                            <input type="text" class="form-control" value="{{ ot.folio }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha de Creación</label>
+                            <input type="text" class="form-control" value="{{ ot.fecha_creacion|date:'d/m/Y H:i' }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha de Inicio</label>
+                            <input type="text" class="form-control" value="{% if ot.fecha_inicio %}{{ ot.fecha_inicio|date:'d/m/Y' }}{% else %}No definida{% endif %}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="fecha_fin_edicion" class="form-label">Fecha de Fin</label>
+                            <input type="text" class="form-control fecha-chile-picker" id="fecha_fin_edicion" placeholder="DD-MM-YYYY" {% if ot.fecha_fin %}value="{{ ot.fecha_fin|date:'Y-m-d' }}"{% endif %}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <!-- Sección: Información de la OT (solo en creación) - MOVIDA AL PRINCIPIO -->
+            <div class="form-section">
+                <div class="form-section-header">
+                    <i class="bi bi-calendar-event me-2"></i>
+                    <span>Información de la Orden de Trabajo</span>
+                </div>
+                <div class="form-section-body">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label for="fecha_inicio" class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control fecha-chile-picker" id="fecha_inicio" placeholder="DD-MM-YYYY" required>
+                            <div class="invalid-feedback" id="fecha_inicio_error"></div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="fecha_fin" class="form-label">Fecha de Fin</label>
+                            <input type="text" class="form-control fecha-chile-picker" id="fecha_fin" placeholder="DD-MM-YYYY">
+                            <div class="invalid-feedback" id="fecha_fin_error"></div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="tipo_mantenimiento_id" class="form-label">Tipo de Mantenimiento <span class="text-danger">*</span></label>
+                            <select class="form-select" id="tipo_mantenimiento_id" required>
+                                <option value="">Seleccione...</option>
+                                {% for tipo in tipos_mantenimiento %}
+                                <option value="{{ tipo.tipoMantenimiento_id }}">{{ tipo.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Mensajes de validación de disponibilidad -->
+                    <div id="validacionDisponibilidad" class="mt-3" style="display: none;">
+                        <div class="alert alert-warning" id="alertDisponibilidad" role="alert"></div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
             <!-- Sección: Selección de Equipo -->
             <div class="form-section">
                 <div class="form-section-header">
@@ -102,6 +169,7 @@
                             <select class="form-select" id="equipo_id" required disabled>
                                 <option value="">Primero seleccione modelo...</option>
                             </select>
+                            <div class="invalid-feedback" id="equipo_id_error"></div>
                         </div>
                     </div>
                     {% endif %}
@@ -133,37 +201,6 @@
             </div>
 
             {% if not es_edicion %}
-            <!-- Sección: Información de la OT (solo en creación) -->
-            <div class="form-section">
-                <div class="form-section-header">
-                    <i class="bi bi-calendar-event me-2"></i>
-                    <span>Información de la Orden de Trabajo</span>
-                </div>
-                <div class="form-section-body">
-                    <div class="row g-2">
-                        <div class="col-md-4">
-                            <label for="fecha_inicio" class="form-label">Fecha de Inicio</label>
-                            <input type="text" class="form-control fecha-chile-picker" id="fecha_inicio" placeholder="DD-MM-YYYY">
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <label for="fecha_fin" class="form-label">Fecha de Fin</label>
-                            <input type="text" class="form-control fecha-chile-picker" id="fecha_fin" placeholder="DD-MM-YYYY">
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <label for="tipo_mantenimiento_id" class="form-label">Tipo de Mantenimiento <span class="text-danger">*</span></label>
-                            <select class="form-select" id="tipo_mantenimiento_id" required>
-                                <option value="">Seleccione...</option>
-                                {% for tipo in tipos_mantenimiento %}
-                                <option value="{{ tipo.tipoMantenimiento_id }}">{{ tipo.nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Sección: Mantenimiento Preventivo (solo si es preventivo) -->
             <div class="form-section hidden-section" id="seccionPreventivo">
                 <div class="form-section-header">
@@ -301,34 +338,6 @@
             </div>
             
             {% if es_edicion %}
-            <!-- En modo edición, mostrar información de solo lectura -->
-            <div class="form-section">
-                <div class="form-section-header">
-                    <i class="bi bi-calendar-event me-2"></i>
-                    <span>Información de la Orden de Trabajo</span>
-                </div>
-                <div class="form-section-body">
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <label class="form-label">Folio</label>
-                            <input type="text" class="form-control" value="{{ ot.folio }}" readonly>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Fecha de Creación</label>
-                            <input type="text" class="form-control" value="{{ ot.fecha_creacion|date:'d/m/Y H:i' }}" readonly>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Fecha de Inicio</label>
-                            <input type="text" class="form-control" value="{% if ot.fecha_inicio %}{{ ot.fecha_inicio|date:'d/m/Y' }}{% else %}No definida{% endif %}" readonly>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="fecha_fin_edicion" class="form-label">Fecha de Fin</label>
-                            <input type="text" class="form-control fecha-chile-picker" id="fecha_fin_edicion" placeholder="DD-MM-YYYY" {% if ot.fecha_fin %}value="{{ ot.fecha_fin|date:'Y-m-d' }}"{% endif %}>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Mostrar secciones de la OT en modo edición -->
             {% if ot.corresponde_pauta and ot.pauta_id %}
             <div class="form-section">
@@ -410,6 +419,18 @@
                             <label class="form-label">Historial de Observaciones</label>
                             <div class="border rounded p-3 historial-observaciones">
                                 <div id="historialObservaciones">
+                                    {% if ot.observaciones %}
+                                    <!-- Observación inicial de la OT -->
+                                    <div class="mb-3 pb-3 border-bottom">
+                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                            <strong class="text-primary">
+                                                <i class="bi bi-file-text me-1"></i>Observación Inicial
+                                            </strong>
+                                            <small class="text-muted">{{ ot.fecha_creacion|date:'d/m/Y H:i' }}</small>
+                                        </div>
+                                        <p class="mb-0">{{ ot.observaciones }}</p>
+                                    </div>
+                                    {% endif %}
                                     {% for obs in historial_observaciones %}
                                     <div class="mb-3 pb-3 border-bottom">
                                         <div class="d-flex justify-content-between align-items-start mb-1">
@@ -419,7 +440,9 @@
                                         <p class="mb-0">{{ obs.observacion }}</p>
                                     </div>
                                     {% empty %}
+                                    {% if not ot.observaciones %}
                                     <p class="text-muted mb-0">No hay observaciones registradas.</p>
+                                    {% endif %}
                                     {% endfor %}
                                 </div>
                             </div>
@@ -479,6 +502,34 @@
     </div>
 </div>
 
+<!-- Modal para mostrar conflictos de disponibilidad -->
+<div class="modal fade" id="modalConflictosDisponibilidad" tabindex="-1" aria-labelledby="modalConflictosDisponibilidadLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalConflictosDisponibilidadLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Conflictos de Disponibilidad
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>No se puede crear la orden de trabajo</strong> debido a conflictos de disponibilidad:
+                </div>
+                <div id="contenidoConflictos">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Template para un item de sección (hidden) -->
 <template id="itemSeccionTemplate">
     <div class="item-seccion" data-item-index="">
@@ -532,6 +583,7 @@
     window.apiCargosPorDepto = "{% url 'maquinarias:api_cargos_por_depto' %}";
     window.apiDepartamentos = "{% url 'maquinarias:api_departamentos' %}";
     window.apiGuardarOT = "{% url 'maquinarias:api_guardar_orden_trabajo' %}";
+    window.apiValidarDisponibilidad = "{% url 'maquinarias:api_validar_disponibilidad_ot' %}";
     {% if es_edicion %}
     window.apiAgregarObservacionOT = "{% url 'maquinarias:api_agregar_observacion_ot' ot.ot_id %}";
     {% endif %}

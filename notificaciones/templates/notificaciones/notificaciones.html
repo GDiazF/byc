@@ -1,6 +1,7 @@
 {% extends 'home/index.html' %}
 {% load static %}
 {% load permissions_tags %}
+{% load tz %}
 
 {% block title %}Panel de Notificaciones{% endblock %}
 
@@ -81,10 +82,12 @@
                                         </select>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label small">&nbsp;</label>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarFiltros()">
-                                            <i class="bi bi-x-circle me-1"></i>Limpiar filtros
-                                        </button>
+                                        <label class="form-label small" style="visibility: hidden;">&nbsp;</label>
+                                        <div>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarFiltros()">
+                                                <i class="bi bi-x-circle me-1"></i>Limpiar filtros
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                                 
@@ -109,7 +112,7 @@
                                                         data-notificacion-id="{{ notif.id }}"
                                                         data-titulo="{{ notif.titulo }}"
                                                         data-mensaje="{{ notif.mensaje }}"
-                                                        data-fecha="{{ notif.fecha_creacion|date:'d/m/Y H:i' }}"
+                                                        data-fecha="{{ notif.fecha_creacion|localtime|date:'d/m/Y H:i' }}"
                                                         style="cursor: pointer;">
                                                         <td class="text-center">
                                                             {% if not notif.leida %}
@@ -125,7 +128,7 @@
                                                         </td>
                                                         <td>
                                                             <small class="text-muted">
-                                                                <i class="bi bi-clock me-1"></i>{{ notif.fecha_creacion|date:"d/m/Y H:i" }}
+                                                                <i class="bi bi-clock me-1"></i>{{ notif.fecha_creacion|localtime|date:"d/m/Y H:i" }}
                                                             </small>
                                                         </td>
                                                         <td class="text-center" onclick="event.stopPropagation();">
@@ -180,10 +183,12 @@
                                         </select>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label small">&nbsp;</label>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarFiltrosArchivadas()">
-                                            <i class="bi bi-x-circle me-1"></i>Limpiar filtros
-                                        </button>
+                                        <label class="form-label small" style="visibility: hidden;">&nbsp;</label>
+                                        <div>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarFiltrosArchivadas()">
+                                                <i class="bi bi-x-circle me-1"></i>Limpiar filtros
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                                 
@@ -208,7 +213,7 @@
                                                         data-notificacion-id="{{ notif.id }}"
                                                         data-titulo="{{ notif.titulo }}"
                                                         data-mensaje="{{ notif.mensaje }}"
-                                                        data-fecha="{{ notif.fecha_creacion|date:'d/m/Y H:i' }}"
+                                                        data-fecha="{{ notif.fecha_creacion|localtime|date:'d/m/Y H:i' }}"
                                                         style="cursor: pointer;">
                                                         <td class="text-center">
                                                             {% if not notif.leida %}
@@ -224,7 +229,7 @@
                                                         </td>
                                                         <td>
                                                             <small class="text-muted">
-                                                                <i class="bi bi-clock me-1"></i>{{ notif.fecha_creacion|date:"d/m/Y H:i" }}
+                                                                <i class="bi bi-clock me-1"></i>{{ notif.fecha_creacion|localtime|date:"d/m/Y H:i" }}
                                                             </small>
                                                         </td>
                                                         <td class="text-center" onclick="event.stopPropagation();">

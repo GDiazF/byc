@@ -1,13 +1,15 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.core.paginator import Paginator
 from django.db.models import Q, Prefetch
 from django.contrib import messages
 from django.conf import settings
 import json
 import os
+import zipfile
+import tempfile
 
 # Para generar PDFs
 try:
@@ -2203,8 +2205,12 @@ def api_listar_ordenes_trabajo(request):
         estado_disponible = EstadoEquipo.objects.filter(nombre__iexact='Disponible').first()
         
         if estado_finalizada and estado_disponible:
-            hoy = date.today()
+            # Usar timezone para obtener la fecha de hoy en la zona horaria de Chile
+            from django.utils import timezone
+            hoy = timezone.now().date()
             # Buscar OTs activas con fecha de fin vencida
+            # Se finaliza cuando la fecha de fin es menor que hoy (es decir, ya pasó)
+            # Si fecha_fin es el día 5, se finaliza el día 6 (al día siguiente)
             ots_vencidas = OrdenTrabajo.objects.filter(
                 fecha_fin__lt=hoy,
                 estado_ot_id__isnull=False
@@ -2729,6 +2735,175 @@ def api_detalle_pauta_ot(request, pauta_id):
 @login_required
 @permission_required_multiple('maquinarias.add_ordentrabajo', 'maquinarias.change_ordentrabajo', require_all=False, is_ajax=True)
 @require_http_methods(["POST"])
+def api_validar_disponibilidad_ot(request):
+    """API para validar disponibilidad de equipo y mecánico para una OT"""
+    try:
+        from django.utils import timezone
+        from ope_calendario.models import AsignacionFaena, AsignacionEquipoFaena
+        from datetime import datetime
+        
+        data = json.loads(request.body)
+        equipo_id = data.get('equipo_id')
+        personal_ids = data.get('personal_ids', [])  # Lista de IDs de personal
+        fecha_inicio = data.get('fecha_inicio')
+        fecha_fin = data.get('fecha_fin')
+        ot_id = data.get('ot_id')  # Para excluir la OT actual en edición
+        
+        if not fecha_inicio:
+            return JsonResponse({
+                'success': False,
+                'message': 'La fecha de inicio es requerida'
+            }, status=400)
+        
+        try:
+            fecha_inicio_date = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Formato de fecha de inicio inválido'
+            }, status=400)
+        
+        fecha_fin_date = None
+        if fecha_fin:
+            try:
+                fecha_fin_date = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Formato de fecha de fin inválido'
+                }, status=400)
+        
+        conflictos = {
+            'equipo': [],
+            'personal': []
+        }
+        
+        # Validar equipo
+        if equipo_id:
+            # Verificar asignaciones de faenas del equipo
+            asignaciones_faena_equipo = AsignacionEquipoFaena.objects.filter(
+                equipo_id=equipo_id,
+                activo=True
+            ).filter(
+                Q(fecha_inicio__lte=fecha_fin_date if fecha_fin_date else timezone.now().date()) &
+                (Q(fecha_fin__gte=fecha_inicio_date) | Q(fecha_fin__isnull=True))
+            )
+            
+            for asignacion in asignaciones_faena_equipo:
+                conflictos['equipo'].append({
+                    'tipo': 'faena',
+                    'faena': asignacion.faena.nombre,
+                    'fecha_inicio': asignacion.fecha_inicio.strftime('%d/%m/%Y'),
+                    'fecha_fin': asignacion.fecha_fin.strftime('%d/%m/%Y') if asignacion.fecha_fin else 'Indefinida'
+                })
+            
+            # Verificar OTs activas del equipo (excluyendo la OT actual si es edición)
+            ots_equipo = OrdenTrabajo.objects.filter(
+                equipo_id=equipo_id,
+                fecha_inicio__isnull=False
+            ).exclude(
+                estado_ot_id__nombre__iexact='FINALIZADA'
+            ).exclude(
+                estado_ot_id__nombre__iexact='CANCELADA'
+            )
+            
+            if ot_id:
+                ots_equipo = ots_equipo.exclude(ot_id=ot_id)
+            
+            # Verificar solapamiento de fechas
+            for ot in ots_equipo:
+                if ot.fecha_inicio:
+                    # Verificar si hay solapamiento
+                    ot_fin = ot.fecha_fin if ot.fecha_fin else timezone.now().date() + timedelta(days=365)
+                    nueva_fin = fecha_fin_date if fecha_fin_date else timezone.now().date() + timedelta(days=365)
+                    
+                    # Hay solapamiento si: ot_inicio <= nueva_fin AND nueva_inicio <= ot_fin
+                    if ot.fecha_inicio <= nueva_fin and fecha_inicio_date <= ot_fin:
+                        conflictos['equipo'].append({
+                            'tipo': 'ot',
+                            'folio': ot.folio,
+                            'fecha_inicio': ot.fecha_inicio.strftime('%d/%m/%Y') if ot.fecha_inicio else 'N/A',
+                            'fecha_fin': ot.fecha_fin.strftime('%d/%m/%Y') if ot.fecha_fin else 'Indefinida'
+                        })
+        
+        # Validar personal (mecánicos)
+        for personal_id in personal_ids:
+            # Verificar asignaciones de faenas del personal
+            asignaciones_faena_personal = AsignacionFaena.objects.filter(
+                personal_id=personal_id,
+                activo=True
+            ).filter(
+                Q(fecha_inicio__lte=fecha_fin_date if fecha_fin_date else timezone.now().date()) &
+                (Q(fecha_fin__gte=fecha_inicio_date) | Q(fecha_fin__isnull=True))
+            )
+            
+            for asignacion in asignaciones_faena_personal:
+                # Obtener nombre del personal
+                personal_obj = asignacion.personal
+                nombre_personal = f"{personal_obj.nombre} {personal_obj.apepat}"
+                
+                conflictos['personal'].append({
+                    'personal_id': personal_id,
+                    'personal_nombre': nombre_personal,
+                    'tipo': 'faena',
+                    'faena': asignacion.faena.nombre,
+                    'fecha_inicio': asignacion.fecha_inicio.strftime('%d/%m/%Y'),
+                    'fecha_fin': asignacion.fecha_fin.strftime('%d/%m/%Y') if asignacion.fecha_fin else 'Indefinida'
+                })
+            
+            # Verificar OTs activas del personal (excluyendo la OT actual si es edición)
+            ots_personal = OrdenTrabajo.objects.filter(
+                personal_asignado__personal_id=personal_id,
+                fecha_inicio__isnull=False
+            ).exclude(
+                estado_ot_id__nombre__iexact='FINALIZADA'
+            ).exclude(
+                estado_ot_id__nombre__iexact='CANCELADA'
+            )
+            
+            if ot_id:
+                ots_personal = ots_personal.exclude(ot_id=ot_id)
+            
+            # Verificar solapamiento de fechas
+            for ot in ots_personal:
+                if ot.fecha_inicio:
+                    ot_fin = ot.fecha_fin if ot.fecha_fin else timezone.now().date() + timedelta(days=365)
+                    nueva_fin = fecha_fin_date if fecha_fin_date else timezone.now().date() + timedelta(days=365)
+                    
+                    # Hay solapamiento si: ot_inicio <= nueva_fin AND nueva_inicio <= ot_fin
+                    if ot.fecha_inicio <= nueva_fin and fecha_inicio_date <= ot_fin:
+                        # Obtener nombre del personal
+                        personal_obj = Personal.objects.filter(personal_id=personal_id).first()
+                        nombre_personal = f"{personal_obj.nombre} {personal_obj.apepat}" if personal_obj else f"ID: {personal_id}"
+                        
+                        conflictos['personal'].append({
+                            'personal_id': personal_id,
+                            'personal_nombre': nombre_personal,
+                            'tipo': 'ot',
+                            'folio': ot.folio,
+                            'fecha_inicio': ot.fecha_inicio.strftime('%d/%m/%Y') if ot.fecha_inicio else 'N/A',
+                            'fecha_fin': ot.fecha_fin.strftime('%d/%m/%Y') if ot.fecha_fin else 'Indefinida'
+                        })
+        
+        disponible = len(conflictos['equipo']) == 0 and len(conflictos['personal']) == 0
+        
+        return JsonResponse({
+            'success': True,
+            'disponible': disponible,
+            'conflictos': conflictos
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error al validar disponibilidad: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@login_required
+@permission_required_multiple('maquinarias.add_ordentrabajo', 'maquinarias.change_ordentrabajo', require_all=False, is_ajax=True)
+@require_http_methods(["POST"])
 def api_guardar_orden_trabajo(request):
     """API para crear o actualizar una orden de trabajo"""
     try:
@@ -2825,6 +3000,35 @@ def api_guardar_orden_trabajo(request):
                 )
                 cambios_registrados.append('fecha_fin')
                 ot.fecha_fin = None
+            
+            # Actualizar personal asignado
+            personal_ids = data.get('personal_asignado', [])
+            if personal_ids is not None:
+                # Obtener personal anterior para comparar
+                personal_anterior_ids = list(ot.personal_asignado.values_list('personal_id', flat=True))
+                personal_anterior_ids.sort()
+                personal_nuevo_ids = sorted([int(pid) for pid in personal_ids])
+                
+                # Solo actualizar si hay cambios
+                if personal_anterior_ids != personal_nuevo_ids:
+                    ot.personal_asignado.set(personal_ids)
+                    
+                    # Registrar cambio en historial
+                    personal_anterior = Personal.objects.filter(personal_id__in=personal_anterior_ids)
+                    personal_nuevo = Personal.objects.filter(personal_id__in=personal_nuevo_ids)
+                    
+                    nombres_anterior = [f"{p.nombre} {p.apepat}" for p in personal_anterior]
+                    nombres_nuevo = [f"{p.nombre} {p.apepat}" for p in personal_nuevo]
+                    
+                    HistorialOT.registrar(
+                        ot=ot,
+                        accion='PERSONAL_ASIGNADO_CAMBIADO',
+                        descripcion=f"Personal asignado cambiado. Anterior: {', '.join(nombres_anterior) if nombres_anterior else 'Ninguno'}. Nuevo: {', '.join(nombres_nuevo) if nombres_nuevo else 'Ninguno'}",
+                        usuario=request.user if request.user.is_authenticated else None,
+                        datos_previos={'personal_ids': personal_anterior_ids, 'personal_nombres': nombres_anterior},
+                        datos_nuevos={'personal_ids': personal_nuevo_ids, 'personal_nombres': nombres_nuevo}
+                    )
+                    cambios_registrados.append('personal_asignado')
             
             # Actualizar estados y fecha fin
             ot.estado_ot_id = estado_ot
@@ -3031,6 +3235,14 @@ def api_guardar_orden_trabajo(request):
                 'estado_equipo': ot.estado_equipo_id.nombre if ot.estado_equipo_id else None,
             }
         )
+        
+        # Si hay observaciones iniciales, agregarlas al historial de observaciones
+        if observaciones:
+            HistorialObservacionesOT.objects.create(
+                ot_id=ot,
+                observacion=observaciones,
+                usuario=request.user if request.user.is_authenticated else None
+            )
         
         # Personal asignado (ManyToMany)
         personal_ids = data.get('personal_asignado', [])
@@ -3871,3 +4083,147 @@ def api_historial_equipo(request, equipo_id):
             'success': False,
             'message': f'Error al obtener historial de equipo: {str(e)}'
         }, status=500)
+
+
+# ============================================================================
+# VISTA PARA DESCARGAR DOCUMENTACIÓN DE EQUIPOS EN ZIP
+# ============================================================================
+
+@login_required
+@permission_required_custom('maquinarias.view_equipo')
+@require_POST
+def descargar_documentacion_zip_equipos(request):
+    """
+    Genera un archivo ZIP con la documentación de los equipos seleccionados.
+    Estructura del ZIP:
+    Documentacion_Equipos/
+        EQUIPO_ID_Nombre_Codigo/
+            Tipo_Documento_1/
+            Tipo_Documento_2/
+            ...
+        EQUIPO_ID2_Nombre_Codigo/
+            ...
+    """
+    try:
+        # Obtener IDs de los equipos desde POST
+        equipo_ids = request.POST.getlist('equipo_ids')
+        
+        if not equipo_ids:
+            messages.error(request, 'No se seleccionó ningún equipo')
+            return redirect('maquinarias:lista_equipos')
+        
+        # Convertir a enteros
+        equipo_ids = [int(eid) for eid in equipo_ids]
+        
+        # Obtener los equipos
+        equipos_list = Equipo.objects.filter(equipo_id__in=equipo_ids).select_related(
+            'empresa_id', 'modeloEquipo_id', 'modeloEquipo_id__tipoEquipo_id', 'modeloEquipo_id__marcaEquipo_id'
+        )
+        
+        if not equipos_list.exists():
+            messages.error(request, 'No se encontraron los equipos seleccionados')
+            return redirect('maquinarias:lista_equipos')
+        
+        # Contador de archivos agregados
+        archivos_agregados = 0
+        
+        # Crear archivo ZIP temporal
+        temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+        temp_zip_path = temp_zip.name
+        temp_zip.close()
+        
+        # Crear ZIP
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for equipo in equipos_list:
+                logger.info(f"Procesando equipo: {equipo.nombreEquipo} (ID: {equipo.equipo_id})")
+                # Nombre de carpeta para este equipo
+                nombre_carpeta = f"{equipo.equipo_id}_{equipo.nombreEquipo}_{equipo.codigoInterno}"
+                nombre_carpeta = nombre_carpeta.replace('/', '_').replace('\\', '_')  # Limpiar caracteres especiales
+                
+                # Obtener todos los documentos del equipo
+                documentos = DocumentoMaquinaria.objects.filter(equipo_id=equipo).select_related('tipo_documento_id')
+                logger.info(f"  Encontrados {documentos.count()} documentos para el equipo {equipo.nombreEquipo}")
+                
+                for documento in documentos:
+                    logger.info(f"    Procesando documento: {documento.tipo_documento_id.nombre} (ID: {documento.documento_id})")
+                    logger.info(f"      Archivo: {documento.archivo.name if documento.archivo else 'None'}")
+                    
+                    if documento.archivo and documento.archivo.name:
+                        try:
+                            # Abrir y leer el archivo
+                            with documento.archivo.open('rb') as archivo:
+                                contenido_archivo = archivo.read()
+                            
+                            logger.info(f"      Tamaño del archivo leído: {len(contenido_archivo) if contenido_archivo else 0} bytes")
+                            
+                            if contenido_archivo and len(contenido_archivo) > 0:
+                                # Nombre del tipo de documento (limpiar para usar como nombre de carpeta)
+                                tipo_doc_nombre = documento.tipo_documento_id.nombre.replace(' ', '_').replace('/', '_')
+                                # Nombre del archivo en el ZIP
+                                nombre_archivo_zip = f"{nombre_carpeta}/{tipo_doc_nombre}/{os.path.basename(documento.archivo.name)}"
+                                zip_file.writestr(nombre_archivo_zip, contenido_archivo)
+                                archivos_agregados += 1
+                                logger.info(f"      ✓ Archivo agregado al ZIP: {nombre_archivo_zip}")
+                            else:
+                                logger.warning(f"      ✗ Archivo vacío o sin contenido para {documento.tipo_documento_id.nombre}")
+                        except Exception as e:
+                            logger.error(f"      ✗ Error al agregar documento {documento.tipo_documento_id.nombre} de {equipo.nombreEquipo}: {e}", exc_info=True)
+                    else:
+                        logger.warning(f"      ✗ Documento sin archivo o nombre de archivo vacío")
+        
+        logger.info(f"Total de archivos agregados al ZIP: {archivos_agregados}")
+        
+        # Verificar si se agregaron archivos
+        if archivos_agregados == 0:
+            # Contar documentos totales encontrados para el mensaje
+            total_documentos_encontrados = 0
+            equipos_con_docs = []
+            for equipo in equipos_list:
+                count = DocumentoMaquinaria.objects.filter(equipo_id=equipo).count()
+                if count > 0:
+                    equipos_con_docs.append(f"{equipo.nombreEquipo} ({count} docs)")
+                    total_documentos_encontrados += count
+            
+            mensaje_error = f'No se encontraron documentos para descargar. '
+            if total_documentos_encontrados > 0:
+                mensaje_error += f'Se encontraron {total_documentos_encontrados} documentos en la base de datos pero no se pudieron leer. '
+                mensaje_error += f'Equipos con documentos: {", ".join(equipos_con_docs)}. '
+                mensaje_error += 'Revisa los logs del servidor para más detalles.'
+            else:
+                mensaje_error += 'Los equipos seleccionados no tienen documentos asociados.'
+            
+            logger.warning(mensaje_error)
+            messages.error(request, mensaje_error)
+            if os.path.exists(temp_zip_path):
+                os.unlink(temp_zip_path)
+            return redirect('maquinarias:lista_equipos')
+        
+        # Leer el archivo ZIP
+        with open(temp_zip_path, 'rb') as f:
+            zip_content = f.read()
+        
+        # Eliminar archivo temporal
+        os.unlink(temp_zip_path)
+        
+        # Crear respuesta HTTP
+        fecha_hora = datetime.now().strftime('%Y%m%d_%H%M%S')
+        nombre_archivo = f"Documentacion_Equipos_{fecha_hora}.zip"
+        
+        response = HttpResponse(zip_content, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+        response['Content-Length'] = len(zip_content)
+        
+        return response
+        
+    except Exception as e:
+        # Eliminar archivo temporal si existe
+        if 'temp_zip_path' in locals() and os.path.exists(temp_zip_path):
+            os.unlink(temp_zip_path)
+        
+        messages.error(request, f'Error al generar el archivo ZIP: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return redirect('maquinarias:lista_equipos')

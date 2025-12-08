@@ -103,12 +103,28 @@ function calcularEstadoPersonalFecha(personalId, fecha) {
     }
     
     // 2. Buscar asignación de faena activa
+    // Normalizar la fecha para comparación (solo año, mes, día, sin hora)
+    const fechaNormalizada = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    
     const asignaciones = asignacionesPorPersonal[personalId] || [];
     const asignacionActiva = asignaciones.find(asig => {
         if (!asig.activo) return false;
-        const fechaIni = new Date(asig.fecha_inicio);
-        const fechaFin = asig.fecha_fin ? new Date(asig.fecha_fin) : null;
-        return fecha >= fechaIni && (!fechaFin || fecha <= fechaFin);
+        
+        // Normalizar fechas para comparación (solo fecha, sin hora)
+        const fechaIniStr = asig.fecha_inicio.split('T')[0]; // Obtener solo la parte de fecha
+        const fechaIniParts = fechaIniStr.split('-');
+        const fechaIni = new Date(parseInt(fechaIniParts[0]), parseInt(fechaIniParts[1]) - 1, parseInt(fechaIniParts[2]));
+        
+        if (fechaNormalizada < fechaIni) return false;
+        
+        if (asig.fecha_fin) {
+            const fechaFinStr = asig.fecha_fin.split('T')[0]; // Obtener solo la parte de fecha
+            const fechaFinParts = fechaFinStr.split('-');
+            const fechaFin = new Date(parseInt(fechaFinParts[0]), parseInt(fechaFinParts[1]) - 1, parseInt(fechaFinParts[2]));
+            if (fechaNormalizada > fechaFin) return false;
+        }
+        
+        return true;
     });
     
     if (asignacionActiva) {
@@ -421,12 +437,29 @@ function showEstadoInfo(personalId, day) {
         estado = calendarioData.estado_predeterminado;
     }
     
+    // Normalizar la fecha para comparación (solo año, mes, día, sin hora)
+    const fechaNormalizada = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    
     // Buscar asignación activa (turno normal)
     const asignaciones = asignacionesPorPersonal[personalId] || [];
     const asignacionActiva = asignaciones.find(asig => {
-        const fechaIni = new Date(asig.fecha_inicio);
-        const fechaFin = asig.fecha_fin ? new Date(asig.fecha_fin) : null;
-        return fecha >= fechaIni && (!fechaFin || fecha <= fechaFin);
+        if (!asig.activo) return false;
+        
+        // Normalizar fechas para comparación (solo fecha, sin hora)
+        const fechaIniStr = asig.fecha_inicio.split('T')[0]; // Obtener solo la parte de fecha
+        const fechaIniParts = fechaIniStr.split('-');
+        const fechaIni = new Date(parseInt(fechaIniParts[0]), parseInt(fechaIniParts[1]) - 1, parseInt(fechaIniParts[2]));
+        
+        if (fechaNormalizada < fechaIni) return false;
+        
+        if (asig.fecha_fin) {
+            const fechaFinStr = asig.fecha_fin.split('T')[0]; // Obtener solo la parte de fecha
+            const fechaFinParts = fechaFinStr.split('-');
+            const fechaFin = new Date(parseInt(fechaFinParts[0]), parseInt(fechaFinParts[1]) - 1, parseInt(fechaFinParts[2]));
+            if (fechaNormalizada > fechaFin) return false;
+        }
+        
+        return true;
     });
     
     let faenaActual = 'Sin asignar';

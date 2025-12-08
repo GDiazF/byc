@@ -24,75 +24,66 @@ class CustomLoginView(LoginView):
         username = form.data.get('username', '') or form.cleaned_data.get('username', '')
         
         # Intentar obtener el usuario (aunque las credenciales sean incorrectas)
+        # SOLO registrar intentos fallidos si el usuario existe en la BDD
         if username:
             from django.contrib.auth.models import User
             try:
                 user = User.objects.get(username=username)
                 # Si el usuario existe, registrar el intento fallido
+                # Solo se notificará cuando se alcancen 3 intentos fallidos consecutivos
                 self._registrar_intento_fallido(user)
             except User.DoesNotExist:
-                # Usuario no existe, pero aún así notificar a los roles configurados
-                # sobre intentos de login con usuarios inexistentes
-                self._registrar_intento_fallido_usuario_inexistente(username)
+                # Usuario no existe - NO crear notificaciones para evitar spam
+                # Solo loguear para debugging
+                logger.debug(f"Intento de login con usuario inexistente: {username} (no se creará notificación)")
+                pass
         
         # Llamar al método padre para el comportamiento normal
         return super().form_invalid(form)
     
     def _registrar_intento_fallido(self, user):
         """
-        Registra un intento de login fallido y crea notificación si hay muchos intentos.
+        Registra un intento de login fallido y crea notificación SOLO cuando se alcancen 3 intentos.
+        Cada usuario tiene su propio contador independiente.
         Funciona con cualquier backend de cache (local, Redis, Memcached, etc.)
         """
+        cache_key = f'login_failed_{user.id}'
+        intentos = 0
+        
         try:
-            # Usar cache para contar intentos fallidos
+            # Usar cache para contar intentos fallidos por usuario
             # Compatible con cualquier backend: LocMemCache, Redis, Memcached, etc.
-            cache_key = f'login_failed_{user.id}'
             intentos = cache.get(cache_key, 0)
             intentos += 1
             
             # Guardar en cache por 15 minutos
             # Si el cache falla, continuamos igual (no bloqueamos el login)
             cache.set(cache_key, intentos, 900)  # 15 minutos = 900 segundos
+            
+            logger.debug(f"Intento fallido #{intentos} para usuario {user.username} (ID: {user.id})")
         except Exception as e:
-            # Si el cache no está disponible, usar valor por defecto
-            # Esto permite que el sistema funcione incluso si Redis/cache está caído
-            logger.warning(f"Cache no disponible para registrar intento fallido: {str(e)}")
-            intentos = 1  # Asumir que es el primer intento si no podemos contar
+            # Si el cache no está disponible, no podemos contar intentos
+            # No crear notificaciones si no podemos contar correctamente
+            logger.warning(f"Cache no disponible para registrar intento fallido del usuario {user.username}: {str(e)}")
+            return  # Salir sin crear notificación si no podemos contar
         
-        # Crear notificación para los roles configurados (administradores, seguridad, etc.)
-        try:
-            from notificaciones.utils import crear_notificacion_por_tipo
-            
-            fecha_intento = timezone.now().strftime('%d/%m/%Y %H:%M')
-            ip_address = self.request.META.get('REMOTE_ADDR', '')
-            user_agent = self.request.META.get('HTTP_USER_AGENT', '')[:200]
-            
-            # Crear notificación para cada intento fallido
-            # Esta notificación llegará a los roles que tengan configurada la notificación GENERAL_LOGIN_FALLIDO
-            crear_notificacion_por_tipo(
-                codigo_tipo='GENERAL_LOGIN_FALLIDO',
-                titulo=f'Intento de login fallido: {user.username}',
-                mensaje=f'Se detectó un intento de login fallido para la cuenta {user.username} el {fecha_intento}. '
-                       f'IP: {ip_address}. '
-                       f'Total de intentos fallidos recientes: {intentos}.',
-                datos_adicionales={
-                    'usuario_intento': user.username,
-                    'usuario_id': user.id,
-                    'fecha_intento': timezone.now().isoformat(),
-                    'ip_address': ip_address,
-                    'user_agent': user_agent,
-                    'intentos_fallidos': intentos
-                },
-                prioridad='ALTA' if intentos >= 3 else 'MEDIA'
-            )
-            
-            # Si hay 3 o más intentos fallidos, crear notificación adicional de seguridad
-            if intentos >= 3:
+        # Crear notificación SOLO cuando se alcancen exactamente 3 intentos fallidos
+        # No crear notificación en el primer o segundo intento
+        if intentos == 3:
+            try:
+                from notificaciones.utils import crear_notificacion_por_tipo
+                
+                fecha_intento = timezone.now().strftime('%d/%m/%Y %H:%M')
+                ip_address = self.request.META.get('REMOTE_ADDR', '')
+                user_agent = self.request.META.get('HTTP_USER_AGENT', '')[:200]
+                
+                # Crear notificación solo cuando se alcancen 3 intentos fallidos
                 crear_notificacion_por_tipo(
                     codigo_tipo='GENERAL_LOGIN_FALLIDO',
                     titulo=f'⚠️ ALERTA: Múltiples intentos de login fallidos ({intentos}) - {user.username}',
-                    mensaje=f'⚠️ ALERTA DE SEGURIDAD: Se han detectado {intentos} intentos de login fallidos '
+                    mensaje=f'⚠️ ALERTA DE SEGURIDAD: Se han detectado {intentos} intentos de login fallidos consecutivos '
                            f'para la cuenta {user.username} en los últimos 15 minutos. '
+                           f'Fecha del último intento: {fecha_intento}. '
                            f'IP: {ip_address}. '
                            f'Esto podría indicar un intento de acceso no autorizado.',
                     datos_adicionales={
@@ -106,40 +97,8 @@ class CustomLoginView(LoginView):
                     },
                     prioridad='ALTA'
                 )
-        except Exception as e:
-            logger.error(f"Error al crear notificación de login fallido: {str(e)}")
-    
-    def _registrar_intento_fallido_usuario_inexistente(self, username):
-        """
-        Registra un intento de login fallido con un usuario que no existe.
-        Notifica a los roles configurados sobre posibles intentos de acceso no autorizado.
-        """
-        try:
-            from notificaciones.utils import crear_notificacion_por_tipo
-            
-            fecha_intento = timezone.now().strftime('%d/%m/%Y %H:%M')
-            ip_address = self.request.META.get('REMOTE_ADDR', '')
-            user_agent = self.request.META.get('HTTP_USER_AGENT', '')[:200]
-            
-            # Crear notificación para los roles configurados
-            crear_notificacion_por_tipo(
-                codigo_tipo='GENERAL_LOGIN_FALLIDO',
-                titulo=f'Intento de login con usuario inexistente: {username}',
-                mensaje=f'Se detectó un intento de login fallido con el usuario "{username}" que no existe en el sistema. '
-                       f'Fecha: {fecha_intento}. IP: {ip_address}. '
-                       f'Esto podría indicar un intento de acceso no autorizado o un ataque de fuerza bruta.',
-                datos_adicionales={
-                    'usuario_intento': username,
-                    'usuario_existe': False,
-                    'fecha_intento': timezone.now().isoformat(),
-                    'ip_address': ip_address,
-                    'user_agent': user_agent,
-                    'intentos_fallidos': 1
-                },
-                prioridad='ALTA'  # Alta prioridad porque es un usuario inexistente
-            )
-        except Exception as e:
-            logger.error(f"Error al crear notificación de login fallido (usuario inexistente): {str(e)}")
+            except Exception as e:
+                logger.error(f"Error al crear notificación de login fallido: {str(e)}")
     
     def form_valid(self, form):
         """

@@ -4,6 +4,8 @@ let tamanoPagina = 25;
 let currentToggle = null;
 let originalState = false;
 let changeConfirmed = false;
+let equiposSeleccionados = []; // Array de objetos {equipo_id, nombreEquipo, codigoInterno, tipoEquipo, marcaEquipo}
+let todosLosEquipos = []; // Almacenar todos los equipos para búsqueda en modal
 
 // Cargar equipos al iniciar
 document.addEventListener('DOMContentLoaded', function() {
@@ -26,6 +28,91 @@ document.addEventListener('DOMContentLoaded', function() {
         currentToggle = null;
         originalState = false;
         changeConfirmed = false;
+    });
+    
+    // Inicializar modal de selección de equipos para descarga
+    const btnSeleccionarEquipos = document.getElementById('btnSeleccionarEquipos');
+    if (btnSeleccionarEquipos) {
+        btnSeleccionarEquipos.addEventListener('click', function(e) {
+            e.preventDefault();
+            const modalElement = document.getElementById('modalSeleccionarEquipos');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+                equiposSeleccionados = [];
+                actualizarVistaSeleccionadosEquipos();
+                // Cargar todos los equipos activos para búsqueda
+                cargarTodosLosEquipos();
+            }
+        });
+    }
+    
+    // Configurar búsqueda cuando el modal se muestra
+    const modalSeleccionarEquipos = document.getElementById('modalSeleccionarEquipos');
+    if (modalSeleccionarEquipos) {
+        modalSeleccionarEquipos.addEventListener('shown.bs.modal', function() {
+            console.log('Modal mostrado, configurando buscador...');
+            // Configurar el event listener del buscador cuando el modal se muestra
+            const buscarEquiposModal = document.getElementById('buscarEquiposModal');
+            if (buscarEquiposModal) {
+                console.log('Campo de búsqueda encontrado');
+                // Remover listener anterior si existe
+                if (buscarEquiposModal._buscarHandler) {
+                    buscarEquiposModal.removeEventListener('input', buscarEquiposModal._buscarHandler);
+                }
+                // Crear nuevo handler - capturar el valor del input correctamente
+                let timeoutBusqueda = null;
+                buscarEquiposModal._buscarHandler = function(e) {
+                    const inputElement = e.target || buscarEquiposModal;
+                    const valor = inputElement.value;
+                    console.log('Buscando:', valor);
+                    
+                    // Limpiar timeout anterior
+                    if (timeoutBusqueda) {
+                        clearTimeout(timeoutBusqueda);
+                    }
+                    
+                    // Crear nuevo timeout para debounce
+                    timeoutBusqueda = setTimeout(function() {
+                        buscarEquiposEnModal(valor);
+                    }, 300);
+                };
+                buscarEquiposModal.addEventListener('input', buscarEquiposModal._buscarHandler);
+                // Limpiar el campo de búsqueda
+                buscarEquiposModal.value = '';
+                // Limpiar resultados
+                const resultadosDiv = document.getElementById('resultadosBusquedaEquipos');
+                if (resultadosDiv) {
+                    resultadosDiv.innerHTML = '<p class="text-muted text-center mb-0">Ingrese un término de búsqueda...</p>';
+                }
+            } else {
+                console.error('No se encontró el campo buscarEquiposModal');
+            }
+        });
+    }
+    
+    // Botón limpiar selección
+    const btnLimpiarSeleccionEquipos = document.getElementById('btnLimpiarSeleccionEquipos');
+    if (btnLimpiarSeleccionEquipos) {
+        btnLimpiarSeleccionEquipos.addEventListener('click', function() {
+            equiposSeleccionados = [];
+            actualizarVistaSeleccionadosEquipos();
+            const resultadosDiv = document.getElementById('resultadosBusquedaEquipos');
+            if (resultadosDiv) {
+                resultadosDiv.innerHTML = '<p class="text-muted text-center mb-0">Ingrese un término de búsqueda...</p>';
+            }
+        });
+    }
+    
+    // Botón descargar ZIP - usar delegación de eventos ya que el botón está dentro del modal
+    // Manejar clics tanto en el botón como en sus elementos hijos (íconos, texto)
+    document.addEventListener('click', function(e) {
+        const btnDescargarZip = e.target.closest('#btnDescargarZipEquipos');
+        if (btnDescargarZip && !btnDescargarZip.disabled) {
+            e.preventDefault();
+            e.stopPropagation();
+            descargarDocumentacionZipEquipos();
+        }
     });
 });
 
@@ -358,3 +445,290 @@ function mostrarExito(mensaje) {
 function mostrarError(mensaje) {
     showNotification(mensaje, 'error');
 }
+
+// ============================================================================
+// MODAL DE SELECCIÓN DE EQUIPOS PARA DESCARGA
+// ============================================================================
+
+// Cargar todos los equipos activos para búsqueda en modal
+function cargarTodosLosEquipos() {
+    console.log('Cargando todos los equipos...');
+    fetch('/maquinarias/api/equipos/?estado=activos&page_size=9999')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                todosLosEquipos = data.equipos;
+                console.log(`Cargados ${todosLosEquipos.length} equipos para búsqueda`);
+            } else {
+                console.error('Error al cargar equipos:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar equipos:', error);
+        });
+}
+
+// Buscar equipos en el modal
+function buscarEquiposEnModal(termino) {
+    console.log('buscarEquiposEnModal llamada con término:', termino);
+    const resultadosDiv = document.getElementById('resultadosBusquedaEquipos');
+    
+    if (!resultadosDiv) {
+        console.error('No se encontró el div de resultados');
+        return;
+    }
+    
+    if (!termino || termino.trim() === '') {
+        resultadosDiv.innerHTML = '<p class="text-muted text-center mb-0">Ingrese un término de búsqueda...</p>';
+        return;
+    }
+    
+    // Verificar que los equipos estén cargados
+    if (!todosLosEquipos || todosLosEquipos.length === 0) {
+        console.log('Equipos no cargados aún, esperando...');
+        resultadosDiv.innerHTML = '<p class="text-warning text-center mb-0"><i class="bi bi-hourglass-split me-1"></i>Cargando equipos...</p>';
+        // Intentar cargar nuevamente
+        cargarTodosLosEquipos();
+        // Reintentar después de un segundo
+        setTimeout(() => {
+            if (todosLosEquipos && todosLosEquipos.length > 0) {
+                buscarEquiposEnModal(termino);
+            } else {
+                resultadosDiv.innerHTML = '<p class="text-danger text-center mb-0">Error al cargar equipos. Por favor recargue la página.</p>';
+            }
+        }, 1000);
+        return;
+    }
+    
+    console.log(`Buscando en ${todosLosEquipos.length} equipos`);
+    const terminoLower = termino.toLowerCase().trim();
+    console.log('Término de búsqueda (lowercase):', terminoLower);
+    
+    const resultados = todosLosEquipos.filter(e => {
+        const nombreMatch = e.nombreEquipo && e.nombreEquipo.toLowerCase().includes(terminoLower);
+        const codigoMatch = e.codigoInterno && e.codigoInterno.toLowerCase().includes(terminoLower);
+        const patenteMatch = e.patente && e.patente !== '-' && e.patente.toLowerCase().includes(terminoLower);
+        const marcaMatch = e.marcaEquipo && e.marcaEquipo.nombre && e.marcaEquipo.nombre.toLowerCase().includes(terminoLower);
+        const modeloMatch = e.modeloEquipo && e.modeloEquipo.nombre && e.modeloEquipo.nombre.toLowerCase().includes(terminoLower);
+        const tipoMatch = e.tipoEquipo && e.tipoEquipo.nombre && e.tipoEquipo.nombre.toLowerCase().includes(terminoLower);
+        
+        return nombreMatch || codigoMatch || patenteMatch || marcaMatch || modeloMatch || tipoMatch;
+    });
+    
+    console.log(`Resultados encontrados: ${resultados.length}`);
+    
+    if (resultados.length === 0) {
+        resultadosDiv.innerHTML = '<p class="text-muted text-center mb-0">No se encontraron resultados</p>';
+        return;
+    }
+    
+    let html = '<div class="list-group">';
+    resultados.forEach(e => {
+        const yaSeleccionado = equiposSeleccionados.some(es => es.equipo_id === e.equipo_id);
+        html += `
+            <div class="list-group-item list-group-item-action ${yaSeleccionado ? 'bg-light' : ''}" 
+                 style="cursor: pointer;" 
+                 data-equipo-id="${e.equipo_id}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${e.nombreEquipo}</h6>
+                        <small class="text-muted">Código: ${e.codigoInterno} | ${e.tipoEquipo.nombre} | ${e.marcaEquipo.nombre} ${e.modeloEquipo.nombre}</small>
+                    </div>
+                    ${yaSeleccionado 
+                        ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Seleccionado</span>'
+                        : '<button class="btn btn-sm btn-primary btn-agregar-equipo" data-equipo-id="' + e.equipo_id + '"><i class="bi bi-plus-circle me-1"></i>Agregar</button>'
+                    }
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    resultadosDiv.innerHTML = html;
+    
+    // Agregar event listeners a los botones y items
+    resultadosDiv.querySelectorAll('.btn-agregar-equipo').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const equipoId = parseInt(this.dataset.equipoId);
+            agregarEquipoSeleccionado(equipoId);
+        });
+    });
+    
+    resultadosDiv.querySelectorAll('.list-group-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const equipoId = parseInt(this.dataset.equipoId);
+            if (!equiposSeleccionados.some(es => es.equipo_id === equipoId)) {
+                agregarEquipoSeleccionado(equipoId);
+            }
+        });
+    });
+}
+
+// Agregar equipo a la lista de seleccionados
+function agregarEquipoSeleccionado(equipoId) {
+    const equipo = todosLosEquipos.find(e => e.equipo_id === equipoId);
+    if (!equipo) return;
+    
+    // Verificar si ya está seleccionado
+    if (equiposSeleccionados.some(es => es.equipo_id === equipoId)) {
+        return;
+    }
+    
+    equiposSeleccionados.push({
+        equipo_id: equipo.equipo_id,
+        nombreEquipo: equipo.nombreEquipo,
+        codigoInterno: equipo.codigoInterno,
+        tipoEquipo: equipo.tipoEquipo.nombre,
+        marcaEquipo: equipo.marcaEquipo.nombre,
+        modeloEquipo: equipo.modeloEquipo.nombre
+    });
+    
+    actualizarVistaSeleccionadosEquipos();
+    
+    // Actualizar la vista de resultados para mostrar que está seleccionado
+    const termino = document.getElementById('buscarEquiposModal').value;
+    if (termino) {
+        buscarEquiposEnModal(termino);
+    }
+}
+
+// Remover equipo de la lista de seleccionados
+function removerEquipoSeleccionado(equipoId) {
+    equiposSeleccionados = equiposSeleccionados.filter(es => es.equipo_id !== equipoId);
+    actualizarVistaSeleccionadosEquipos();
+    
+    // Actualizar la vista de resultados
+    const termino = document.getElementById('buscarEquiposModal').value;
+    if (termino) {
+        buscarEquiposEnModal(termino);
+    }
+}
+
+// Actualizar la vista de equipos seleccionados
+function actualizarVistaSeleccionadosEquipos() {
+    const contador = document.getElementById('contadorSeleccionadosEquipos');
+    const vistaSeleccionados = document.getElementById('equiposSeleccionados');
+    const btnDescargarZipEquipos = document.getElementById('btnDescargarZipEquipos');
+    
+    if (!vistaSeleccionados) return; // Si el modal no está abierto, no hacer nada
+    
+    if (contador) {
+        contador.textContent = equiposSeleccionados.length;
+    }
+    
+    if (btnDescargarZipEquipos) {
+        btnDescargarZipEquipos.disabled = equiposSeleccionados.length === 0;
+    }
+    
+    if (equiposSeleccionados.length === 0) {
+        vistaSeleccionados.innerHTML = '<p class="text-muted text-center mb-0">No hay equipos seleccionados</p>';
+        return;
+    }
+    
+    let html = '<div class="list-group">';
+    equiposSeleccionados.forEach(e => {
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${e.nombreEquipo}</h6>
+                        <small class="text-muted">Código: ${e.codigoInterno} | ${e.tipoEquipo}</small>
+                    </div>
+                    <button class="btn btn-sm btn-danger btn-remover-equipo" data-equipo-id="${e.equipo_id}">
+                        <i class="bi bi-x-circle me-1"></i>Quitar
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    vistaSeleccionados.innerHTML = html;
+    
+    // Agregar event listeners a los botones de quitar
+    vistaSeleccionados.querySelectorAll('.btn-remover-equipo').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const equipoId = parseInt(this.dataset.equipoId);
+            removerEquipoSeleccionado(equipoId);
+        });
+    });
+}
+
+// Descargar documentación en ZIP
+function descargarDocumentacionZipEquipos() {
+    console.log('descargarDocumentacionZipEquipos llamada');
+    console.log('Equipos seleccionados:', equiposSeleccionados);
+    
+    if (equiposSeleccionados.length === 0) {
+        alert('Por favor seleccione al menos un equipo');
+        return;
+    }
+    
+    const equipoIds = equiposSeleccionados.map(e => e.equipo_id);
+    console.log('IDs de equipos:', equipoIds);
+    
+    // Obtener URL
+    const url = window.descargarDocumentacionZipEquiposUrl || '/maquinarias/equipos/descargar-documentacion-zip/';
+    console.log('URL de descarga:', url);
+    
+    // Crear formulario para enviar POST
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    
+    // Agregar CSRF token
+    const csrfToken = window.csrfToken || getCookie('csrftoken');
+    console.log('CSRF Token:', csrfToken ? 'Encontrado' : 'No encontrado');
+    
+    if (!csrfToken) {
+        alert('Error: No se pudo obtener el token CSRF. Por favor recargue la página.');
+        return;
+    }
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = csrfToken;
+    form.appendChild(csrfInput);
+    
+    // Agregar IDs de los equipos
+    equipoIds.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'equipo_ids';
+        input.value = id;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    console.log('Enviando formulario...');
+    form.submit();
+    document.body.removeChild(form);
+    
+    // Cerrar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarEquipos'));
+    if (modal) {
+        modal.hide();
+    }
+    
+    // Limpiar selección
+    equiposSeleccionados = [];
+    actualizarVistaSeleccionadosEquipos();
+}
+
+// Función helper para obtener cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+

@@ -560,8 +560,32 @@ function verDetalleOT(ot_id) {
 
 // Renderizar observaciones de OT
 function renderizarObservacionesOT(ot, container) {
-    const historialObservacionesHTML = ot.historial_observaciones && ot.historial_observaciones.length > 0
-        ? ot.historial_observaciones.map(obs => `
+    let html = '';
+    
+    // Mostrar observación inicial si existe
+    if (ot.observaciones) {
+        html += `
+            <div class="card mb-2 border">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <strong class="text-primary">
+                                <i class="bi bi-file-text me-1"></i>Observación Inicial
+                            </strong>
+                        </div>
+                        <small class="text-muted">
+                            <i class="bi bi-calendar3 me-1"></i>${formatearFechaChilena(ot.fecha_creacion)}
+                        </small>
+                    </div>
+                    <p class="mb-0">${ot.observaciones}</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Mostrar historial de observaciones
+    if (ot.historial_observaciones && ot.historial_observaciones.length > 0) {
+        html += ot.historial_observaciones.map(obs => `
             <div class="card mb-2 border">
                 <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -573,13 +597,15 @@ function renderizarObservacionesOT(ot, container) {
                     <p class="mb-0">${obs.observacion}</p>
                 </div>
             </div>
-        `).join('')
-        : '<div class="alert alert-info mb-0"><i class="bi bi-info-circle me-2"></i>No hay observaciones registradas</div>';
+        `).join('');
+    } else if (!ot.observaciones) {
+        html = '<div class="alert alert-info mb-0"><i class="bi bi-info-circle me-2"></i>No hay observaciones registradas</div>';
+    }
     
     container.innerHTML = `
         <div class="card border">
             <div class="card-body">
-                ${historialObservacionesHTML}
+                ${html}
             </div>
         </div>
     `;
@@ -1088,6 +1114,31 @@ function renderizarDetalleOT(ot, container) {
                 </div>
             </div>
         </div>
+        
+        ${ot.observaciones ? `
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card border">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-journal-text me-2 text-primary"></i>Observación Inicial</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <strong class="text-primary">
+                                    <i class="bi bi-file-text me-1"></i>Observación Inicial
+                                </strong>
+                            </div>
+                            <small class="text-muted">
+                                <i class="bi bi-calendar3 me-1"></i>${formatearFechaChilena(ot.fecha_creacion)}
+                            </small>
+                        </div>
+                        <p class="mb-0">${ot.observaciones}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ` : ''}
         
     `;
 }

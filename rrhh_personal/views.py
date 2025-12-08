@@ -12,7 +12,7 @@ from django.views.generic import ListView, CreateView, UpdateView
 from django.db.models import Max
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.core.files.base import ContentFile
 import base64
 import json
@@ -27,6 +27,10 @@ from .models import HistorialPersonal, HistorialDocumentoPersonal
 # Importar decoradores de permisos desde gen_permissions
 from gen_permissions.decorators import permission_required_custom, permission_required_multiple
 from gen_permissions.mixins import PermissionRequiredMixin
+import zipfile
+import tempfile
+from django.conf import settings
+from datetime import datetime
 
 # Create your views here.
 
@@ -2219,3 +2223,201 @@ def toggle_personal_activo(request):
             'status': 'error',
             'message': str(e)
         }, status=400)
+
+
+# ============================================================================
+# VISTA PARA DESCARGAR DOCUMENTACIÓN EN ZIP
+# ============================================================================
+
+@login_required
+@permission_required_custom('rrhh_personal.view_personal')
+@require_POST
+def descargar_documentacion_zip(request):
+    """
+    Genera un archivo ZIP con la documentación de los personal seleccionados.
+    Estructura del ZIP:
+    Documentacion_Personal/
+        RUT1_Nombre/
+            Documentos_Personales/
+            Licencias/
+            Certificaciones/
+            Examenes/
+            Licencias_Internas/
+        RUT2_Nombre/
+            ...
+    
+    Nota: Las licencias médicas y ausentismos no incluyen documentos adjuntos,
+    solo información en la base de datos, por lo que no se descargan.
+    """
+    try:
+        # Obtener IDs del personal desde POST
+        personal_ids = request.POST.getlist('personal_ids')
+        
+        if not personal_ids:
+            messages.error(request, 'No se seleccionó ningún personal')
+            return redirect('table_personal')
+        
+        # Convertir a enteros
+        personal_ids = [int(pid) for pid in personal_ids]
+        
+        # Obtener el personal
+        personal_list = Personal.objects.filter(personal_id__in=personal_ids)
+        
+        if not personal_list.exists():
+            messages.error(request, 'No se encontró el personal seleccionado')
+            return redirect('table_personal')
+        
+        # Crear archivo ZIP temporal
+        temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+        temp_zip_path = temp_zip.name
+        temp_zip.close()
+        
+        # Contador de archivos agregados
+        archivos_agregados = 0
+        
+        # Crear ZIP
+        with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for personal in personal_list:
+                # Nombre de carpeta para este personal
+                nombre_carpeta = f"{personal.rut}-{personal.dvrut}_{personal.nombre}_{personal.apepat}"
+                nombre_carpeta = nombre_carpeta.replace('/', '_').replace('\\', '_')  # Limpiar caracteres especiales
+                
+                # Documentos personales (FileField e ImageField)
+                campos_documentos = [
+                    'curriculum', 'certificado_antecedentes', 'hoja_vida_conductor',
+                    'foto_carnet', 'certificado_afp', 'certificado_salud',
+                    'certificado_estudios', 'certificado_residencia', 'fotocopia_carnet',
+                    'fotocopia_finiquito', 'comprobante_banco'
+                ]
+                
+                for campo in campos_documentos:
+                    archivo = getattr(personal, campo)
+                    if archivo and archivo.name:
+                        try:
+                            # Leer contenido del archivo (funciona tanto con FileSystemStorage como con S3)
+                            # Asegurarse de que el archivo esté abierto desde el principio
+                            archivo.open('rb')
+                            contenido_archivo = archivo.read()
+                            archivo.close()
+                            
+                            if contenido_archivo and len(contenido_archivo) > 0:
+                                # Nombre del archivo en el ZIP
+                                nombre_archivo_zip = f"{nombre_carpeta}/Documentos_Personales/{os.path.basename(archivo.name)}"
+                                zip_file.writestr(nombre_archivo_zip, contenido_archivo)
+                                archivos_agregados += 1
+                            else:
+                                print(f"Archivo {campo} de {personal.nombre} está vacío o no se pudo leer")
+                        except Exception as e:
+                            print(f"Error al agregar {campo} de {personal.nombre}: {e}")
+                            import traceback
+                            traceback.print_exc()
+                
+                # Licencias de conducir
+                licencias = LicenciaPorPersonal.objects.filter(personal_id=personal)
+                for licencia in licencias:
+                    if licencia.rutaDoc and licencia.rutaDoc.name:
+                        try:
+                            licencia.rutaDoc.open('rb')
+                            contenido_archivo = licencia.rutaDoc.read()
+                            licencia.rutaDoc.close()
+                            
+                            if contenido_archivo and len(contenido_archivo) > 0:
+                                nombre_archivo_zip = f"{nombre_carpeta}/Licencias/licencia_{licencia.licenciaPorPersonal_id}_{os.path.basename(licencia.rutaDoc.name)}"
+                                zip_file.writestr(nombre_archivo_zip, contenido_archivo)
+                                archivos_agregados += 1
+                        except Exception as e:
+                            print(f"Error al agregar licencia de {personal.nombre}: {e}")
+                            import traceback
+                            traceback.print_exc()
+                
+                # Licencias internas
+                try:
+                    from .models import LicenciaInternaPorPersonal
+                    licencias_internas = LicenciaInternaPorPersonal.objects.filter(personal_id=personal)
+                    for licencia_int in licencias_internas:
+                        if licencia_int.rutaDoc and licencia_int.rutaDoc.name:
+                            try:
+                                licencia_int.rutaDoc.open('rb')
+                                contenido_archivo = licencia_int.rutaDoc.read()
+                                licencia_int.rutaDoc.close()
+                                
+                                if contenido_archivo and len(contenido_archivo) > 0:
+                                    nombre_archivo_zip = f"{nombre_carpeta}/Licencias_Internas/licencia_interna_{licencia_int.licenciaInterna_id}_{os.path.basename(licencia_int.rutaDoc.name)}"
+                                    zip_file.writestr(nombre_archivo_zip, contenido_archivo)
+                                    archivos_agregados += 1
+                            except Exception as e:
+                                print(f"Error al agregar licencia interna de {personal.nombre}: {e}")
+                                import traceback
+                                traceback.print_exc()
+                except Exception as e:
+                    print(f"Error al obtener licencias internas: {e}")
+                
+                # Licencias médicas y ausentismos no tienen documentos adjuntos
+                # Solo se registra información en la base de datos, no se descargan archivos
+                
+                # Certificaciones
+                certificaciones = Certificacion.objects.filter(personal_id=personal)
+                for cert in certificaciones:
+                    if cert.rutaDoc and cert.rutaDoc.name:
+                        try:
+                            cert.rutaDoc.open('rb')
+                            contenido_archivo = cert.rutaDoc.read()
+                            cert.rutaDoc.close()
+                            
+                            if contenido_archivo and len(contenido_archivo) > 0:
+                                nombre_archivo_zip = f"{nombre_carpeta}/Certificaciones/certificacion_{cert.certif_id}_{os.path.basename(cert.rutaDoc.name)}"
+                                zip_file.writestr(nombre_archivo_zip, contenido_archivo)
+                                archivos_agregados += 1
+                        except Exception as e:
+                            print(f"Error al agregar certificación de {personal.nombre}: {e}")
+                            import traceback
+                            traceback.print_exc()
+                
+                # Exámenes
+                examenes = Examen.objects.filter(personal_id=personal)
+                for examen in examenes:
+                    if examen.rutaDoc and examen.rutaDoc.name:
+                        try:
+                            examen.rutaDoc.open('rb')
+                            contenido_archivo = examen.rutaDoc.read()
+                            examen.rutaDoc.close()
+                            
+                            if contenido_archivo and len(contenido_archivo) > 0:
+                                nombre_archivo_zip = f"{nombre_carpeta}/Examenes/examen_{examen.examen_id}_{os.path.basename(examen.rutaDoc.name)}"
+                                zip_file.writestr(nombre_archivo_zip, contenido_archivo)
+                                archivos_agregados += 1
+                        except Exception as e:
+                            print(f"Error al agregar examen de {personal.nombre}: {e}")
+                            import traceback
+                            traceback.print_exc()
+        
+        # Verificar si se agregaron archivos
+        if archivos_agregados == 0:
+            messages.warning(request, f'No se encontraron documentos para descargar. Se generó un ZIP vacío.')
+            os.unlink(temp_zip_path)
+            return redirect('table_personal')
+        
+        # Leer el archivo ZIP
+        with open(temp_zip_path, 'rb') as f:
+            zip_content = f.read()
+        
+        # Eliminar archivo temporal
+        os.unlink(temp_zip_path)
+        
+        # Crear respuesta HTTP
+        fecha_hora = datetime.now().strftime('%Y%m%d_%H%M%S')
+        nombre_archivo = f"Documentacion_Personal_{fecha_hora}.zip"
+        
+        response = HttpResponse(zip_content, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+        response['Content-Length'] = len(zip_content)
+        
+        return response
+        
+    except Exception as e:
+        # Eliminar archivo temporal si existe
+        if os.path.exists(temp_zip_path):
+            os.unlink(temp_zip_path)
+        
+        messages.error(request, f'Error al generar el archivo ZIP: {str(e)}')
+        return redirect('table_personal')

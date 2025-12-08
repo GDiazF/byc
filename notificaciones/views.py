@@ -7,6 +7,7 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.utils.timezone import localtime
 from .models import Notificacion
 from .utils import contar_notificaciones_no_leidas, obtener_notificaciones_no_leidas
 from .sse_manager import sse_manager
@@ -51,7 +52,7 @@ def api_notificaciones(request):
             'prioridad': notif.prioridad,
             'leida': notif.leida,
             'archivada': notif.archivada,
-            'fecha_creacion': notif.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+            'fecha_creacion': localtime(notif.fecha_creacion).strftime('%d/%m/%Y %H:%M'),
             'datos_adicionales': notif.datos_adicionales
         })
     

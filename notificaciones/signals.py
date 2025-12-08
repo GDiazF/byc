@@ -374,6 +374,7 @@ def enviar_evento_sse_notificacion(sender, instance, created, **kwargs):
                 logger.warning(f'No se pudo refrescar notificación {instance.id}: {str(e)}')
             
             # Preparar datos de la notificación para el evento
+            from django.utils.timezone import localtime
             notificacion_data = {
                 'id': instance.id,
                 'titulo': instance.titulo,
@@ -384,7 +385,7 @@ def enviar_evento_sse_notificacion(sender, instance, created, **kwargs):
                 'prioridad': instance.prioridad,
                 'leida': instance.leida,
                 'archivada': instance.archivada,
-                'fecha_creacion': instance.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+                'fecha_creacion': localtime(instance.fecha_creacion).strftime('%d/%m/%Y %H:%M'),
                 'datos_adicionales': instance.datos_adicionales
             }
             

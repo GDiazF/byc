@@ -30,6 +30,12 @@
                     <i class="bi bi-plus-square me-1"></i>Crear Equipo
                 </button>
                 {% endif %}
+                {% if user|has_perm:'maquinarias.view_equipo' %}
+                <button type="button" class="btn btn-primary btn-sm ms-2" id="btnSeleccionarEquipos">
+                    <i class="bi bi-download me-1"></i>
+                    Descargar Documentación
+                </button>
+                {% endif %}
             </div>
             <div class="col-md-6 text-end">
                 <span class="small text-muted">
@@ -212,6 +218,59 @@
     </div>
 </div>
 
+<!-- Modal de Selección de Equipos para Descarga -->
+<div class="modal fade" id="modalSeleccionarEquipos" tabindex="-1" aria-labelledby="modalSeleccionarEquiposLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalSeleccionarEquiposLabel">
+                    <i class="bi bi-tools me-2"></i>Seleccionar Equipos para Descargar Documentación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Búsqueda -->
+                <div class="mb-3">
+                    <label for="buscarEquiposModal" class="form-label">
+                        <i class="bi bi-search me-1"></i>Buscar Equipos
+                    </label>
+                    <input type="text" class="form-control" id="buscarEquiposModal" 
+                           placeholder="Buscar por nombre, código interno, patente, marca o modelo...">
+                </div>
+                
+                <!-- Lista de resultados de búsqueda -->
+                <div class="mb-3">
+                    <label class="form-label">Resultados de Búsqueda</label>
+                    <div id="resultadosBusquedaEquipos" class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
+                        <p class="text-muted text-center mb-0">Ingrese un término de búsqueda...</p>
+                    </div>
+                </div>
+                
+                <!-- Equipos Seleccionados -->
+                <div class="mb-3">
+                    <label class="form-label">
+                        Equipos Seleccionados <span class="badge bg-primary" id="contadorSeleccionadosEquipos">0</span>
+                    </label>
+                    <div id="equiposSeleccionados" class="border rounded p-2" style="min-height: 100px; max-height: 200px; overflow-y: auto;">
+                        <p class="text-muted text-center mb-0">No hay equipos seleccionados</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="btnLimpiarSeleccionEquipos">
+                    <i class="bi bi-trash me-1"></i>Limpiar Selección
+                </button>
+                <button type="button" class="btn btn-success" id="btnDescargarZipEquipos" disabled>
+                    <i class="bi bi-download me-1"></i>Descargar ZIP
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extrajs %}
@@ -219,6 +278,8 @@
     window.csrfToken = "{{ csrf_token }}";
     // URL base para API de historial de equipos
     var apiHistorialEquipoBase = "{% url 'maquinarias:api_historial_equipo' 0 %}";
+    // URL para descargar documentación en ZIP
+    window.descargarDocumentacionZipEquiposUrl = "{% url 'maquinarias:descargar_documentacion_zip_equipos' %}";
     // Permisos del usuario para validar en JavaScript
     window.userPermissions = {
         canEdit: {% if user|has_perm:'maquinarias.change_equipo' %}true{% else %}false{% endif %},

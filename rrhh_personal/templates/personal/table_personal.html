@@ -197,6 +197,59 @@
     </div>
 </div>
 
+<!-- Modal de Selección de Personal para Descarga -->
+<div class="modal fade" id="modalSeleccionarPersonal" tabindex="-1" aria-labelledby="modalSeleccionarPersonalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalSeleccionarPersonalLabel">
+                    <i class="bi bi-people me-2"></i>Seleccionar Personal para Descargar Documentación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Búsqueda -->
+                <div class="mb-3">
+                    <label for="buscarPersonalModal" class="form-label">
+                        <i class="bi bi-search me-1"></i>Buscar Personal
+                    </label>
+                    <input type="text" class="form-control" id="buscarPersonalModal" 
+                           placeholder="Buscar por nombre, RUT, cargo o empresa...">
+                </div>
+                
+                <!-- Lista de resultados de búsqueda -->
+                <div class="mb-3">
+                    <label class="form-label">Resultados de Búsqueda</label>
+                    <div id="resultadosBusquedaPersonal" class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
+                        <p class="text-muted text-center mb-0">Ingrese un término de búsqueda...</p>
+                    </div>
+                </div>
+                
+                <!-- Personal Seleccionado -->
+                <div class="mb-3">
+                    <label class="form-label">
+                        Personal Seleccionado <span class="badge bg-primary" id="contadorSeleccionados">0</span>
+                    </label>
+                    <div id="personalSeleccionado" class="border rounded p-2" style="min-height: 100px; max-height: 200px; overflow-y: auto;">
+                        <p class="text-muted text-center mb-0">No hay personal seleccionado</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="btnLimpiarSeleccion">
+                    <i class="bi bi-trash me-1"></i>Limpiar Selección
+                </button>
+                <button type="button" class="btn btn-success" id="btnDescargarZip" disabled>
+                    <i class="bi bi-download me-1"></i>Descargar ZIP
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header bg-dark text-white">
         <h5 class="mb-0">Gestión de Personal</h5>
@@ -216,6 +269,12 @@
                 <button type="button" class="btn btn-success btn-sm" disabled title="No tiene permiso para crear personal">
                     <i class="bi bi-plus-square me-1"></i>
                     Crear Personal
+                </button>
+                {% endif %}
+                {% if user|has_perm:'rrhh_personal.view_personal' %}
+                <button type="button" class="btn btn-primary btn-sm ms-2" id="btnSeleccionarPersonal">
+                    <i class="bi bi-download me-1"></i>
+                    Descargar Documentación
                 </button>
                 {% endif %}
             </div>
@@ -350,6 +409,8 @@ window.csrfToken = "{{ csrf_token }}";
 var permisos = {{ permisos_json|safe }};
 // URL base para API de historial de personal
 var apiHistorialPersonalBase = "{% url 'api_historial_personal' 0 %}";
+// URL para descargar documentación en ZIP
+var descargarDocumentacionZipUrl = "{% url 'descargar_documentacion_zip' %}";
 </script>
 <script src="{% static 'js/historial_personal.js' %}"></script>
 <script src="{% static 'js/personal_table.js' %}"></script>

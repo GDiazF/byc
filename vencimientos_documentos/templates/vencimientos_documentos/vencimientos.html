@@ -62,35 +62,6 @@
         border-bottom-color: #0d6efd;
         border-bottom-width: 3px;
     }
-    .estadisticas-card {
-        border-left: 4px solid;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-    }
-    .estadisticas-card .card-body {
-        padding: 1rem;
-    }
-    .estadisticas-card .card-subtitle {
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-    .estadisticas-card .card-title {
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin-bottom: 0;
-    }
-    .estadisticas-card.verde {
-        border-left-color: #28a745;
-    }
-    .estadisticas-card.amarillo {
-        border-left-color: #ffc107;
-    }
-    .estadisticas-card.naranja {
-        border-left-color: #fd7e14;
-    }
-    .estadisticas-card.rojo {
-        border-left-color: #dc3545;
-    }
     .card-header h5 {
         font-size: 1.125rem;
         font-weight: 600;
@@ -107,16 +78,35 @@
         padding: 0.75rem;
         vertical-align: middle;
     }
+    /* Colores personalizados para badges */
+    .badge.bg-warning.amarillo {
+        background-color: #ffc107 !important;  /* Amarillo */
+        color: #000;
+    }
+    .badge.bg-warning.naranja {
+        background-color: #fd7e14 !important;  /* Naranjo */
+        color: #fff;
+    }
+    /* Colores de filas */
+    .table-warning.amarillo {
+        background-color: rgba(255, 193, 7, 0.1) !important;
+    }
+    .table-warning.naranja {
+        background-color: rgba(253, 126, 20, 0.1) !important;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="card">
-        <div class="card-header bg-dark text-white">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
                 <i class="bi bi-calendar-x me-2"></i>Vencimientos de Documentos
             </h5>
+            <button class="btn btn-sm btn-warning" onclick="ejecutarProcesamientoVencimientos()" title="Ejecutar procesamiento de vencimientos (solo para pruebas)">
+                <i class="bi bi-play-circle me-2"></i>Ejecutar Procesamiento
+            </button>
         </div>
         <div class="card-body">
             <!-- Tabs -->
@@ -140,31 +130,11 @@
                     <!-- Filtros -->
                     <div class="filtros-card">
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label for="filtroBuscarPersonal" class="form-label">Buscar</label>
                                 <input type="text" class="form-control" id="filtroBuscarPersonal" placeholder="Nombre o RUT">
                             </div>
-                            <div class="col-md-2">
-                                <label for="filtroEstadoPersonal" class="form-label">Estado</label>
-                                <select class="form-select" id="filtroEstadoPersonal">
-                                    <option value="todos">Todos</option>
-                                    <option value="vencidos">Vencidos</option>
-                                    <option value="por_vencer">Por Vencer</option>
-                                    <option value="vigentes">Vigentes</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label for="filtroDiasPersonal" class="form-label">Días máx.</label>
-                                <input type="number" class="form-control" id="filtroDiasPersonal" placeholder="Ej: 30" min="1">
-                            </div>
-                            <div class="col-md-2">
-                                <label for="filtroSoloActivosPersonal" class="form-label d-block">&nbsp;</label>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="filtroSoloActivosPersonal" checked>
-                                    <label class="form-check-label" for="filtroSoloActivosPersonal">Solo activos</label>
-                                </div>
-                            </div>
-                            <div class="col-md-3 d-flex align-items-end">
+                            <div class="col-md-6 d-flex align-items-end">
                                 <button class="btn btn-primary me-2" onclick="cargarDocumentosPersonal()">
                                     <i class="bi bi-search me-2"></i>Buscar
                                 </button>
@@ -181,11 +151,6 @@
                         </div>
                     </div>
 
-                    <!-- Estadísticas -->
-                    <div class="row mb-3" id="estadisticasPersonal">
-                        <!-- Se llenará con JavaScript -->
-                    </div>
-
                     <!-- Tabla -->
                     <div class="table-responsive">
                         <table class="table table-hover table-striped" id="tablaPersonal">
@@ -198,7 +163,6 @@
                                     <th>Fecha Vencimiento</th>
                                     <th>Días Restantes</th>
                                     <th>Estado</th>
-                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tbodyPersonal">
@@ -219,31 +183,11 @@
                     <!-- Filtros -->
                     <div class="filtros-card">
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label for="filtroBuscarMaquinarias" class="form-label">Buscar</label>
                                 <input type="text" class="form-control" id="filtroBuscarMaquinarias" placeholder="Nombre, código o patente">
                             </div>
-                            <div class="col-md-2">
-                                <label for="filtroEstadoMaquinarias" class="form-label">Estado</label>
-                                <select class="form-select" id="filtroEstadoMaquinarias">
-                                    <option value="todos">Todos</option>
-                                    <option value="vencidos">Vencidos</option>
-                                    <option value="por_vencer">Por Vencer</option>
-                                    <option value="vigentes">Vigentes</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label for="filtroDiasMaquinarias" class="form-label">Días máx.</label>
-                                <input type="number" class="form-control" id="filtroDiasMaquinarias" placeholder="Ej: 30" min="1">
-                            </div>
-                            <div class="col-md-2">
-                                <label for="filtroSoloActivosMaquinarias" class="form-label d-block">&nbsp;</label>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="filtroSoloActivosMaquinarias" checked>
-                                    <label class="form-check-label" for="filtroSoloActivosMaquinarias">Solo activos</label>
-                                </div>
-                            </div>
-                            <div class="col-md-3 d-flex align-items-end">
+                            <div class="col-md-6 d-flex align-items-end">
                                 <button class="btn btn-primary me-2" onclick="cargarDocumentosMaquinarias()">
                                     <i class="bi bi-search me-2"></i>Buscar
                                 </button>
@@ -260,11 +204,6 @@
                         </div>
                     </div>
 
-                    <!-- Estadísticas -->
-                    <div class="row mb-3" id="estadisticasMaquinarias">
-                        <!-- Se llenará con JavaScript -->
-                    </div>
-
                     <!-- Tabla -->
                     <div class="table-responsive">
                         <table class="table table-hover table-striped" id="tablaMaquinarias">
@@ -277,7 +216,6 @@
                                     <th>Fecha Vencimiento</th>
                                     <th>Días Restantes</th>
                                     <th>Estado</th>
-                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tbodyMaquinarias">
