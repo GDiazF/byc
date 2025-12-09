@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Script para evitar duplicados en el inline de notificaciones.
  * Oculta las opciones ya seleccionadas en otros dropdowns del mismo formulario.
  */
@@ -6,14 +6,14 @@
 (function() {
     'use strict';
     
-    // Esperar a que jQuery esté disponible
+    // Esperar a que jQuery este disponible
     function inicializar() {
         var $ = django.jQuery || jQuery;
         
-        // Función para actualizar las opciones disponibles en todos los selects
+        // Funcion para actualizar las opciones disponibles en todos los selects
         function actualizarOpcionesNotificaciones() {
             // Buscar todos los selects de tipo_notificacion en el inline
-            // Probar múltiples selectores para asegurar compatibilidad
+            // Probar multiples selectores para asegurar compatibilidad
             var selects = $('select[id*="tipo_notificacion"]:not([id*="__prefix__"])');
             
             if (selects.length === 0) {
@@ -22,7 +22,7 @@
             }
             
             if (selects.length === 0) {
-                // Último intento: buscar en el grupo del inline
+                // ultimo intento: buscar en el grupo del inline
                 selects = $('.inline-related select').filter(function() {
                     var name = $(this).attr('name') || '';
                     var id = $(this).attr('id') || '';
@@ -40,7 +40,7 @@
                 }
             });
             
-            // Para cada select, ocultar las opciones que ya están seleccionadas en otros selects
+            // Para cada select, ocultar las opciones que ya estan seleccionadas en otros selects
             selects.each(function() {
                 var selectActual = $(this);
                 var valorActual = selectActual.val();
@@ -48,7 +48,7 @@
                 // Restaurar todas las opciones primero (mostrarlas)
                 selectActual.find('option').show();
                 
-                // Ocultar las opciones que están seleccionadas en otros selects
+                // Ocultar las opciones que estan seleccionadas en otros selects
                 valoresSeleccionados.forEach(function(valor) {
                     if (valor !== valorActual) {
                         selectActual.find('option[value="' + valor + '"]').hide();
@@ -57,12 +57,12 @@
             });
         }
         
-        // Ejecutar al cargar la página
+        // Ejecutar al cargar la pagina
         $(document).ready(function() {
             setTimeout(actualizarOpcionesNotificaciones, 500);
         });
         
-        // Ejecutar cuando cambie algún select (usar selector más amplio)
+        // Ejecutar cuando cambie algun select (usar selector mas amplio)
         $(document).on('change', 'select[id*="tipo_notificacion"], select[name*="tipo_notificacion"]', function() {
             actualizarOpcionesNotificaciones();
         });
@@ -88,16 +88,17 @@
         });
     }
     
-    // Intentar inicializar cuando el DOM esté listo
+    // Intentar inicializar cuando el DOM este listo
     if (typeof django !== 'undefined' && django.jQuery) {
         inicializar();
     } else if (typeof jQuery !== 'undefined') {
         inicializar();
     } else {
-        // Esperar a que jQuery esté disponible
+        // Esperar a que jQuery este disponible
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(inicializar, 500);
         });
     }
 })();
+
 

@@ -1,11 +1,12 @@
-"""
-ASGI config for bycCore project.
-
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
-"""
+# ============================================================================
+# CONFIGURACION ASGI PARA BYCCORE
+# ============================================================================
+# ASGI (Asynchronous Server Gateway Interface) configuracion para el proyecto bycCore.
+# Expone la aplicacion ASGI como una variable a nivel de modulo llamada 'application'.
+# 
+# Para mas informacion sobre este archivo, ver:
+# https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
+# ============================================================================
 
 import os
 

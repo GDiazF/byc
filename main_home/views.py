@@ -1,3 +1,12 @@
+﻿# ============================================================================
+# VISTAS PARA MAIN_HOME
+# ============================================================================
+# Este archivo contiene las vistas para la aplicación main_home:
+# - HomeView: Vista principal de la aplicación (dashboard)
+# - perfil_view: Vista para mostrar el perfil del usuario
+# - cambiar_contraseña_view: Vista para cambiar la contraseña del usuario
+# ============================================================================
+
 from django.shortcuts import render, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -5,8 +14,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib import messages
 from django.views.generic import TemplateView
 from django.views import View
-from django.contrib.auth.forms import PasswordChangeForm
-# Create your views here.
+from .forms import PasswordChangeForm
 
 class HomeView(TemplateView, LoginRequiredMixin):
     template_name = 'home/index.html'
@@ -26,7 +34,7 @@ class HomeView(TemplateView, LoginRequiredMixin):
 
 @login_required
 def perfil_view(request):
-    """Vista para mostrar el perfil del usuario"""
+    # Vista para mostrar el perfil del usuario
     user = request.user
     context = {
         'user': user,
@@ -35,7 +43,7 @@ def perfil_view(request):
 
 @login_required
 def cambiar_contraseña_view(request):
-    """Vista para cambiar la contraseña del usuario"""
+    # Vista para cambiar la contraseña del usuario
     if request.method == 'POST':
         form = PasswordChangeForm(request.user, request.POST)
         if form.is_valid():

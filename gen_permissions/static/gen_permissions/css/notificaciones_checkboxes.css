@@ -94,3 +94,10 @@
     font-weight: 600;
 }
 
+/* Estilos para el resumen de notificaciones seleccionadas */
+.notificaciones-resumen {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+}
+

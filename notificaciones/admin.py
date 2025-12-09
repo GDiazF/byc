@@ -1,6 +1,9 @@
-"""
-Admin para el sistema de notificaciones.
-"""
+# ============================================================================
+# ADMIN PARA EL SISTEMA DE NOTIFICACIONES
+# ============================================================================
+# Configuración del admin para gestionar tipos de notificaciones,
+# notificaciones y configuraciones por rol
+# ============================================================================
 
 from django.contrib import admin
 from .models import TipoNotificacion, Notificacion, ConfiguracionNotificacionRol

@@ -1,11 +1,11 @@
-"""
-Modelos para el sistema de notificaciones del proyecto BYC.
-
-Este módulo define los modelos necesarios para gestionar notificaciones:
-- TipoNotificacion: Catálogo de tipos de notificaciones disponibles
-- Notificacion: Notificaciones individuales para usuarios
-- ConfiguracionNotificacionRol: Configuración de qué notificaciones recibe cada rol
-"""
+# ============================================================================
+# MODELOS PARA EL SISTEMA DE NOTIFICACIONES
+# ============================================================================
+# Este módulo define los modelos necesarios para gestionar notificaciones:
+# - TipoNotificacion: Catálogo de tipos de notificaciones disponibles
+# - Notificacion: Notificaciones individuales para usuarios
+# - ConfiguracionNotificacionRol: Configuración de qué notificaciones recibe cada rol
+# ============================================================================
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -14,18 +14,10 @@ from gen_permissions.models import Rol
 
 
 class TipoNotificacion(models.Model):
-    """
-    Catálogo de tipos de notificaciones disponibles en el sistema.
-    
-    Cada tipo de notificación tiene un código único que se usa para identificarlo
-    y crear notificaciones del mismo tipo.
-    
-    Ejemplos:
-    - RRHH_PERSONAL_ACTIVADO
-    - RRHH_LICENCIA_MEDICA_CREADA
-    - MAQUINARIAS_EQUIPO_ASIGNADO_FAENA
-    - DOCUMENTO_VENCIMIENTO_30D
-    """
+    # Catálogo de tipos de notificaciones disponibles en el sistema.
+    # Cada tipo de notificación tiene un código único que se usa para identificarlo
+    # y crear notificaciones del mismo tipo.
+    # Ejemplos: RRHH_PERSONAL_ACTIVADO, RRHH_LICENCIA_MEDICA_CREADA, etc.
     
     CATEGORIA_CHOICES = [
         ('RRHH', 'Recursos Humanos'),
@@ -96,13 +88,10 @@ class TipoNotificacion(models.Model):
 
 
 class ConfiguracionNotificacionRol(models.Model):
-    """
-    Configuración de qué tipos de notificaciones puede recibir cada rol.
-    
-    Cuando se crea una notificación de un tipo específico, se busca qué roles
-    tienen habilitado ese tipo y se crean notificaciones para todos los usuarios
-    con esos roles.
-    """
+    # Configuración de qué tipos de notificaciones puede recibir cada rol.
+    # Cuando se crea una notificación de un tipo específico, se busca qué roles
+    # tienen habilitado ese tipo y se crean notificaciones para todos los usuarios
+    # con esos roles.
     rol = models.ForeignKey(
         Rol,
         on_delete=models.CASCADE,
@@ -142,12 +131,9 @@ class ConfiguracionNotificacionRol(models.Model):
 
 
 class Notificacion(models.Model):
-    """
-    Notificaciones individuales para usuarios específicos.
-    
-    Cada notificación está asociada a un usuario y un tipo de notificación.
-    Contiene el título, mensaje y metadatos adicionales.
-    """
+    # Notificaciones individuales para usuarios específicos.
+    # Cada notificación está asociada a un usuario y un tipo de notificación.
+    # Contiene el título, mensaje y metadatos adicionales.
     usuario = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -224,21 +210,21 @@ class Notificacion(models.Model):
         return f"{self.usuario.username} - {self.titulo}"
     
     def marcar_como_leida(self):
-        """Marca la notificación como leída"""
+        # Marca la notificación como leída
         if not self.leida:
             self.leida = True
             self.fecha_leida = timezone.now()
             self.save(update_fields=['leida', 'fecha_leida'])
     
     def archivar(self):
-        """Archiva la notificación"""
+        # Archiva la notificación
         if not self.archivada:
             self.archivada = True
             self.fecha_archivada = timezone.now()
             self.save(update_fields=['archivada', 'fecha_archivada'])
     
     def desarchivar(self):
-        """Desarchiva la notificación"""
+        # Desarchiva la notificación
         if self.archivada:
             self.archivada = False
             self.fecha_archivada = None

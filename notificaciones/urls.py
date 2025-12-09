@@ -1,6 +1,16 @@
-"""
-URLs para el sistema de notificaciones.
-"""
+# ============================================================================
+# URLS PARA EL SISTEMA DE NOTIFICACIONES
+# ============================================================================
+# Define las rutas URL para la aplicación notificaciones:
+# - /notificaciones/: Página principal de notificaciones
+# - /notificaciones/api/: API para obtener notificaciones
+# - /notificaciones/api/contar/: API para contar notificaciones no leídas
+# - /notificaciones/api/sse/: Server-Sent Events para notificaciones en tiempo real
+# - /notificaciones/api/<id>/marcar-leida/: API para marcar notificación como leída
+# - /notificaciones/api/marcar-todas-leidas/: API para marcar todas como leídas
+# - /notificaciones/api/<id>/archivar/: API para archivar notificación
+# - /notificaciones/api/<id>/desarchivar/: API para desarchivar notificación
+# ============================================================================
 
 from django.urls import path
 from . import views

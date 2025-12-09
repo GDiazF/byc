@@ -1,12 +1,12 @@
-"""
-Configuración del Admin de Django para gestionar roles y permisos.
-
-Este módulo configura la interfaz de administración de Django para:
-- Roles: Crear y gestionar roles con sus permisos
-- UserProfile: Asignar roles a usuarios y ver sus permisos
-- PermisoVista: Gestionar permisos de vistas sin modelo
-- PermisoAccion: Gestionar permisos personalizados de acciones
-"""
+﻿# ============================================================================
+# CONFIGURACION DEL ADMIN DE DJANGO PARA GESTIONAR ROLES Y PERMISOS
+# ============================================================================
+# Este modulo configura la interfaz de administracion de Django para:
+# - Roles: Crear y gestionar roles con sus permisos
+# - UserProfile: Asignar roles a usuarios y ver sus permisos
+# - PermisoVista: Gestionar permisos de vistas sin modelo
+# - PermisoAccion: Gestionar permisos personalizados de acciones
+# ============================================================================
 
 from django.contrib import admin
 from django.contrib.auth.models import Permission
@@ -20,17 +20,15 @@ from .utils import es_permiso_tabla_maestra, formatear_nombre_permiso
 
 
 # Inline para gestionar notificaciones por rol
-# Solo se define si la app notificaciones está disponible
+# Solo se define si la app notificaciones esta disponible
 try:
     from notificaciones.models import ConfiguracionNotificacionRol, TipoNotificacion
     
     class ConfiguracionNotificacionRolInline(admin.TabularInline):
-        """
-        Inline para gestionar qué tipos de notificaciones puede recibir un rol.
-        """
+        # Inline para gestionar que tipos de notificaciones puede recibir un rol.
         model = ConfiguracionNotificacionRol
         extra = 1
-        verbose_name = 'Tipo de Notificación'
+        verbose_name = 'Tipo de Notificacion'
         verbose_name_plural = 'Tipos de Notificaciones'
         fields = ('tipo_notificacion', 'activo')
         
@@ -38,12 +36,10 @@ try:
             js = ('gen_permissions/js/notificaciones_inline.js',)
         
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
-            """
-            Personaliza el campo tipo_notificacion para mostrar todos los tipos activos.
-            El JavaScript se encargará de ocultar los duplicados dinámicamente.
-            """
+            # Personaliza el campo tipo_notificacion para mostrar todos los tipos activos.
+            # El JavaScript se encargara de ocultar los duplicados dinamicamente.
             if db_field.name == "tipo_notificacion":
-                # Mostrar todos los tipos de notificación activos
+                # Mostrar todos los tipos de notificacion activos
                 kwargs["queryset"] = TipoNotificacion.objects.filter(
                     activo=True
                 ).order_by('categoria', 'nombre')
@@ -51,34 +47,32 @@ try:
             return super().formfield_for_foreignkey(db_field, request, **kwargs)
         
         def has_add_permission(self, request, obj=None):
-            """Permitir agregar configuraciones"""
+            # Permitir agregar configuraciones
             return True
         
         def has_change_permission(self, request, obj=None):
-            """Permitir cambiar configuraciones"""
+            # Permitir cambiar configuraciones
             return True
         
         def has_delete_permission(self, request, obj=None):
-            """Permitir eliminar configuraciones"""
+            # Permitir eliminar configuraciones
             return True
 except ImportError:
-    # Si la app notificaciones no está disponible, crear una clase dummy
+    # Si la app notificaciones no esta disponible, crear una clase dummy
     ConfiguracionNotificacionRolInline = None
 
 
 # Formulario personalizado para Rol que formatea los nombres de permisos
 class RolForm(ModelForm):
-    """
-    Formulario personalizado para Rol que usa un widget personalizado
-    para mostrar etiquetas "(Maestra)" en permisos de tablas maestras.
-    """
+    # Formulario personalizado para Rol que usa un widget personalizado
+    # para mostrar etiquetas "(Maestra)" en permisos de tablas maestras.
     
     class Meta:
         model = Rol
         fields = '__all__'
         # Usar widget personalizado para el campo permisos
         widgets = {
-            'permisos': None  # Se configurará en __init__
+            'permisos': None  # Se configurara en __init__
         }
     
     def __init__(self, *args, **kwargs):
@@ -95,20 +89,17 @@ class RolForm(ModelForm):
                 is_stacked=False
             )
             
-            # Ordenar permisos por app y codename para mejor visualización
+            # Ordenar permisos por app y codename para mejor visualizacion
             self.fields['permisos'].queryset = Permission.objects.all().select_related('content_type').order_by('content_type__app_label', 'codename')
 
 
 @admin.register(Rol)
 class RolAdmin(admin.ModelAdmin):
-    """
-    Configuración del admin para el modelo Rol.
-    
-    Permite crear roles y asignarles permisos usando un widget mejorado
-    (filter_horizontal) que facilita la selección de múltiples permisos.
-    Los permisos de tablas maestras se muestran con la etiqueta "(Maestra)".
-    También permite gestionar qué tipos de notificaciones puede recibir cada rol.
-    """
+    # Configuracion del admin para el modelo Rol.
+    # Permite crear roles y asignarles permisos usando un widget mejorado
+    # (filter_horizontal) que facilita la seleccion de multiples permisos.
+    # Los permisos de tablas maestras se muestran con la etiqueta "(Maestra)".
+    # Tambien permite gestionar que tipos de notificaciones puede recibir cada rol.
     # Usar formulario personalizado que formatea los nombres de permisos
     form = RolForm
     
@@ -118,8 +109,8 @@ class RolAdmin(admin.ModelAdmin):
     list_filter = ('activo',)
     # Campos por los que se puede buscar
     search_fields = ('nombre', 'descripcion')
-    # Widget mejorado para seleccionar múltiples permisos (más fácil que el default)
-    # Usamos filter_horizontal que Django convierte automáticamente en FilteredSelectMultiple
+    # Widget mejorado para seleccionar multiples permisos (mas facil que el default)
+    # Usamos filter_horizontal que Django convierte automaticamente en FilteredSelectMultiple
     # Nuestro widget personalizado PermisosFilteredSelectMultiple extiende FilteredSelectMultiple
     # y se aplica mediante el formulario personalizado RolForm
     filter_horizontal = ('permisos',)
@@ -129,49 +120,41 @@ class RolAdmin(admin.ModelAdmin):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Agregar el inline de notificaciones solo si está disponible
+        # Agregar el inline de notificaciones solo si esta disponible
         if ConfiguracionNotificacionRolInline is not None and ConfiguracionNotificacionRolInline not in self.inlines:
             self.inlines.append(ConfiguracionNotificacionRolInline)
     
     # Fieldsets solo para campos del modelo
     fieldsets = (
-        ('Información Básica', {
+        ('Informacion Basica', {
             'fields': ('nombre', 'descripcion', 'activo'),
-            'description': 'Información básica del rol'
+            'description': 'Informacion basica del rol'
         }),
         ('Permisos', {
             'fields': ('permisos',),
-            'description': 'Selecciona los permisos que tendrán todos los usuarios con este rol. '
+            'description': 'Selecciona los permisos que tendran todos los usuarios con este rol. '
                          'Los permisos de tablas maestras aparecen marcados con "(Maestra)". '
-                         'Puedes buscar permisos escribiendo en el campo de búsqueda.'
+                         'Puedes buscar permisos escribiendo en el campo de busqueda.'
         }),
     )
     
     class Media:
-        """
-        Agregar CSS y JavaScript personalizados para mejorar la visualización.
-        """
+        # Agregar CSS y JavaScript personalizados para mejorar la visualizacion.
         css = {
             'all': ('gen_permissions/css/admin_permisos.css',)
         }
         js = ('gen_permissions/js/admin_permisos.js',)
     
     def permisos_count(self, obj):
-        """
-        Muestra la cantidad de permisos asignados al rol.
-        
-        Esto ayuda a ver rápidamente cuántos permisos tiene cada rol.
-        """
+        # Muestra la cantidad de permisos asignados al rol.
+        # Esto ayuda a ver rapidamente cuantos permisos tiene cada rol.
         return obj.permisos.count()
     permisos_count.short_description = 'Cantidad de Permisos'
     permisos_count.admin_order_field = 'permisos'
     
     def usuarios_count(self, obj):
-        """
-        Muestra la cantidad de usuarios que tienen este rol.
-        
-        Esto ayuda a ver cuántos usuarios están usando cada rol.
-        """
+        # Muestra la cantidad de usuarios que tienen este rol.
+        # Esto ayuda a ver cuantos usuarios estan usando cada rol.
         return obj.userprofile_set.count()
     usuarios_count.short_description = 'Usuarios con este Rol'
     usuarios_count.admin_order_field = 'userprofile'
@@ -180,12 +163,9 @@ class RolAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    """
-    Configuración del admin para el modelo UserProfile.
-    
-    Permite asignar roles a usuarios. Al asignar un rol, el usuario hereda
-    automáticamente todos los permisos de ese rol.
-    """
+    # Configuracion del admin para el modelo UserProfile.
+    # Permite asignar roles a usuarios. Al asignar un rol, el usuario hereda
+    # automaticamente todos los permisos de ese rol.
     # Campos que se muestran en la lista de perfiles
     list_display = ('user', 'rol', 'fecha_asignacion_rol', 'permisos_count')
     # Filtros disponibles en el panel lateral
@@ -194,7 +174,7 @@ class UserProfileAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email', 'user__first_name', 'user__last_name')
     # Campos de solo lectura (no se pueden editar)
     readonly_fields = ('fecha_asignacion_rol', 'fecha_modificacion_rol', 'permisos_list')
-    # Organización de campos en el formulario
+    # Organizacion de campos en el formulario
     fieldsets = (
         ('Usuario', {
             'fields': ('user',),
@@ -202,47 +182,39 @@ class UserProfileAdmin(admin.ModelAdmin):
         }),
         ('Rol', {
             'fields': ('rol',),
-            'description': 'Al asignar un rol, el usuario heredará automáticamente todos sus permisos. '
-                         'Si cambias el rol, los permisos se actualizarán automáticamente.'
+            'description': 'Al asignar un rol, el usuario heredara automaticamente todos sus permisos. '
+                         'Si cambias el rol, los permisos se actualizaran automaticamente.'
         }),
-        ('Información', {
+        ('Informacion', {
             'fields': ('fecha_asignacion_rol', 'fecha_modificacion_rol', 'permisos_list'),
-            'classes': ('collapse',),  # Sección colapsable
-            'description': 'Información sobre la asignación del rol'
+            'classes': ('collapse',),  # Seccion colapsable
+            'description': 'Informacion sobre la asignacion del rol'
         }),
     )
     
     def save_model(self, request, obj, form, change):
-        """
-        Sobrescribe save_model para asegurar que los permisos se asignen después de guardar.
-        """
+        # Sobrescribe save_model para asegurar que los permisos se asignen despues de guardar.
         super().save_model(request, obj, form, change)
-        # Forzar asignación de permisos después de guardar desde el admin
+        # Forzar asignacion de permisos despues de guardar desde el admin
         # Esto asegura que funcione incluso si hay problemas con signals
         obj.asignar_permisos_del_rol()
     
     def permisos_count(self, obj):
-        """
-        Muestra la cantidad de permisos que tiene el usuario según su rol.
-        
-        Si no tiene rol, muestra 0.
-        """
+        # Muestra la cantidad de permisos que tiene el usuario segun su rol.
+        # Si no tiene rol, muestra 0.
         if obj.rol:
             return obj.rol.permisos.count()
         return 0
     permisos_count.short_description = 'Permisos del Rol'
     
     def permisos_list(self, obj):
-        """
-        Muestra una lista HTML de los permisos asignados al usuario.
-        
-        Solo muestra los primeros 10 permisos para no sobrecargar la vista.
-        Si hay más, muestra un mensaje indicando cuántos más hay.
-        Los permisos de tablas maestras se muestran con etiqueta "(Maestra)".
-        """
+        # Muestra una lista HTML de los permisos asignados al usuario.
+        # Solo muestra los primeros 10 permisos para no sobrecargar la vista.
+        # Si hay mas, muestra un mensaje indicando cuantos mas hay.
+        # Los permisos de tablas maestras se muestran con etiqueta "(Maestra)".
         if obj.rol:
             permisos = obj.rol.permisos.all()[:10]  # Primeros 10 permisos
-            lista = '<ul style="margin: 0; padding-left: 20px;">'
+            lista = '<ul class="permisos-lista">'
             for perm in permisos:
                 # Formatear el nombre del permiso (agregar "(Maestra)" si corresponde)
                 nombre_formateado = formatear_nombre_permiso(perm)
@@ -252,7 +224,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                     estilo = ' style="color: #856404; font-weight: bold;"'
                 lista += f'<li{estilo}>{perm.content_type.app_label}.{perm.codename} - {nombre_formateado}</li>'
             if obj.rol.permisos.count() > 10:
-                lista += f'<li><em>... y {obj.rol.permisos.count() - 10} más</em></li>'
+                lista += f'<li><em>... y {obj.rol.permisos.count() - 10} mas</em></li>'
             lista += '</ul>'
             return format_html(lista)
         return 'Sin rol asignado'
@@ -261,7 +233,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(PermisoVista)
 class PermisoVistaAdmin(admin.ModelAdmin):
-    """Configuración del admin para permisos de vistas sin modelo"""
+    # Configuracion del admin para permisos de vistas sin modelo
     list_display = ('codigo', 'nombre', 'app_label', 'vista_nombre', 'activo')
     list_filter = ('activo', 'app_label')
     search_fields = ('codigo', 'nombre', 'app_label', 'vista_nombre')
@@ -270,7 +242,7 @@ class PermisoVistaAdmin(admin.ModelAdmin):
 
 @admin.register(PermisoAccion)
 class PermisoAccionAdmin(admin.ModelAdmin):
-    """Configuración del admin para permisos de acciones personalizadas"""
+    # Configuracion del admin para permisos de acciones personalizadas
     list_display = ('codigo', 'nombre', 'modelo', 'accion', 'activo')
     list_filter = ('activo', 'modelo')
     search_fields = ('codigo', 'nombre', 'accion')
@@ -279,7 +251,8 @@ class PermisoAccionAdmin(admin.ModelAdmin):
 
 @admin.register(PermisoModelo)
 class PermisoModeloAdmin(admin.ModelAdmin):
-    """Configuración del admin para el catálogo de permisos por modelo"""
+    # Configuracion del admin para el catalogo de permisos por modelo
     list_display = ('app_label', 'modelo_nombre', 'modelo')
     list_filter = ('app_label',)
     search_fields = ('app_label', 'modelo_nombre')
+

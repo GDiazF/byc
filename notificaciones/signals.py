@@ -1,6 +1,10 @@
-"""
-Signals para crear notificaciones automáticamente cuando ocurren eventos.
-"""
+# ============================================================================
+# SIGNALS PARA CREAR NOTIFICACIONES AUTOMÁTICAMENTE
+# ============================================================================
+# Este módulo contiene signals que se ejecutan cuando ocurren eventos
+# en el sistema (creación de registros, cambios de estado, etc.) y crean
+# notificaciones automáticamente para los usuarios correspondientes.
+# ============================================================================
 
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
@@ -22,9 +26,7 @@ from .models import Notificacion
 
 @receiver(post_save, sender='rrhh_personal.LicenciaMedicaPorPersonal')
 def notificar_licencia_medica(sender, instance, created, **kwargs):
-    """
-    Notifica cuando se crea una licencia médica.
-    """
+    # Notifica cuando se crea una licencia médica.
     if created:
         fecha_inicio = instance.fechaEmision.strftime('%d/%m/%Y') if instance.fechaEmision else 'N/A'
         fecha_fin = instance.fecha_fin_licencia.strftime('%d/%m/%Y') if instance.fecha_fin_licencia else 'N/A'
@@ -48,9 +50,7 @@ def notificar_licencia_medica(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender='rrhh_personal.Ausentismo')
 def notificar_ausentismo(sender, instance, created, **kwargs):
-    """
-    Notifica cuando se crea un ausentismo.
-    """
+    # Notifica cuando se crea un ausentismo.
     if created:
         tipo_ausentismo = instance.tipoausen_id.tipo if instance.tipoausen_id else 'N/A'
         fecha_desde = instance.fechaini.strftime('%d/%m/%Y') if instance.fechaini else 'N/A'
@@ -81,9 +81,7 @@ def notificar_ausentismo(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender='maquinarias.Equipo')
 def notificar_cambio_estado_equipo(sender, instance, created, **kwargs):
-    """
-    Notifica cuando se activa o desactiva un equipo.
-    """
+    # Notifica cuando se activa o desactiva un equipo.
     if created:
         # Equipo nuevo activado
         crear_notificacion_por_tipo(
@@ -133,9 +131,7 @@ def notificar_cambio_estado_equipo(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender='maquinarias.Equipo')
 def guardar_estado_previo_equipo(sender, instance, **kwargs):
-    """
-    Guarda el estado previo del equipo para detectar cambios.
-    """
+    # Guarda el estado previo del equipo para detectar cambios.
     if instance.pk:
         try:
             old_instance = sender.objects.get(pk=instance.pk)
@@ -148,9 +144,7 @@ def guardar_estado_previo_equipo(sender, instance, **kwargs):
 
 @receiver(post_save, sender='maquinarias.OrdenTrabajo')
 def notificar_cambio_ot(sender, instance, created, **kwargs):
-    """
-    Notifica cuando se crea una OT o cambia su estado.
-    """
+    # Notifica cuando se crea una OT o cambia su estado.
     if created:
         # OT creada
         crear_notificacion_por_tipo(
@@ -211,9 +205,7 @@ def notificar_cambio_ot(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender='maquinarias.OrdenTrabajo')
 def guardar_estado_previo_ot(sender, instance, **kwargs):
-    """
-    Guarda el estado previo de la OT para detectar cambios.
-    """
+    # Guarda el estado previo de la OT para detectar cambios.
     if instance.pk:
         try:
             old_instance = sender.objects.get(pk=instance.pk)
@@ -226,9 +218,7 @@ def guardar_estado_previo_ot(sender, instance, **kwargs):
 
 @receiver(post_save, sender='ope_calendario.AsignacionEquipoFaena')
 def notificar_asignacion_equipo_faena(sender, instance, created, **kwargs):
-    """
-    Notifica cuando se asigna un equipo a una faena.
-    """
+    # Notifica cuando se asigna un equipo a una faena.
     if created:
         crear_notificacion_por_tipo(
             codigo_tipo='MAQUINARIAS_EQUIPO_ASIGNADO_FAENA',
@@ -253,9 +243,7 @@ def notificar_asignacion_equipo_faena(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender='ope_calendario.Faena')
 def notificar_faena(sender, instance, created, **kwargs):
-    """
-    Notifica cuando se crea, edita o elimina una faena.
-    """
+    # Notifica cuando se crea, edita o elimina una faena.
     if created:
         crear_notificacion_por_tipo(
             codigo_tipo='PLANIFICACION_FAENA_CREADA',
@@ -299,9 +287,7 @@ def notificar_faena(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender='ope_calendario.Faena')
 def guardar_estado_previo_faena(sender, instance, **kwargs):
-    """
-    Guarda el estado previo de la faena para detectar cambios.
-    """
+    # Guarda el estado previo de la faena para detectar cambios.
     if instance.pk:
         try:
             old_instance = sender.objects.get(pk=instance.pk)
@@ -317,9 +303,7 @@ def guardar_estado_previo_faena(sender, instance, **kwargs):
 
 @receiver(post_save, sender='ope_calendario.AsignacionFaena')
 def notificar_asignacion_personal_faena(sender, instance, created, **kwargs):
-    """
-    Notifica cuando se asigna personal a una faena.
-    """
+    # Notifica cuando se asigna personal a una faena.
     if created:
         crear_notificacion_por_tipo(
             codigo_tipo='PLANIFICACION_PERSONAL_ASIGNADO_FAENA',
@@ -346,7 +330,7 @@ def notificar_asignacion_personal_faena(sender, instance, created, **kwargs):
 
 # Nota: Las notificaciones de cambio de contraseña y login fallido
 # se manejan directamente en las vistas personalizadas:
-# - Cambio de contraseña: main_home/views.py -> cambiar_contraseña_view()
+# - Cambio de contrasena: main_home/views.py -> cambiar_contrasena_view()
 # - Login fallido: main_login/views.py -> CustomLoginView
 # Esto es más eficiente que usar signals que se disparan en cada login
 
@@ -357,10 +341,8 @@ def notificar_asignacion_personal_faena(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=Notificacion)
 def enviar_evento_sse_notificacion(sender, instance, created, **kwargs):
-    """
-    Envía un evento SSE cuando se crea una nueva notificación.
-    Esto permite que el cliente reciba la notificación en tiempo real.
-    """
+    # Envía un evento SSE cuando se crea una nueva notificación.
+    # Esto permite que el cliente reciba la notificación en tiempo real.
     if created:
         try:
             import logging

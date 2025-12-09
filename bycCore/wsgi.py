@@ -1,11 +1,12 @@
-"""
-WSGI config for bycCore project.
-
-It exposes the WSGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
-"""
+# ============================================================================
+# CONFIGURACION WSGI PARA BYCCORE
+# ============================================================================
+# WSGI (Web Server Gateway Interface) configuracion para el proyecto bycCore.
+# Expone la aplicacion WSGI como una variable a nivel de modulo llamada 'application'.
+# 
+# Para mas informacion sobre este archivo, ver:
+# https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
+# ============================================================================
 
 import os
 

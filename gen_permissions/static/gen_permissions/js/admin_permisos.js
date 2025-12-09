@@ -1,4 +1,4 @@
-/**
+﻿/**
  * JavaScript para agregar etiquetas "(Maestra)" a permisos de tablas maestras.
  * 
  * Este script modifica directamente el texto de las opciones en los selects
@@ -37,7 +37,7 @@
      * El formato de Django es: "App | Modelo | Can add modelo"
      * Ejemplo: "Rrhh_Personal | sexo | Can add sexo" -> "sexo"
      * Ejemplo: "Rrhh_Personal | estado civil | Can add estado civil" -> "estadocivil" (normalizado)
-     * También puede ser: "Can add sexo" -> "sexo"
+     * Tambien puede ser: "Can add sexo" -> "sexo"
      */
     function extraerNombreModelo(textoPermiso) {
         const textoLower = textoPermiso.toLowerCase().trim();
@@ -45,14 +45,14 @@
         // Remover "(Maestra)" si ya existe
         let texto = textoLower.replace(' (maestra)', '').replace('(maestra)', '').trim();
         
-        // Formato 1: "App | Modelo | Can add modelo" (formato estándar de Django)
+        // Formato 1: "App | Modelo | Can add modelo" (formato estandar de Django)
         // Extraer la parte del medio (el nombre del modelo)
         if (texto.includes(' | ')) {
             const partes = texto.split(' | ');
             if (partes.length >= 2) {
                 // La segunda parte es el nombre del modelo (puede tener espacios)
                 let modelName = partes[1].trim();
-                // Normalizar: quitar espacios y convertir a minúsculas
+                // Normalizar: quitar espacios y convertir a minusculas
                 // Ejemplo: "estado civil" -> "estadocivil", "tipo equipo" -> "tipoequipo"
                 modelName = modelName.replace(/\s+/g, ''); // Quitar todos los espacios
                 return modelName;
@@ -65,7 +65,7 @@
         for (const accion of acciones) {
             if (texto.startsWith(accion)) {
                 let modelName = texto.substring(accion.length).trim();
-                // Remover espacios adicionales o texto después del nombre
+                // Remover espacios adicionales o texto despues del nombre
                 const espacioIndex = modelName.indexOf(' ');
                 if (espacioIndex > 0) {
                     modelName = modelName.substring(0, espacioIndex);
@@ -81,10 +81,10 @@
     
     /**
      * Verifica si un permiso es de tabla maestra.
-     * NO marca permisos de navegación o dashboards como maestras.
+     * NO marca permisos de navegacion o dashboards como maestras.
      */
     function esTablaMaestra(textoPermiso) {
-        // Excluir permisos de navegación y dashboards
+        // Excluir permisos de navegacion y dashboards
         // Estos permisos tienen texto como "Puede navegar a..." o "Puede ver Dashboard..."
         const textoLower = textoPermiso.toLowerCase();
         if (textoLower.includes('navegar') || textoLower.includes('dashboard')) {
@@ -106,7 +106,7 @@
     }
     
     /**
-     * Función principal que marca los permisos de tablas maestras.
+     * Funcion principal que marca los permisos de tablas maestras.
      */
     function marcarPermisosMaestros() {
         console.log('[Permisos] Iniciando marcado de permisos maestros...');
@@ -121,7 +121,7 @@
             'select[name="permisos_to"]',   // Por nombre
             '.selector-available select',    // Selector de disponibles
             '.selector-chosen select',      // Selector de seleccionados
-            '.selector select',             // Selector genérico
+            '.selector select',             // Selector generico
             'select.filtered',              // Selects con clase filtered
             'select[name="permisos"]',      // Select oculto (backup)
             'select[name="permisos_old"]',  // Select oculto (backup)
@@ -170,7 +170,7 @@
                             totalMarcados++;
                             console.log(`[Permisos] ✓ Marcado como maestra: "${textoOriginal}" -> modelo: "${modelName}"`);
                         }
-                        // Asegurar estilo siempre (incluso si ya tenía la etiqueta)
+                        // Asegurar estilo siempre (incluso si ya tenia la etiqueta)
                         $option.css({
                             'color': '#856404',
                             'font-weight': 'bold'
@@ -193,7 +193,7 @@
             });
         });
         
-        console.log(`[Permisos] Resumen: ${selectsEncontrados} select(s) encontrado(s), ${totalProcesados} opción(es) procesada(s), ${totalMarcados} marcada(s) como maestra`);
+        console.log(`[Permisos] Resumen: ${selectsEncontrados} select(s) encontrado(s), ${totalProcesados} opcion(es) procesada(s), ${totalMarcados} marcada(s) como maestra`);
         
         if (selectsEncontrados === 0) {
             console.warn('[Permisos] ⚠ No se encontraron selects de permisos. Verifica los selectores.');
@@ -201,29 +201,29 @@
         
         // NOTA: No reordenamos las opciones porque rompe la funcionalidad del widget filter_horizontal de Django
         // Los permisos de tablas maestras se muestran marcados con "(Maestra)" y en color amarillo,
-        // pero mantienen su posición original para no interferir con el scroll y las flechas del widget.
+        // pero mantienen su posicion original para no interferir con el scroll y las flechas del widget.
     }
     
-    // Ejecutar cuando el documento esté listo
+    // Ejecutar cuando el documento este listo
     $(document).ready(function() {
         console.log('[Permisos] Script cargado, iniciando marcado...');
         
         // Ejecutar inmediatamente
         marcarPermisosMaestros();
         
-        // Ejecutar después de varios delays para asegurar que Django haya cargado todo
+        // Ejecutar despues de varios delays para asegurar que Django haya cargado todo
         setTimeout(function() {
-            console.log('[Permisos] Ejecutando después de 300ms...');
+            console.log('[Permisos] Ejecutando despues de 300ms...');
             marcarPermisosMaestros();
         }, 300);
         
         setTimeout(function() {
-            console.log('[Permisos] Ejecutando después de 800ms...');
+            console.log('[Permisos] Ejecutando despues de 800ms...');
             marcarPermisosMaestros();
         }, 800);
         
         setTimeout(function() {
-            console.log('[Permisos] Ejecutando después de 1500ms...');
+            console.log('[Permisos] Ejecutando despues de 1500ms...');
             marcarPermisosMaestros();
         }, 1500);
         
@@ -259,10 +259,11 @@
         // Observar clicks en botones de mover (>> y <<)
         $(document).on('click', '.selector-chooseall, .selector-add, .selector-remove, .selector-clearall', function() {
             setTimeout(function() {
-                console.log('[Permisos] Click en botón de mover detectado, re-marcando...');
+                console.log('[Permisos] Click en boton de mover detectado, re-marcando...');
                 marcarPermisosMaestros();
             }, 200);
         });
     });
     
 })(django.jQuery || jQuery);
+

@@ -1,6 +1,10 @@
-"""
-Management command para procesar vencimientos de documentos manualmente.
-"""
+# ============================================================================
+# MANAGEMENT COMMAND PARA PROCESAR VENCIMIENTOS DE DOCUMENTOS
+# ============================================================================
+# Este comando permite procesar vencimientos de documentos manualmente,
+# creando notificaciones para documentos próximos a vencer.
+# También incluye un modo simulación para ver qué se procesaría sin crear notificaciones.
+# ============================================================================
 
 from django.core.management.base import BaseCommand
 from notificaciones.tasks import procesar_vencimientos_documentos
@@ -46,7 +50,7 @@ class Command(BaseCommand):
             self.mostrar_simulacion(hoy)
     
     def mostrar_simulacion(self, hoy):
-        """Muestra qué documentos se procesarían sin crear notificaciones"""
+        # Muestra qué documentos se procesarían sin crear notificaciones
         from rrhh_personal.models import (
             LicenciaPorPersonal, LicenciaMedicaPorPersonal,
             LicenciaInternaPorPersonal, Certificacion, Examen

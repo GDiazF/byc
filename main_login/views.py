@@ -1,6 +1,9 @@
-"""
-Vistas personalizadas para autenticación.
-"""
+# ============================================================================
+# VISTAS PERSONALIZADAS PARA AUTENTICACIÓN
+# ============================================================================
+# Este archivo contiene vistas personalizadas para el sistema de login
+# que detectan intentos fallidos y crean notificaciones de seguridad.
+# ============================================================================
 
 from django.contrib.auth.views import LoginView
 from django.contrib.auth import authenticate
@@ -12,14 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class CustomLoginView(LoginView):
-    """
-    Vista personalizada de login que detecta intentos fallidos y crea notificaciones.
-    """
+    # Vista personalizada de login que detecta intentos fallidos y crea notificaciones.
     
     def form_invalid(self, form):
-        """
-        Se ejecuta cuando el formulario de login es inválido (credenciales incorrectas).
-        """
+        # Se ejecuta cuando el formulario de login es inválido (credenciales incorrectas).
         # Obtener el username del formulario (aunque sea inválido, el campo username puede tener valor)
         username = form.data.get('username', '') or form.cleaned_data.get('username', '')
         
@@ -42,11 +41,9 @@ class CustomLoginView(LoginView):
         return super().form_invalid(form)
     
     def _registrar_intento_fallido(self, user):
-        """
-        Registra un intento de login fallido y crea notificación SOLO cuando se alcancen 3 intentos.
-        Cada usuario tiene su propio contador independiente.
-        Funciona con cualquier backend de cache (local, Redis, Memcached, etc.)
-        """
+        # Registra un intento de login fallido y crea notificación SOLO cuando se alcancen 3 intentos.
+        # Cada usuario tiene su propio contador independiente.
+        # Funciona con cualquier backend de cache (local, Redis, Memcached, etc.)
         cache_key = f'login_failed_{user.id}'
         intentos = 0
         
@@ -101,10 +98,8 @@ class CustomLoginView(LoginView):
                 logger.error(f"Error al crear notificación de login fallido: {str(e)}")
     
     def form_valid(self, form):
-        """
-        Se ejecuta cuando el login es exitoso.
-        Limpia el contador de intentos fallidos.
-        """
+        # Se ejecuta cuando el login es exitoso.
+        # Limpia el contador de intentos fallidos.
         username = form.cleaned_data.get('username')
         user = authenticate(
             username=username,

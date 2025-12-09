@@ -1,39 +1,36 @@
-"""
-URL configuration for bycCore project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
+# ============================================================================
+# CONFIGURACION DE URLS DEL PROYECTO BYCCORE
+# ============================================================================
+# Este archivo define las rutas URL principales del proyecto.
+# Incluye las rutas para todas las aplicaciones instaladas.
+# ============================================================================
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 
+# Configuracion de rutas URL principales
 urlpatterns = [
+    # Panel de administracion de Django
     path('admin/', admin.site.urls),
+    
+    # Redireccion raiz a login
     path('', RedirectView.as_view(url='/accounts/login/', permanent=False)),
-    path('accounts/', include('main_login.urls')),
-    path('home/', include('main_home.urls')),
-    path('users/', include('rrhh_personal.urls')),
-    path('gen_settings/', include('gen_settings.urls')),
-    path('calendario/', include('ope_calendario.urls')),
-    path('maquinarias/', include('maquinarias.urls')),
-    path('reportes/', include('reportes_auditoria.urls')),
-    path('dashboards/', include('dashboards.urls')),
-    path('notificaciones/', include('notificaciones.urls')),
-    path('vencimientos/', include('vencimientos_documentos.urls')),
+    
+    # Rutas de las aplicaciones
+    path('accounts/', include('main_login.urls')),  # Sistema de autenticacion
+    path('home/', include('main_home.urls')),  # Pagina principal
+    path('users/', include('rrhh_personal.urls')),  # Gestion de personal
+    path('gen_settings/', include('gen_settings.urls')),  # Configuraciones generales
+    path('calendario/', include('ope_calendario.urls')),  # Calendario y planificacion
+    path('maquinarias/', include('maquinarias.urls')),  # Gestion de equipos y maquinarias
+    path('reportes/', include('reportes_auditoria.urls')),  # Reportes y auditoria
+    path('dashboards/', include('dashboards.urls')),  # Dashboards y metricas
+    path('notificaciones/', include('notificaciones.urls')),  # Sistema de notificaciones
+    path('vencimientos/', include('vencimientos_documentos.urls')),  # Vencimientos de documentos
 ]
 
+# En modo DEBUG, servir archivos media desde el sistema de archivos
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

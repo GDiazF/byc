@@ -1,6 +1,10 @@
-"""
-Funciones helper para crear y gestionar notificaciones.
-"""
+# ============================================================================
+# FUNCIONES HELPER PARA CREAR Y GESTIONAR NOTIFICACIONES
+# ============================================================================
+# Este módulo contiene funciones utilitarias para crear y gestionar notificaciones
+# en el sistema, incluyendo funciones para crear notificaciones por tipo, por usuario,
+# y para obtener/contar notificaciones no leídas.
+# ============================================================================
 
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -16,21 +20,17 @@ def crear_notificacion_por_tipo(
     prioridad=None,
     usuarios_especificos=None
 ):
-    """
-    Crea notificaciones para usuarios basándose en el tipo de notificación y roles.
-    
-    Args:
-        codigo_tipo: Código del tipo de notificación (ej: 'RRHH_PERSONAL_ACTIVADO')
-        titulo: Título de la notificación
-        mensaje: Mensaje de la notificación
-        datos_adicionales: Diccionario con datos adicionales (opcional)
-        prioridad: Prioridad de la notificación (opcional, usa la del tipo si no se especifica)
-        usuarios_especificos: Lista de usuarios específicos a notificar (opcional)
-                              Si se especifica, solo se notifica a estos usuarios
-    
-    Returns:
-        Lista de notificaciones creadas
-    """
+    # Crea notificaciones para usuarios basándose en el tipo de notificación y roles.
+    # Args:
+    #   codigo_tipo: Código del tipo de notificación (ej: 'RRHH_PERSONAL_ACTIVADO')
+    #   titulo: Título de la notificación
+    #   mensaje: Mensaje de la notificación
+    #   datos_adicionales: Diccionario con datos adicionales (opcional)
+    #   prioridad: Prioridad de la notificación (opcional, usa la del tipo si no se especifica)
+    #   usuarios_especificos: Lista de usuarios específicos a notificar (opcional)
+    #                         Si se especifica, solo se notifica a estos usuarios
+    # Returns:
+    #   Lista de notificaciones creadas
     try:
         tipo_notificacion = TipoNotificacion.objects.get(codigo=codigo_tipo, activo=True)
     except TipoNotificacion.DoesNotExist:
@@ -103,20 +103,16 @@ def crear_notificacion_para_usuario(
     datos_adicionales=None,
     prioridad=None
 ):
-    """
-    Crea una notificación para un usuario específico.
-    
-    Args:
-        usuario: Usuario destinatario (User o ID)
-        codigo_tipo: Código del tipo de notificación
-        titulo: Título de la notificación
-        mensaje: Mensaje de la notificación
-        datos_adicionales: Diccionario con datos adicionales (opcional)
-        prioridad: Prioridad de la notificación (opcional)
-    
-    Returns:
-        Notificación creada o None si el tipo no existe
-    """
+    # Crea una notificación para un usuario específico.
+    # Args:
+    #   usuario: Usuario destinatario (User o ID)
+    #   codigo_tipo: Código del tipo de notificación
+    #   titulo: Título de la notificación
+    #   mensaje: Mensaje de la notificación
+    #   datos_adicionales: Diccionario con datos adicionales (opcional)
+    #   prioridad: Prioridad de la notificación (opcional)
+    # Returns:
+    #   Notificación creada o None si el tipo no existe
     try:
         tipo_notificacion = TipoNotificacion.objects.get(codigo=codigo_tipo, activo=True)
     except TipoNotificacion.DoesNotExist:
@@ -144,16 +140,12 @@ def crear_notificacion_para_usuario(
 
 
 def obtener_notificaciones_no_leidas(usuario, limit=None):
-    """
-    Obtiene las notificaciones no leídas de un usuario.
-    
-    Args:
-        usuario: Usuario (User o ID)
-        limit: Límite de resultados (opcional)
-    
-    Returns:
-        QuerySet de notificaciones no leídas
-    """
+    # Obtiene las notificaciones no leídas de un usuario.
+    # Args:
+    #   usuario: Usuario (User o ID)
+    #   limit: Límite de resultados (opcional)
+    # Returns:
+    #   QuerySet de notificaciones no leídas
     if isinstance(usuario, int):
         try:
             usuario = User.objects.get(pk=usuario)
@@ -173,15 +165,11 @@ def obtener_notificaciones_no_leidas(usuario, limit=None):
 
 
 def contar_notificaciones_no_leidas(usuario):
-    """
-    Cuenta las notificaciones no leídas de un usuario.
-    
-    Args:
-        usuario: Usuario (User o ID)
-    
-    Returns:
-        Número de notificaciones no leídas
-    """
+    # Cuenta las notificaciones no leídas de un usuario.
+    # Args:
+    #   usuario: Usuario (User o ID)
+    # Returns:
+    #   Número de notificaciones no leídas
     if isinstance(usuario, int):
         try:
             usuario = User.objects.get(pk=usuario)

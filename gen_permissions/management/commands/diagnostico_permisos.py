@@ -1,6 +1,6 @@
-"""
-Comando de diagnóstico para verificar permisos de navegación
-"""
+﻿# ============================================================================
+# COMANDO DE DIAGNOSTICO PARA VERIFICAR PERMISOS DE NAVEGACION
+# ============================================================================
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User, Permission
 from django.contrib.contenttypes.models import ContentType
@@ -8,11 +8,11 @@ from gen_permissions.models import UserProfile, Rol, PermisoVista
 
 
 class Command(BaseCommand):
-    help = 'Diagnostica problemas con permisos de navegación'
+    help = 'Diagnostica problemas con permisos de navegacion'
 
     def handle(self, *args, **options):
         self.stdout.write("=" * 80)
-        self.stdout.write("DIAGNÓSTICO DE PERMISOS DE NAVEGACIÓN")
+        self.stdout.write("DIAGNOSTICO DE PERMISOS DE NAVEGACION")
         self.stdout.write("=" * 80)
 
         # 1. Verificar que el permiso existe en la BD
@@ -82,23 +82,24 @@ class Command(BaseCommand):
                     else:
                         self.stdout.write(self.style.ERROR(f"     ✗ has_perm('rrhh_personal.navigate_rrhh'): {tiene_permiso}"))
                     
-                    # Si no tiene permiso pero el rol sí, forzar actualización
+                    # Si no tiene permiso pero el rol si, forzar actualizacion
                     if permiso_navigate and not permiso_usuario_navigate:
                         self.stdout.write(self.style.WARNING(f"     ⚠ PROBLEMA: El rol tiene el permiso pero el usuario no"))
-                        self.stdout.write(f"     Forzando actualización...")
+                        self.stdout.write(f"     Forzando actualizacion...")
                         profile.asignar_permisos_del_rol()
                         usuario.refresh_from_db()
                         tiene_permiso_despues = usuario.has_perm('rrhh_personal.navigate_rrhh')
                         if tiene_permiso_despues:
-                            self.stdout.write(self.style.SUCCESS(f"     ✓ has_perm después de actualizar: {tiene_permiso_despues}"))
+                            self.stdout.write(self.style.SUCCESS(f"     ✓ has_perm despues de actualizar: {tiene_permiso_despues}"))
                         else:
-                            self.stdout.write(self.style.ERROR(f"     ✗ has_perm después de actualizar: {tiene_permiso_despues}"))
+                            self.stdout.write(self.style.ERROR(f"     ✗ has_perm despues de actualizar: {tiene_permiso_despues}"))
                 else:
                     self.stdout.write(f"     - Sin rol asignado")
             except UserProfile.DoesNotExist:
                 self.stdout.write(self.style.WARNING(f"     ✗ Sin perfil"))
 
         self.stdout.write("\n" + "=" * 80)
-        self.stdout.write("FIN DEL DIAGNÓSTICO")
+        self.stdout.write("FIN DEL DIAGNoSTICO")
         self.stdout.write("=" * 80)
+
 

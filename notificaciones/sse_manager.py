@@ -1,9 +1,10 @@
-"""
-Gestor de conexiones Server-Sent Events (SSE) para notificaciones en tiempo real.
-
-Este módulo gestiona las conexiones SSE activas de los usuarios.
-Como solo hay una instancia del servidor, usamos un diccionario en memoria.
-"""
+# ============================================================================
+# GESTOR DE CONEXIONES SERVER-SENT EVENTS (SSE)
+# ============================================================================
+# Este módulo gestiona las conexiones SSE activas de los usuarios para
+# enviar notificaciones en tiempo real. Como solo hay una instancia del servidor,
+# usamos un diccionario en memoria.
+# ============================================================================
 
 import json
 import time
@@ -14,10 +15,8 @@ from django.contrib.auth.models import User
 
 
 class SSEManager:
-    """
-    Gestor de conexiones SSE. Mantiene un registro de todas las conexiones activas
-    y permite enviar eventos a usuarios específicos usando colas.
-    """
+    # Gestor de conexiones SSE. Mantiene un registro de todas las conexiones activas
+    # y permite enviar eventos a usuarios específicos usando colas.
     
     def __init__(self):
         # Diccionario: user_id -> lista de colas (una por conexión)
@@ -28,13 +27,10 @@ class SSEManager:
         self._connection_timeout = 300  # 5 minutos
         
     def add_connection(self, user: User, event_queue: queue.Queue):
-        """
-        Agrega una nueva conexión SSE para un usuario.
-        
-        Args:
-            user: Usuario autenticado
-            event_queue: Cola para enviar eventos al cliente
-        """
+        # Agrega una nueva conexión SSE para un usuario.
+        # Args:
+        #   user: Usuario autenticado
+        #   event_queue: Cola para enviar eventos al cliente
         user_id = user.id
         with self._lock:
             if user_id not in self._connections:
@@ -42,13 +38,10 @@ class SSEManager:
             self._connections[user_id].append(event_queue)
     
     def remove_connection(self, user: User, event_queue: queue.Queue):
-        """
-        Remueve una conexión SSE de un usuario.
-        
-        Args:
-            user: Usuario autenticado
-            event_queue: Cola que se debe remover
-        """
+        # Remueve una conexión SSE de un usuario.
+        # Args:
+        #   user: Usuario autenticado
+        #   event_queue: Cola que se debe remover
         user_id = user.id
         with self._lock:
             if user_id in self._connections:
@@ -62,14 +55,11 @@ class SSEManager:
                     pass
     
     def send_to_user(self, user_id: int, event_type: str, data: dict):
-        """
-        Envía un evento SSE a todas las conexiones activas de un usuario.
-        
-        Args:
-            user_id: ID del usuario destinatario
-            event_type: Tipo de evento ('notification', 'count_update', etc.)
-            data: Datos del evento (debe ser serializable a JSON)
-        """
+        # Envía un evento SSE a todas las conexiones activas de un usuario.
+        # Args:
+        #   user_id: ID del usuario destinatario
+        #   event_type: Tipo de evento ('notification', 'count_update', etc.)
+        #   data: Datos del evento (debe ser serializable a JSON)
         with self._lock:
             if user_id not in self._connections:
                 return  # Usuario no tiene conexiones activas
@@ -106,15 +96,11 @@ class SSEManager:
                 del self._connections[user_id]
     
     def get_active_connections_count(self, user_id: int = None) -> int:
-        """
-        Obtiene el número de conexiones activas.
-        
-        Args:
-            user_id: Si se especifica, cuenta solo las conexiones de ese usuario
-        
-        Returns:
-            Número de conexiones activas
-        """
+        # Obtiene el número de conexiones activas.
+        # Args:
+        #   user_id: Si se especifica, cuenta solo las conexiones de ese usuario
+        # Returns:
+        #   Número de conexiones activas
         with self._lock:
             if user_id:
                 return len(self._connections.get(user_id, []))
@@ -122,10 +108,8 @@ class SSEManager:
                 return sum(len(conns) for conns in self._connections.values())
     
     def cleanup_old_connections(self):
-        """
-        Limpia conexiones antiguas (útil si implementamos tracking de tiempo).
-        Por ahora, las conexiones se limpian automáticamente cuando se cierran.
-        """
+        # Limpia conexiones antiguas (útil si implementamos tracking de tiempo).
+        # Por ahora, las conexiones se limpian automáticamente cuando se cierran.
         # Esta función puede expandirse en el futuro si necesitamos
         # limpiar conexiones basadas en tiempo de inactividad
         pass

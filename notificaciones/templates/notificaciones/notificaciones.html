@@ -6,21 +6,10 @@
 {% block title %}Panel de Notificaciones{% endblock %}
 
 {% block extrastyles %}
+<!-- CSS para tablas RRHH -->
 <link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
-<style>
-    .notification-item.unread {
-        background-color: #e7f1ff;
-    }
-    .notification-item.unread:hover {
-        background-color: #d0e7ff;
-    }
-    .notification-item:hover {
-        background-color: #f8f9fa;
-    }
-    .notification-item {
-        transition: background-color 0.2s ease;
-    }
-</style>
+<!-- CSS para la página de notificaciones -->
+<link rel="stylesheet" href="{% static 'notificaciones/css/notificaciones.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -82,7 +71,7 @@
                                         </select>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label small" style="visibility: hidden;">&nbsp;</label>
+                                        <label class="form-label small hidden-label">&nbsp;</label>
                                         <div>
                                             <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarFiltros()">
                                                 <i class="bi bi-x-circle me-1"></i>Limpiar filtros
@@ -113,7 +102,7 @@
                                                         data-titulo="{{ notif.titulo }}"
                                                         data-mensaje="{{ notif.mensaje }}"
                                                         data-fecha="{{ notif.fecha_creacion|localtime|date:'d/m/Y H:i' }}"
-                                                        style="cursor: pointer;">
+                                                        class="notification-item-clickable">
                                                         <td class="text-center">
                                                             {% if not notif.leida %}
                                                                 <span class="badge bg-primary">Nueva</span>
@@ -149,7 +138,7 @@
                                         {% elif request.GET.archivada != 'true' %}
                                             <tr>
                                                 <td colspan="6" class="text-center py-5">
-                                                    <i class="bi bi-bell-slash" style="font-size: 2rem; color: #6c757d;"></i>
+                                                    <i class="bi bi-bell-slash empty-icon-large"></i>
                                                     <p class="text-muted mt-2 mb-0">No hay notificaciones no archivadas</p>
                                                 </td>
                                             </tr>
@@ -183,7 +172,7 @@
                                         </select>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label small" style="visibility: hidden;">&nbsp;</label>
+                                        <label class="form-label small hidden-label">&nbsp;</label>
                                         <div>
                                             <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarFiltrosArchivadas()">
                                                 <i class="bi bi-x-circle me-1"></i>Limpiar filtros
@@ -214,7 +203,7 @@
                                                         data-titulo="{{ notif.titulo }}"
                                                         data-mensaje="{{ notif.mensaje }}"
                                                         data-fecha="{{ notif.fecha_creacion|localtime|date:'d/m/Y H:i' }}"
-                                                        style="cursor: pointer;">
+                                                        class="notification-item-clickable">
                                                         <td class="text-center">
                                                             {% if not notif.leida %}
                                                                 <span class="badge bg-primary">Nueva</span>
@@ -250,7 +239,7 @@
                                         {% elif request.GET.archivada == 'true' %}
                                             <tr>
                                                 <td colspan="6" class="text-center py-5">
-                                                    <i class="bi bi-archive" style="font-size: 2rem; color: #6c757d;"></i>
+                                                    <i class="bi bi-archive empty-icon-large"></i>
                                                     <p class="text-muted mt-2 mb-0">No hay notificaciones archivadas</p>
                                                 </td>
                                             </tr>
@@ -268,216 +257,23 @@
 {% endblock %}
 
 {% block extrajs %}
-    <script>
-        // Manejar cambio de tabs
-        const tabNoArchivadas = document.getElementById('tab-no-archivadas');
-        const tabArchivadas = document.getElementById('tab-archivadas');
-        
-        tabNoArchivadas.addEventListener('shown.bs.tab', function() {
-            window.location.href = '/notificaciones/?archivada=false';
-        });
-        
-        tabArchivadas.addEventListener('shown.bs.tab', function() {
-            window.location.href = '/notificaciones/?archivada=true';
-        });
-        
-        // Aplicar filtros automáticamente al cambiar los selects (No Archivadas)
-        const filtroLeida = document.getElementById('filtroLeida');
-        const filtroCategoria = document.getElementById('filtroCategoria');
-        
-        if (filtroLeida) {
-            filtroLeida.addEventListener('change', function() {
-                document.getElementById('filtrosForm').submit();
-            });
-        }
-        
-        if (filtroCategoria) {
-            filtroCategoria.addEventListener('change', function() {
-                document.getElementById('filtrosForm').submit();
-            });
-        }
-        
-        // Aplicar filtros automáticamente al cambiar los selects (Archivadas)
-        const filtroLeidaArchivadas = document.getElementById('filtroLeidaArchivadas');
-        const filtroCategoriaArchivadas = document.getElementById('filtroCategoriaArchivadas');
-        
-        if (filtroLeidaArchivadas) {
-            filtroLeidaArchivadas.addEventListener('change', function() {
-                document.getElementById('filtrosFormArchivadas').submit();
-            });
-        }
-        
-        if (filtroCategoriaArchivadas) {
-            filtroCategoriaArchivadas.addEventListener('change', function() {
-                document.getElementById('filtrosFormArchivadas').submit();
-            });
-        }
-        
-        // Función para limpiar filtros (No Archivadas)
-        function limpiarFiltros() {
-            document.getElementById('filtroLeida').value = '';
-            document.getElementById('filtroCategoria').value = '';
-            window.location.href = '/notificaciones/?archivada=false';
-        }
-        
-        // Función para limpiar filtros (Archivadas)
-        function limpiarFiltrosArchivadas() {
-            document.getElementById('filtroLeidaArchivadas').value = '';
-            document.getElementById('filtroCategoriaArchivadas').value = '';
-            window.location.href = '/notificaciones/?archivada=true';
-        }
-        
-        // Marcar como leída
-        document.querySelectorAll('.marcar-leida').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const notifId = this.dataset.id;
-                fetch(`/notificaciones/api/${notifId}/marcar-leida/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    }
-                });
-            });
-        });
-        
-        // Archivar
-        document.querySelectorAll('.archivar').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const notifId = this.dataset.id;
-                fetch(`/notificaciones/api/${notifId}/archivar/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    }
-                });
-            });
-        });
-        
-        // Desarchivar
-        document.querySelectorAll('.desarchivar').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const notifId = this.dataset.id;
-                fetch(`/notificaciones/api/${notifId}/desarchivar/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    }
-                });
-            });
-        });
-        
-        // Marcar todas como leídas
-        document.getElementById('btnMarcarTodasLeidas').addEventListener('click', function() {
-            fetch('/notificaciones/api/marcar-todas-leidas/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                }
-            });
-        });
-        
-        // Función auxiliar para escapar HTML
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // Función para mostrar detalles de la notificación en un modal
-        function mostrarDetalleNotificacion(notif) {
-            const modal = document.getElementById('modalDetalleNotificacion');
-            const modalBody = document.getElementById('modalDetalleNotificacionBody');
-            
-            if (!modal || !modalBody) return;
-            
-            // Construir el contenido del modal (solo lo esencial)
-            let contenido = `
-                <div class="mb-3">
-                    <h6 class="fw-bold mb-3">${escapeHtml(notif.titulo)}</h6>
-                    <div class="bg-light p-3 rounded">
-                        <p class="mb-0" style="white-space: pre-wrap; line-height: 1.6;">${escapeHtml(notif.mensaje)}</p>
-                    </div>
+    <!-- JavaScript para la página de notificaciones -->
+    <script src="{% static 'notificaciones/js/notificaciones_page.js' %}"></script>
+    <!-- Modal para mostrar detalles de notificaciones -->
+    <div class="modal fade" id="modalDetalleNotificacion" tabindex="-1" aria-labelledby="modalDetalleNotificacionLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="modalDetalleNotificacionLabel">Detalle de Notificación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-                <div class="text-muted small">
-                    <i class="bi bi-clock me-1"></i>${notif.fecha_creacion}
+                <div class="modal-body" id="modalDetalleNotificacionBody">
+                    <!-- El contenido se carga dinámicamente -->
                 </div>
-            `;
-            
-            // Actualizar contenido del modal
-            modalBody.innerHTML = contenido;
-            
-            // Mostrar el modal usando Bootstrap 5
-            const bsModal = new bootstrap.Modal(modal);
-            bsModal.show();
-        }
-        
-        // Hacer las filas clickeables (excepto la columna de acciones)
-        document.querySelectorAll('.notification-item').forEach(row => {
-            row.addEventListener('click', function(e) {
-                // No hacer nada si se hizo clic en un botón
-                if (e.target.closest('button') || e.target.closest('.btn-group')) {
-                    return;
-                }
-                
-                const notifId = this.dataset.notificacionId;
-                const titulo = this.dataset.titulo;
-                const mensaje = this.dataset.mensaje;
-                const fecha = this.dataset.fecha;
-                
-                // Marcar como leída si no está leída
-                const isUnread = this.classList.contains('unread');
-                if (isUnread) {
-                    fetch(`/notificaciones/api/${notifId}/marcar-leida/`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Actualizar visualmente la fila
-                            this.classList.remove('unread');
-                            const badge = this.querySelector('.badge');
-                            if (badge) {
-                                badge.className = 'badge bg-secondary';
-                                badge.textContent = 'Leída';
-                            }
-                        }
-                    });
-                }
-                
-                // Mostrar modal con detalles
-                mostrarDetalleNotificacion({
-                    titulo: titulo,
-                    mensaje: mensaje,
-                    fecha_creacion: fecha
-                });
-            });
-        });
-    </script>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}

@@ -1,13 +1,11 @@
-"""
-Comando de gestión para crear permisos de navegación.
-
-Este comando crea permisos personalizados para controlar el acceso a las secciones
-del navbar. Si un usuario no tiene el permiso de navegación, el elemento del navbar
-aparecerá desactivado u oculto.
-
-Uso:
-    python manage.py crear_permisos_navegacion
-"""
+﻿# ============================================================================
+# COMANDO DE GESTION PARA CREAR PERMISOS DE NAVEGACION
+# ============================================================================
+# Este comando crea permisos personalizados para controlar el acceso a las secciones
+# del navbar. Si un usuario no tiene el permiso de navegacion, el elemento del navbar
+# aparecera desactivado u oculto.
+# Uso: python manage.py crear_permisos_navegacion
+# ============================================================================
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Permission
@@ -16,13 +14,11 @@ from gen_permissions.models import PermisoVista
 
 
 class Command(BaseCommand):
-    help = 'Crea permisos de navegación para las secciones del navbar'
+    help = 'Crea permisos de navegacion para las secciones del navbar'
 
     def handle(self, *args, **options):
-        """
-        Crea los permisos de navegación para cada sección del navbar.
-        """
-        # Lista de permisos de navegación a crear
+        # Crea los permisos de navegacion para cada seccion del navbar.
+        # Lista de permisos de navegacion a crear
         # Formato: (codigo, nombre, app_label, vista_nombre, descripcion)
         permisos_navegacion = [
             (
@@ -30,46 +26,46 @@ class Command(BaseCommand):
                 'Puede navegar a Recursos Humanos',
                 'rrhh_personal',
                 'navigate_rrhh',
-                'Permite acceder a la sección de Recursos Humanos en el navbar'
+                'Permite acceder a la seccion de Recursos Humanos en el navbar'
             ),
             (
                 'maquinarias.navigate_maquinarias',
                 'Puede navegar a Maquinarias',
                 'maquinarias',
                 'navigate_maquinarias',
-                'Permite acceder a la sección de Maquinarias en el navbar'
+                'Permite acceder a la seccion de Maquinarias en el navbar'
             ),
             (
                 'ope_calendario.navigate_planificacion',
-                'Puede navegar a Planificación',
+                'Puede navegar a Planificacion',
                 'ope_calendario',
                 'navigate_planificacion',
-                'Permite acceder a la sección de Planificación en el navbar'
+                'Permite acceder a la seccion de Planificacion en el navbar'
             ),
             (
                 'gen_settings.navigate_bases',
                 'Puede navegar a Bases',
                 'gen_settings',
                 'navigate_bases',
-                'Permite acceder a la sección de Bases en el navbar'
+                'Permite acceder a la seccion de Bases en el navbar'
             ),
             (
                 'reportes_auditoria.navigate_reportes',
                 'Puede navegar a Reportes',
                 'reportes_auditoria',
                 'navigate_reportes',
-                'Permite acceder a la sección de Reportes en el navbar'
+                'Permite acceder a la seccion de Reportes en el navbar'
             ),
             (
                 'dashboards.navigate_dashboards',
                 'Puede navegar a Dashboards',
                 'dashboards',
                 'navigate_dashboards',
-                'Permite acceder a la sección de Dashboards en el navbar'
+                'Permite acceder a la seccion de Dashboards en el navbar'
             ),
         ]
         
-        # Permisos específicos para cada dashboard individual
+        # Permisos especificos para cada dashboard individual
         permisos_dashboards = [
             (
                 'dashboards.view_dashboard_rrhh',
@@ -101,21 +97,21 @@ class Command(BaseCommand):
             ),
         ]
         
-        # Permisos específicos para reportes_auditoria
+        # Permisos especificos para reportes_auditoria
         permisos_reportes = [
             (
                 'reportes_auditoria.view_auditoria',
-                'Puede ver Auditoría',
+                'Puede ver Auditoria',
                 'reportes_auditoria',
                 'view_auditoria',
-                'Permite acceder a la vista de Auditoría y ver los eventos de historial'
+                'Permite acceder a la vista de Auditoria y ver los eventos de historial'
             ),
             (
                 'reportes_auditoria.view_reportabilidad',
                 'Puede ver Reportabilidad',
                 'reportes_auditoria',
                 'view_reportabilidad',
-                'Permite acceder a la vista de Reportabilidad (consultas estadísticas)'
+                'Permite acceder a la vista de Reportabilidad (consultas estadisticas)'
             ),
         ]
         
@@ -138,7 +134,7 @@ class Command(BaseCommand):
                 }
             )
             
-            # Si se creó nuevo o si existe pero no tiene Permission asociado, crear/actualizar Permission
+            # Si se creo nuevo o si existe pero no tiene Permission asociado, crear/actualizar Permission
             necesita_permission = created or not permiso_vista.permission
             
             if necesita_permission:
@@ -198,7 +194,7 @@ class Command(BaseCommand):
         
         self.stdout.write(
             self.style.SUCCESS(
-                f'\n✅ Proceso completado: {creados} creados, {existentes} ya existían'
+                f'\n✅ Proceso completado: {creados} creados, {existentes} ya existian'
             )
         )
         self.stdout.write(
@@ -206,4 +202,5 @@ class Command(BaseCommand):
                 '\n💡 Ahora puedes asignar estos permisos a los roles desde el admin de Django.'
             )
         )
+
 

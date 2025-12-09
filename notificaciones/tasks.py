@@ -1,6 +1,9 @@
-"""
-Tareas para procesar vencimientos y crear notificaciones.
-"""
+# ============================================================================
+# TAREAS PARA PROCESAR VENCIMIENTOS Y CREAR NOTIFICACIONES
+# ============================================================================
+# Este módulo contiene funciones para procesar vencimientos de documentos
+# (de personal y equipos) y crear notificaciones automáticamente.
+# ============================================================================
 
 from django.utils import timezone
 from datetime import timedelta
@@ -16,18 +19,14 @@ logger = logging.getLogger(__name__)
 
 
 def procesar_vencimientos_documentos(forzar_creacion=False):
-    """
-    Procesa todos los documentos próximos a vencer y crea notificaciones.
-    Revisa documentos de personal y equipos.
-    
-    Procesa documentos con vencimientos <= 45 días:
-    - 45, 30, 20, 15, 10 días: Notificación única cuando quedan exactamente esos días
-    - 9-1 días: Notificación diaria (crítica)
-    - Otros días entre 1-45: Se procesan pero se agrupan por el umbral más cercano
-    
-    Args:
-        forzar_creacion: Si es True, crea notificaciones aunque ya existan hoy (útil para pruebas)
-    """
+    # Procesa todos los documentos próximos a vencer y crea notificaciones.
+    # Revisa documentos de personal y equipos.
+    # Procesa documentos con vencimientos <= 45 días:
+    #   - 45, 30, 20, 15, 10 días: Notificación única cuando quedan exactamente esos días
+    #   - 9-1 días: Notificación diaria (crítica)
+    #   - Otros días entre 1-45: Se procesan pero se agrupan por el umbral más cercano
+    # Args:
+    #   forzar_creacion: Si es True, crea notificaciones aunque ya existan hoy (útil para pruebas)
     hoy = timezone.now().date()
     umbrales_unicos = [45, 30, 20, 15, 10]  # Días exactos para notificación única
     
@@ -56,14 +55,11 @@ def procesar_vencimientos_documentos(forzar_creacion=False):
 
 
 def procesar_vencimientos_personal(hoy, umbrales_unicos, forzar_creacion=False):
-    """
-    Procesa vencimientos de documentos de personal.
-    Solo considera personal activo.
-    Agrupa documentos por persona y crea una notificación consolidada por persona.
-    
-    Args:
-        forzar_creacion: Si es True, crea notificaciones aunque ya existan hoy
-    """
+    # Procesa vencimientos de documentos de personal.
+    # Solo considera personal activo.
+    # Agrupa documentos por persona y crea una notificación consolidada por persona.
+    # Args:
+    #   forzar_creacion: Si es True, crea notificaciones aunque ya existan hoy
     from collections import defaultdict
     
     # Diccionario para agrupar documentos por personal
@@ -215,14 +211,11 @@ def procesar_vencimientos_personal(hoy, umbrales_unicos, forzar_creacion=False):
 
 
 def procesar_vencimientos_equipos(hoy, umbrales_unicos, forzar_creacion=False):
-    """
-    Procesa vencimientos de documentos de equipos.
-    Solo considera equipos activos.
-    Agrupa documentos por equipo y crea una notificación consolidada por equipo.
-    
-    Args:
-        forzar_creacion: Si es True, crea notificaciones aunque ya existan hoy
-    """
+    # Procesa vencimientos de documentos de equipos.
+    # Solo considera equipos activos.
+    # Agrupa documentos por equipo y crea una notificación consolidada por equipo.
+    # Args:
+    #   forzar_creacion: Si es True, crea notificaciones aunque ya existan hoy
     from collections import defaultdict
     
     # Diccionario para agrupar documentos por equipo
@@ -281,15 +274,12 @@ def procesar_vencimientos_equipos(hoy, umbrales_unicos, forzar_creacion=False):
 
 
 def crear_notificacion_vencimiento_consolidada_personal(personal, documentos, hoy, forzar_creacion=False):
-    """
-    Crea una notificación consolidada para un personal con todos sus documentos por vencer.
-    
-    Args:
-        personal: Objeto Personal
-        documentos: Lista de diccionarios con información de documentos por vencer
-        hoy: Fecha actual
-        forzar_creacion: Si es True, crea la notificación aunque ya exista una hoy
-    """
+    # Crea una notificación consolidada para un personal con todos sus documentos por vencer.
+    # Args:
+    #   personal: Objeto Personal
+    #   documentos: Lista de diccionarios con información de documentos por vencer
+    #   hoy: Fecha actual
+    #   forzar_creacion: Si es True, crea la notificación aunque ya exista una hoy
     if not personal.activo:
         logger.info(f"Personal {personal.personal_id} no está activo, omitiendo")
         return
@@ -453,15 +443,12 @@ def crear_notificacion_vencimiento_consolidada_personal(personal, documentos, ho
 
 
 def crear_notificacion_vencimiento_consolidada_equipo(equipo, documentos, hoy, forzar_creacion=False):
-    """
-    Crea una notificación consolidada para un equipo con todos sus documentos por vencer.
-    
-    Args:
-        equipo: Objeto Equipo
-        documentos: Lista de diccionarios con información de documentos por vencer
-        hoy: Fecha actual
-        forzar_creacion: Si es True, crea la notificación aunque ya exista una hoy
-    """
+    # Crea una notificación consolidada para un equipo con todos sus documentos por vencer.
+    # Args:
+    #   equipo: Objeto Equipo
+    #   documentos: Lista de diccionarios con información de documentos por vencer
+    #   hoy: Fecha actual
+    #   forzar_creacion: Si es True, crea la notificación aunque ya exista una hoy
     if not equipo.activo:
         logger.info(f"Equipo {equipo.equipo_id} no está activo, omitiendo")
         return
@@ -625,10 +612,8 @@ def crear_notificacion_vencimiento_consolidada_equipo(equipo, documentos, hoy, f
 
 # Funciones antiguas mantenidas por compatibilidad (ya no se usan)
 def crear_notificacion_vencimiento_personal(personal, tipo_doc, nombre_doc, fecha_vencimiento, dias_restantes):
-    """
-    Crea notificación de vencimiento para documentos de personal.
-    Solo crea notificaciones para personal activo.
-    """
+    # Crea notificación de vencimiento para documentos de personal.
+    # Solo crea notificaciones para personal activo.
     # Verificar que el personal esté activo antes de crear la notificación
     if not personal.activo:
         return
@@ -673,11 +658,9 @@ def crear_notificacion_vencimiento_personal(personal, tipo_doc, nombre_doc, fech
 
 
 def crear_notificacion_vencimiento_critico_personal(personal, tipo_doc, nombre_doc, fecha_vencimiento, dias_restantes):
-    """
-    Crea notificación crítica de vencimiento para documentos de personal (9-1 días).
-    Se ejecuta diariamente mientras el documento esté en este rango.
-    Solo crea notificaciones para personal activo.
-    """
+    # Crea notificación crítica de vencimiento para documentos de personal (9-1 días).
+    # Se ejecuta diariamente mientras el documento esté en este rango.
+    # Solo crea notificaciones para personal activo.
     # Verificar que el personal esté activo antes de crear la notificación
     if not personal.activo:
         return
@@ -723,10 +706,8 @@ def crear_notificacion_vencimiento_critico_personal(personal, tipo_doc, nombre_d
 
 
 def crear_notificacion_vencimiento_equipo(equipo, nombre_doc, fecha_vencimiento, dias_restantes):
-    """
-    Crea notificación de vencimiento para documentos de equipos.
-    Solo crea notificaciones para equipos activos.
-    """
+    # Crea notificación de vencimiento para documentos de equipos.
+    # Solo crea notificaciones para equipos activos.
     # Verificar que el equipo esté activo antes de crear la notificación
     if not equipo.activo:
         return
@@ -771,11 +752,9 @@ def crear_notificacion_vencimiento_equipo(equipo, nombre_doc, fecha_vencimiento,
 
 
 def crear_notificacion_vencimiento_critico_equipo(equipo, nombre_doc, fecha_vencimiento, dias_restantes):
-    """
-    Crea notificación crítica de vencimiento para documentos de equipos (9-1 días).
-    Se ejecuta diariamente mientras el documento esté en este rango.
-    Solo crea notificaciones para equipos activos.
-    """
+    # Crea notificación crítica de vencimiento para documentos de equipos (9-1 días).
+    # Se ejecuta diariamente mientras el documento esté en este rango.
+    # Solo crea notificaciones para equipos activos.
     # Verificar que el equipo esté activo antes de crear la notificación
     if not equipo.activo:
         return

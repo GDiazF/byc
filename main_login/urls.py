@@ -1,3 +1,11 @@
+# ============================================================================
+# URLS PARA MAIN_LOGIN
+# ============================================================================
+# Define las rutas URL para la aplicación main_login:
+# - /login/: Página de inicio de sesión
+# - /logout/: Cerrar sesión
+# ============================================================================
+
 from django.contrib.auth import views as auth_views
 from django.urls import path
 from .views import CustomLoginView

@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+﻿from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from gen_permissions.models import PermisoVista
@@ -14,8 +14,8 @@ class Command(BaseCommand):
         permiso_vista, created = PermisoVista.objects.get_or_create(
             codigo=codigo_permiso,
             defaults={
-                'nombre': 'Exportar Auditoría',
-                'descripcion': 'Puede exportar eventos de auditoría a Excel',
+                'nombre': 'Exportar Auditoria',
+                'descripcion': 'Puede exportar eventos de auditoria a Excel',
                 'app_label': 'reportes_auditoria',
                 'vista_nombre': 'exportar_auditoria',
                 'activo': True,
@@ -37,10 +37,10 @@ class Command(BaseCommand):
         permission_existente = Permission.objects.filter(codename='exportar_auditoria').first()
         
         if permission_existente:
-            # Si existe pero está en otra app, actualizarlo
+            # Si existe pero esta en otra app, actualizarlo
             if permission_existente.content_type.app_label != 'reportes_auditoria':
                 permission_existente.content_type = content_type_reportes
-                permission_existente.name = 'Puede exportar auditoría'
+                permission_existente.name = 'Puede exportar auditoria'
                 permission_existente.save()
                 self.stdout.write(self.style.SUCCESS(f'Permission actualizado a reportes_auditoria'))
             permission = permission_existente
@@ -49,7 +49,7 @@ class Command(BaseCommand):
             permission, perm_created = Permission.objects.get_or_create(
                 codename='exportar_auditoria',
                 content_type=content_type_reportes,
-                defaults={'name': 'Puede exportar auditoría'}
+                defaults={'name': 'Puede exportar auditoria'}
             )
             if perm_created:
                 self.stdout.write(self.style.SUCCESS(f'Permission de Django creado'))
@@ -67,4 +67,5 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'Permiso {codigo_permiso} creado exitosamente'))
             else:
                 self.stdout.write(self.style.WARNING(f'El permiso {codigo_permiso} ya existe'))
+
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * JavaScript para agregar etiquetas "(Maestra)" a permisos de tablas maestras.
  * 
  * Este script modifica directamente el texto de las opciones en los selects
@@ -47,7 +47,7 @@
         for (const accion of acciones) {
             if (texto.startsWith(accion)) {
                 let modelName = texto.substring(accion.length).trim();
-                // Remover espacios adicionales o texto después del nombre
+                // Remover espacios adicionales o texto despues del nombre
                 const espacioIndex = modelName.indexOf(' ');
                 if (espacioIndex > 0) {
                     modelName = modelName.substring(0, espacioIndex);
@@ -78,7 +78,7 @@
     }
     
     /**
-     * Función principal que marca los permisos de tablas maestras.
+     * Funcion principal que marca los permisos de tablas maestras.
      */
     function marcarPermisosMaestros() {
         console.log('[Permisos] Iniciando marcado de permisos maestros...');
@@ -147,26 +147,26 @@
         console.log(`[Permisos] Procesados: ${totalProcesados}, Marcados como maestra: ${totalMarcados}`);
     }
     
-    // Ejecutar cuando el documento esté listo
+    // Ejecutar cuando el documento este listo
     $(document).ready(function() {
         console.log('[Permisos] Script cargado, iniciando marcado...');
         
         // Ejecutar inmediatamente
         marcarPermisosMaestros();
         
-        // Ejecutar después de varios delays para asegurar que Django haya cargado todo
+        // Ejecutar despues de varios delays para asegurar que Django haya cargado todo
         setTimeout(function() {
-            console.log('[Permisos] Ejecutando después de 300ms...');
+            console.log('[Permisos] Ejecutando despues de 300ms...');
             marcarPermisosMaestros();
         }, 300);
         
         setTimeout(function() {
-            console.log('[Permisos] Ejecutando después de 800ms...');
+            console.log('[Permisos] Ejecutando despues de 800ms...');
             marcarPermisosMaestros();
         }, 800);
         
         setTimeout(function() {
-            console.log('[Permisos] Ejecutando después de 1500ms...');
+            console.log('[Permisos] Ejecutando despues de 1500ms...');
             marcarPermisosMaestros();
         }, 1500);
         
@@ -202,10 +202,11 @@
         // Observar clicks en botones de mover (>> y <<)
         $(document).on('click', '.selector-chooseall, .selector-add, .selector-remove, .selector-clearall', function() {
             setTimeout(function() {
-                console.log('[Permisos] Click en botón de mover detectado, re-marcando...');
+                console.log('[Permisos] Click en boton de mover detectado, re-marcando...');
                 marcarPermisosMaestros();
             }, 200);
         });
     });
     
 })(django.jQuery || jQuery);
+

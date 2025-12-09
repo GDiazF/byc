@@ -1,6 +1,9 @@
-"""
-Management command para poblar los tipos de notificaciones iniciales.
-"""
+# ============================================================================
+# MANAGEMENT COMMAND PARA POBLAR TIPOS DE NOTIFICACIONES
+# ============================================================================
+# Este comando pobla la base de datos con los tipos de notificaciones iniciales
+# del sistema, incluyendo tipos para RRHH, Maquinarias, Planificación y General.
+# ============================================================================
 
 from django.core.management.base import BaseCommand
 from notificaciones.models import TipoNotificacion

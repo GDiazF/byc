@@ -53,7 +53,7 @@
                             </label>
                             {{ form.new_password1 }}
                             {% if form.new_password1.help_text %}
-                                <small class="form-text text-muted">{{ form.new_password1.help_text }}</small>
+                                <small class="form-text text-muted">{{ form.new_password1.help_text|safe }}</small>
                             {% endif %}
                         </div>
                         
@@ -82,14 +82,8 @@
     </div>
 </div>
 
-<script>
-    // Agregar clases de Bootstrap a los campos del formulario
-    document.addEventListener('DOMContentLoaded', function() {
-        const inputs = document.querySelectorAll('input[type="password"]');
-        inputs.forEach(input => {
-            input.classList.add('form-control');
-        });
-    });
-</script>
+{% block extrajs %}
+<script src="{% static 'js/cambiar_contraseña.js' %}"></script>
+{% endblock %}
 {% endblock %}
 

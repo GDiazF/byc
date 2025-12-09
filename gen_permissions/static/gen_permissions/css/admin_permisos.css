@@ -37,10 +37,16 @@ select option:contains("(Maestra)"),
     margin-top: 10px;
 }
 
-/* Estilo para el título de sección de permisos maestros */
+/* Estilo para el titulo de seccion de permisos maestros */
 .permisos-maestros-titulo {
     color: #856404;
     font-weight: bold;
     margin-bottom: 5px;
+}
+
+/* Estilo para la lista de permisos en el admin */
+.permisos-lista {
+    margin: 0;
+    padding-left: 20px;
 }
 

@@ -1,6 +1,16 @@
-"""
-Vistas para el sistema de notificaciones.
-"""
+# ============================================================================
+# VISTAS PARA EL SISTEMA DE NOTIFICACIONES
+# ============================================================================
+# Este módulo contiene las vistas para el sistema de notificaciones:
+# - ver_notificaciones: Vista principal para mostrar notificaciones
+# - api_notificaciones: API para obtener notificaciones
+# - api_contar_notificaciones_no_leidas: API para contar notificaciones no leídas
+# - api_marcar_leida: API para marcar notificación como leída
+# - api_marcar_todas_leidas: API para marcar todas como leídas
+# - api_archivar: API para archivar notificación
+# - api_desarchivar: API para desarchivar notificación
+# - sse_notificaciones: Server-Sent Events para notificaciones en tiempo real
+# ============================================================================
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, StreamingHttpResponse
@@ -18,14 +28,11 @@ import time
 @login_required
 @require_http_methods(["GET"])
 def api_notificaciones(request):
-    """
-    API para obtener las notificaciones del usuario actual.
-    
-    Parámetros opcionales:
-    - limit: Número máximo de notificaciones a retornar (default: 10)
-    - leida: Filtrar por estado de lectura (true/false)
-    - archivada: Filtrar por estado de archivado (true/false)
-    """
+    # API para obtener las notificaciones del usuario actual.
+    # Parámetros opcionales:
+    #   - limit: Número máximo de notificaciones a retornar (default: 10)
+    #   - leida: Filtrar por estado de lectura (true/false)
+    #   - archivada: Filtrar por estado de archivado (true/false)
     limit = int(request.GET.get('limit', 10))
     leida = request.GET.get('leida')
     archivada = request.GET.get('archivada')
@@ -66,9 +73,7 @@ def api_notificaciones(request):
 @login_required
 @require_http_methods(["GET"])
 def api_contar_notificaciones_no_leidas(request):
-    """
-    API para obtener el conteo de notificaciones no leídas del usuario actual.
-    """
+    # API para obtener el conteo de notificaciones no leídas del usuario actual.
     count = contar_notificaciones_no_leidas(request.user)
     return JsonResponse({
         'success': True,
@@ -80,10 +85,8 @@ def api_contar_notificaciones_no_leidas(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_marcar_leida(request, notificacion_id):
-    """
-    API para marcar una notificación como leída.
-    Retorna el nuevo contador de notificaciones no leídas.
-    """
+    # API para marcar una notificación como leída.
+    # Retorna el nuevo contador de notificaciones no leídas.
     try:
         notificacion = Notificacion.objects.get(id=notificacion_id, usuario=request.user)
         
@@ -119,10 +122,8 @@ def api_marcar_leida(request, notificacion_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_marcar_todas_leidas(request):
-    """
-    API para marcar todas las notificaciones del usuario como leídas.
-    Retorna el nuevo contador (debería ser 0).
-    """
+    # API para marcar todas las notificaciones del usuario como leídas.
+    # Retorna el nuevo contador (debería ser 0).
     try:
         Notificacion.objects.filter(usuario=request.user, leida=False, archivada=False).update(
             leida=True,
@@ -155,9 +156,7 @@ def api_marcar_todas_leidas(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_archivar(request, notificacion_id):
-    """
-    API para archivar una notificación.
-    """
+    # API para archivar una notificación.
     try:
         notificacion = Notificacion.objects.get(id=notificacion_id, usuario=request.user)
         notificacion.archivar()
@@ -176,9 +175,7 @@ def api_archivar(request, notificacion_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_desarchivar(request, notificacion_id):
-    """
-    API para desarchivar una notificación.
-    """
+    # API para desarchivar una notificación.
     try:
         notificacion = Notificacion.objects.get(id=notificacion_id, usuario=request.user)
         notificacion.desarchivar()
@@ -195,9 +192,7 @@ def api_desarchivar(request, notificacion_id):
 
 @login_required
 def ver_notificaciones(request):
-    """
-    Vista para mostrar la página de notificaciones.
-    """
+    # Vista para mostrar la página de notificaciones.
     from django.shortcuts import render
     
     notificaciones = Notificacion.objects.filter(
@@ -237,19 +232,14 @@ def ver_notificaciones(request):
 @login_required
 @require_http_methods(["GET"])
 def sse_notificaciones(request):
-    """
-    Vista Server-Sent Events (SSE) para notificaciones en tiempo real.
-    
-    Mantiene una conexión abierta con el cliente y envía eventos cuando
-    hay notificaciones nuevas. La conexión se cierra automáticamente después
-    de 5 minutos de inactividad por seguridad.
-    """
+    # Vista Server-Sent Events (SSE) para notificaciones en tiempo real.
+    # Mantiene una conexión abierta con el cliente y envía eventos cuando
+    # hay notificaciones nuevas. La conexión se cierra automáticamente después
+    # de 5 minutos de inactividad por seguridad.
     import queue
     
     def event_stream():
-        """
-        Generador que envía eventos SSE al cliente.
-        """
+        # Generador que envía eventos SSE al cliente.
         import logging
         logger = logging.getLogger(__name__)
         

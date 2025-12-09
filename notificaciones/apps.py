@@ -6,10 +6,8 @@ class NotificacionesConfig(AppConfig):
     name = 'notificaciones'
     
     def ready(self):
-        """
-        Se ejecuta cuando Django está listo.
-        Aquí registramos signals. El scheduler se inicia después de que Django esté completamente inicializado.
-        """
+        # Se ejecuta cuando Django está listo.
+        # Aquí registramos signals. El scheduler se inicia después de que Django esté completamente inicializado.
         # Importar signals para que se registren
         from . import signals
         
@@ -18,7 +16,7 @@ class NotificacionesConfig(AppConfig):
         import threading
         
         def iniciar_scheduler_diferido():
-            """Inicia el scheduler después de un pequeño delay para asegurar que Django esté completamente listo"""
+            # Inicia el scheduler después de un pequeño delay para asegurar que Django esté completamente listo
             import time
             time.sleep(1)  # Esperar 1 segundo para que Django termine de inicializar
             try:

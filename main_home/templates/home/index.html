@@ -16,95 +16,46 @@
     
     {% block extrastyles %}{% endblock %}
     
-    <style>
-        /* Estilos para elementos del navbar desactivados por permisos */
-        
-        /* Estilos para el dropdown de usuario */
-        #userDropdown .user-info-container {
-            transition: background-color 0.2s ease;
-        }
-        #userDropdown:hover .user-info-container {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        /* Estilos para la campanita de notificaciones */
-        #notificationsDropdown {
-            transition: opacity 0.2s ease;
-        }
-        #notificationsDropdown:hover {
-            opacity: 0.8;
-        }
-        #notificationsBadge {
-            font-size: 0.65rem !important;
-            font-weight: 600;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            line-height: 1 !important;
-            padding: 0 !important;
-        }
-        .nav-link.disabled-permission {
-            color: #adb5bd !important; /* Gris más claro para mejor contraste sobre fondo negro */
-            opacity: 0.6;
-            cursor: not-allowed;
-            pointer-events: none;
-            font-style: italic; /* Cursiva para diferenciarlo visualmente */
-        }
-        .nav-link.disabled-permission:hover {
-            color: #adb5bd !important;
-            background-color: transparent !important;
-        }
-        .nav-item.disabled-section {
-            opacity: 0.6;
-        }
-        /* Icono también en gris claro */
-        .nav-link.disabled-permission i {
-            color: #adb5bd !important;
-            opacity: 0.6;
-        }
-    </style>
-    
 </head>
 <body class="loading">
     
     <!-- Navbar superior -->
-    <nav class="navbar navbar-expand navbar-dark fixed-top" style="background-color: #212529;">
+    <nav class="navbar navbar-expand navbar-dark fixed-top navbar-dark-custom">
         <div class="container-fluid">
             <!-- Contenedor izquierdo alineado con sidebar -->
-            <div class="d-flex align-items-center" style="width: 250px; min-width: 60px;">
+            <div class="d-flex align-items-center navbar-container-left">
                 <!-- Botón hamburguesa para mostrar/ocultar sidebar -->
                 <button class="btn btn-dark" type="button" id="sidebarToggle">
                     <i class="bi bi-list"></i>
                 </button>
                 
-                <!-- Logo o nombre del sitio - Oculto en móviles -->
-                <a class="navbar-brand ms-2 d-none d-md-flex" href="{% url 'home:home' %}" style="flex: 1; justify-content: center;">
-                    <div style="background-color: #ced3d8; padding: 4px 8px; border-radius: 6px;">
-                        <img src="{% static 'img/logoGruas.png' %}" alt="Logo" style="height: 28px; width: auto;">
+                <!-- Logo o nombre del sitio - Oculto en moviles -->
+                <a class="navbar-brand ms-2 d-none d-md-flex navbar-brand-custom" href="{% url 'home:home' %}">
+                    <div class="logo-container">
+                        <img src="{% static 'img/logoGruas.png' %}" alt="Logo" class="logo-img">
                     </div>
                 </a>
             </div>
             
             <!-- Navbar superior derecha -->
-            <ul class="navbar-nav d-flex align-items-center" style="margin-left: auto; margin-right: 2rem;">
+            <ul class="navbar-nav d-flex align-items-center navbar-nav-right">
                 <!-- Campanita de notificaciones -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem 0.5rem;">
-                        <i class="bi bi-bell text-white" style="font-size: 1.1rem;"></i>
-                        <span class="position-absolute badge rounded-pill bg-danger d-flex align-items-center justify-content-center" id="notificationsBadge" style="font-size: 0.65rem; padding: 0; min-width: 1.3rem; height: 1.3rem; display: none !important; visibility: hidden; top: 0.05rem; right: 0.1rem; z-index: 10; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); line-height: 1;">
+                    <a class="nav-link position-relative notifications-link" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bell text-white notifications-icon"></i>
+                        <span class="position-absolute badge rounded-pill bg-danger d-flex align-items-center justify-content-center notifications-badge-position" id="notificationsBadge" style="min-width: 1.3rem; height: 1.3rem; display: none !important; visibility: hidden;">
                             0
                         </span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown" data-bs-auto-close="outside" style="min-width: 300px; max-width: 400px;">
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-notifications" aria-labelledby="notificationsDropdown" data-bs-auto-close="outside">
                         <li class="dropdown-header">
                             <div class="d-flex justify-content-between align-items-center">
-                                <a href="/notificaciones/" class="btn btn-sm btn-link text-decoration-none p-0" style="font-size: 0.75rem;">Panel de notificaciones</a>
-                                <button class="btn btn-sm btn-link text-decoration-none p-0" style="font-size: 0.75rem;" id="btnMarcarTodasLeidasDropdown">Marcar todas como leídas</button>
+                                <a href="/notificaciones/" class="btn btn-sm btn-link text-decoration-none p-0 dropdown-link-small">Panel de notificaciones</a>
+                                <button class="btn btn-sm btn-link text-decoration-none p-0 dropdown-link-small" id="btnMarcarTodasLeidasDropdown">Marcar todas como leidas</button>
                             </div>
                         </li>
                         <li><hr class="dropdown-divider"></li>
-                        <li class="px-3 py-2 text-center text-muted" style="font-size: 0.875rem;">
+                        <li class="px-3 py-2 text-center text-muted dropdown-text-muted">
                             No hay notificaciones
                         </li>
                     </ul>
@@ -112,18 +63,18 @@
                 
                 <!-- Dropdown de usuario -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem 1rem;">
-                        <div class="d-flex align-items-center user-info-container" style="padding: 0.2rem 0.4rem; gap: 0.5rem; border-radius: 0.375rem;">
-                            <i class="bi bi-person-circle text-white" style="font-size: 1.3rem; flex-shrink: 0;"></i>
-                            <div class="d-flex flex-column align-items-start" style="gap: 0.1rem;">
-                                <span class="text-white" style="font-size: 0.75rem; font-weight: 500; line-height: 1.2;">
+                    <a class="nav-link d-flex align-items-center user-dropdown-link" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="d-flex align-items-center user-info-container">
+                            <i class="bi bi-person-circle text-white user-icon"></i>
+                            <div class="d-flex flex-column align-items-start user-info-gap">
+                                <span class="text-white user-name">
                                     {% if request.user.first_name %}{{ request.user.first_name }} {{ request.user.last_name }}{% else %}{{ request.user.username }}{% endif %}
                                 </span>
-                                <span class="badge bg-secondary border-0" style="font-size: 0.6rem; font-weight: 400; padding: 0.1rem 0.3rem;">
+                                <span class="badge bg-secondary border-0 user-role-badge">
                                     {% user_rol request.user %}
                                 </span>
                             </div>
-                            <i class="bi bi-chevron-down text-white-50" style="font-size: 0.65rem; flex-shrink: 0; margin-left: 0.2rem;"></i>
+                            <i class="bi bi-chevron-down text-white-50 user-chevron"></i>
                         </div>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -134,7 +85,7 @@
                             <form action="{% url 'logout' %}" method="post" class="d-inline">
                                 {% csrf_token %}
                                 <button type="submit" class="dropdown-item btn-logout">
-                                    <i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión
+                                    <i class="bi bi-box-arrow-right me-2"></i> Cerrar sesion
                                 </button>
                             </form>
                         </li>
@@ -146,11 +97,11 @@
     
     <!-- Sidebar vertical -->
     <div class="sidebar" id="sidebar">
-        <!-- Logo en sidebar - Solo visible en móviles -->
-        <div class="d-md-none text-center py-3 mb-2" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-            <a href="{% url 'home:home' %}" style="text-decoration: none; display: inline-block;">
-                <div style="background-color: #ced3d8; padding: 6px 12px; border-radius: 8px; display: inline-block;">
-                    <img src="{% static 'img/logoGruas.png' %}" alt="Logo" style="height: 32px; width: auto;">
+        <!-- Logo en sidebar - Solo visible en moviles -->
+        <div class="d-md-none text-center py-3 mb-2 sidebar-logo-mobile">
+            <a href="{% url 'home:home' %}" class="logo-link-mobile">
+                <div class="logo-container-mobile">
+                    <img src="{% static 'img/logoGruas.png' %}" alt="Logo" class="logo-img-mobile">
                 </div>
             </a>
         </div>
@@ -324,28 +275,28 @@
                
                <!-- Mensajes de Django -->
                {% if messages %}
-               <div class="messages-container" style="position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;">
+               <div class="messages-container">
                    {% for message in messages %}
                    {% if message.tags == 'error' %}
-                   <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-bottom: 10px;">
+                   <div class="alert alert-danger alert-dismissible fade show alert-message" role="alert">
                        <i class="bi bi-exclamation-triangle me-2"></i>
                        {{ message }}
                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                    </div>
                    {% elif message.tags == 'warning' %}
-                   <div class="alert alert-warning alert-dismissible fade show" role="alert" style="margin-bottom: 10px;">
+                   <div class="alert alert-warning alert-dismissible fade show alert-message" role="alert">
                        <i class="bi bi-exclamation-circle me-2"></i>
                        {{ message }}
                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                    </div>
                    {% elif message.tags == 'success' %}
-                   <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-bottom: 10px;">
+                   <div class="alert alert-success alert-dismissible fade show alert-message" role="alert">
                        <i class="bi bi-check-circle me-2"></i>
                        {{ message }}
                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                    </div>
                    {% else %}
-                   <div class="alert alert-info alert-dismissible fade show" role="alert" style="margin-bottom: 10px;">
+                   <div class="alert alert-info alert-dismissible fade show alert-message" role="alert">
                        <i class="bi bi-info-circle me-2"></i>
                        {{ message }}
                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -368,12 +319,12 @@
         {% endblock %}
     </div>
     
-           <!-- Modal de Detalles de Notificación -->
+           <!-- Modal de Detalles de Notificacion -->
            <div class="modal fade" id="modalDetalleNotificacion" tabindex="-1" aria-labelledby="modalDetalleNotificacionLabel" aria-hidden="true">
-               <div class="modal-dialog modal-dialog-scrollable" style="margin-top: 5rem;">
+               <div class="modal-dialog modal-dialog-scrollable modal-dialog-custom">
                    <div class="modal-content">
                        <div class="modal-header bg-dark text-white">
-                           <h6 class="modal-title fw-bold" id="modalDetalleNotificacionLabel">Detalle de Notificación</h6>
+                           <h6 class="modal-title fw-bold" id="modalDetalleNotificacionLabel">Detalle de Notificacion</h6>
                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                        </div>
                        <div class="modal-body" id="modalDetalleNotificacionBody">

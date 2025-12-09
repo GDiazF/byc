@@ -1,6 +1,9 @@
-"""
-Management command para crear notificaciones de prueba.
-"""
+# ============================================================================
+# MANAGEMENT COMMAND PARA CREAR NOTIFICACIONES DE PRUEBA
+# ============================================================================
+# Este comando permite crear notificaciones de prueba para usuarios específicos,
+# útil para testing y desarrollo.
+# ============================================================================
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User

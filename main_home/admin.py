@@ -1,3 +1,10 @@
+# ============================================================================
+# CONFIGURACIÓN DEL ADMIN PARA MAIN_HOME
+# ============================================================================
+# Este archivo contiene la configuración del admin para main_home.
+# Por ahora no hay modelos registrados.
+# ============================================================================
+
 from django.contrib import admin
 
-# Register your models here.
+# No hay modelos registrados actualmente

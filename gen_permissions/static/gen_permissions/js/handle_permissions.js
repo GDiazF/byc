@@ -1,12 +1,12 @@
-/**
+﻿/**
  * Manejo global de errores de permisos en peticiones AJAX.
  * 
- * Este script intercepta todas las respuestas AJAX con código 403 (Forbidden)
+ * Este script intercepta todas las respuestas AJAX con codigo 403 (Forbidden)
  * y muestra un mensaje amigable al usuario en lugar de dejar que el navegador
- * muestre un error genérico.
+ * muestre un error generico.
  * 
  * Funciona con:
- * - jQuery AJAX (si está disponible)
+ * - jQuery AJAX (si esta disponible)
  * - Fetch API nativa
  * - XMLHttpRequest nativo
  */
@@ -14,14 +14,14 @@
 (function() {
     'use strict';
     
-    // Mensaje genérico para errores de permisos
-    const PERMISSION_DENIED_MESSAGE = 'No tiene permiso para realizar esta acción. Por favor, contacte al administrador si necesita acceso.';
+    // Mensaje generico para errores de permisos
+    const PERMISSION_DENIED_MESSAGE = 'No tiene permiso para realizar esta accion. Por favor, contacte al administrador si necesita acceso.';
     
     /**
      * Muestra un alert con el mensaje de error de permisos.
      */
     function showPermissionAlert(message) {
-        // Intentar usar el mensaje personalizado si está disponible, sino usar el genérico
+        // Intentar usar el mensaje personalizado si esta disponible, sino usar el generico
         const alertMessage = message || PERMISSION_DENIED_MESSAGE;
         alert(alertMessage);
     }
@@ -57,18 +57,18 @@
                     errorMessage = extractErrorMessage(response);
                 }
             } catch (e) {
-                // Si no se puede parsear, usar el mensaje genérico
+                // Si no se puede parsear, usar el mensaje generico
                 console.warn('No se pudo parsear la respuesta de error:', e);
             }
             
             showPermissionAlert(errorMessage);
-            return true; // Indicar que se manejó el error
+            return true; // Indicar que se manejo el error
         }
-        return false; // No se manejó el error
+        return false; // No se manejo el error
     }
     
     // ============================================================================
-    // Interceptar jQuery AJAX (si jQuery está disponible)
+    // Interceptar jQuery AJAX (si jQuery esta disponible)
     // ============================================================================
     if (typeof jQuery !== 'undefined') {
         // Interceptar todas las peticiones AJAX de jQuery
@@ -80,7 +80,7 @@
                     const response = xhr.responseJSON || JSON.parse(xhr.responseText);
                     errorMessage = extractErrorMessage(response);
                 } catch (e) {
-                    // Usar mensaje genérico si no se puede parsear
+                    // Usar mensaje generico si no se puede parsear
                 }
                 
                 showPermissionAlert(errorMessage);
@@ -102,7 +102,7 @@
                 .then(function(response) {
                     // Si es un error 403, interceptar antes de que se procese
                     if (response.status === 403) {
-                        // Clonar la respuesta para poder leerla múltiples veces
+                        // Clonar la respuesta para poder leerla multiples veces
                         const clonedResponse = response.clone();
                         
                         // Intentar leer el JSON de la respuesta
@@ -112,12 +112,12 @@
                                 showPermissionAlert(errorMessage);
                             })
                             .catch(function() {
-                                // Si no es JSON, usar mensaje genérico
+                                // Si no es JSON, usar mensaje generico
                                 showPermissionAlert(PERMISSION_DENIED_MESSAGE);
                             });
                         
-                        // Retornar la respuesta original para que el código que hizo la petición
-                        // también pueda manejarla si es necesario
+                        // Retornar la respuesta original para que el codigo que hizo la peticion
+                        // tambien pueda manejarla si es necesario
                         return response;
                     }
                     return response;
@@ -147,7 +147,7 @@
         XMLHttpRequest.prototype.send = function(data) {
             const xhr = this;
             
-            // Agregar listener para cuando la petición termine
+            // Agregar listener para cuando la peticion termine
             xhr.addEventListener('loadend', function() {
                 if (xhr.status === 403) {
                     let errorMessage = PERMISSION_DENIED_MESSAGE;
@@ -156,7 +156,7 @@
                         const response = JSON.parse(xhr.responseText);
                         errorMessage = extractErrorMessage(response);
                     } catch (e) {
-                        // Usar mensaje genérico si no se puede parsear
+                        // Usar mensaje generico si no se puede parsear
                     }
                     
                     showPermissionAlert(errorMessage);
@@ -171,4 +171,5 @@
     
     console.log('[Permisos] Sistema de manejo de errores de permisos inicializado');
 })();
+
 

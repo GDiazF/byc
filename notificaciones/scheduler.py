@@ -1,6 +1,9 @@
-"""
-Configuración de APScheduler para tareas periódicas de notificaciones.
-"""
+# ============================================================================
+# CONFIGURACIÓN DE APSCHEDULER PARA TAREAS PERIÓDICAS
+# ============================================================================
+# Este módulo configura APScheduler para ejecutar tareas periódicas relacionadas
+# con notificaciones, como el procesamiento de vencimientos de documentos.
+# ============================================================================
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -15,10 +18,8 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
 
 def procesar_vencimientos():
-    """
-    Tarea periódica que procesa vencimientos de documentos y crea notificaciones.
-    Se ejecuta todos los días a las 2:00 AM.
-    """
+    # Tarea periódica que procesa vencimientos de documentos y crea notificaciones.
+    # Se ejecuta todos los días a las 2:00 AM.
     from .tasks import procesar_vencimientos_documentos
     
     try:
@@ -29,9 +30,7 @@ def procesar_vencimientos():
 
 
 def start():
-    """
-    Inicia el scheduler y programa las tareas periódicas.
-    """
+    # Inicia el scheduler y programa las tareas periódicas.
     if scheduler.running:
         logger.warning("Scheduler ya está corriendo")
         return
