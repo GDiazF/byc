@@ -18,6 +18,12 @@ let ordenAusentismos = { columna: null, direccion: 'asc' };
 // FUNCIONES PARA LICENCIAS MÉDICAS
 // ============================================================================
 
+/**
+ * Renderiza la tabla de personal con licencias médicas.
+ * 
+ * Filtra, ordena y pagina el personal según los filtros aplicados,
+ * mostrando la cantidad de licencias médicas activas de cada uno.
+ */
 function renderizarTablaLicencias() {
     const searchTerm = document.getElementById('searchInputLicencias').value.toLowerCase();
     const empresaFiltro = document.getElementById('filtroEmpresaLicencias').value;
@@ -88,6 +94,11 @@ function renderizarTablaLicencias() {
     renderizarPaginacionLicencias();
 }
 
+/**
+ * Renderiza los controles de paginación para la tabla de licencias.
+ * 
+ * @param {number} totalPaginas - Número total de páginas
+ */
 function renderizarPaginacionLicencias() {
     const totalPaginas = Math.ceil(personalFiltradoLicencias.length / registrosPorPaginaLicencias);
     const paginacion = document.getElementById('paginacionLicencias');

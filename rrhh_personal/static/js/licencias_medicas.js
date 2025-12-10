@@ -1,7 +1,18 @@
-// Funciones para manejar licencias médicas
+/**
+ * Gestión del formulario de licencias médicas (crear/editar).
+ * 
+ * Calcula automáticamente la fecha de fin basándose en la fecha de emisión
+ * y los días de licencia. Valida el formulario antes de enviarlo.
+ */
+
 console.log('=== Archivo licencias_medicas.js cargado ===');
 
-// Función para calcular fecha fin de licencia
+/**
+ * Calcula la fecha de fin basándose en la fecha de emisión y los días de licencia.
+ * 
+ * La fecha de fin se calcula como: fecha_emision + (días - 1)
+ * Se formatea en formato DD-MM-YYYY.
+ */
 function calcularFechaFin() {
     const fechaEmision = document.getElementById('id_fechaEmision');
     const diasLicencia = document.getElementById('id_dias_licencia');

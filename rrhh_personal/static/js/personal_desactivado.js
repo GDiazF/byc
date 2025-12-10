@@ -1,7 +1,8 @@
-// ============================================================================
-// PERSONAL DESACTIVADO - TABLA PERSONALIZADA
-// Sin DataTables/jQuery - JavaScript vanilla
-// ============================================================================
+/**
+ * Gestión de tabla de personal desactivado con JavaScript vanilla (sin DataTables/jQuery).
+ * 
+ * Maneja el renderizado, filtros, ordenamiento, paginación y activación de personal desactivado.
+ */
 
 // Variables globales
 let personal = [];
@@ -35,6 +36,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // EVENT LISTENERS
 // ============================================================================
 
+/**
+ * Inicializa todos los event listeners de la página.
+ * Configura listeners para búsqueda, filtros, ordenamiento y modales.
+ */
 function inicializarEventListeners() {
     // Búsqueda
     document.getElementById('searchInput').addEventListener('input', function() {
@@ -74,6 +79,13 @@ function inicializarEventListeners() {
 // RENDERIZADO DE TABLA
 // ============================================================================
 
+/**
+ * Renderiza la tabla de personal desactivado con filtros, ordenamiento y paginación aplicados.
+ * 
+ * Filtra el personal según la búsqueda y el filtro de empresa,
+ * ordena según la columna seleccionada, y muestra solo los registros
+ * de la página actual. También actualiza los contadores y la paginación.
+ */
 function renderizarTabla() {
     const tbody = document.getElementById('personalTableBody');
     const busqueda = document.getElementById('searchInput').value.toLowerCase();
@@ -173,6 +185,11 @@ function renderizarTabla() {
 // PAGINACIÓN
 // ============================================================================
 
+/**
+ * Renderiza los controles de paginación.
+ * 
+ * @param {number} totalPaginas - Número total de páginas
+ */
 function renderizarPaginacion(totalPaginas) {
     const paginacion = document.getElementById('paginacion');
     
@@ -246,11 +263,19 @@ function renderizarPaginacion(totalPaginas) {
     paginacion.innerHTML = html;
 }
 
+/**
+ * Cambia a una página específica y re-renderiza la tabla.
+ * 
+ * @param {number} nuevaPagina - Número de página a mostrar
+ */
 function cambiarPagina(nuevaPagina) {
     paginaActual = nuevaPagina;
     renderizarTabla();
 }
 
+/**
+ * Cambia la cantidad de registros por página y re-renderiza la tabla.
+ */
 function cambiarRegistrosPorPagina() {
     registrosPorPagina = parseInt(document.getElementById('registrosPorPagina').value);
     paginaActual = 1;
@@ -261,6 +286,11 @@ function cambiarRegistrosPorPagina() {
 // ORDENAMIENTO
 // ============================================================================
 
+/**
+ * Ordena la tabla por una columna específica.
+ * 
+ * @param {string} columna - Nombre de la columna por la cual ordenar
+ */
 function ordenarPor(columna) {
     if (ordenActual.columna === columna) {
         ordenActual.direccion = ordenActual.direccion === 'asc' ? 'desc' : 'asc';
@@ -271,6 +301,10 @@ function ordenarPor(columna) {
     renderizarTabla();
 }
 
+/**
+ * Actualiza los iconos de ordenamiento en los encabezados de columna.
+ * Muestra flecha arriba/abajo según la dirección del ordenamiento actual.
+ */
 function actualizarIconosOrdenamiento() {
     document.querySelectorAll('.sortable i').forEach(icon => {
         icon.className = 'bi bi-arrow-down-up ms-1';
@@ -289,6 +323,10 @@ function actualizarIconosOrdenamiento() {
 // FILTROS
 // ============================================================================
 
+/**
+ * Limpia todos los filtros y restablece la búsqueda.
+ * Reinicia la tabla a su estado inicial.
+ */
 function limpiarFiltros() {
     document.getElementById('searchInput').value = '';
     document.getElementById('filtroEmpresa').value = '';
@@ -300,6 +338,14 @@ function limpiarFiltros() {
 // TOGGLE DE ESTADO (ACTIVAR)
 // ============================================================================
 
+/**
+ * Maneja el cambio de estado inactivo/activo del personal.
+ * 
+ * Muestra un modal de confirmación antes de cambiar el estado.
+ * Si el usuario confirma, envía una petición AJAX para activar el personal.
+ * 
+ * @param {HTMLInputElement} checkbox - Checkbox que disparó el evento
+ */
 function toggleEstado(checkbox) {
     currentToggle = checkbox;
     originalState = !checkbox.checked;
@@ -313,6 +359,12 @@ function toggleEstado(checkbox) {
     checkbox.checked = originalState;
 }
 
+/**
+ * Confirma la activación del personal.
+ * 
+ * Envía una petición AJAX para cambiar el estado inactivo a activo
+ * del personal seleccionado. Muestra mensajes de éxito o error.
+ */
 function confirmarActivacion() {
     if (!currentToggle) return;
     

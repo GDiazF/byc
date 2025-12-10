@@ -1,32 +1,40 @@
-// Variables globales
-let itemSeccionIndex = 0;
-let equiposDisponibles = [];
-let personalDisponible = [];
-let personalSeleccionados = [];
-let modeloEquipoSeleccionado = null;
-let cargosDisponibles = [];
-let departamentosDisponibles = [];
+// Variables globales para el estado de la aplicación
+// Estas variables mantienen el estado del formulario y los datos cargados
+let itemSeccionIndex = 0;  // Contador para índices únicos de items de sección
+let equiposDisponibles = [];  // Lista de equipos disponibles según filtros
+let personalDisponible = [];  // Lista de personal disponible para asignar
+let personalSeleccionados = [];  // Lista de IDs de personal seleccionado
+let modeloEquipoSeleccionado = null;  // ID del modelo de equipo seleccionado
+let cargosDisponibles = [];  // Lista de cargos disponibles (para filtros)
+let departamentosDisponibles = [];  // Lista de departamentos disponibles (para filtros)
 
-// Inicialización
+// Inicialización cuando el DOM está completamente cargado
+// Este evento asegura que todos los elementos HTML estén disponibles antes de ejecutar el código
 document.addEventListener('DOMContentLoaded', function() {
+    // Paso 1: Configurar el event listener para el envío del formulario
+    // Cuando el usuario envía el formulario, se ejecutará la función guardarOrdenTrabajo
     const form = document.getElementById('formOrdenTrabajo');
     
     if (form) {
         form.addEventListener('submit', guardarOrdenTrabajo);
     }
     
-    // Cargar departamentos y personal al iniciar (solo si existen los elementos)
-    cargarDepartamentos();
-    cargarPersonal();
+    // Paso 2: Cargar datos iniciales necesarios para el formulario
+    // Estos datos se cargan al iniciar para tenerlos disponibles inmediatamente
+    cargarDepartamentos();  // Cargar departamentos para filtros de personal
+    cargarPersonal();  // Cargar personal disponible para asignar
     
-    // Event listeners para filtros en cascada de equipos (solo si existen)
+    // Paso 3: Configurar event listeners para filtros en cascada de equipos
+    // Estos listeners reaccionan a cambios en los selects y actualizan los filtros dependientes
     const empresaSelect = document.getElementById('empresa_id');
     if (empresaSelect) {
         empresaSelect.addEventListener('change', function() {
+            // Cuando cambia la empresa, limpiar la pauta de mantenimiento seleccionada
             limpiarPautaMantenimiento();
             // Reiniciar todos los filtros en cascada: tipo, marca, modelo y equipo
+            // Esto asegura que los filtros sean consistentes con la empresa seleccionada
             reiniciarFiltrosDesdeTipo();
-            filtrarEquipos();
+            filtrarEquipos();  // Filtrar equipos según la nueva empresa
         });
     }
     
@@ -220,16 +228,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Función debounce para búsqueda
+// Función debounce para optimizar búsquedas y filtros
+// Esta función retrasa la ejecución de una función hasta que haya pasado un tiempo determinado
+// sin nuevas llamadas. Útil para evitar ejecutar funciones costosas en cada tecla presionada.
+// Parámetros:
+//   func: función a ejecutar después del delay
+//   wait: tiempo de espera en milisegundos
 function debounce(func, wait) {
-    let timeout;
+    let timeout;  // Variable para almacenar el ID del timeout
     return function executedFunction(...args) {
+        // Función que se ejecuta cuando se llama a debounce
         const later = () => {
-            clearTimeout(timeout);
-            func(...args);
+            clearTimeout(timeout);  // Limpiar timeout anterior si existe
+            func(...args);  // Ejecutar la función original con los argumentos
         };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+        clearTimeout(timeout);  // Cancelar timeout anterior si existe
+        timeout = setTimeout(later, wait);  // Crear nuevo timeout
     };
 }
 
@@ -237,13 +251,17 @@ function debounce(func, wait) {
 // FILTROS EN CASCADA DE EQUIPOS (Tipo -> Marca -> Modelo -> Equipo)
 // ============================================================================
 
-// Función para reiniciar filtros desde tipo (reinicia tipo, marca, modelo y equipo)
+// Función para reiniciar todos los filtros en cascada desde el tipo de equipo
+// Esta función limpia los valores de tipo, marca, modelo y equipo cuando cambia la empresa
+// o cuando se necesita resetear los filtros. Mantiene la consistencia de los filtros.
 function reiniciarFiltrosDesdeTipo() {
-    const tipoSelect = document.getElementById('tipo_equipo_id');
-    const marcaSelect = document.getElementById('marca_equipo_id');
-    const modeloSelect = document.getElementById('modelo_equipo_id');
-    const equipoSelect = document.getElementById('equipo_id');
+    // Paso 1: Obtener referencias a todos los selects del filtro en cascada
+    const tipoSelect = document.getElementById('tipo_equipo_id');  // Select de tipo de equipo
+    const marcaSelect = document.getElementById('marca_equipo_id');  // Select de marca
+    const modeloSelect = document.getElementById('modelo_equipo_id');  // Select de modelo
+    const equipoSelect = document.getElementById('equipo_id');  // Select de equipo
     
+    // Paso 2: Limpiar el valor del select de tipo
     if (tipoSelect) {
         tipoSelect.value = '';
     }
@@ -304,128 +322,194 @@ function filtrarMarcasPorTipo() {
     filtrarEquipos();
 }
 
-// Filtrar modelos según tipo y marca seleccionados
+// Función para filtrar los modelos disponibles según el tipo y marca seleccionados
+// Implementa el segundo nivel del filtro en cascada: Tipo -> Marca -> Modelo -> Equipo
+// Esta función se ejecuta cuando el usuario selecciona una marca después de haber seleccionado un tipo
 function filtrarModelosPorTipoYMarca() {
-    const tipoId = parseInt(document.getElementById('tipo_equipo_id').value);
-    const marcaId = parseInt(document.getElementById('marca_equipo_id').value);
-    const modeloSelect = document.getElementById('modelo_equipo_id');
-    const equipoSelect = document.getElementById('equipo_id');
+    // Paso 1: Obtener referencias a los elementos select y sus valores seleccionados
+    const tipoId = parseInt(document.getElementById('tipo_equipo_id').value);  // ID del tipo seleccionado
+    const marcaId = parseInt(document.getElementById('marca_equipo_id').value);  // ID de la marca seleccionada
+    const modeloSelect = document.getElementById('modelo_equipo_id');  // Select de modelo
+    const equipoSelect = document.getElementById('equipo_id');  // Select de equipo
     
-    // Resetear modelo y equipo
-    modeloSelect.innerHTML = '<option value="">Todos</option>';
-    modeloSelect.disabled = !tipoId || !marcaId;
+    // Paso 2: Resetear el select de modelo y equipo
+    // Limpiar las opciones y deshabilitar hasta que se seleccione un modelo válido
+    modeloSelect.innerHTML = '<option value="">Todos</option>';  // Opción por defecto
+    modeloSelect.disabled = !tipoId || !marcaId;  // Deshabilitar si falta tipo o marca
     
-    equipoSelect.innerHTML = '<option value="">Primero seleccione modelo...</option>';
-    equipoSelect.disabled = true;
+    equipoSelect.innerHTML = '<option value="">Primero seleccione modelo...</option>';  // Mensaje instructivo
+    equipoSelect.disabled = true;  // Deshabilitar hasta que se seleccione un modelo
     
+    // Paso 3: Validar que tanto tipo como marca estén seleccionados
+    // Si falta alguno, filtrar equipos sin restricciones y salir
     if (!tipoId || !marcaId) {
-        filtrarEquipos();
-        return;
+        filtrarEquipos();  // Filtrar equipos sin restricciones
+        return;  // Salir de la función
     }
     
-    // Filtrar modelos por tipo y marca
+    // Paso 4: Filtrar modelos que pertenecen tanto al tipo como a la marca seleccionados
+    // Se usa filter() para obtener solo los modelos que cumplen ambas condiciones
     const modelosFiltrados = window.todosModelos.filter(m => 
-        m.tipoEquipo_id === tipoId && m.marcaEquipo_id === marcaId
+        m.tipoEquipo_id === tipoId && m.marcaEquipo_id === marcaId  // Debe coincidir tipo Y marca
     );
     
+    // Paso 5: Poblar el select de modelos con las opciones filtradas
     modelosFiltrados.forEach(modelo => {
-        const option = document.createElement('option');
-        option.value = modelo.modeloEquipo_id;
-        option.textContent = modelo.modeloEquipo;
-        modeloSelect.appendChild(option);
+        const option = document.createElement('option');  // Crear elemento option
+        option.value = modelo.modeloEquipo_id;  // Valor del option (ID del modelo)
+        option.textContent = modelo.modeloEquipo;  // Texto visible (nombre del modelo)
+        modeloSelect.appendChild(option);  // Agregar al select
     });
     
+    // Paso 6: Filtrar equipos con los nuevos filtros de tipo y marca aplicados
+    // Esto actualiza la lista de equipos disponibles según las selecciones
     filtrarEquipos();
 }
 
-// Filtrar equipos según empresa, tipo, marca y modelo
+// Función para filtrar equipos según los filtros seleccionados (empresa, tipo, marca, modelo)
+// Esta función realiza una petición AJAX al servidor para obtener equipos filtrados
+// Se ejecuta cuando cambian cualquiera de los filtros en cascada
 function filtrarEquipos() {
-    const empresaId = document.getElementById('empresa_id').value;
-    const tipoId = document.getElementById('tipo_equipo_id').value;
-    const marcaId = document.getElementById('marca_equipo_id').value;
-    const modeloId = document.getElementById('modelo_equipo_id').value;
-    const equipoSelect = document.getElementById('equipo_id');
+    // Paso 1: Obtener valores de los filtros desde los selects del formulario
+    // Estos valores se enviarán al servidor para filtrar los equipos
+    const empresaId = document.getElementById('empresa_id').value;  // ID de empresa seleccionada
+    const tipoId = document.getElementById('tipo_equipo_id').value;  // ID de tipo seleccionado
+    const marcaId = document.getElementById('marca_equipo_id').value;  // ID de marca seleccionada
+    const modeloId = document.getElementById('modelo_equipo_id').value;  // ID de modelo seleccionado
+    const equipoSelect = document.getElementById('equipo_id');  // Select de equipo a poblar
     
+    // Paso 2: Construir parámetros de la petición
+    // Solo se incluyen los filtros que tienen un valor seleccionado
     const params = new URLSearchParams();
-    if (empresaId) params.append('empresa_id', empresaId);
-    if (tipoId) params.append('tipo_equipo_id', tipoId);
-    if (marcaId) params.append('marca_equipo_id', marcaId);
-    if (modeloId) params.append('modelo_equipo_id', modeloId);
+    if (empresaId) params.append('empresa_id', empresaId);  // Agregar filtro de empresa si existe
+    if (tipoId) params.append('tipo_equipo_id', tipoId);  // Agregar filtro de tipo si existe
+    if (marcaId) params.append('marca_equipo_id', marcaId);  // Agregar filtro de marca si existe
+    if (modeloId) params.append('modelo_equipo_id', modeloId);  // Agregar filtro de modelo si existe
     
-    equipoSelect.disabled = true;
-    equipoSelect.innerHTML = '<option value="">Cargando equipos...</option>';
+    // Paso 3: Mostrar estado de carga mientras se obtienen los equipos
+    // Deshabilitar el select y mostrar mensaje de carga
+    equipoSelect.disabled = true;  // Deshabilitar para evitar selecciones durante la carga
+    equipoSelect.innerHTML = '<option value="">Cargando equipos...</option>';  // Mensaje de carga
     
+    // Paso 4: Realizar petición GET al servidor para obtener equipos filtrados
+    // window.apiEquiposFiltrados contiene la URL del endpoint definida en el template
     fetch(`${window.apiEquiposFiltrados}?${params}`)
-        .then(response => response.json())
+        .then(response => response.json())  // Convertir respuesta a JSON
         .then(data => {
             if (data.success) {
+                // CASO ÉXITO: Los equipos se cargaron correctamente
+                // Paso 5.1: Guardar los equipos en la variable global
+                // Esto permite acceder a los datos sin hacer más peticiones
                 equiposDisponibles = data.equipos;
+                
+                // Paso 5.2: Renderizar los equipos en el select
+                // Esto actualiza las opciones disponibles para el usuario
                 renderizarEquipos(data.equipos);
             } else {
+                // CASO ERROR: El servidor retornó un error
+                // Paso 6.1: Mostrar mensaje de error al usuario
                 mostrarError('Error al cargar equipos: ' + data.message);
+                
+                // Paso 6.2: Mostrar mensaje de error en el select
                 equipoSelect.innerHTML = '<option value="">Error al cargar</option>';
             }
         })
         .catch(error => {
+            // CASO EXCEPCIÓN: Error de red o excepción no manejada
+            // Paso 7.1: Registrar error en consola para debugging
             console.error('Error:', error);
+            
+            // Paso 7.2: Mostrar mensaje genérico de error al usuario
             mostrarError('Error de conexión al cargar equipos');
+            
+            // Paso 7.3: Mostrar mensaje de error en el select
             equipoSelect.innerHTML = '<option value="">Error de conexión</option>';
         });
 }
 
-// Renderizar equipos en el select
+// Función para renderizar los equipos filtrados en el select de equipos
+// Pobla el select con las opciones de equipos disponibles según los filtros aplicados
+// Parámetros:
+//   equipos: Array de objetos con información de equipos recibidos del servidor
 function renderizarEquipos(equipos) {
+    // Paso 1: Obtener referencia al select de equipos
     const equipoSelect = document.getElementById('equipo_id');
+    
+    // Paso 2: Limpiar el select y agregar opción por defecto
     equipoSelect.innerHTML = '<option value="">Seleccione equipo...</option>';
     
+    // Paso 3: Manejar caso cuando no hay equipos disponibles
+    // Mostrar mensaje informativo y deshabilitar el select
     if (equipos.length === 0) {
         equipoSelect.innerHTML = '<option value="">No hay equipos disponibles</option>';
-        equipoSelect.disabled = true;
-        return;
+        equipoSelect.disabled = true;  // Deshabilitar porque no hay opciones
+        return;  // Salir de la función
     }
     
+    // Paso 4: Generar opciones para cada equipo disponible
+    // Se crea una opción por cada equipo con su información completa
     equipos.forEach(equipo => {
-        const option = document.createElement('option');
-        option.value = equipo.equipo_id;
-        option.textContent = `${equipo.nombreEquipo} - ${equipo.codigoInterno}`;
-        option.dataset.horometro = equipo.horometro || '';
-        option.dataset.odometro = equipo.odometro || '';
-        option.dataset.horometroSuperEstructural = equipo.horometroSuperEstructural || '';
-        option.dataset.modeloId = equipo.modeloEquipo_id || '';
-        equipoSelect.appendChild(option);
+        const option = document.createElement('option');  // Crear elemento option
+        option.value = equipo.equipo_id;  // Valor del option (ID del equipo)
+        option.textContent = `${equipo.nombreEquipo} - ${equipo.codigoInterno}`;  // Texto visible (nombre y código)
+        
+        // Paso 4.1: Guardar datos adicionales del equipo en atributos data
+        // Estos datos se usan para precargar información cuando se selecciona el equipo
+        option.dataset.horometro = equipo.horometro || '';  // Horas de uso del equipo
+        option.dataset.odometro = equipo.odometro || '';  // Kilómetros recorridos
+        option.dataset.horometroSuperEstructural = equipo.horometroSuperEstructural || '';  // Horas de superestructura
+        option.dataset.modeloId = equipo.modeloEquipo_id || '';  // ID del modelo (para cargar pautas)
+        
+        equipoSelect.appendChild(option);  // Agregar la opción al select
     });
     
+    // Paso 5: Habilitar el select ahora que tiene opciones disponibles
     equipoSelect.disabled = false;
 }
 
-// Cargar datos del equipo seleccionado
+// Función para cargar los datos del equipo seleccionado en los campos del formulario
+// Se ejecuta cuando el usuario selecciona un equipo del select
+// Precarga información como horómetros, odómetros y modelo del equipo
 function cargarDatosEquipo() {
+    // Paso 1: Obtener referencia al select de equipos y el equipo seleccionado
     const equipoSelect = document.getElementById('equipo_id');
-    const equipoId = equipoSelect.value;
+    const equipoId = equipoSelect.value;  // ID del equipo seleccionado
     
+    // Paso 2: Si no hay equipo seleccionado, limpiar todos los campos relacionados
+    // Esto ocurre cuando el usuario deselecciona el equipo o selecciona la opción vacía
     if (!equipoId) {
+        // Limpiar campos de horómetros y odómetros
         document.getElementById('horometro').value = '';
         document.getElementById('odometro').value = '';
         document.getElementById('horometro_superestructura').value = '';
-        modeloEquipoSeleccionado = null;
+        modeloEquipoSeleccionado = null;  // Limpiar referencia al modelo
         
-        // Limpiar pauta seleccionada y ocultar secciones
+        // Limpiar pauta seleccionada y ocultar secciones de mantenimiento preventivo
         limpiarPautaMantenimiento();
+        
+        // Resetear el select de pautas con mensaje instructivo
         const pautaSelect = document.getElementById('pauta_id');
         if (pautaSelect) {
             pautaSelect.innerHTML = '<option value="">Primero seleccione un equipo...</option>';
         }
         
-        return;
+        return;  // Salir de la función
     }
     
+    // Paso 3: Obtener la opción seleccionada del select
+    // Esta opción contiene los datos del equipo guardados en atributos data
     const option = equipoSelect.options[equipoSelect.selectedIndex];
-    document.getElementById('horometro').value = option.dataset.horometro || '';
-    document.getElementById('odometro').value = option.dataset.odometro || '';
-    document.getElementById('horometro_superestructura').value = option.dataset.horometroSuperEstructural || '';
     
-    const modeloAnterior = modeloEquipoSeleccionado;
-    modeloEquipoSeleccionado = option.dataset.modeloId;
+    // Paso 4: Precargar los valores de horómetros y odómetros en los campos del formulario
+    // Estos valores se obtienen de los atributos data de la opción seleccionada
+    document.getElementById('horometro').value = option.dataset.horometro || '';  // Horas de uso
+    document.getElementById('odometro').value = option.dataset.odometro || '';  // Kilómetros recorridos
+    document.getElementById('horometro_superestructura').value = option.dataset.horometroSuperEstructural || '';  // Horas de superestructura
+    
+    // Paso 5: Actualizar el modelo de equipo seleccionado
+    // Se guarda el modelo anterior para detectar cambios y cargar pautas si es necesario
+    const modeloAnterior = modeloEquipoSeleccionado;  // Guardar modelo anterior
+    modeloEquipoSeleccionado = option.dataset.modeloId;  // Actualizar con el nuevo modelo
     
     // También actualizar el select de modelo si está disponible
     const modeloSelect = document.getElementById('modelo_equipo_id');
@@ -454,51 +538,79 @@ function cargarDatosEquipo() {
 // TIPO DE MANTENIMIENTO Y PAUTAS
 // ============================================================================
 
-// Función para limpiar la pauta de mantenimiento preventivo
+// Función para limpiar la pauta de mantenimiento preventivo seleccionada
+// Se ejecuta cuando cambia el equipo, modelo o cuando se deselecciona la pauta
+// Limpia el valor seleccionado y oculta las secciones de la pauta cargadas
 function limpiarPautaMantenimiento() {
+    // Paso 1: Limpiar el valor seleccionado del select de pautas
+    // No se eliminan las opciones, solo se resetea la selección
     const pautaSelect = document.getElementById('pauta_id');
     if (pautaSelect) {
-        pautaSelect.value = '';
-        // No limpiar las opciones, solo el valor seleccionado
+        pautaSelect.value = '';  // Deseleccionar cualquier pauta seleccionada
+        // No limpiar las opciones, solo el valor seleccionado (las opciones se mantienen para reutilización)
     }
     
-    // Ocultar secciones de pauta cargadas
+    // Paso 2: Ocultar el contenedor de secciones de la pauta cargada
+    // Esto oculta las secciones y tipos de reparación que se habían cargado desde la pauta
     const seccionesPautaContainer = document.querySelector('#seccionPreventivo #seccionesPautaContainer') || 
                                      document.getElementById('seccionesPautaContainer');
     if (seccionesPautaContainer) {
-        seccionesPautaContainer.style.display = 'none';
-        seccionesPautaContainer.classList.add('hidden-section');
+        seccionesPautaContainer.style.display = 'none';  // Ocultar visualmente
+        seccionesPautaContainer.classList.add('hidden-section');  // Agregar clase CSS para ocultar
+        
+        // Paso 2.1: Limpiar el contenido de la lista de secciones
+        // Esto elimina las secciones renderizadas para que no queden datos obsoletos
         const seccionesPautaList = document.querySelector('#seccionPreventivo #seccionesPautaList') || 
                                     document.getElementById('seccionesPautaList');
         if (seccionesPautaList) {
-            seccionesPautaList.innerHTML = '';
+            seccionesPautaList.innerHTML = '';  // Limpiar HTML de las secciones
         }
     }
 }
 
-// Cambiar tipo de mantenimiento
+// Función que se ejecuta cuando cambia el tipo de mantenimiento seleccionado
+// Muestra u oculta las secciones del formulario según el tipo de mantenimiento
+// Los tipos pueden ser: Preventivo (usa pautas), Correctivo (usa items de secciones), u otros
 function cambiarTipoMantenimiento() {
-    const tipoMantenimientoId = document.getElementById('tipo_mantenimiento_id').value;
-    const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');
-    const seccionPreventivo = document.getElementById('seccionPreventivo');
-    const seccionReparaciones = document.getElementById('seccionReparaciones');
+    // Paso 1: Obtener referencias a los elementos del formulario
+    const tipoMantenimientoId = document.getElementById('tipo_mantenimiento_id').value;  // ID del tipo seleccionado
+    const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');  // Select de tipo de mantenimiento
+    const seccionPreventivo = document.getElementById('seccionPreventivo');  // Contenedor de sección preventiva
+    const seccionReparaciones = document.getElementById('seccionReparaciones');  // Contenedor de sección de reparaciones
     
-    // Obtener el nombre del tipo seleccionado
+    // Paso 2: Obtener el nombre del tipo seleccionado (en minúsculas para comparación)
+    // Se usa el texto visible de la opción seleccionada para determinar el tipo
     const tipoNombre = tipoMantenimientoSelect.options[tipoMantenimientoSelect.selectedIndex]?.textContent?.toLowerCase() || '';
     
+    // Paso 3: Mostrar/ocultar secciones según el tipo de mantenimiento seleccionado
     if (tipoNombre.includes('preventivo')) {
+        // CASO: Mantenimiento Preventivo
+        // Paso 3.1: Mostrar la sección de mantenimiento preventivo
         seccionPreventivo.style.display = 'block';
-        // Limpiar radio buttons
+        
+        // Paso 3.2: Limpiar la selección de radio buttons de corresponde_pauta
+        // Esto resetea el estado para que el usuario seleccione nuevamente
         document.getElementById('corresponde_pauta_si').checked = false;
         document.getElementById('corresponde_pauta_no').checked = false;
+        
+        // Paso 3.3: Ejecutar la función que maneja el cambio de corresponde_pauta
+        // Esto oculta/muestra los campos relacionados según la nueva selección
         cambiarCorrespondePauta();
+        
     } else if (tipoNombre.includes('correctivo')) {
+        // CASO: Mantenimiento Correctivo
+        // Paso 3.4: Ocultar sección preventiva y mostrar sección de reparaciones
         seccionPreventivo.style.display = 'none';
         seccionReparaciones.style.display = 'block';
-        // Limpiar items de secciones si había algo de preventivo
+        
+        // Paso 3.5: Limpiar items de secciones si había algo de preventivo
+        // Resetear el contenedor de items y el índice para comenzar desde cero
         document.getElementById('itemsSeccionesContainer').innerHTML = '<p class="text-muted small" id="noItemsMessage">No hay items agregados. Haga clic en "Agregar Item" para comenzar.</p>';
-        itemSeccionIndex = 0;
+        itemSeccionIndex = 0;  // Resetear contador de items
+        
     } else {
+        // CASO: Otro tipo de mantenimiento o ninguno seleccionado
+        // Paso 3.6: Ocultar ambas secciones si no es preventivo ni correctivo
         seccionPreventivo.style.display = 'none';
         seccionReparaciones.style.display = 'none';
     }

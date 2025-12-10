@@ -8,7 +8,12 @@ if (typeof permisos === 'undefined') {
     console.warn('permisos no está definido, usando objeto vacío');
 }
 
-// Función para obtener el color del badge según la acción
+/**
+ * Obtiene el color del badge según el tipo de acción del historial de personal.
+ * 
+ * @param {string} accion - Tipo de acción (PERSONAL_CREADO, PERSONAL_MODIFICADO, etc.)
+ * @returns {string} Clase CSS del badge correspondiente
+ */
 function getBadgeColorAccionPersonal(accion) {
     const colores = {
         'PERSONAL_CREADO': 'bg-success',
@@ -20,7 +25,12 @@ function getBadgeColorAccionPersonal(accion) {
     return colores[accion] || 'bg-secondary';
 }
 
-// Función para obtener el color del badge según la acción de documento
+/**
+ * Obtiene el color del badge según el tipo de acción del historial de documentos.
+ * 
+ * @param {string} accion - Tipo de acción (DOCUMENTO_AGREGADO, DOCUMENTO_MODIFICADO, etc.)
+ * @returns {string} Clase CSS del badge correspondiente
+ */
 function getBadgeColorAccionDocumento(accion) {
     const colores = {
         'DOCUMENTO_AGREGADO': 'bg-success',
@@ -31,7 +41,15 @@ function getBadgeColorAccionDocumento(accion) {
     return colores[accion] || 'bg-secondary';
 }
 
-// Función para mostrar el historial de un personal en un modal
+/**
+ * Muestra el historial de cambios de un personal en un modal.
+ * 
+ * Verifica permisos, carga el historial desde la API y lo renderiza
+ * en un modal de Bootstrap con detalles expandibles.
+ * 
+ * @param {number} personalId - ID del personal
+ * @param {string} nombrePersonal - Nombre completo del personal para el título
+ */
 function verHistorialPersonal(personalId, nombrePersonal) {
     // Verificar permisos antes de abrir el modal
     const canVerHistorial = permisos && permisos.can_ver_historial_personal === true;
@@ -87,7 +105,15 @@ function verHistorialPersonal(personalId, nombrePersonal) {
         });
 }
 
-// Función para obtener el nombre completo del usuario
+/**
+ * Obtiene el nombre completo del usuario desde un evento del historial.
+ * 
+ * Prioriza usuario_nombre (nombre completo), luego usuario (username),
+ * y finalmente retorna 'Sistema' como fallback.
+ * 
+ * @param {Object} evento - Objeto del evento del historial
+ * @returns {string} Nombre del usuario
+ */
 function obtenerNombreUsuario(evento) {
     // Priorizar usuario_nombre (nombre completo), luego usuario (username), finalmente 'Sistema'
     if (evento.usuario_nombre && evento.usuario_nombre.trim() && evento.usuario_nombre !== evento.usuario) {
@@ -99,7 +125,11 @@ function obtenerNombreUsuario(evento) {
     return 'Sistema';
 }
 
-// Función para expandir/colapsar detalles del historial
+/**
+ * Expande o colapsa los detalles de una fila del historial.
+ * 
+ * @param {string} detailsId - ID del elemento de detalles a mostrar/ocultar
+ */
 function toggleHistorialDetails(detailsId) {
     const detailsRow = document.getElementById(detailsId);
     
@@ -112,7 +142,15 @@ function toggleHistorialDetails(detailsId) {
     }
 }
 
-// Renderizar historial de personal en modal
+/**
+ * Renderiza el historial de personal en el modal.
+ * 
+ * Crea una tabla con todos los eventos del historial, incluyendo
+ * detalles expandibles para eventos con información adicional.
+ * 
+ * @param {Object} data - Datos del historial desde la API
+ * @param {HTMLElement} container - Contenedor donde renderizar el historial
+ */
 function renderizarHistorialPersonalModal(data, container) {
     const historial = data.historial || [];
     
@@ -273,7 +311,15 @@ function renderizarHistorialPersonalModal(data, container) {
     container.innerHTML = infoHTML;
 }
 
-// Función para mostrar el historial de documentos de un personal en un modal
+/**
+ * Muestra el historial de documentos de un personal en un modal.
+ * 
+ * Verifica permisos, carga el historial de documentos desde la API
+ * y lo renderiza en un modal de Bootstrap con detalles expandibles.
+ * 
+ * @param {number} personalId - ID del personal
+ * @param {string} nombrePersonal - Nombre completo del personal para el título
+ */
 function verHistorialDocumentosPersonal(personalId, nombrePersonal) {
     // Verificar permisos antes de abrir el modal
     const canVerHistorial = permisos && permisos.can_ver_historial_personal === true;
@@ -329,7 +375,15 @@ function verHistorialDocumentosPersonal(personalId, nombrePersonal) {
         });
 }
 
-// Renderizar historial de documentos de personal en modal
+/**
+ * Renderiza el historial de documentos de personal en el modal.
+ * 
+ * Crea una tabla con todos los eventos del historial de documentos,
+ * incluyendo detalles expandibles para eventos con información adicional.
+ * 
+ * @param {Object} data - Datos del historial desde la API
+ * @param {HTMLElement} container - Contenedor donde renderizar el historial
+ */
 function renderizarHistorialDocumentosPersonalModal(data, container) {
     const historial = data.historial || [];
     

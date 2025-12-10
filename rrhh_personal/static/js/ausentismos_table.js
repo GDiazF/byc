@@ -1,7 +1,8 @@
-// ============================================================================
-// AUSENTISMOS - TABLA PERSONALIZADA
-// Sin DataTables/jQuery - JavaScript vanilla
-// ============================================================================
+/**
+ * Gestión de tabla de ausentismos con JavaScript vanilla (sin DataTables/jQuery).
+ * 
+ * Maneja el renderizado, ordenamiento, paginación y eliminación de ausentismos.
+ */
 
 // Variables globales
 let ausentismos = [];
@@ -33,6 +34,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // EVENT LISTENERS
 // ============================================================================
 
+/**
+ * Inicializa todos los event listeners de la página.
+ * Configura listeners para ordenamiento, modales y eliminación.
+ */
 function inicializarEventListeners() {
     // Ordenamiento por columnas
     document.querySelectorAll('.sortable').forEach(th => {
@@ -55,6 +60,12 @@ function inicializarEventListeners() {
 // RENDERIZADO DE TABLA
 // ============================================================================
 
+/**
+ * Renderiza la tabla de ausentismos con ordenamiento y paginación aplicados.
+ * 
+ * Filtra, ordena y pagina los ausentismos según la configuración actual,
+ * y actualiza los contadores y controles de paginación.
+ */
 function renderizarTabla() {
     const tbody = document.getElementById('ausentismosTableBody');
     

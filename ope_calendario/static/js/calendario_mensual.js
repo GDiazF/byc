@@ -162,14 +162,24 @@ function calcularEstadoPersonalFecha(personalId, fecha) {
     return calendarioData.estado_predeterminado;
 }
 
-// Función para formatear fechas al formato chileno (DD-MM-YYYY)
+/**
+ * Formatea una fecha ISO (YYYY-MM-DD) al formato chileno (DD-MM-YYYY).
+ * Versión simplificada para fechas en formato string ISO.
+ * @param {string} fechaISO - Fecha en formato ISO (YYYY-MM-DD)
+ * @returns {string} Fecha formateada en formato chileno (DD-MM-YYYY) o 'Sin fecha' si no hay fecha
+ */
 function formatearFechaChilena(fechaISO) {
     if (!fechaISO) return 'Sin fecha';
     const [year, month, day] = fechaISO.split('-');
     return `${day}-${month}-${year}`;
 }
 
-// Funciones helper para modales
+/**
+ * Muestra un modal de alerta con mensaje y tipo específico.
+ * Configura el color del header según el tipo (success, error, info).
+ * @param {string} message - Mensaje a mostrar en el modal
+ * @param {string} type - Tipo de alerta: 'success', 'error' o 'info' (por defecto: 'info')
+ */
 function showAlert(message, type = 'info') {
     const modal = new bootstrap.Modal(document.getElementById('alertModal'));
     const header = document.getElementById('alertModalHeader');
@@ -192,6 +202,13 @@ function showAlert(message, type = 'info') {
     modal.show();
 }
 
+/**
+ * Muestra un modal de confirmación y retorna una Promise que se resuelve con true/false.
+ * El usuario puede confirmar o cancelar la acción.
+ * @param {string} message - Mensaje de confirmación a mostrar
+ * @param {string} title - Título del modal (por defecto: 'Confirmar')
+ * @returns {Promise<boolean>} Promise que se resuelve con true si se confirma, false si se cancela
+ */
 function showConfirm(message, title = 'Confirmar') {
     return new Promise((resolve) => {
         const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
@@ -243,7 +260,11 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Calendario inicializado');
 });
 
-// Generar leyenda de estados
+/**
+ * Genera la leyenda de estados visual en el contenedor especificado.
+ * Muestra todos los estados disponibles con sus colores y nombres cortos.
+ * Evita duplicados verificando si el estado ya existe en la leyenda.
+ */
 function generateStatusLegend() {
     const legendContainer = document.getElementById('statusLegend');
     if (!legendContainer) {
@@ -300,7 +321,12 @@ function generateStatusLegend() {
     console.log('Leyenda generada. HTML final:', legendContainer.innerHTML.substring(0, 100));
 }
 
-// Generar calendario
+/**
+ * Genera la tabla del calendario mensual con encabezados de días y filas de personal.
+ * Usa los estados calculados del backend cuando están disponibles, o calcula estados localmente como fallback.
+ * Marca días de fin de semana y el día actual con clases CSS especiales.
+ * Cada celda es clickeable para mostrar información detallada del estado.
+ */
 function generateCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -404,7 +430,13 @@ function generateCalendar() {
     tbody.innerHTML = bodyHTML;
 }
 
-// Mostrar información de estado
+/**
+ * Muestra información detallada del estado de un personal en un día específico.
+ * Abre un modal con información del estado, faena, turno y detalles adicionales.
+ * Prioriza estados calculados del backend sobre cálculos locales.
+ * @param {number} personalId - ID del personal
+ * @param {number} day - Día del mes (1-31)
+ */
 function showEstadoInfo(personalId, day) {
     const persona = calendarioData.personal.find(p => p.personal_id === personalId);
     if (!persona) return;
@@ -515,7 +547,11 @@ function showEstadoInfo(personalId, day) {
     modal.show();
 }
 
-// Mostrar información personal con documentación
+/**
+ * Muestra información completa del personal incluyendo documentación (licencias, certificaciones, exámenes).
+ * Hace una petición AJAX al backend para obtener información detallada y la muestra en un modal con tabs.
+ * @param {number} personalId - ID del personal a consultar
+ */
 async function showPersonalInfo(personalId) {
     // Cambiar título del modal
     document.getElementById('personalModalTitle').textContent = 'Información Personal y Documentación';
@@ -647,7 +683,12 @@ async function showPersonalInfo(personalId) {
     }
 }
 
-// Generar tabla de licencias de conducir
+/**
+ * Genera el HTML de una tabla con las licencias de conducir del personal.
+ * Muestra clases, fecha de vencimiento y estado (vigente/vencida).
+ * @param {Array} licencias - Array de objetos con información de licencias de conducir
+ * @returns {string} HTML de la tabla o mensaje si no hay licencias
+ */
 function generarTablaLicenciasConducir(licencias) {
     if (licencias.length === 0) {
         return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin licencias de conducir registradas</div>';
@@ -677,7 +718,12 @@ function generarTablaLicenciasConducir(licencias) {
     `;
 }
 
-// Generar tabla de licencias internas
+/**
+ * Genera el HTML de una tabla con las licencias internas del personal.
+ * Muestra tipo, número, empresa emisora, fecha de vencimiento y estado.
+ * @param {Array} licencias - Array de objetos con información de licencias internas
+ * @returns {string} HTML de la tabla o mensaje si no hay licencias
+ */
 function generarTablaLicenciasInternas(licencias) {
     if (licencias.length === 0) {
         return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin licencias internas registradas</div>';
@@ -711,7 +757,12 @@ function generarTablaLicenciasInternas(licencias) {
     `;
 }
 
-// Generar tabla de certificaciones
+/**
+ * Genera el HTML de una tabla con las certificaciones del personal.
+ * Muestra tipo, proveedor, fecha de vencimiento y estado (vigente/vencida).
+ * @param {Array} certificaciones - Array de objetos con información de certificaciones
+ * @returns {string} HTML de la tabla o mensaje si no hay certificaciones
+ */
 function generarTablaCertificaciones(certificaciones) {
     if (certificaciones.length === 0) {
         return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin certificaciones registradas</div>';
@@ -743,7 +794,12 @@ function generarTablaCertificaciones(certificaciones) {
     `;
 }
 
-// Generar tabla de exámenes
+/**
+ * Genera el HTML de una tabla con los exámenes del personal.
+ * Muestra tipo, resultado (con badge de color según resultado), proveedor, fecha de vencimiento y estado.
+ * @param {Array} examenes - Array de objetos con información de exámenes
+ * @returns {string} HTML de la tabla o mensaje si no hay exámenes
+ */
 function generarTablaExamenes(examenes) {
     if (examenes.length === 0) {
         return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin exámenes registrados</div>';
@@ -788,7 +844,11 @@ function generarTablaExamenes(examenes) {
     `;
 }
 
-// Configurar filtros
+/**
+ * Configura los event listeners para los filtros del calendario.
+ * El filtro de búsqueda funciona localmente (sin recargar página).
+ * Los filtros de faena, cargo y empresa recargan la página para usar caché del backend.
+ */
 function setupFilters() {
     const searchInput = document.getElementById('searchInput');
     const faenaFilter = document.getElementById('faenaFilter');
@@ -812,7 +872,12 @@ function setupFilters() {
     }
 }
 
-// Filtrar personal localmente (sin recargar página) - similar a maquinarias
+/**
+ * Filtra el personal localmente basándose en los valores de los filtros.
+ * No recarga la página, solo actualiza la visualización del calendario.
+ * Filtra por búsqueda (nombre/RUT), faena, cargo y empresa.
+ * Re-renderiza el calendario con el personal filtrado.
+ */
 function filtrarPersonalLocalmente() {
     const search = document.getElementById('searchInput')?.value || '';
     const faena = document.getElementById('faenaFilter')?.value || '';
@@ -855,7 +920,12 @@ function filtrarPersonalLocalmente() {
     generateCalendar();
 }
 
-// Aplicar filtros recargando la página (para usar caché del backend)
+/**
+ * Aplica los filtros recargando la página para usar el caché del backend.
+ * Mantiene los parámetros de año, mes y tamaño de página.
+ * Resetea la página a 1 al aplicar nuevos filtros.
+ * Construye la URL con todos los parámetros de filtro y recarga la página.
+ */
 function applyFiltersWithReload() {
     const searchValue = document.getElementById('searchInput').value.trim();
     const faenaValue = document.getElementById('faenaFilter').value;
@@ -887,7 +957,12 @@ function applyFiltersWithReload() {
     window.location.href = url.toString();
 }
 
-// Aplicar filtros en el frontend (LEGACY - mantener para compatibilidad)
+/**
+ * Aplica filtros en el frontend mostrando/ocultando filas del calendario.
+ * Función LEGACY mantenida para compatibilidad.
+ * Filtra por búsqueda, faena y cargo sin recargar la página.
+ * @deprecated Se recomienda usar filtrarPersonalLocalmente() o applyFiltersWithReload()
+ */
 function applyFilters() {
     const searchValue = document.getElementById('searchInput').value.toLowerCase();
     const faenaValue = document.getElementById('faenaFilter').value;
@@ -928,7 +1003,10 @@ function applyFilters() {
     });
 }
 
-// Limpiar filtros
+/**
+ * Limpia todos los filtros manteniendo solo los parámetros básicos (año, mes, tamaño de página).
+ * Resetea la página a 1 y recarga la página con la URL limpia.
+ */
 function clearFilters() {
     // Limpiar filtros manteniendo year, month y page_size
     const url = new URL(window.location.href);
@@ -946,7 +1024,12 @@ function clearFilters() {
     window.location.href = url.toString();
 }
 
-// Cambiar tamaño de página
+/**
+ * Cambia el tamaño de página (cantidad de registros por página) y recarga.
+ * Mantiene todos los demás parámetros (filtros, año, mes).
+ * Resetea la página a 1 al cambiar el tamaño.
+ * @param {number|string} size - Nuevo tamaño de página (ej: 10, 25, 50)
+ */
 function cambiarTamanioPagina(size) {
     const url = new URL(window.location.href);
     
@@ -957,33 +1040,52 @@ function cambiarTamanioPagina(size) {
     window.location.href = url.toString();
 }
 
-// Navegación del calendario
+/**
+ * Navega al mes anterior y recarga el calendario.
+ */
 function previousMonth() {
     currentDate.setMonth(currentDate.getMonth() - 1);
     navigateToDate();
 }
 
+/**
+ * Navega al mes siguiente y recarga el calendario.
+ */
 function nextMonth() {
     currentDate.setMonth(currentDate.getMonth() + 1);
     navigateToDate();
 }
 
+/**
+ * Navega al año anterior y recarga el calendario.
+ */
 function previousYear() {
     currentDate.setFullYear(currentDate.getFullYear() - 1);
     navigateToDate();
 }
 
+/**
+ * Navega al año siguiente y recarga el calendario.
+ */
 function nextYear() {
     currentDate.setFullYear(currentDate.getFullYear() + 1);
     navigateToDate();
 }
 
+/**
+ * Navega al mes actual (hoy) y recarga el calendario.
+ */
 function goToToday() {
     const today = new Date();
     currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
     navigateToDate();
 }
 
+/**
+ * Navega a la fecha configurada en currentDate y recarga el calendario.
+ * Mantiene todos los parámetros de filtros y paginación.
+ * Resetea la página a 1 al cambiar de mes/año.
+ */
 function navigateToDate() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1;
@@ -997,7 +1099,10 @@ function navigateToDate() {
     window.location.href = url.toString();
 }
 
-// Llenar opciones de faenas
+/**
+ * Llena el select de faenas con las opciones disponibles.
+ * Agrega información de fechas como data attributes para uso posterior.
+ */
 function populateFaenaOptions() {
     const select = document.getElementById('faenaSelect');
     const faenas = calendarioData.faenas || [];
@@ -1019,7 +1124,10 @@ function populateFaenaOptions() {
     });
 }
 
-// Llenar opciones de turnos
+/**
+ * Llena el select de turnos con las opciones disponibles.
+ * Configura un event listener para actualizar los bloques cuando cambie el turno seleccionado.
+ */
 function populateTurnoOptions() {
     const select = document.getElementById('turnoSelect');
     const turnos = calendarioData.turnos || [];
@@ -1038,7 +1146,11 @@ function populateTurnoOptions() {
     });
 }
 
-// Actualizar opciones de bloques según turno
+/**
+ * Actualiza las opciones del select de bloques según el turno seleccionado.
+ * Si no hay asignación en edición, selecciona automáticamente el primer bloque.
+ * @param {number} turnoId - ID del turno para el cual cargar los bloques
+ */
 function updateBloqueOptions(turnoId) {
     const select = document.getElementById('bloqueInicioSelect');
     select.innerHTML = '<option value="">Seleccionar bloque de inicio...</option>';
@@ -1071,7 +1183,12 @@ function updateBloqueOptions(turnoId) {
     }
 }
 
-// Mostrar asignaciones para editar/eliminar (solo las del mes actual)
+/**
+ * Muestra las asignaciones y estados manuales de un personal para el mes actual.
+ * Filtra solo las asignaciones y estados que están activos durante el mes mostrado.
+ * Muestra información de faena, turno, fechas y estado (activa/finalizada).
+ * @param {number} personalId - ID del personal del cual mostrar asignaciones
+ */
 function showAsignaciones(personalId) {
     // Cambiar título del modal
     document.getElementById('asignacionesModalTitle').textContent = 'Ver Asignaciones';
@@ -1204,7 +1321,13 @@ function showAsignaciones(personalId) {
     modal.show();
 }
 
-// Editar asignación existente
+/**
+ * Abre el modal de edición de asignación con los datos de la asignación existente.
+ * Precarga todos los campos del formulario (faena, turno, fechas, bloque, observaciones).
+ * Muestra el botón de eliminar y configura el modal en modo edición.
+ * @param {number} personalId - ID del personal
+ * @param {number} asignacionId - ID de la asignación a editar
+ */
 function editarAsignacion(personalId, asignacionId) {
     const persona = calendarioData.personal.find(p => p.personal_id === personalId);
     if (!persona) return;
@@ -1282,7 +1405,11 @@ function editarAsignacion(personalId, asignacionId) {
     modal.show();
 }
 
-// Confirmar eliminación de asignación
+/**
+ * Muestra un modal de confirmación antes de eliminar una asignación.
+ * Si se confirma, llama a eliminarAsignacionDirecta().
+ * @param {number} asignacionId - ID de la asignación a eliminar
+ */
 async function confirmarEliminarAsignacion(asignacionId) {
     const confirmado = await showConfirm(
         '¿Está seguro de eliminar esta asignación? Esta acción no se puede deshacer.',
@@ -1294,7 +1421,12 @@ async function confirmarEliminarAsignacion(asignacionId) {
     }
 }
 
-// Abrir modal de faena para nueva asignación
+/**
+ * Abre el modal de faena para crear una nueva asignación.
+ * Limpia el formulario y oculta el botón de eliminar.
+ * Configura el modal en modo creación (no edición).
+ * @param {number} personalId - ID del personal para el cual crear la asignación
+ */
 function openFaenaModal(personalId) {
     const persona = calendarioData.personal.find(p => p.personal_id === personalId);
     if (!persona) return;
@@ -1324,7 +1456,11 @@ function openFaenaModal(personalId) {
     modal.show();
 }
 
-// Configurar eventos de modales
+/**
+ * Configura todos los event listeners para los modales de asignación.
+ * Incluye: guardar asignación, eliminar asignación, precargar fechas al seleccionar faena,
+ * y validar fechas cuando cambian los inputs de fecha.
+ */
 function setupModalEvents() {
     document.getElementById('btnGuardar').addEventListener('click', guardarAsignacion);
     document.getElementById('btnEliminar').addEventListener('click', eliminarAsignacion);
@@ -1354,7 +1490,12 @@ function setupModalEvents() {
     }
 }
 
-// Precargar fechas de la faena seleccionada
+/**
+ * Precarga las fechas de inicio y fin de la faena seleccionada en los inputs de fecha.
+ * Solo precarga si NO estamos editando una asignación existente (modo creación).
+ * Valida las fechas después de precargarlas.
+ * @param {number|string} faenaId - ID de la faena de la cual precargar fechas
+ */
 function precargarFechasFaena(faenaId) {
     if (!faenaId) {
         // Si no hay faena seleccionada, limpiar fechas
@@ -1390,7 +1531,11 @@ function precargarFechasFaena(faenaId) {
     validarFechasAsignacion();
 }
 
-// Validar si el personal tiene licencia médica activa en el período
+/**
+ * Valida si el personal tiene una licencia médica activa que se solape con el período de asignación.
+ * Retorna un objeto con información de la licencia si existe conflicto.
+ * @returns {Object} Objeto con {existe: boolean, tipo?: string, fecha_inicio?: string, fecha_fin?: string, dias?: number}
+ */
 function validarLicenciaMedicaActiva() {
     const personalId = parseInt(document.getElementById('personalId').value);
     const fechaInicio = document.getElementById('fechaInicio').value;
@@ -1427,7 +1572,11 @@ function validarLicenciaMedicaActiva() {
     return { existe: false };
 }
 
-// Validar si el personal tiene ausentismo activo en el período
+/**
+ * Valida si el personal tiene un ausentismo activo que se solape con el período de asignación.
+ * Retorna un objeto con información del ausentismo si existe conflicto.
+ * @returns {Object} Objeto con {existe: boolean, tipo?: string, fecha_inicio?: string, fecha_fin?: string}
+ */
 function validarAusentismoActivo() {
     const personalId = parseInt(document.getElementById('personalId').value);
     const fechaInicio = document.getElementById('fechaInicio').value;
@@ -1463,7 +1612,12 @@ function validarAusentismoActivo() {
     return { existe: false };
 }
 
-// Validar solapamiento de fechas con otras asignaciones (de DIFERENTES faenas)
+/**
+ * Valida si las fechas de la nueva asignación se solapan con asignaciones existentes en OTRAS faenas.
+ * Ignora asignaciones a la misma faena (se permite tener múltiples asignaciones a la misma faena).
+ * Retorna información del conflicto si existe solapamiento.
+ * @returns {Object} Objeto con {existe: boolean, faena?: string, turno?: string, fecha_inicio?: string, fecha_fin?: string}
+ */
 function validarSolapamientoFechas() {
     const personalId = parseInt(document.getElementById('personalId').value);
     const fechaInicio = document.getElementById('fechaInicio').value;
@@ -1517,7 +1671,12 @@ function validarSolapamientoFechas() {
     return { existe: false };
 }
 
-// Validar fechas de asignación
+/**
+ * Valida que las fechas de la asignación estén dentro del rango de fechas de la faena seleccionada.
+ * Valida que la fecha de fin no sea anterior a la fecha de inicio.
+ * Muestra mensajes de error en los inputs si hay problemas.
+ * @returns {boolean} true si las fechas son válidas, false si hay errores
+ */
 function validarFechasAsignacion() {
     const faenaId = document.getElementById('faenaSelect').value;
     if (!faenaId) return true;
@@ -1582,7 +1741,12 @@ function validarFechasAsignacion() {
     return isValid;
 }
 
-// Guardar asignación
+/**
+ * Guarda una nueva asignación o actualiza una existente.
+ * Valida fechas, turno con bloques, licencias médicas, ausentismos y solapamientos.
+ * Muestra alertas detalladas si hay problemas de validación.
+ * Envía los datos al backend y recarga la página si es exitoso.
+ */
 async function guardarAsignacion() {
     const form = document.getElementById('faenaForm');
     const btnGuardar = document.getElementById('btnGuardar');
@@ -1836,7 +2000,11 @@ async function guardarAsignacion() {
     }
 }
 
-// Eliminar asignación desde el formulario
+/**
+ * Elimina una asignación desde el formulario de edición.
+ * Muestra un modal de confirmación antes de eliminar.
+ * Si se confirma, llama a eliminarAsignacionDirecta().
+ */
 async function eliminarAsignacion() {
     const confirmado = await showConfirm(
         '¿Está seguro de eliminar esta asignación? Esta acción no se puede deshacer.',
@@ -1849,7 +2017,12 @@ async function eliminarAsignacion() {
     await eliminarAsignacionDirecta(asignacionId);
 }
 
-// Eliminar asignación directa (puede llamarse desde cualquier lugar)
+/**
+ * Elimina una asignación directamente haciendo una petición AJAX al backend.
+ * Puede ser llamada desde cualquier lugar (formulario, botones, etc.).
+ * Muestra mensaje de éxito/error y recarga la página si es exitoso.
+ * @param {number|string} asignacionId - ID de la asignación a eliminar
+ */
 async function eliminarAsignacionDirecta(asignacionId) {
     try {
         const response = await fetch('/calendario/api/eliminar-asignacion/', {

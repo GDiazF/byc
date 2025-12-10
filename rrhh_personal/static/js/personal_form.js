@@ -1,4 +1,9 @@
-// Formulario de creación y edición de personal
+/**
+ * Gestión del formulario de creación y edición de personal.
+ * 
+ * Maneja la validación del formulario, limpieza del RUT (sin puntos ni guiones),
+ * y configuración de handlers para región/comuna.
+ */
 
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar el manejador de región/comuna si existe

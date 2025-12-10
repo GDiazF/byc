@@ -7,7 +7,12 @@
 // UTILIDADES GLOBALES
 // ============================================================================
 
-// Get CSRF token from cookie
+/**
+ * Obtiene el valor de una cookie por su nombre.
+ * 
+ * @param {string} name - Nombre de la cookie
+ * @returns {string|null} Valor de la cookie o null si no existe
+ */
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -23,7 +28,16 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Función para mostrar notificaciones estilo Django
+/**
+ * Muestra una notificación estilo Django en la esquina superior derecha.
+ * 
+ * Crea un contenedor de alertas si no existe y muestra un mensaje
+ * con auto-cierre después de 3 segundos. Opcionalmente recarga la página.
+ * 
+ * @param {string} title - Título de la notificación (no usado actualmente)
+ * @param {string} message - Mensaje a mostrar
+ * @param {string} type - Tipo de notificación ('success' o 'error')
+ */
 function showNotification(title, message, type = 'success') {
     // Crear contenedor de alertas si no existe
     let container = document.querySelector('.messages-container');
@@ -76,8 +90,18 @@ function showNotification(title, message, type = 'success') {
 // MODAL RESET HANDLERS
 // ============================================================================
 
+/**
+ * Inicializa los handlers para limpiar formularios cuando se abren los modales.
+ * 
+ * Limpia los formularios cuando se abren en modo "agregar" (no editar),
+ * removiendo validaciones, mensajes de error y campos ocultos.
+ */
 function initializeModalResetHandlers() {
-    // Función helper para limpiar completamente un formulario
+    /**
+     * Función helper para limpiar completamente un formulario.
+     * 
+     * @param {HTMLFormElement} form - Formulario a limpiar
+     */
     const cleanFormCompletely = (form) => {
         if (!form) return;
         

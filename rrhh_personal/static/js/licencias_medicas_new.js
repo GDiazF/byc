@@ -1,6 +1,10 @@
-// Manejo de licencias médicas (versión nueva con fetch)
+/**
+ * Gestión de licencias médicas con DataTables (versión nueva con fetch).
+ * 
+ * Inicializa la tabla de licencias médicas con DataTables y maneja
+ * la eliminación de licencias con confirmación mediante fetch API.
+ */
 
-// Inicializar DataTable con jQuery
 $(document).ready(function() {
     console.log('=== Inicializando DataTable de Licencias Médicas ===');
     

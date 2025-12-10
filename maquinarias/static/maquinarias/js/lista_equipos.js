@@ -1,30 +1,41 @@
-// Variables globales
-let paginaActual = 1;
-let tamanoPagina = 25;
-let currentToggle = null;
-let originalState = false;
-let changeConfirmed = false;
-let equiposSeleccionados = []; // Array de objetos {equipo_id, nombreEquipo, codigoInterno, tipoEquipo, marcaEquipo}
-let todosLosEquipos = []; // Almacenar todos los equipos para búsqueda en modal
+// Variables globales para el estado de la aplicación
+// Estas variables mantienen el estado de la página y los datos cargados
+let paginaActual = 1;  // Página actual de la paginación
+let tamanoPagina = 25;  // Cantidad de registros a mostrar por página
+let currentToggle = null;  // Referencia al checkbox que se está desactivando (para el modal de confirmación)
+let originalState = false;  // Estado original del checkbox antes del cambio
+let changeConfirmed = false;  // Flag que indica si el cambio fue confirmado
+let equiposSeleccionados = [];  // Array de objetos con información de equipos seleccionados para descarga
+// Formato: [{equipo_id, nombreEquipo, codigoInterno, tipoEquipo, marcaEquipo}, ...]
+let todosLosEquipos = [];  // Almacenar todos los equipos activos para búsqueda en el modal de selección
 
-// Cargar equipos al iniciar
+// Inicialización cuando el DOM está completamente cargado
+// Este evento asegura que todos los elementos HTML estén disponibles antes de ejecutar el código
 document.addEventListener('DOMContentLoaded', function() {
+    // Paso 1: Cargar equipos al iniciar la página
+    // Esta función hace una petición AJAX para obtener la lista de equipos
     cargarEquipos();
     
-    // Event listeners para filtros
-    document.getElementById('searchInput').addEventListener('input', debounce(cargarEquipos, 500));
-    document.getElementById('empresaFilter').addEventListener('change', cargarEquipos);
-    document.getElementById('tipoFilter').addEventListener('change', cargarEquipos);
-    document.getElementById('marcaFilter').addEventListener('change', cargarEquipos);
+    // Paso 2: Configurar event listeners para los filtros
+    // Estos listeners reaccionan a cambios en los campos de búsqueda y filtros
+    // Se usa debounce en la búsqueda para evitar demasiadas ejecuciones mientras el usuario escribe
+    document.getElementById('searchInput').addEventListener('input', debounce(cargarEquipos, 500));  // Búsqueda con delay de 500ms
+    document.getElementById('empresaFilter').addEventListener('change', cargarEquipos);  // Filtro por empresa
+    document.getElementById('tipoFilter').addEventListener('change', cargarEquipos);  // Filtro por tipo de equipo
+    document.getElementById('marcaFilter').addEventListener('change', cargarEquipos);  // Filtro por marca
     
-    // Configurar botón de confirmación del modal
+    // Paso 3: Configurar el botón de confirmación del modal de desactivación
+    // Cuando el usuario confirma la desactivación, se ejecuta esta función
     document.getElementById('btnConfirmarDesactivar').addEventListener('click', confirmarDesactivacion);
     
-    // Limpiar al cerrar modal de confirmación
+    // Paso 4: Limpiar estado cuando se cierra el modal de confirmación
+    // Si el usuario cierra el modal sin confirmar, se revierte el cambio en el checkbox
     document.getElementById('confirmDesactivarModal').addEventListener('hidden.bs.modal', function() {
+        // Si hay un toggle pendiente y no fue confirmado, revertir su estado
         if (currentToggle && !changeConfirmed) {
-            currentToggle.checked = originalState;
+            currentToggle.checked = originalState;  // Restaurar estado original
         }
+        // Limpiar referencias para el próximo uso
         currentToggle = null;
         originalState = false;
         changeConfirmed = false;
@@ -116,57 +127,84 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Función debounce para búsqueda
+// Función debounce para optimizar búsquedas y filtros
+// Esta función retrasa la ejecución de una función hasta que haya pasado un tiempo determinado
+// sin nuevas llamadas. Útil para evitar ejecutar funciones costosas en cada tecla presionada.
+// Parámetros:
+//   func: función a ejecutar después del delay
+//   wait: tiempo de espera en milisegundos
 function debounce(func, wait) {
-    let timeout;
+    let timeout;  // Variable para almacenar el ID del timeout
     return function executedFunction(...args) {
+        // Función que se ejecuta cuando se llama a debounce
         const later = () => {
-            clearTimeout(timeout);
-            func(...args);
+            clearTimeout(timeout);  // Limpiar timeout anterior si existe
+            func(...args);  // Ejecutar la función original con los argumentos
         };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+        clearTimeout(timeout);  // Cancelar timeout anterior si existe
+        timeout = setTimeout(later, wait);  // Crear nuevo timeout
     };
 }
 
-// Cargar equipos con filtros
+// Función para cargar equipos desde el servidor con filtros aplicados
+// Esta función obtiene la lista de equipos activos según los filtros seleccionados
+// y actualiza la tabla, paginación y estadísticas
 function cargarEquipos() {
-    const search = document.getElementById('searchInput').value;
-    const empresa = document.getElementById('empresaFilter').value;
-    const tipo = document.getElementById('tipoFilter').value;
-    const marca = document.getElementById('marcaFilter').value;
+    // Paso 1: Obtener valores de los campos de filtro
+    // Estos valores se envían al servidor para filtrar los equipos
+    const search = document.getElementById('searchInput').value;  // Texto de búsqueda
+    const empresa = document.getElementById('empresaFilter').value;  // Empresa seleccionada
+    const tipo = document.getElementById('tipoFilter').value;  // Tipo de equipo seleccionado
+    const marca = document.getElementById('marcaFilter').value;  // Marca seleccionada
     
+    // Paso 2: Construir parámetros de la petición
+    // Se incluyen los filtros, paginación y estado (siempre activos)
     const params = new URLSearchParams({
-        search: search,
-        empresa: empresa,
-        tipo: tipo,
-        marca: marca,
-        estado: 'activos', // Siempre mostrar solo activos
-        page: paginaActual,
-        page_size: tamanoPagina
+        search: search,  // Término de búsqueda
+        empresa: empresa,  // Filtro por empresa
+        tipo: tipo,  // Filtro por tipo
+        marca: marca,  // Filtro por marca
+        estado: 'activos',  // Siempre mostrar solo equipos activos
+        page: paginaActual,  // Página actual
+        page_size: tamanoPagina  // Tamaño de página
     });
     
+    // Paso 3: Realizar petición GET al endpoint de equipos con los parámetros
     fetch(`/maquinarias/api/equipos/?${params}`)
-        .then(response => response.json())
+        .then(response => response.json())  // Convertir respuesta a JSON
         .then(data => {
             if (data.success) {
+                // CASO ÉXITO: Los equipos se cargaron correctamente
+                // Paso 4.1: Renderizar la tabla con los equipos recibidos
                 renderizarEquipos(data.equipos);
+                
+                // Paso 4.2: Renderizar controles de paginación
                 renderizarPaginacion(data.pagination);
+                
+                // Paso 4.3: Actualizar estadísticas (total de registros, etc.)
                 actualizarEstadisticas(data.pagination);
             } else {
+                // CASO ERROR: El servidor retornó un error
                 mostrarError('Error al cargar equipos: ' + data.error);
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            mostrarError('Error de conexión al cargar equipos');
+            // CASO EXCEPCIÓN: Error de red o excepción no manejada
+            console.error('Error:', error);  // Registrar error en consola para debugging
+            mostrarError('Error de conexión al cargar equipos');  // Mostrar mensaje al usuario
         });
 }
 
-// Renderizar tabla de equipos
+// Función para renderizar la tabla de equipos en el HTML
+// Esta función genera el HTML de las filas de la tabla con los datos de los equipos
+// Parámetros:
+//   equipos: Array de objetos con información de equipos recibidos del servidor
 function renderizarEquipos(equipos) {
+    // Paso 1: Obtener referencia al tbody de la tabla
     const tbody = document.getElementById('equiposTableBody');
     
+    // Paso 2: Manejar caso cuando no hay equipos para mostrar
+    // Mostrar mensaje informativo cuando no se encuentran resultados
     if (equipos.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -176,9 +214,11 @@ function renderizarEquipos(equipos) {
                 </td>
             </tr>
         `;
-        return;
+        return;  // Salir de la función ya que no hay nada más que hacer
     }
     
+    // Paso 3: Generar HTML para cada equipo usando map()
+    // Se crea una fila de tabla por cada equipo con toda su información
     tbody.innerHTML = equipos.map(equipo => `
         <tr>
             <td><strong>${equipo.nombreEquipo}</strong></td>
@@ -225,21 +265,29 @@ function renderizarEquipos(equipos) {
                 </div>
             </td>
         </tr>
-    `).join('');
+    `).join('');  // Unir todos los strings HTML en uno solo
 }
 
-// Renderizar paginación
+// Función para renderizar los controles de paginación en la interfaz
+// Genera los botones de página anterior, números de página y página siguiente
+// Parámetros:
+//   pagination: Objeto con información de paginación del servidor (current_page, total_pages, has_previous, has_next)
 function renderizarPaginacion(pagination) {
+    // Paso 1: Obtener referencia al contenedor de paginación
     const paginacionDiv = document.getElementById('paginacion');
     
+    // Paso 2: Si hay una página o menos, no mostrar controles de paginación
+    // No tiene sentido mostrar paginación si no hay múltiples páginas
     if (pagination.total_pages <= 1) {
-        paginacionDiv.innerHTML = '';
-        return;
+        paginacionDiv.innerHTML = '';  // Limpiar cualquier paginación previa
+        return;  // Salir de la función
     }
     
+    // Paso 3: Inicializar variable para construir el HTML de la paginación
     let html = '';
     
-    // Botón anterior
+    // Paso 4: Generar botón de página anterior
+    // Se deshabilita si no hay página anterior disponible
     html += `
         <li class="page-item ${!pagination.has_previous ? 'disabled' : ''}">
             <a class="page-link" href="#" onclick="cambiarPagina(${pagination.current_page - 1}); return false;">
@@ -248,17 +296,23 @@ function renderizarPaginacion(pagination) {
         </li>
     `;
     
-    // Páginas
-    const startPage = Math.max(1, pagination.current_page - 2);
-    const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
+    // Paso 5: Calcular rango de páginas a mostrar alrededor de la página actual
+    // Se muestran 2 páginas antes y 2 después de la página actual (total 5 páginas visibles)
+    const startPage = Math.max(1, pagination.current_page - 2);  // Primera página a mostrar (mínimo 1)
+    const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);  // Última página a mostrar (máximo total_pages)
     
+    // Paso 6: Si el rango no comienza en la página 1, mostrar botón de página 1 y elipsis
+    // Esto permite navegar rápidamente a la primera página
     if (startPage > 1) {
         html += `<li class="page-item"><a class="page-link" href="#" onclick="cambiarPagina(1); return false;">1</a></li>`;
         if (startPage > 2) {
+            // Si hay más de una página entre el inicio y la página 1, mostrar elipsis
             html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
         }
     }
     
+    // Paso 7: Generar botones para cada página en el rango visible
+    // La página actual se marca como 'active' para indicar visualmente dónde está el usuario
     for (let i = startPage; i <= endPage; i++) {
         html += `
             <li class="page-item ${i === pagination.current_page ? 'active' : ''}">
@@ -267,14 +321,18 @@ function renderizarPaginacion(pagination) {
         `;
     }
     
+    // Paso 8: Si el rango no termina en la última página, mostrar elipsis y botón de última página
+    // Esto permite navegar rápidamente a la última página
     if (endPage < pagination.total_pages) {
         if (endPage < pagination.total_pages - 1) {
+            // Si hay más de una página entre el final y la última página, mostrar elipsis
             html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
         }
         html += `<li class="page-item"><a class="page-link" href="#" onclick="cambiarPagina(${pagination.total_pages}); return false;">${pagination.total_pages}</a></li>`;
     }
     
-    // Botón siguiente
+    // Paso 9: Generar botón de página siguiente
+    // Se deshabilita si no hay página siguiente disponible
     html += `
         <li class="page-item ${!pagination.has_next ? 'disabled' : ''}">
             <a class="page-link" href="#" onclick="cambiarPagina(${pagination.current_page + 1}); return false;">
@@ -283,121 +341,202 @@ function renderizarPaginacion(pagination) {
         </li>
     `;
     
+    // Paso 10: Actualizar el HTML del contenedor de paginación con todos los botones generados
     paginacionDiv.innerHTML = html;
 }
 
-// Actualizar estadísticas
+// Función para actualizar las estadísticas de paginación mostradas al usuario
+// Muestra información sobre el total de registros y el rango de registros visible en la página actual
+// Parámetros:
+//   pagination: Objeto con información de paginación del servidor (current_page, total_count, page_size)
 function actualizarEstadisticas(pagination) {
+    // Paso 1: Actualizar el total de equipos encontrados
+    // Este número representa todos los equipos que cumplen los filtros aplicados
     document.getElementById('totalEquipos').textContent = pagination.total_count;
     
-    const inicio = (pagination.current_page - 1) * pagination.page_size + 1;
-    const fin = Math.min(pagination.current_page * pagination.page_size, pagination.total_count);
+    // Paso 2: Calcular el rango de registros visible en la página actual
+    // inicio: número del primer registro visible (1-indexed)
+    // fin: número del último registro visible
+    const inicio = (pagination.current_page - 1) * pagination.page_size + 1;  // Primer registro de la página
+    const fin = Math.min(pagination.current_page * pagination.page_size, pagination.total_count);  // Último registro (puede ser menor si es la última página)
     
-    document.getElementById('registroInicio').textContent = pagination.total_count > 0 ? inicio : 0;
-    document.getElementById('registroFin').textContent = fin;
-    document.getElementById('totalRegistros').textContent = pagination.total_count;
+    // Paso 3: Actualizar los elementos HTML con las estadísticas calculadas
+    // Estos elementos muestran información como "Mostrando 1-25 de 150 registros"
+    document.getElementById('registroInicio').textContent = pagination.total_count > 0 ? inicio : 0;  // Primer registro visible (0 si no hay registros)
+    document.getElementById('registroFin').textContent = fin;  // Último registro visible
+    document.getElementById('totalRegistros').textContent = pagination.total_count;  // Total de registros
 }
 
-// Cambiar página
+// Función para cambiar a una página específica de la paginación
+// Se ejecuta cuando el usuario hace clic en un número de página o en los botones anterior/siguiente
+// Parámetros:
+//   pagina: Número de página a la que se quiere navegar (1-indexed)
 function cambiarPagina(pagina) {
+    // Paso 1: Actualizar la variable global con la nueva página actual
     paginaActual = pagina;
-    cargarEquipos();
-}
-
-// Cambiar tamaño de página
-function cambiarTamanoPagina() {
-    tamanoPagina = parseInt(document.getElementById('pageSizeSelect').value);
-    paginaActual = 1;
-    cargarEquipos();
-}
-
-// Limpiar filtros
-function limpiarFiltros() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('empresaFilter').value = '';
-    document.getElementById('tipoFilter').value = '';
-    document.getElementById('marcaFilter').value = '';
-    paginaActual = 1;
-    cargarEquipos();
-}
-
-// ============================================================================
-// TOGGLE DE ESTADO
-// ============================================================================
-
-function toggleEstadoEquipo(checkbox) {
-    currentToggle = checkbox;
-    originalState = !checkbox.checked;
-    changeConfirmed = false;
     
-    // Revertir el cambio hasta que se confirme
+    // Paso 2: Recargar los equipos con la nueva página
+    // Esto hace una nueva petición al servidor con el número de página actualizado
+    cargarEquipos();
+}
+
+// Función para cambiar la cantidad de registros mostrados por página
+// Se ejecuta cuando el usuario selecciona un nuevo tamaño de página desde el select
+function cambiarTamanoPagina() {
+    // Paso 1: Obtener el nuevo tamaño de página seleccionado por el usuario
+    // Se convierte a entero porque viene como string desde el select
+    tamanoPagina = parseInt(document.getElementById('pageSizeSelect').value);
+    
+    // Paso 2: Resetear a la primera página cuando cambia el tamaño
+    // Esto evita problemas si la página actual ya no existe con el nuevo tamaño
+    paginaActual = 1;
+    
+    // Paso 3: Recargar los equipos con el nuevo tamaño de página
+    // Esto hace una nueva petición al servidor con el tamaño de página actualizado
+    cargarEquipos();
+}
+
+// Función para limpiar todos los filtros aplicados y resetear la búsqueda
+// Se ejecuta cuando el usuario hace clic en el botón "Limpiar filtros"
+function limpiarFiltros() {
+    // Paso 1: Limpiar el campo de búsqueda de texto
+    document.getElementById('searchInput').value = '';
+    
+    // Paso 2: Limpiar el filtro de empresa (volver a "Todas")
+    document.getElementById('empresaFilter').value = '';
+    
+    // Paso 3: Limpiar el filtro de tipo de equipo (volver a "Todos")
+    document.getElementById('tipoFilter').value = '';
+    
+    // Paso 4: Limpiar el filtro de marca (volver a "Todas")
+    document.getElementById('marcaFilter').value = '';
+    
+    // Paso 5: Resetear a la primera página después de limpiar filtros
+    paginaActual = 1;
+    
+    // Paso 6: Recargar los equipos sin filtros aplicados
+    // Esto muestra todos los equipos activos desde el principio
+    cargarEquipos();
+}
+
+// ============================================================================
+// TOGGLE DE ESTADO (ACTIVAR/DESACTIVAR EQUIPO)
+// ============================================================================
+
+// Función que se ejecuta cuando el usuario intenta cambiar el estado activo/inactivo de un equipo
+// Muestra un modal de confirmación antes de realizar el cambio
+// Parámetros:
+//   checkbox: Elemento checkbox que fue cambiado
+function toggleEstadoEquipo(checkbox) {
+    // Paso 1: Guardar referencias del checkbox y su estado original
+    // Esto permite revertir el cambio si el usuario cancela la acción
+    currentToggle = checkbox;  // Guardar referencia al checkbox actual
+    originalState = !checkbox.checked;  // Guardar estado original (antes del cambio)
+    changeConfirmed = false;  // Marcar que el cambio aún no está confirmado
+    
+    // Paso 2: Revertir el cambio visual inmediatamente
+    // El checkbox vuelve a su estado original hasta que se confirme en el modal
     checkbox.checked = originalState;
     
-    // Actualizar nombre del equipo en el modal
-    const nombreEquipo = checkbox.dataset.nombreEquipo;
+    // Paso 3: Actualizar el nombre del equipo en el modal de confirmación
+    // Esto muestra al usuario qué equipo está intentando desactivar/activar
+    const nombreEquipo = checkbox.dataset.nombreEquipo;  // Obtener nombre desde atributo data
     const nombreElement = document.getElementById('equipoDesactivarNombre');
     if (nombreElement) {
-        nombreElement.textContent = nombreEquipo;
+        nombreElement.textContent = nombreEquipo;  // Mostrar nombre en el modal
     }
     
-    // Cerrar cualquier instancia existente del modal primero
+    // Paso 4: Preparar el modal de confirmación
+    // Cerrar cualquier instancia existente del modal para evitar conflictos
     const modalElement = document.getElementById('confirmDesactivarModal');
     if (!modalElement) {
         console.error('Modal element not found');
-        return;
+        return;  // Salir si no se encuentra el elemento del modal
     }
     
+    // Paso 5: Cerrar y limpiar cualquier instancia previa del modal
+    // Esto asegura que el modal se muestre correctamente
     const existingModal = bootstrap.Modal.getInstance(modalElement);
     if (existingModal) {
-        existingModal.dispose();
+        existingModal.dispose();  // Limpiar instancia anterior
     }
     
-    // Mostrar modal
+    // Paso 6: Mostrar el modal de confirmación
+    // El usuario debe confirmar antes de que se cambie el estado del equipo
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
 }
 
+// Función que se ejecuta cuando el usuario confirma el cambio de estado del equipo
+// Realiza la petición al servidor para cambiar el estado activo/inactivo
 function confirmarDesactivacion() {
+    // Paso 1: Validar que hay un toggle pendiente
+    // Si no hay checkbox seleccionado, salir sin hacer nada
     if (!currentToggle) return;
     
+    // Paso 2: Obtener el ID del equipo desde el atributo data del checkbox
+    // Este ID se usa para identificar qué equipo cambiar en el servidor
     const equipoId = parseInt(currentToggle.dataset.equipoId);
+    
+    // Paso 3: Calcular el nuevo estado (opuesto al estado original)
+    // Si estaba activo, se desactiva; si estaba inactivo, se activa
     const nuevoEstado = !originalState;
     
-    // Llamada AJAX para actualizar el estado
+    // Paso 4: Realizar petición POST al servidor para cambiar el estado
+    // Se envía el ID del equipo y el token CSRF para seguridad
     fetch(`/maquinarias/api/equipos/${equipoId}/toggle-activo/`, {
-        method: 'POST',
+        method: 'POST',  // Método HTTP POST para modificar datos
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': window.csrfToken
+            'X-CSRFToken': window.csrfToken  // Token CSRF para protección contra ataques
         }
     })
-    .then(response => response.json())
+    .then(response => response.json())  // Convertir respuesta a JSON
     .then(data => {
         if (data.status === 'success') {
+            // CASO ÉXITO: El estado fue cambiado correctamente
+            // Paso 5.1: Marcar que el cambio fue confirmado
+            // Esto previene que se revierta el cambio cuando se cierre el modal
             changeConfirmed = true;
             
-            // Cerrar modal de confirmación
+            // Paso 5.2: Cerrar el modal de confirmación
             const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmDesactivarModal'));
             confirmModal.hide();
             
-            // Mostrar mensaje de éxito
+            // Paso 5.3: Mostrar notificación de éxito al usuario
+            // El mensaje varía según si se activó o desactivó el equipo
             const accion = data.activo ? 'activado' : 'desactivado';
             mostrarExito(`Equipo ${accion} correctamente`);
             
-            // Recargar equipos
+            // Paso 5.4: Recargar la lista de equipos
+            // Esto actualiza la tabla con el nuevo estado del equipo
             cargarEquipos();
         } else {
+            // CASO ERROR: El servidor retornó un error
+            // Paso 6.1: Cerrar el modal
             const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmDesactivarModal'));
             confirmModal.hide();
+            
+            // Paso 6.2: Mostrar mensaje de error al usuario
             alert('Error: ' + (data.message || 'Error al cambiar el estado del equipo'));
+            
+            // Paso 6.3: Revertir el checkbox a su estado original
             currentToggle.checked = originalState;
         }
     })
     .catch(error => {
+        // CASO EXCEPCIÓN: Error de red o excepción no manejada
+        // Paso 7.1: Registrar error en consola para debugging
         console.error('Error:', error);
+        
+        // Paso 7.2: Cerrar el modal
         const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmDesactivarModal'));
         confirmModal.hide();
+        
+        // Paso 7.3: Mostrar mensaje genérico de error
         alert('Error al cambiar el estado del equipo');
+        
+        // Paso 7.4: Revertir el checkbox a su estado original
         currentToggle.checked = originalState;
     });
 }

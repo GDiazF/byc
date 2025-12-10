@@ -40,6 +40,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // EVENT LISTENERS
 // ============================================================================
 
+/**
+ * Inicializa todos los event listeners de la página.
+ * Configura listeners para búsqueda, filtros, ordenamiento, modales y botones.
+ */
 function inicializarEventListeners() {
     // Búsqueda
     document.getElementById('searchInput').addEventListener('input', function() {
@@ -122,12 +126,19 @@ function inicializarEventListeners() {
 // RENDERIZADO DE TABLA
 // ============================================================================
 
+/**
+ * Renderiza la tabla de personal con filtros, ordenamiento y paginación aplicados.
+ * 
+ * Filtra el personal según la búsqueda y el filtro de empresa,
+ * ordena según la columna seleccionada, y muestra solo los registros
+ * de la página actual. También actualiza los contadores y la paginación.
+ */
 function renderizarTabla() {
     const tbody = document.getElementById('personalTableBody');
     const busqueda = document.getElementById('searchInput').value.toLowerCase();
     const filtroEmpresa = document.getElementById('filtroEmpresa').value;
     
-    // Filtrar personal
+    // Filtrar personal según búsqueda y filtro de empresa
     personalFiltrado = personal.filter(p => {
         // Búsqueda global
         const matchBusqueda = !busqueda || 
@@ -291,6 +302,11 @@ function renderizarTabla() {
 // PAGINACIÓN
 // ============================================================================
 
+/**
+ * Renderiza los controles de paginación.
+ * 
+ * @param {number} totalPaginas - Número total de páginas
+ */
 function renderizarPaginacion(totalPaginas) {
     const paginacion = document.getElementById('paginacion');
     
@@ -392,6 +408,10 @@ function ordenarPor(columna) {
     renderizarTabla();
 }
 
+/**
+ * Actualiza los iconos de ordenamiento en los encabezados de columna.
+ * Muestra flecha arriba/abajo según la dirección del ordenamiento actual.
+ */
 function actualizarIconosOrdenamiento() {
     // Limpiar todos los iconos
     document.querySelectorAll('.sortable i').forEach(icon => {
@@ -412,6 +432,10 @@ function actualizarIconosOrdenamiento() {
 // FILTROS
 // ============================================================================
 
+/**
+ * Limpia todos los filtros y restablece la búsqueda.
+ * Reinicia la tabla a su estado inicial.
+ */
 function limpiarFiltros() {
     document.getElementById('searchInput').value = '';
     document.getElementById('filtroEmpresa').value = '';
@@ -425,6 +449,14 @@ function limpiarFiltros() {
 
 let changeConfirmed = false;
 
+/**
+ * Maneja el cambio de estado activo/inactivo del personal.
+ * 
+ * Muestra un modal de confirmación antes de cambiar el estado.
+ * Si el usuario confirma, envía una petición AJAX para actualizar el estado.
+ * 
+ * @param {HTMLInputElement} checkbox - Checkbox que disparó el evento
+ */
 function toggleEstado(checkbox) {
     // Verificar si el checkbox está deshabilitado
     if (checkbox.disabled) {
@@ -464,6 +496,12 @@ function toggleEstado(checkbox) {
     checkbox.checked = originalState;
 }
 
+/**
+ * Confirma el cambio de estado del personal.
+ * 
+ * Envía una petición AJAX para cambiar el estado activo/inactivo
+ * del personal seleccionado. Muestra mensajes de éxito o error.
+ */
 function confirmarDesactivacion() {
     if (!currentToggle) return;
     
@@ -536,6 +574,14 @@ function confirmarDesactivacion() {
 /**
  * Muestra un modal con toda la información personal y laboral del personal
  * @param {number} personalId - ID del personal
+ */
+/**
+ * Muestra información completa del personal en un modal.
+ * 
+ * Carga los datos del personal mediante AJAX y los muestra
+ * en un modal de Bootstrap con toda la información disponible.
+ * 
+ * @param {number} personalId - ID del personal a mostrar
  */
 function mostrarInfoPersonal(personalId) {
     const modal = new bootstrap.Modal(document.getElementById('infoPersonalModal'));
@@ -792,6 +838,12 @@ function mostrarInfoPersonal(personalId) {
 // UTILIDADES
 // ============================================================================
 
+/**
+ * Obtiene el valor de una cookie por su nombre.
+ * 
+ * @param {string} name - Nombre de la cookie
+ * @returns {string|null} Valor de la cookie o null si no existe
+ */
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -814,6 +866,14 @@ function getCookie(name) {
 let personalSeleccionado = []; // Array de objetos {id, nombre, rut, cargo}
 
 // Buscar personal en el modal
+/**
+ * Busca personal en el modal de selección para descarga ZIP.
+ * 
+ * Filtra el personal según el término de búsqueda y muestra
+ * los resultados en el modal.
+ * 
+ * @param {string} termino - Término de búsqueda
+ */
 function buscarPersonalEnModal(termino) {
     const resultadosDiv = document.getElementById('resultadosBusquedaPersonal');
     
@@ -879,6 +939,11 @@ function buscarPersonalEnModal(termino) {
 }
 
 // Agregar personal a la lista de seleccionados
+/**
+ * Agrega un personal a la lista de seleccionados para descarga ZIP.
+ * 
+ * @param {number} personalId - ID del personal a agregar
+ */
 function agregarPersonalSeleccionado(personalId) {
     const persona = personal.find(p => p.id === personalId);
     if (!persona) return;
@@ -906,6 +971,11 @@ function agregarPersonalSeleccionado(personalId) {
 }
 
 // Remover personal de la lista de seleccionados
+/**
+ * Remueve un personal de la lista de seleccionados para descarga ZIP.
+ * 
+ * @param {number} personalId - ID del personal a remover
+ */
 function removerPersonalSeleccionado(personalId) {
     personalSeleccionado = personalSeleccionado.filter(ps => ps.id !== personalId);
     actualizarVistaSeleccionados();
@@ -918,6 +988,12 @@ function removerPersonalSeleccionado(personalId) {
 }
 
 // Actualizar la vista de personal seleccionado
+/**
+ * Actualiza la vista de personal seleccionado en el modal.
+ * 
+ * Muestra la lista de personal seleccionado y actualiza
+ * el contador de seleccionados.
+ */
 function actualizarVistaSeleccionados() {
     const contador = document.getElementById('contadorSeleccionados');
     const vistaSeleccionados = document.getElementById('personalSeleccionado');
@@ -968,6 +1044,12 @@ function actualizarVistaSeleccionados() {
 }
 
 // Descargar documentación en ZIP
+/**
+ * Descarga la documentación de los personal seleccionados en un archivo ZIP.
+ * 
+ * Envía una petición POST con los IDs del personal seleccionado
+ * y descarga el archivo ZIP generado por el servidor.
+ */
 function descargarDocumentacionZip() {
     if (personalSeleccionado.length === 0) {
         alert('Por favor seleccione al menos un personal');

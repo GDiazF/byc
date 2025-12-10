@@ -1,3 +1,10 @@
+"""
+Configuración del Django Admin para los modelos de RRHH Personal.
+
+Este módulo personaliza la interfaz de administración de Django para todos los modelos
+relacionados con personal, licencias, certificaciones, exámenes, ausentismos, etc.
+Incluye personalizaciones de visualización, filtros, búsqueda y métodos helper.
+"""
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
@@ -20,6 +27,12 @@ from .models import (
 
 @admin.register(Personal)
 class PersonalAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo Personal.
+    
+    Personaliza la visualización de la lista de personal con campos calculados,
+    filtros, búsqueda y organización de campos en fieldsets.
+    """
     list_display = [
         'rut_completo', 'nombre_completo', 'correo', 'sexo_id', 
         'fechanac', 'region_id', 'activo', 'documentos_count'
@@ -27,7 +40,7 @@ class PersonalAdmin(admin.ModelAdmin):
     list_filter = ['activo', 'sexo_id', 'estcivil_id', 'region_id', 'fechanac']
     search_fields = ['nombre', 'apepat', 'apemat', 'rut', 'correo']
     ordering = ['apepat', 'apemat', 'nombre']
-    readonly_fields = ['personal_id']
+    readonly_fields = ['personal_id']  # El ID es auto-generado, no debe editarse
     
     fieldsets = (
         ('Información Personal', {
@@ -49,25 +62,59 @@ class PersonalAdmin(admin.ModelAdmin):
     )
     
     def rut_completo(self, obj):
+        """
+        Muestra el RUT completo con dígito verificador.
+        
+        Args:
+            obj: Instancia del modelo Personal
+            
+        Returns:
+            str: RUT en formato "12345678-9"
+        """
         return f"{obj.rut}-{obj.dvrut}"
     rut_completo.short_description = "RUT"
     rut_completo.admin_order_field = 'rut'
     
     def nombre_completo(self, obj):
+        """
+        Muestra el nombre completo del personal.
+        
+        Args:
+            obj: Instancia del modelo Personal
+            
+        Returns:
+            str: Nombre completo "Nombre ApellidoPaterno ApellidoMaterno"
+        """
         return f"{obj.nombre} {obj.apepat} {obj.apemat}"
     nombre_completo.short_description = "Nombre Completo"
     nombre_completo.admin_order_field = 'nombre'
     
     def documentos_count(self, obj):
-        """Cuenta cuántos documentos tiene cargados"""
+        """
+        Cuenta cuántos documentos tiene cargados el personal y muestra un indicador visual.
+        
+        El color cambia según la cantidad:
+        - Verde (#27ae60): 8 o más documentos (completo)
+        - Amarillo (#f39c12): 5-7 documentos (parcial)
+        - Rojo (#e74c3c): Menos de 5 documentos (incompleto)
+        
+        Args:
+            obj: Instancia del modelo Personal
+            
+        Returns:
+            str: HTML con el conteo de documentos y color indicador
+        """
+        # Lista de todos los campos de documentos
         docs = [
             obj.curriculum, obj.certificado_antecedentes, obj.hoja_vida_conductor,
             obj.foto_carnet, obj.certificado_afp, obj.certificado_salud,
             obj.certificado_estudios, obj.certificado_residencia, obj.fotocopia_carnet,
             obj.fotocopia_finiquito, obj.comprobante_banco
         ]
+        # Contar cuántos documentos tienen archivo cargado
         count = sum(1 for doc in docs if doc)
         total = len(docs)
+        # Determinar color según la cantidad de documentos
         color = '#27ae60' if count >= 8 else '#f39c12' if count >= 5 else '#e74c3c'
         return format_html(
             '<span style="color: {}; font-weight: bold;">{} / {}</span>',
@@ -77,12 +124,18 @@ class PersonalAdmin(admin.ModelAdmin):
 
 @admin.register(Sexo)
 class SexoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo Sexo.
+    """
     list_display = ['sexo_id', 'sexo']
     search_fields = ['sexo']
     ordering = ['sexo']
 
 @admin.register(EstadoCivil)
 class EstadoCivilAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo EstadoCivil.
+    """
     list_display = ['estcivil_id', 'estadocivil']
     search_fields = ['estadocivil']
     ordering = ['estadocivil']
@@ -93,12 +146,19 @@ class EstadoCivilAdmin(admin.ModelAdmin):
 
 @admin.register(DeptoEmpresa)
 class DeptoEmpresaAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo DeptoEmpresa.
+    """
     list_display = ['depto_id', 'depto']
     search_fields = ['depto']
     ordering = ['depto']
 
 @admin.register(Cargo)
 class CargoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo Cargo.
+    Permite filtrar y buscar cargos por departamento.
+    """
     list_display = ['cargo_id', 'cargo', 'depto_id']
     list_filter = ['depto_id']
     search_fields = ['cargo', 'depto_id__depto']
@@ -106,16 +166,31 @@ class CargoAdmin(admin.ModelAdmin):
 
 @admin.register(InfoLaboral)
 class InfoLaboralAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo InfoLaboral.
+    
+    Optimiza las consultas usando select_related para evitar consultas N+1
+    al mostrar información laboral con sus relaciones.
+    """
     list_display = ['personal_id', 'empresa_id', 'depto_id', 'cargo_id', 'fechacontrata']
     list_filter = ['empresa_id', 'depto_id', 'cargo_id', 'fechacontrata']
     search_fields = [
         'personal_id__nombre', 'personal_id__apepat', 'personal_id__apemat',
         'empresa_id__razon_social', 'cargo_id__cargo'
     ]
-    date_hierarchy = 'fechacontrata'
+    date_hierarchy = 'fechacontrata'  # Navegación por fecha de contratación
     ordering = ['personal_id', 'fechacontrata']
     
     def get_queryset(self, request):
+        """
+        Optimiza las consultas usando select_related para cargar relaciones en una sola consulta.
+        
+        Args:
+            request: Objeto HttpRequest
+            
+        Returns:
+            QuerySet: QuerySet optimizado con select_related
+        """
         return super().get_queryset(request).select_related(
             'personal_id', 'empresa_id', 'depto_id', 'cargo_id'
         )
@@ -126,12 +201,21 @@ class InfoLaboralAdmin(admin.ModelAdmin):
 
 @admin.register(TipoAusentismo)
 class TipoAusentismoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo TipoAusentismo.
+    """
     list_display = ['tipoausen_id', 'tipo']
     search_fields = ['tipo']
     ordering = ['tipo']
 
 @admin.register(Ausentismo)
 class AusentismoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo Ausentismo.
+    
+    Muestra información visual con badges de estado y días,
+    y optimiza las consultas con select_related.
+    """
     list_display = [
         'personal_id', 'tipoausen_id', 'fechaini', 'fechafin', 
         'dias_badge', 'estado_badge', 'observacion_short'
@@ -141,10 +225,19 @@ class AusentismoAdmin(admin.ModelAdmin):
         'personal_id__nombre', 'personal_id__apepat', 'personal_id__apemat', 
         'observacion'
     ]
-    date_hierarchy = 'fechaini'
-    ordering = ['-fechaini']
+    date_hierarchy = 'fechaini'  # Navegación por fecha de inicio
+    ordering = ['-fechaini']  # Más recientes primero
     
     def dias_badge(self, obj):
+        """
+        Muestra los días de ausentismo con un badge azul.
+        
+        Args:
+            obj: Instancia del modelo Ausentismo
+            
+        Returns:
+            str: HTML con badge mostrando los días
+        """
         dias = obj.dias_totales
         return format_html(
             '<span style="background-color: #3498db; color: white; padding: 3px 8px; border-radius: 3px;">{} días</span>',
@@ -153,6 +246,15 @@ class AusentismoAdmin(admin.ModelAdmin):
     dias_badge.short_description = "Días"
     
     def estado_badge(self, obj):
+        """
+        Muestra el estado del ausentismo (Activo/Vencido) con badge de color.
+        
+        Args:
+            obj: Instancia del modelo Ausentismo
+            
+        Returns:
+            str: HTML con badge verde (activo) o gris (vencido)
+        """
         if obj.esta_activo:
             return format_html(
                 '<span style="background-color: #27ae60; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">✓ Activo</span>'
@@ -163,12 +265,30 @@ class AusentismoAdmin(admin.ModelAdmin):
     estado_badge.short_description = "Estado"
     
     def observacion_short(self, obj):
+        """
+        Muestra una versión truncada de la observación (máximo 50 caracteres).
+        
+        Args:
+            obj: Instancia del modelo Ausentismo
+            
+        Returns:
+            str: Observación truncada o "-" si no hay observación
+        """
         if obj.observacion:
             return obj.observacion[:50] + "..." if len(obj.observacion) > 50 else obj.observacion
         return "-"
     observacion_short.short_description = "Observación"
     
     def get_queryset(self, request):
+        """
+        Optimiza las consultas usando select_related.
+        
+        Args:
+            request: Objeto HttpRequest
+            
+        Returns:
+            QuerySet: QuerySet optimizado
+        """
         return super().get_queryset(request).select_related('personal_id', 'tipoausen_id')
 
 # ============================================================================
@@ -183,6 +303,11 @@ class TipoLicenciaMedicaAdmin(admin.ModelAdmin):
 
 @admin.register(LicenciaMedicaPorPersonal)
 class LicenciaMedicaPorPersonalAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo LicenciaMedicaPorPersonal.
+    
+    La fecha de fin es calculada automáticamente, por lo que es de solo lectura.
+    """
     list_display = [
         'personal_id', 'tipoLicenciaMedica_id', 
         'fechaEmision', 'dias_licencia', 'fecha_fin_licencia', 
@@ -194,8 +319,8 @@ class LicenciaMedicaPorPersonalAdmin(admin.ModelAdmin):
         'observacion'
     ]
     date_hierarchy = 'fechaEmision'
-    ordering = ['-fechaEmision']
-    readonly_fields = ['fecha_fin_licencia']
+    ordering = ['-fechaEmision']  # Más recientes primero
+    readonly_fields = ['fecha_fin_licencia']  # Calculada automáticamente
     
     fieldsets = (
         ('Información General', {
@@ -210,6 +335,15 @@ class LicenciaMedicaPorPersonalAdmin(admin.ModelAdmin):
     )
     
     def estado_badge(self, obj):
+        """
+        Muestra el estado de la licencia médica (Activa/Vencida) con badge de color.
+        
+        Args:
+            obj: Instancia del modelo LicenciaMedicaPorPersonal
+            
+        Returns:
+            str: HTML con badge verde (activa) o gris (vencida)
+        """
         if obj.esta_activa:
             return format_html(
                 '<span style="background-color: #27ae60; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">✓ Activa</span>'
@@ -220,12 +354,30 @@ class LicenciaMedicaPorPersonalAdmin(admin.ModelAdmin):
     estado_badge.short_description = "Estado"
     
     def observacion_short(self, obj):
+        """
+        Muestra una versión truncada de la observación (máximo 50 caracteres).
+        
+        Args:
+            obj: Instancia del modelo LicenciaMedicaPorPersonal
+            
+        Returns:
+            str: Observación truncada o "-" si no hay observación
+        """
         if obj.observacion:
             return obj.observacion[:50] + "..." if len(obj.observacion) > 50 else obj.observacion
         return "-"
     observacion_short.short_description = "Observación"
     
     def get_queryset(self, request):
+        """
+        Optimiza las consultas usando select_related.
+        
+        Args:
+            request: Objeto HttpRequest
+            
+        Returns:
+            QuerySet: QuerySet optimizado
+        """
         return super().get_queryset(request).select_related('personal_id', 'tipoLicenciaMedica_id')
 
 # ============================================================================
@@ -293,6 +445,11 @@ class ResultadoExamenAdmin(admin.ModelAdmin):
 
 @admin.register(Examen)
 class ExamenAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo Examen.
+    
+    Muestra estado de vigencia basado en la fecha de vencimiento y si tiene documento asociado.
+    """
     list_display = [
         'personal_id', 'tipoEx_id', 'resultadoEx_id', 'proveedor_id',
         'fechaEmision', 'fechaVencimiento', 'estado_vigencia', 
@@ -322,6 +479,20 @@ class ExamenAdmin(admin.ModelAdmin):
     )
     
     def estado_vigencia(self, obj):
+        """
+        Calcula y muestra el estado de vigencia del examen basado en la fecha de vencimiento.
+        
+        Estados:
+        - VENCIDO (rojo): Fecha de vencimiento pasada
+        - POR VENCER (amarillo): Vence en 30 días o menos
+        - VIGENTE (verde): Vence en más de 30 días
+        
+        Args:
+            obj: Instancia del modelo Examen
+            
+        Returns:
+            str: HTML con badge del estado de vigencia
+        """
         from datetime import date
         if obj.fechaVencimiento:
             dias_restantes = (obj.fechaVencimiento - date.today()).days
@@ -345,6 +516,15 @@ class ExamenAdmin(admin.ModelAdmin):
     estado_vigencia.short_description = "Estado"
     
     def tiene_documento(self, obj):
+        """
+        Indica si el examen tiene documento asociado.
+        
+        Args:
+            obj: Instancia del modelo Examen
+            
+        Returns:
+            str: HTML con indicador verde (sí) o rojo (no)
+        """
         if obj.rutaDoc:
             return format_html(
                 '<span style="color: #27ae60; font-weight: bold;">✓ Sí</span>'

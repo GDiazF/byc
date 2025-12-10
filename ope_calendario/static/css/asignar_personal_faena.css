@@ -9,7 +9,7 @@
     letter-spacing: normal !important;
 }
 
-/* Tamaño de fuente equilibrado en ambas tablas */
+/* Tamaño de fuente equilibrado en ambas tablas (disponibles y asignados) */
 #personalTableBody td,
 #tablaPersonalAsignadoBody td {
     font-size: 0.85rem !important;
@@ -33,20 +33,20 @@
     padding: 0.25em 0.5em !important;
 }
 
-/* Checkbox más grande */
+/* Checkbox más grande para mejor usabilidad */
 .personal-checkbox {
     transform: scale(1.3) !important;
     cursor: pointer;
 }
 
-/* Botones más pequeños */
+/* Botones más pequeños para interfaz compacta */
 .btn-group-sm .btn,
 .btn-sm {
     font-size: 0.7rem !important;
     padding: 0.2rem 0.4rem !important;
 }
 
-/* Inputs y selects de filtros más pequeños */
+/* Inputs y selects de filtros más pequeños para ahorrar espacio */
 .input-group-sm .form-control,
 .form-select-sm {
     font-size: 0.75rem !important;
@@ -78,7 +78,7 @@
     margin-bottom: 0.5rem !important;
 }
 
-/* Columnas ordenables */
+/* Columnas ordenables en las tablas (cursor pointer y efecto hover) */
 .sortable {
     cursor: pointer;
     user-select: none;

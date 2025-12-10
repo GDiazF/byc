@@ -1,3 +1,10 @@
+# ============================================================================
+# VISTAS DE CALENDARIO DE OPERACIONES
+# ============================================================================
+# Este módulo contiene todas las vistas y APIs para el sistema de calendario
+# de operaciones, incluyendo gestión de faenas, asignaciones de personal y equipos,
+# y visualización del calendario mensual.
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.db.models import Q, Prefetch
@@ -18,45 +25,64 @@ from .models import (
 from rrhh_personal.models import Personal
 from maquinarias.models import OrdenTrabajo, Equipo
 
-
-# Create your views here.
-
 @login_required
 @permission_required_custom('ope_calendario.view_faena')
 def calendario_mensual(request):
-    """Vista para mostrar el calendario mensual con datos reales y paginación"""
+    """
+    Vista principal para mostrar el calendario mensual con datos reales y paginación.
+    Muestra el calendario de planificación con el estado de cada personal para cada día del mes.
     
-    # Obtener parámetros de la URL o usar fecha actual
+    Parámetros GET:
+        year: int - Año del calendario (por defecto: año actual)
+        month: int - Mes del calendario (1-12, por defecto: mes actual)
+        page: int - Página de personal a mostrar (por defecto: 1)
+        page_size: int - Cantidad de personal por página (10, 25, 50, 100, por defecto: 10)
+        faena: str - Filtro por nombre de faena (opcional)
+        cargo: str - Filtro por cargo (opcional)
+        empresa: str - Filtro por empresa (opcional)
+        search: str - Búsqueda por nombre o RUT (opcional)
+    
+    Retorna:
+        HttpResponse: Renderiza el template calendario_mensual.html con los datos del calendario
+    """
+    # Paso 1: Obtener parámetros de la URL o usar valores por defecto (fecha actual)
     try:
         year = int(request.GET.get('year', datetime.now().year))
         month = int(request.GET.get('month', datetime.now().month))
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 10))
     except (ValueError, TypeError):
+        # Si hay error al convertir, usar valores por defecto
         year = datetime.now().year
         month = datetime.now().month
         page = 1
         page_size = 10
     
-    # Validar rango de fechas
+    # Paso 2: Validar rango de fechas
+    # Asegurar que el mes esté entre 1 y 12
     if month < 1 or month > 12:
         month = datetime.now().month
+    # Asegurar que el año esté en un rango razonable
     if year < 1900 or year > 2100:
         year = datetime.now().year
     
-    # Validar paginación
+    # Paso 3: Validar parámetros de paginación
+    # La página debe ser al menos 1
     if page < 1:
         page = 1
+    # El tamaño de página debe ser uno de los valores permitidos
     if page_size not in [10, 25, 50, 100]:
         page_size = 10
     
-    # Obtener filtros
-    faena_filter = request.GET.get('faena', '')
-    cargo_filter = request.GET.get('cargo', '')
-    empresa_filter = request.GET.get('empresa', '')
-    search_query = request.GET.get('search', '')
+    # Paso 4: Obtener filtros de la URL
+    # Estos filtros permiten al usuario filtrar el personal mostrado en el calendario
+    faena_filter = request.GET.get('faena', '')  # Filtrar por faena asignada
+    cargo_filter = request.GET.get('cargo', '')  # Filtrar por cargo
+    empresa_filter = request.GET.get('empresa', '')  # Filtrar por empresa
+    search_query = request.GET.get('search', '')  # Búsqueda por nombre o RUT
     
-    # Obtener datos del calendario con paginación
+    # Paso 5: Obtener datos del calendario con paginación
+    # Esta función calcula los estados de cada personal para cada día del mes
     calendario_data = obtener_calendario_mensual(
         year, month, faena_filter, cargo_filter, empresa_filter, search_query, page, page_size
     )
@@ -302,9 +328,27 @@ def calendario_mensual(request):
 
 def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', empresa_filter='', search_query='', page=1, page_size=10):
     """
-    Obtiene datos para el calendario con paginación.
-    NUEVA ARQUITECTURA: Envía asignaciones al frontend, estados se calculan en JavaScript
-    ESCALABLE: O(1) - El tiempo no aumenta con más trabajadores
+    Obtiene datos para el calendario mensual con paginación y filtros.
+    Esta función implementa una arquitectura escalable donde se envían las asignaciones
+    al frontend y los estados se calculan en JavaScript, evitando cálculos pesados en el servidor.
+    
+    Arquitectura:
+    - Envía asignaciones al frontend (datos ligeros)
+    - Estados se calculan en JavaScript (distribuye la carga)
+    - Escalable: O(1) - El tiempo no aumenta proporcionalmente con más trabajadores
+    
+    Parámetros:
+        year: int - Año del calendario
+        month: int - Mes del calendario (1-12)
+        faena_filter: str - Filtro por nombre de faena (opcional)
+        cargo_filter: str - Filtro por cargo (opcional)
+        empresa_filter: str - Filtro por empresa (opcional)
+        search_query: str - Búsqueda por nombre o RUT (opcional)
+        page: int - Página actual (por defecto: 1)
+        page_size: int - Cantidad de registros por página (por defecto: 10)
+    
+    Retorna:
+        dict: Diccionario con datos del calendario, personal paginado, asignaciones y estados
     """
     # Obtener rango de fechas del mes
     _, ultimo_dia = monthrange(year, month)
@@ -594,8 +638,22 @@ def obtener_calendario_mensual(year, month, faena_filter='', cargo_filter='', em
 
 def obtener_estado_final_personal_fecha_optimizado(personal, fecha, estados_fuente_cache):
     """
-    Versión optimizada que usa datos pre-cargados en memoria.
+    Función helper optimizada para calcular el estado final de un personal en una fecha específica.
+    Esta versión usa un caché de estados_fuente para evitar consultas repetidas a la base de datos.
     Reduce consultas de ~620 a menos de 10 por carga de página.
+    
+    Orden de prioridad:
+    1. Estados manuales (más alta prioridad)
+    2. Estados de fuentes externas (según prioridad del estado)
+    3. Estados derivados de turnos (más baja prioridad)
+    
+    Parámetros:
+        personal: Personal - Instancia del personal para calcular el estado
+        fecha: date - Fecha para la cual calcular el estado
+        estados_fuente_cache: dict - Caché de estados_fuente para optimización
+    
+    Retorna:
+        list: Lista de estados (normalmente uno, pero puede haber múltiples con misma prioridad)
     """
     from django.db.models import Q
     
@@ -728,15 +786,23 @@ def obtener_estado_final_personal_fecha_optimizado(personal, fecha, estados_fuen
 
 def obtener_estado_final_personal_fecha(personal, fecha):
     """
-    Calcula el estado final de una persona en una fecha específica,
-    considerando todas las fuentes y prioridades.
+    Función helper para calcular el estado final de un personal en una fecha específica.
+    Considera todas las fuentes de estados (manuales, fuentes externas, turnos) y aplica prioridades.
     
     Orden de prioridad:
     1. Estados manuales (más alta prioridad)
     2. Estados de fuentes externas (según prioridad del estado)
     3. Estados derivados de turnos (más baja prioridad)
     
-    Retorna una lista de estados cuando hay conflictos de prioridad.
+    Si hay estados bloqueantes, retorna solo el de mayor prioridad.
+    Si hay múltiples estados con la misma prioridad máxima, retorna todos.
+    
+    Parámetros:
+        personal: Personal - Instancia del personal para calcular el estado
+        fecha: date - Fecha para la cual calcular el estado
+    
+    Retorna:
+        list: Lista de estados con detalles (normalmente uno, pero puede haber múltiples con misma prioridad)
     """
     from django.db.models import Q
     
@@ -874,6 +940,23 @@ def obtener_estado_final_personal_fecha(personal, fecha):
 @login_required
 @permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 def api_calendario_mensual(request):
+    """
+    API endpoint para obtener datos del calendario mensual en formato JSON.
+    Útil para actualizaciones dinámicas del calendario sin recargar la página.
+    
+    Parámetros GET:
+        year: int - Año del calendario (por defecto: año actual)
+        month: int - Mes del calendario (1-12, por defecto: mes actual)
+        page: int - Página actual (por defecto: 1)
+        page_size: int - Cantidad de registros por página (por defecto: 10)
+        faena: str - Filtro por nombre de faena (opcional)
+        cargo: str - Filtro por cargo (opcional)
+        empresa: str - Filtro por empresa (opcional)
+        search: str - Búsqueda por nombre o RUT (opcional)
+    
+    Retorna:
+        JsonResponse: Datos del calendario en formato JSON con personal, asignaciones y estados
+    """
     """API para obtener datos del calendario en formato JSON con paginación"""
     try:
         year = int(request.GET.get('year', datetime.now().year))
@@ -988,7 +1071,12 @@ def api_calendario_mensual(request):
 
 
 def invalidar_cache_calendario():
-    """Invalida todo el caché del calendario incrementando la versión"""
+    """
+    Función helper para invalidar el caché del calendario.
+    Se llama cuando hay cambios en asignaciones, estados manuales o faenas
+    para asegurar que los datos mostrados estén actualizados.
+    Incrementa la versión del caché para invalidar todos los calendarios en caché.
+    """
     # Incrementar versión del caché para invalidar todos los calendarios
     current_version = cache.get('calendario_version', 0)
     new_version = current_version + 1
@@ -999,7 +1087,17 @@ def invalidar_cache_calendario():
 @permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 @require_http_methods(["GET"])
 def obtener_info_personal(request, personal_id):
-    """API para obtener información completa del personal incluyendo documentación"""
+    """
+    API endpoint para obtener información detallada de un personal específico.
+    Incluye datos personales, asignaciones activas, estados, licencias, certificaciones y exámenes.
+    
+    Parámetros:
+        request: HttpRequest - Request HTTP
+        personal_id: int - ID del personal a consultar
+    
+    Retorna:
+        JsonResponse: Información completa del personal en formato JSON, incluyendo documentación
+    """
     try:
         from rrhh_personal.models import (
             Personal, LicenciaPorPersonal, LicenciaInternaPorPersonal,
@@ -1103,7 +1201,16 @@ def obtener_info_personal(request, personal_id):
 @login_required
 @permission_required_custom('ope_calendario.view_faena')
 def limpiar_cache_calendario(request):
-    """Vista administrativa para limpiar el caché del calendario manualmente"""
+    """
+    Vista administrativa para limpiar el caché del calendario manualmente.
+    Útil cuando se necesita forzar una actualización de los datos después de cambios.
+    
+    Parámetros:
+        request: HttpRequest - Request HTTP
+    
+    Retorna:
+        HttpResponse: Redirección al calendario con mensaje de confirmación
+    """
     from django.contrib import messages
     
     current_version = cache.get('calendario_version', 0)
@@ -1119,7 +1226,24 @@ def limpiar_cache_calendario(request):
 @permission_required_custom('ope_calendario.add_asignacionfaena', is_ajax=True)
 @require_http_methods(["POST"])
 def crear_asignacion(request):
-    """API para crear una nueva asignación de faena"""
+    """
+    API endpoint para crear una nueva asignación de personal a faena.
+    Valida los datos, verifica conflictos con asignaciones existentes y OTs,
+    crea la asignación y registra en el historial.
+    
+    Parámetros POST (JSON):
+        personal_id: int - ID del personal a asignar
+        faena_id: int - ID de la faena
+        turno_id: int - ID del turno
+        fecha_inicio: str - Fecha de inicio (formato ISO: YYYY-MM-DD)
+        fecha_fin: str - Fecha de fin (formato ISO: YYYY-MM-DD, opcional)
+        bloque_inicio_id: int - ID del bloque de inicio del turno (opcional)
+        observaciones: str - Observaciones opcionales
+        activo: bool - Estado activo/inactivo (por defecto: True)
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error y mensaje
+    """
     try:
         data = json.loads(request.body)
         
@@ -1267,7 +1391,23 @@ def crear_asignacion(request):
 @permission_required_custom('ope_calendario.modificar_asignacion_personal', is_ajax=True)
 @require_http_methods(["POST"])
 def actualizar_asignacion(request):
-    """API para actualizar una asignación de faena existente"""
+    """
+    API endpoint para actualizar una asignación de personal a faena existente.
+    Valida los datos, verifica conflictos, actualiza la asignación y registra en el historial.
+    
+    Parámetros POST (JSON):
+        asignacion_id: int - ID de la asignación a actualizar
+        faena_id: int - ID de la faena
+        turno_id: int - ID del turno
+        fecha_inicio: str - Nueva fecha de inicio (formato ISO: YYYY-MM-DD)
+        fecha_fin: str - Nueva fecha de fin (formato ISO: YYYY-MM-DD, opcional)
+        bloque_inicio_id: int - ID del bloque de inicio (opcional)
+        observaciones: str - Observaciones opcionales
+        activo: bool - Estado activo/inactivo (opcional)
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error y mensaje
+    """
     try:
         data = json.loads(request.body)
         
@@ -1413,7 +1553,16 @@ def actualizar_asignacion(request):
 @permission_required_custom('ope_calendario.delete_asignacionfaena', is_ajax=True)
 @require_http_methods(["POST"])
 def eliminar_asignacion(request):
-    """API para eliminar una asignación de faena"""
+    """
+    API endpoint para eliminar una asignación de personal a faena.
+    Elimina la asignación físicamente y registra la acción en el historial.
+    
+    Parámetros POST (JSON):
+        asignacion_id: int - ID de la asignación a eliminar
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error y mensaje
+    """
     try:
         data = json.loads(request.body)
         asignacion_id = data.get('asignacion_id')
@@ -1473,7 +1622,18 @@ def eliminar_asignacion(request):
 @login_required
 @permission_required_custom('ope_calendario.asignar_personal_faena')
 def asignar_personal_faena(request, faena_id):
-    """Vista para asignar personal a una faena específica - PÁGINA COMPLETA"""
+    """
+    Vista para mostrar el formulario de asignación de personal a una faena específica.
+    Muestra lista de personal disponible y personal ya asignado, con filtros y paginación.
+    Incluye información de conflictos con asignaciones existentes y OTs.
+    
+    Parámetros:
+        request: HttpRequest - Request HTTP
+        faena_id: int - ID de la faena para la cual asignar personal
+    
+    Retorna:
+        HttpResponse: Renderiza el template asignar_personal_faena.html con todos los datos necesarios
+    """
     from django.core.serializers.json import DjangoJSONEncoder
     
     # Obtener la faena
@@ -1761,7 +1921,18 @@ def asignar_personal_faena(request, faena_id):
 @login_required
 @permission_required_custom('ope_calendario.asignar_equipos_faena')
 def asignar_equipos_faena(request, faena_id):
-    """Vista para asignar equipos a una faena específica - PÁGINA COMPLETA"""
+    """
+    Vista para mostrar el formulario de asignación de equipos a una faena específica.
+    Muestra lista de equipos disponibles y equipos ya asignados, con filtros y paginación.
+    Incluye información de conflictos con asignaciones existentes y OTs.
+    
+    Parámetros:
+        request: HttpRequest - Request HTTP
+        faena_id: int - ID de la faena para la cual asignar equipos
+    
+    Retorna:
+        HttpResponse: Renderiza el template asignar_equipos_faena.html con todos los datos necesarios
+    """
     from django.core.serializers.json import DjangoJSONEncoder
     
     # Obtener la faena
@@ -1974,7 +2145,21 @@ def asignar_equipos_faena(request, faena_id):
 @permission_required_custom('ope_calendario.add_asignacionequipofaena', is_ajax=True)
 @require_http_methods(["POST"])
 def crear_asignacion_equipos(request):
-    """API para crear asignaciones de equipos a una faena"""
+    """
+    API endpoint para crear asignaciones masivas de equipos a faena.
+    Permite asignar múltiples equipos a una faena en una sola operación.
+    Valida conflictos con asignaciones existentes y OTs antes de crear.
+    
+    Parámetros POST (JSON):
+        faena_id: int - ID de la faena
+        equipos_ids: list - Lista de IDs de equipos a asignar
+        fecha_inicio: str - Fecha de inicio (formato ISO: YYYY-MM-DD)
+        fecha_fin: str - Fecha de fin (formato ISO: YYYY-MM-DD, opcional)
+        observaciones: str - Observaciones opcionales
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error, cantidad de asignaciones creadas y lista de errores
+    """
     try:
         data = json.loads(request.body)
         
@@ -2111,7 +2296,16 @@ def crear_asignacion_equipos(request):
 @permission_required_custom('ope_calendario.delete_asignacionequipofaena', is_ajax=True)
 @require_http_methods(["POST"])
 def eliminar_asignacion_equipo(request):
-    """API para eliminar una asignación de equipo a faena"""
+    """
+    API endpoint para eliminar una asignación de equipo a faena.
+    Desactiva la asignación (soft delete) y registra la acción en el historial.
+    
+    Parámetros POST (JSON):
+        asignacion_id: int - ID de la asignación a eliminar
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error y mensaje
+    """
     try:
         data = json.loads(request.body)
         asignacion_id = data.get('asignacion_id')
@@ -2165,7 +2359,20 @@ def eliminar_asignacion_equipo(request):
 @permission_required_custom('ope_calendario.modificar_asignacion_equipo', is_ajax=True)
 @require_http_methods(["POST"])
 def actualizar_asignacion_equipo(request):
-    """API para actualizar una asignación de equipo a faena existente"""
+    """
+    API endpoint para actualizar una asignación de equipo a faena existente.
+    Valida los datos, verifica conflictos, actualiza la asignación y registra en el historial.
+    
+    Parámetros POST (JSON):
+        asignacion_id: int - ID de la asignación a actualizar
+        faena_id: int - ID de la faena
+        fecha_inicio: str - Nueva fecha de inicio (formato ISO: YYYY-MM-DD)
+        fecha_fin: str - Nueva fecha de fin (formato ISO: YYYY-MM-DD, opcional)
+        observaciones: str - Observaciones opcionales
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error y mensaje
+    """
     try:
         data = json.loads(request.body)
         
@@ -2304,7 +2511,14 @@ def actualizar_asignacion_equipo(request):
 @login_required
 @permission_required_custom('ope_calendario.view_faena')
 def gestionar_faenas(request):
-    """Vista principal para gestionar faenas y sus asignaciones"""
+    """
+    Vista principal para gestionar faenas (listar, crear, editar, eliminar).
+    Muestra lista de faenas con opciones de filtrado y búsqueda.
+    Incluye información de asignaciones de personal y equipos.
+    
+    Retorna:
+        HttpResponse: Renderiza el template gestionar_faenas.html con la lista de faenas
+    """
     from django.core.serializers.json import DjangoJSONEncoder
     
     # Obtener todas las faenas activas
@@ -2464,7 +2678,21 @@ def gestionar_faenas(request):
 @permission_required_custom('ope_calendario.add_faena', is_ajax=True)
 @require_http_methods(["POST"])
 def crear_faena(request):
-    """API para crear una nueva faena"""
+    """
+    API endpoint para crear una nueva faena.
+    Valida los datos, verifica que el código sea único, crea la faena y registra en el historial.
+    
+    Parámetros POST (JSON):
+        codigo: str - Código único de la faena (se convierte a mayúsculas)
+        nombre: str - Nombre de la faena
+        ubicacion: str - Ubicación (opcional)
+        descripcion: str - Descripción (opcional)
+        fecha_inicio: str - Fecha de inicio (formato ISO: YYYY-MM-DD)
+        fecha_fin: str - Fecha de fin (formato ISO: YYYY-MM-DD)
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error, mensaje y datos de la faena creada
+    """
     try:
         data = json.loads(request.body)
         
@@ -2550,7 +2778,24 @@ def crear_faena(request):
 @permission_required_custom('ope_calendario.change_faena', is_ajax=True)
 @require_http_methods(["POST"])
 def actualizar_faena(request):
-    """API para actualizar una faena existente y ajustar asignaciones automáticamente"""
+    """
+    API endpoint para actualizar una faena existente y ajustar asignaciones automáticamente.
+    Valida los datos, actualiza la faena, ajusta asignaciones que coincidan con las fechas anteriores
+    y registra todos los cambios en el historial.
+    
+    Parámetros POST (JSON):
+        faena_id: int - ID de la faena a actualizar
+        codigo: str - Nuevo código (se convierte a mayúsculas)
+        nombre: str - Nuevo nombre
+        ubicacion: str - Nueva ubicación (opcional)
+        descripcion: str - Nueva descripción (opcional)
+        fecha_inicio: str - Nueva fecha de inicio (formato ISO: YYYY-MM-DD)
+        fecha_fin: str - Nueva fecha de fin (formato ISO: YYYY-MM-DD)
+        activo: bool - Estado activo/inactivo (opcional)
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error, mensaje y detalles de asignaciones ajustadas
+    """
     try:
         data = json.loads(request.body)
         
@@ -2771,7 +3016,14 @@ def actualizar_faena(request):
 @permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 @require_http_methods(["GET"])
 def listar_faenas_api(request):
-    """API para obtener lista de faenas con sus asignaciones"""
+    """
+    API endpoint para listar todas las faenas activas en formato JSON.
+    Útil para obtener datos de faenas sin recargar la página.
+    Incluye información de asignaciones de personal.
+    
+    Retorna:
+        JsonResponse: Lista de faenas en formato JSON con sus datos y cantidad de personal asignado
+    """
     try:
         from django.core.serializers.json import DjangoJSONEncoder
         
@@ -2810,7 +3062,16 @@ def listar_faenas_api(request):
 @permission_required_custom('ope_calendario.delete_faena', is_ajax=True)
 @require_http_methods(["POST"])
 def eliminar_faena(request):
-    """API para eliminar una faena (en cascada con sus asignaciones)"""
+    """
+    API endpoint para eliminar una faena físicamente (CASCADE elimina asignaciones).
+    Elimina la faena y todas sus asignaciones de personal y equipos en cascada.
+    
+    Parámetros POST (JSON):
+        faena_id: int - ID de la faena a eliminar
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error, mensaje y cantidad de asignaciones eliminadas
+    """
     try:
         data = json.loads(request.body)
         faena_id = data.get('faena_id')
@@ -2856,8 +3117,14 @@ def eliminar_faena(request):
 
 def obtener_nombre_completo_usuario(usuario):
     """
-    Obtiene el nombre completo del usuario, priorizando first_name + last_name.
-    Si no tiene nombre completo, retorna el username.
+    Función helper para obtener el nombre completo de un usuario.
+    Prioriza nombre completo (first_name + last_name) sobre username, con fallback a 'Sistema'.
+    
+    Parámetros:
+        usuario: User - Instancia del usuario de Django (puede ser None)
+    
+    Retorna:
+        str: Nombre completo del usuario, username, o 'Sistema' si no hay información
     """
     if not usuario:
         return 'Sistema'
@@ -2872,7 +3139,18 @@ def obtener_nombre_completo_usuario(usuario):
 @permission_required_multiple('ope_calendario.ver_historial_faena', 'ope_calendario.view_historialfaena', require_all=False, is_ajax=True)
 @require_http_methods(["GET"])
 def api_historial_faena(request, faena_id):
-    """API para obtener el historial completo de una faena en formato JSON"""
+    """
+    API endpoint para obtener el historial completo de una faena.
+    Retorna todos los eventos y cambios registrados en el historial de la faena,
+    incluyendo información de usuarios y personal involucrado.
+    
+    Parámetros:
+        request: HttpRequest - Request HTTP
+        faena_id: int - ID de la faena para la cual obtener el historial
+    
+    Retorna:
+        JsonResponse: Historial de la faena en formato JSON con todos los eventos ordenados por fecha descendente
+    """
     try:
         faena = get_object_or_404(Faena, id=faena_id)
         historial = HistorialFaena.objects.filter(faena=faena).select_related(
@@ -2919,7 +3197,18 @@ def api_historial_faena(request, faena_id):
 @login_required
 @permission_required_multiple('ope_calendario.ver_historial_faena', 'ope_calendario.view_historialfaena', require_all=False)
 def ver_historial_faena(request, faena_id):
-    """Vista para ver el historial completo de una faena (mantenida por compatibilidad)"""
+    """
+    Vista para mostrar el historial completo de una faena en una página dedicada.
+    Muestra todos los eventos y cambios registrados en el historial.
+    Mantenida por compatibilidad (la funcionalidad principal está en el modal).
+    
+    Parámetros:
+        request: HttpRequest - Request HTTP
+        faena_id: int - ID de la faena para la cual mostrar el historial
+    
+    Retorna:
+        HttpResponse: Renderiza el template historial_faena.html con el historial completo
+    """
     from django.core.serializers.json import DjangoJSONEncoder
     
     try:
@@ -2969,7 +3258,24 @@ def ver_historial_faena(request, faena_id):
 @permission_required_custom('ope_calendario.asignacion_masiva_personal', is_ajax=True)
 @require_http_methods(["POST"])
 def crear_asignacion_masiva(request):
-    """API para crear múltiples asignaciones a la vez (asignación masiva)"""
+    """
+    API endpoint para crear asignaciones masivas de personal a faena.
+    Permite asignar múltiples personal a una faena en una sola operación.
+    Valida conflictos con asignaciones existentes y OTs para cada personal antes de crear.
+    
+    Parámetros POST (JSON):
+        faena_id: int - ID de la faena
+        personal_ids: list - Lista de IDs de personal a asignar
+        turno_id: int - ID del turno
+        fecha_inicio: str - Fecha de inicio (formato ISO: YYYY-MM-DD)
+        fecha_fin: str - Fecha de fin (formato ISO: YYYY-MM-DD, opcional)
+        bloque_inicio_id: int - ID del bloque de inicio del turno (opcional)
+        observaciones: str - Observaciones opcionales
+        activo: bool - Estado activo/inactivo (por defecto: True)
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error, cantidad de asignaciones creadas y lista de errores
+    """
     try:
         data = json.loads(request.body)
         
@@ -3153,7 +3459,13 @@ def crear_asignacion_masiva(request):
 @login_required
 @permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 def api_estados(request):
-    """API para obtener todos los estados disponibles"""
+    """
+    API endpoint para obtener la lista de todos los estados disponibles.
+    Útil para poblar dropdowns y mostrar la leyenda de estados en el frontend.
+    
+    Retorna:
+        JsonResponse: Lista de estados activos en formato JSON, ordenados por prioridad descendente
+    """
     estados = Estado.objects.filter(activo=True).order_by('-prioridad', 'nombre')
     estados_data = [
         {
@@ -3172,7 +3484,22 @@ def api_estados(request):
 @login_required
 @permission_required_custom('ope_calendario.view_faena', is_ajax=True)
 def api_personal_faena(request, faena_id):
-    """API para obtener el personal asignado a una faena específica con sus asignaciones"""
+    """
+    API endpoint para obtener el personal asignado a una faena específica.
+    Incluye información detallada de cada asignación, turnos y bloques.
+    Filtra por mes y año si se proporcionan en los parámetros GET.
+    
+    Parámetros GET (opcionales):
+        year: int - Año para filtrar asignaciones (por defecto: año actual)
+        month: int - Mes para filtrar asignaciones (por defecto: mes actual)
+    
+    Parámetros:
+        request: HttpRequest - Request HTTP
+        faena_id: int - ID de la faena para la cual obtener el personal
+    
+    Retorna:
+        JsonResponse: Lista de personal asignado en formato JSON con sus asignaciones y turnos
+    """
     try:
         year = int(request.GET.get('year', datetime.now().year))
         month = int(request.GET.get('month', datetime.now().month))
@@ -3275,7 +3602,15 @@ def api_personal_faena(request, faena_id):
 @require_http_methods(["POST"])
 def eliminar_estado_manual(request, estado_id):
     """
-    Elimina permanentemente un estado manual
+    Vista para eliminar un estado manual específico.
+    Elimina permanentemente el estado manual del personal e invalida el caché del calendario.
+    
+    Parámetros:
+        request: HttpRequest - Request HTTP
+        estado_id: int - ID del estado manual a eliminar
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con status (success/error) y mensaje
     """
     from django.core.cache import cache
     
@@ -3313,7 +3648,20 @@ def eliminar_estado_manual(request, estado_id):
 @require_http_methods(["POST"])
 def asignar_estado_manual_api(request):
     """
-    API para asignar estados manuales a múltiples trabajadores
+    API endpoint para asignar estados manuales a múltiples trabajadores.
+    Crea estados manuales que sobrescriben los estados calculados por turnos.
+    Valida que las fechas estén dentro del rango de la faena.
+    
+    Parámetros POST (JSON):
+        faena_id: int - ID de la faena
+        estado: str - ID del estado a asignar (como string)
+        fecha_inicio: str - Fecha de inicio (formato ISO: YYYY-MM-DD)
+        fecha_fin: str - Fecha de fin (formato ISO: YYYY-MM-DD)
+        observaciones: str - Observaciones opcionales
+        personal_ids: list - Lista de IDs de personal a los que asignar el estado
+    
+    Retorna:
+        JsonResponse: Resultado de la operación con success/error, cantidad de estados creados y lista de errores
     """
     import json
     from django.core.cache import cache

@@ -5,24 +5,7 @@
 
 {% block extrastyles %}
 <link rel="stylesheet" href="{% static 'css/rrhh_tables.css' %}?v=5.0">
-<style>
-    .timeline-item {
-        position: relative;
-        padding-left: 30px;
-    }
-    .timeline-item::before {
-        content: '';
-        position: absolute;
-        left: 8px;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: #dee2e6;
-    }
-    .timeline-item:last-child::before {
-        display: none;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'maquinarias/css/historial_ot.css' %}">
 {% endblock %}
 
 {% block content %}

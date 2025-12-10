@@ -1,3 +1,11 @@
+"""
+Configuración del panel de administración de Django para la app maquinarias.
+
+Este archivo registra todos los modelos de la app en el panel de administración de Django,
+permitiendo gestionar los datos directamente desde la interfaz web del admin.
+Cada modelo tiene su propia clase Admin que personaliza cómo se muestra y gestiona en el admin.
+"""
+
 from django.contrib import admin
 from .models import (
     TipoEquipo, MarcaEquipo, ModeloEquipo, Equipo,
@@ -10,81 +18,217 @@ from .models import (
 
 
 # ==================== MODELOS DE EQUIPOS ====================
+# Estas clases configuran cómo se muestran y gestionan los modelos relacionados con equipos
+# en el panel de administración de Django
 
 @admin.register(TipoEquipo)
 class TipoEquipoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo TipoEquipo.
+    
+    TipoEquipo representa las categorías de equipos (ej: Grúa Torre, Excavadora, Camión).
+    Esta configuración personaliza cómo se muestra y busca en el panel de administración.
+    """
+    # Campos que se muestran en la lista de objetos del admin
+    # Estos campos aparecen como columnas en la tabla principal
     list_display = ('tipoEquipo_id', 'tipoEquipo', 'siglaEquipo')
+    
+    # Campos por los que se puede buscar usando la barra de búsqueda del admin
+    # Django crea automáticamente un campo de búsqueda cuando se especifica esto
     search_fields = ('tipoEquipo', 'siglaEquipo')
+    
+    # Orden por defecto de los objetos en la lista
+    # Los objetos se ordenan alfabéticamente por nombre del tipo
     ordering = ('tipoEquipo',)
 
 
 @admin.register(MarcaEquipo)
 class MarcaEquipoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo MarcaEquipo.
+    
+    MarcaEquipo representa las marcas de equipos (ej: Caterpillar, Komatsu, Liebherr).
+    Esta configuración personaliza cómo se muestra y busca en el panel de administración.
+    """
+    # Campos que se muestran en la lista de objetos del admin
     list_display = ('marcaEquipo_id', 'marcaEquipo')
+    
+    # Campos por los que se puede buscar usando la barra de búsqueda del admin
     search_fields = ('marcaEquipo',)
+    
+    # Orden por defecto de los objetos en la lista (alfabético por nombre de marca)
     ordering = ('marcaEquipo',)
 
 
 @admin.register(ModeloEquipo)
 class ModeloEquipoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo ModeloEquipo.
+    
+    ModeloEquipo representa los modelos específicos de equipos (ej: CAT 320D, Komatsu PC200).
+    Cada modelo pertenece a un tipo y una marca. Esta configuración permite filtrar por tipo y marca.
+    """
+    # Campos que se muestran en la lista de objetos del admin
+    # Se incluyen las relaciones para ver tipo y marca directamente en la lista
     list_display = ('modeloEquipo_id', 'modeloEquipo', 'tipoEquipo_id', 'marcaEquipo_id')
+    
+    # Filtros laterales en el admin para filtrar por tipo y marca
+    # Django crea automáticamente un panel de filtros en el lado derecho
     list_filter = ('tipoEquipo_id', 'marcaEquipo_id')
+    
+    # Campos por los que se puede buscar usando la barra de búsqueda del admin
     search_fields = ('modeloEquipo',)
+    
+    # Orden por defecto de los objetos en la lista (alfabético por nombre de modelo)
     ordering = ('modeloEquipo',)
 
 
 @admin.register(Equipo)
 class EquipoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo Equipo.
+    
+    Equipo representa cada equipo físico individual en el sistema.
+    Esta configuración permite gestionar equipos, filtrarlos por estado, empresa y tipo,
+    y buscar por nombre, código interno o patente.
+    
+    IMPORTANTE: nombreEquipo es de solo lectura porque se genera automáticamente
+    basado en el modelo y código interno del equipo.
+    """
+    # Campos que se muestran en la lista de objetos del admin
+    # Se incluyen los campos más importantes para identificar rápidamente cada equipo
     list_display = ('equipo_id', 'nombreEquipo', 'modeloEquipo_id', 'empresa_id', 'codigoInterno', 'patente', 'activo')
+    
+    # Filtros laterales en el admin para filtrar por estado, empresa y tipo
+    # Los equipos activos aparecen primero debido al ordenamiento
     list_filter = ('activo', 'empresa_id', 'modeloEquipo_id__tipoEquipo_id')
+    
+    # Campos por los que se puede buscar usando la barra de búsqueda del admin
+    # Permite buscar equipos por nombre, código interno o patente
     search_fields = ('nombreEquipo', 'codigoInterno', 'patente')
+    
+    # Campos que no se pueden editar directamente en el admin
+    # nombreEquipo se genera automáticamente, por lo que es de solo lectura
     readonly_fields = ('nombreEquipo',)
+    
+    # Orden por defecto: equipos activos primero, luego por nombre
+    # El guión (-) antes de 'activo' indica orden descendente (True antes que False)
     ordering = ('-activo', 'nombreEquipo')
 
 
 # ==================== MODELOS DE MANTENIMIENTO ====================
+# Estas clases configuran cómo se muestran y gestionan los modelos relacionados con mantenimiento
+# en el panel de administración de Django
 
 @admin.register(Seccion)
 class SeccionAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo Seccion.
+    
+    Seccion representa las partes o sistemas de un equipo (ej: Motor, Sistema Hidráulico, Radiador).
+    Cada sección puede tener múltiples tipos de reparación asociados.
+    """
+    # Campos que se muestran en la lista de objetos del admin
+    # total_tipos_reparacion es un método personalizado que cuenta los tipos de reparación
     list_display = ('seccion_id', 'nombre', 'descripcion', 'total_tipos_reparacion')
+    
+    # Campos por los que se puede buscar usando la barra de búsqueda del admin
     search_fields = ('nombre', 'descripcion')
+    
+    # Orden por defecto de los objetos en la lista (alfabético por nombre)
     ordering = ('nombre',)
     
     def total_tipos_reparacion(self, obj):
-        return obj.tipos_reparacion.count()
+        """
+        Método personalizado que cuenta cuántos tipos de reparación tiene asociada esta sección.
+        
+        Este método se muestra como una columna adicional en la lista del admin.
+        Parámetros:
+            obj: Instancia del modelo Seccion
+        
+        Retorna:
+            int: Cantidad de tipos de reparación asociados a esta sección
+        """
+        return obj.tipos_reparacion.count()  # Contar los tipos de reparación relacionados
+    
+    # Personalizar el título de la columna en el admin
+    # Sin esto, Django usaría el nombre del método como título
     total_tipos_reparacion.short_description = 'Tipos de Reparación'
 
 
 @admin.register(TipoReparacion)
 class TipoReparacionAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo TipoReparacion.
+    
+    TipoReparacion representa los tipos específicos de reparaciones que se pueden realizar
+    en una sección de equipo (ej: Cambio de aceite, Reemplazo de filtro, Ajuste de válvulas).
+    Cada tipo de reparación pertenece a una sección específica.
+    """
+    # Campos que se muestran en la lista de objetos del admin
+    # Se incluye la sección para identificar rápidamente a qué parte del equipo pertenece
     list_display = ('tipoReparacion_id', 'nombre', 'seccion_id', 'descripcion')
+    
+    # Filtros laterales en el admin para filtrar por sección
+    # Permite ver todos los tipos de reparación de una sección específica
     list_filter = ('seccion_id',)
+    
+    # Campos por los que se puede buscar usando la barra de búsqueda del admin
     search_fields = ('nombre', 'descripcion')
+    
+    # Orden por defecto: primero por sección, luego alfabéticamente por nombre
+    # Esto agrupa los tipos de reparación por sección
     ordering = ('seccion_id', 'nombre')
 
 
 class ItemPautaInline(admin.TabularInline):
-    model = ItemPauta
-    extra = 1
-    filter_horizontal = ('tipos_reparacion',)
+    """
+    Configuración inline para editar items de pauta directamente desde la pauta.
+    
+    Esta clase permite agregar, editar y eliminar items de pauta (secciones y tipos de reparación)
+    directamente desde el formulario de edición de la pauta, sin tener que ir a otra página.
+    """
+    model = ItemPauta  # Modelo que se edita inline
+    extra = 1  # Cantidad de formularios vacíos adicionales que se muestran por defecto
+    filter_horizontal = ('tipos_reparacion',)  # Widget especial para seleccionar múltiples tipos de reparación
 
 
 @admin.register(PautaMantenimientoPreventivo)
 class PautaMantenimientoPreventivoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo PautaMantenimientoPreventivo.
+    
+    PautaMantenimientoPreventivo representa las pautas de mantenimiento preventivo
+    que se deben realizar en un modelo específico de equipo.
+    Cada pauta contiene múltiples items (secciones y tipos de reparación).
+    """
+    # Campos que se muestran en la lista de objetos del admin
+    # Se incluyen fechas de creación y modificación para auditoría
     list_display = ('pauta_id', 'nombre', 'modeloEquipo_id', 'activo', 'fecha_creacion', 'fecha_modificacion')
+    
+    # Filtros laterales en el admin para filtrar por estado, tipo de equipo y fecha
     list_filter = ('activo', 'modeloEquipo_id__tipoEquipo_id', 'fecha_creacion')
+    
+    # Campos por los que se puede buscar usando la barra de búsqueda del admin
     search_fields = ('nombre', 'descripcion')
+    
+    # Campos que no se pueden editar directamente (se generan automáticamente)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    
+    # Orden por defecto: pautas activas primero, luego por nombre
     ordering = ('-activo', 'nombre')
+    
+    # Inlines: permite editar items de pauta directamente desde la pauta
     inlines = [ItemPautaInline]
     
+    # Agrupar campos en secciones colapsables para mejor organización
     fieldsets = (
         ('Información Básica', {
             'fields': ('nombre', 'modeloEquipo_id', 'descripcion', 'activo')
         }),
         ('Auditoría', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
+            'classes': ('collapse',)  # Esta sección está colapsada por defecto
         }),
     )
 
@@ -289,22 +433,53 @@ class OrdenTrabajoAdmin(admin.ModelAdmin):
     )
     
     def delete_model(self, request, obj):
-        """Permitir eliminación de OT y sus objetos relacionados (incluyendo HistorialOT)"""
-        # Eliminar objetos relacionados manualmente para evitar problemas de permisos
-        obj.historial.all().delete()  # Eliminar HistorialOT relacionado
-        obj.items_secciones.all().delete()  # Eliminar ItemSeccionOT relacionado
-        obj.historial_observaciones.all().delete()  # Eliminar HistorialObservacionesOT relacionado
+        """
+        Método personalizado para eliminar una orden de trabajo y sus objetos relacionados.
+        
+        Este método se ejecuta cuando se elimina una OT individual desde el admin.
+        Elimina manualmente los objetos relacionados (historial, items de sección, observaciones)
+        antes de eliminar la OT para evitar problemas de permisos y mantener la integridad de datos.
+        
+        Parámetros:
+            request: Objeto HttpRequest de Django
+            obj: Instancia de OrdenTrabajo a eliminar
+        """
+        # Paso 1: Eliminar objetos relacionados manualmente antes de eliminar la OT
+        # Esto evita problemas de permisos y asegura que todo se elimine correctamente
+        obj.historial.all().delete()  # Eliminar todos los registros de HistorialOT relacionados
+        obj.items_secciones.all().delete()  # Eliminar todos los ItemSeccionOT relacionados
+        obj.historial_observaciones.all().delete()  # Eliminar todas las HistorialObservacionesOT relacionadas
+        
+        # Paso 2: Eliminar la OT principal
+        # Ahora que los objetos relacionados están eliminados, se puede eliminar la OT
         obj.delete()
     
     def delete_queryset(self, request, queryset):
-        """Permitir eliminación masiva de OTs y sus objetos relacionados"""
+        """
+        Método personalizado para eliminar múltiples órdenes de trabajo y sus objetos relacionados.
+        
+        Este método se ejecuta cuando se eliminan múltiples OTs desde el admin (acción masiva).
+        Usa una transacción atómica para asegurar que todas las eliminaciones se completen
+        o se reviertan todas si hay un error.
+        
+        Parámetros:
+            request: Objeto HttpRequest de Django
+            queryset: QuerySet con las OTs a eliminar
+        """
         from django.db import transaction
+        
+        # Usar transacción atómica para asegurar integridad de datos
+        # Si falla la eliminación de alguna OT, se revierten todos los cambios
         with transaction.atomic():
+            # Paso 1: Para cada OT en el queryset, eliminar sus objetos relacionados
             for obj in queryset:
                 # Eliminar objetos relacionados manualmente para evitar problemas de permisos
                 obj.historial.all().delete()  # Eliminar HistorialOT relacionado
                 obj.items_secciones.all().delete()  # Eliminar ItemSeccionOT relacionado
                 obj.historial_observaciones.all().delete()  # Eliminar HistorialObservacionesOT relacionado
+            
+            # Paso 2: Eliminar todas las OTs del queryset
+            # Esto se hace después de eliminar todos los objetos relacionados
             queryset.delete()
 
 

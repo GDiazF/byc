@@ -1,89 +1,121 @@
-// Variables globales para calendario de maquinarias
-let equiposFiltrados = [];
-let ordenesFiltradas = [];
+// ============================================================================
+// CALENDARIO DE MAQUINARIAS
+// ============================================================================
+// Este archivo maneja la visualización del calendario de equipos con sus estados y órdenes de trabajo.
+// Genera una tabla calendario donde cada fila es un equipo y cada columna es un día del mes.
+// Muestra estados calculados del backend (OT, estado manual, asignación a faena) con colores.
+
+// Variables globales para el estado del calendario
+// Estas variables mantienen los datos filtrados y el estado de la aplicación
+let equiposFiltrados = [];  // Array de equipos filtrados según los filtros aplicados
+let ordenesFiltradas = [];  // Array de órdenes de trabajo filtradas (actualmente no se usa para filtrar, solo para mostrar)
 
 // Función wrapper para inicializar calendario de operaciones con IDs correctos
+// Esta función adapta el calendario de operaciones para que funcione con IDs específicos del tab
+// Cambia temporalmente los IDs de los elementos para que el script del calendario funcione correctamente
 function inicializarCalendarioOperaciones() {
+    // Paso 1: Validar que la función generateCalendar esté disponible
+    // Esta función viene de otro script (probablemente calendario_operaciones.js)
     if (typeof generateCalendar !== 'function') {
-        console.warn('generateCalendar no está disponible');
-        return;
+        console.warn('generateCalendar no está disponible');  // Advertir si no está disponible
+        return;  // Salir sin hacer nada
     }
     
-    // Guardar referencias a los elementos del tab de operaciones
-    const headerOperaciones = document.getElementById('calendarHeaderOperaciones');
-    const bodyOperaciones = document.getElementById('calendarBodyOperaciones');
+    // Paso 2: Obtener referencias a los elementos del tab de operaciones
+    const headerOperaciones = document.getElementById('calendarHeaderOperaciones');  // Header del calendario de operaciones
+    const bodyOperaciones = document.getElementById('calendarBodyOperaciones');  // Body del calendario de operaciones
     
+    // Validar que los elementos existan
     if (!headerOperaciones || !bodyOperaciones) {
-        console.warn('Elementos del calendario de operaciones no encontrados');
-        return;
+        console.warn('Elementos del calendario de operaciones no encontrados');  // Advertir si no existen
+        return;  // Salir sin hacer nada
     }
     
-    // Cambiar temporalmente los IDs para que el script del calendario funcione
-    const originalHeaderId = headerOperaciones.id;
-    const originalBodyId = bodyOperaciones.id;
+    // Paso 3: Guardar IDs originales antes de cambiarlos temporalmente
+    // Esto permite restaurarlos después de usar el script del calendario
+    const originalHeaderId = headerOperaciones.id;  // Guardar ID original del header
+    const originalBodyId = bodyOperaciones.id;  // Guardar ID original del body
     
-    headerOperaciones.id = 'calendarHeader';
-    bodyOperaciones.id = 'calendarBody';
+    // Paso 4: Cambiar temporalmente los IDs para que el script del calendario funcione
+    // El script generateCalendar busca elementos con IDs específicos ('calendarHeader' y 'calendarBody')
+    headerOperaciones.id = 'calendarHeader';  // Cambiar a ID esperado por el script
+    bodyOperaciones.id = 'calendarBody';  // Cambiar a ID esperado por el script
     
-    // Llamar a la función de generación del calendario
+    // Paso 5: Llamar a la función de generación del calendario y funciones relacionadas
     try {
+        // Paso 5.1: Generar el calendario usando la función externa
         generateCalendar();
         
-        // Configurar filtros si la función existe
+        // Paso 5.2: Configurar filtros si la función existe
+        // setupFilters viene del script del calendario de operaciones
         if (typeof setupFilters === 'function') {
-            setupFilters();
+            setupFilters();  // Configurar filtros del calendario de operaciones
         }
         
-        // Limpiar y generar leyenda de estados si la función existe
+        // Paso 5.3: Limpiar y generar leyenda de estados si la función existe
+        // generateStatusLegend viene del script del calendario de operaciones
         if (typeof generateStatusLegend === 'function') {
             // Limpiar la leyenda antes de regenerarla para evitar duplicados
             const legendContainer = document.getElementById('statusLegend');
             if (legendContainer) {
-                // Guardar solo el texto base "Estados:"
+                // Guardar solo el texto base "Estados:" y limpiar el resto
                 legendContainer.innerHTML = '<small class="me-2 fw-bold">Estados:</small>';
             }
-            generateStatusLegend();
+            generateStatusLegend();  // Regenerar leyenda de estados
         }
     } catch (error) {
-        console.error('Error al generar calendario de operaciones:', error);
+        // CASO EXCEPCIÓN: Error al generar calendario o funciones relacionadas
+        console.error('Error al generar calendario de operaciones:', error);  // Registrar error en consola
     }
     
-    // Restaurar los IDs originales
-    headerOperaciones.id = originalHeaderId;
-    bodyOperaciones.id = originalBodyId;
+    // Paso 6: Restaurar los IDs originales después de usar el script
+    // Esto evita conflictos con otros elementos que puedan usar los mismos IDs
+    headerOperaciones.id = originalHeaderId;  // Restaurar ID original del header
+    bodyOperaciones.id = originalBodyId;  // Restaurar ID original del body
 }
 
-// Inicialización cuando el DOM está listo
+// Inicialización cuando el DOM está completamente cargado
+// Este evento asegura que todos los elementos HTML estén disponibles antes de ejecutar el código
 document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar calendario de maquinarias directamente
+    // Paso 1: Inicializar calendario de maquinarias directamente
+    // Esta función carga los equipos y genera el calendario inicial
     inicializarCalendarioMaquinarias();
     
-    // Event listeners para filtros de maquinarias
-    const searchInputMaquinarias = document.getElementById('searchInputMaquinarias');
-    const empresaFilterMaquinarias = document.getElementById('empresaFilterMaquinarias');
-    const faenaFilterMaquinarias = document.getElementById('faenaFilterMaquinarias');
+    // Paso 2: Configurar event listeners para filtros de maquinarias
+    // Estos listeners reaccionan a cambios en los campos de búsqueda y filtros
+    const searchInputMaquinarias = document.getElementById('searchInputMaquinarias');  // Campo de búsqueda
+    const empresaFilterMaquinarias = document.getElementById('empresaFilterMaquinarias');  // Filtro de empresa
+    const faenaFilterMaquinarias = document.getElementById('faenaFilterMaquinarias');  // Filtro de faena
     
-    // Filtro de búsqueda: filtrar localmente sin recargar página (como tabla de personal)
+    // Paso 2.1: Filtro de búsqueda: filtrar localmente sin recargar página
+    // Similar a la tabla de personal, filtra los equipos ya cargados en memoria
     if (searchInputMaquinarias) {
-        searchInputMaquinarias.addEventListener('input', filtrarEquiposLocalmente);
+        searchInputMaquinarias.addEventListener('input', filtrarEquiposLocalmente);  // Filtrar mientras el usuario escribe
     }
     
-    // Filtros de empresa y faena: recargar página (requieren consulta al backend)
+    // Paso 2.2: Filtros de empresa y faena: recargar página
+    // Estos filtros requieren consulta al backend porque pueden afectar qué equipos se cargan
     if (empresaFilterMaquinarias) {
-        empresaFilterMaquinarias.addEventListener('change', aplicarFiltrosMaquinarias);
+        empresaFilterMaquinarias.addEventListener('change', aplicarFiltrosMaquinarias);  // Recargar con filtro de empresa
     }
     if (faenaFilterMaquinarias) {
-        faenaFilterMaquinarias.addEventListener('change', aplicarFiltrosMaquinarias);
+        faenaFilterMaquinarias.addEventListener('change', aplicarFiltrosMaquinarias);  // Recargar con filtro de faena
     }
 });
 
 
-// Inicializar calendario de maquinarias
+// Función para inicializar el calendario de maquinarias
+// Carga los equipos y órdenes de trabajo desde las variables globales definidas en el template
+// Verifica la disponibilidad de estados calculados y genera el calendario inicial
 function inicializarCalendarioMaquinarias() {
-    equiposFiltrados = [...window.equipos];
-    ordenesFiltradas = [...window.ordenesTrabajo];
+    // Paso 1: Copiar arrays de equipos y órdenes de trabajo a variables locales
+    // window.equipos y window.ordenesTrabajo se definen en el template HTML
+    // Usar spread operator para crear copias independientes (evita mutaciones accidentales)
+    equiposFiltrados = [...window.equipos];  // Copiar equipos disponibles
+    ordenesFiltradas = [...window.ordenesTrabajo];  // Copiar órdenes de trabajo disponibles
     
-    // Debug: verificar que los estados calculados estén disponibles
+    // Paso 2: Debug: verificar que los estados calculados estén disponibles
+    // window.estadosCalculados contiene los estados pre-calculados del backend para cada equipo y día
     if (window.estadosCalculados) {
         console.log('Estados calculados disponibles:', Object.keys(window.estadosCalculados).length, 'equipos');
         // Mostrar estructura completa del primer equipo para debug
@@ -97,64 +129,79 @@ function inicializarCalendarioMaquinarias() {
             }
         }
     } else {
-        console.warn('No hay estados calculados disponibles');
+        console.warn('No hay estados calculados disponibles');  // Advertir si no hay estados
     }
     
+    // Paso 3: Generar el calendario con los equipos cargados
     // Los equipos ya vienen filtrados del backend si hay parámetros en la URL
     // Solo generamos el calendario con los equipos cargados
     generarCalendarioMaquinarias();
 }
 
-// Generar calendario de maquinarias
+// Función principal para generar el calendario de maquinarias
+// Crea una tabla donde cada fila es un equipo y cada columna es un día del mes
+// Muestra estados calculados del backend con colores y permite hacer clic para ver detalles
 function generarCalendarioMaquinarias() {
-    const year = window.currentYear;
-    const month = window.currentMonth - 1; // JavaScript usa 0-11 para meses
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = new Date();
+    // Paso 1: Obtener año y mes actuales desde variables globales
+    // window.currentYear y window.currentMonth se definen en el template HTML
+    const year = window.currentYear;  // Año actual (ej: 2024)
+    const month = window.currentMonth - 1;  // Mes actual (JavaScript usa 0-11 para meses, por eso -1)
     
+    // Paso 2: Calcular información del mes
+    const daysInMonth = new Date(year, month + 1, 0).getDate();  // Cantidad de días en el mes
+    const today = new Date();  // Fecha de hoy para marcar el día actual
+    
+    // Paso 3: Definir nombres abreviados de los días de la semana
     const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     
-    // Generar encabezado (días)
+    // Paso 4: Generar encabezado del calendario (días del mes)
     const headerRow = document.getElementById('calendarHeaderMaquinarias');
-    if (!headerRow) return;
+    if (!headerRow) return;  // Si no existe el elemento, salir sin hacer nada
     
+    // Paso 4.1: Iniciar HTML del header con columna sticky para nombres de equipos
     let headerHTML = '<th class="sticky-col">Equipo</th>';
     
+    // Paso 4.2: Generar columna para cada día del mes
     for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        const dayOfWeek = date.getDay();
-        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        const isToday = date.toDateString() === today.toDateString();
+        const date = new Date(year, month, day);  // Crear fecha para este día
+        const dayOfWeek = date.getDay();  // Día de la semana (0=Domingo, 6=Sábado)
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;  // Verificar si es fin de semana
+        const isToday = date.toDateString() === today.toDateString();  // Verificar si es hoy
         
+        // Paso 4.3: Construir clases CSS según el tipo de día
         let classes = [];
-        if (isWeekend) classes.push('weekend');
-        if (isToday) classes.push('today');
+        if (isWeekend) classes.push('weekend');  // Agregar clase para fin de semana
+        if (isToday) classes.push('today');  // Agregar clase para día actual
         
+        // Paso 4.4: Generar HTML de la columna del día
         headerHTML += `<th class="${classes.join(' ')}" title="${dayNames[dayOfWeek]} ${day}">
             <div>${day}</div>
             <small style="font-size: 0.7rem;">${dayNames[dayOfWeek]}</small>
         </th>`;
     }
     
+    // Paso 4.5: Insertar HTML del header en el DOM
     headerRow.innerHTML = headerHTML;
     
-    // Generar filas (equipos)
+    // Paso 5: Generar filas del calendario (una fila por cada equipo)
     const tbody = document.getElementById('calendarBodyMaquinarias');
-    if (!tbody) return;
+    if (!tbody) return;  // Si no existe el elemento, salir sin hacer nada
     
-    let bodyHTML = '';
+    let bodyHTML = '';  // Variable para acumular el HTML de las filas
     
+    // Paso 5.1: Generar una fila para cada equipo filtrado
     equiposFiltrados.forEach(equipo => {
-        bodyHTML += '<tr>';
+        bodyHTML += '<tr>';  // Iniciar fila del equipo
         
-        // Columna de nombre del equipo (sticky) con click para mostrar info - alineado a la izquierda
-        // Construir información de tipo, marca y modelo
+        // Paso 5.2: Generar columna de nombre del equipo (sticky, siempre visible al hacer scroll horizontal)
+        // Construir información de tipo, marca y modelo para mostrar en la columna
         const tipoInfo = [];
-        if (equipo.tipoEquipo) tipoInfo.push(equipo.tipoEquipo.toUpperCase());
-        if (equipo.marcaEquipo) tipoInfo.push(equipo.marcaEquipo);
-        if (equipo.modeloEquipo) tipoInfo.push(equipo.modeloEquipo);
-        const tipoMarcaModelo = tipoInfo.length > 0 ? tipoInfo.join(' - ') : '';
+        if (equipo.tipoEquipo) tipoInfo.push(equipo.tipoEquipo.toUpperCase());  // Tipo en mayúsculas
+        if (equipo.marcaEquipo) tipoInfo.push(equipo.marcaEquipo);  // Marca
+        if (equipo.modeloEquipo) tipoInfo.push(equipo.modeloEquipo);  // Modelo
+        const tipoMarcaModelo = tipoInfo.length > 0 ? tipoInfo.join(' - ') : '';  // Unir con guiones
         
+        // Generar HTML de la columna sticky con información del equipo (clickeable para ver detalles)
         bodyHTML += `<td class="sticky-col">
             <div class="equipo-name-container">
                 <div class="equipo-info" onclick="mostrarDetalleEquipo(${equipo.equipo_id})" 
@@ -167,274 +214,342 @@ function generarCalendarioMaquinarias() {
             </div>
         </td>`;
         
-        // Celdas de días con estados calculados (igual que calendario de personal)
+        // Paso 5.3: Generar celdas de días con estados calculados (una celda por cada día del mes)
         for (let day = 1; day <= daysInMonth; day++) {
-            // Obtener estado calculado del backend
+            // Paso 5.3.1: Obtener estado calculado del backend para este equipo y día
             // Los estados están indexados por equipo_id como string y día como string
             let estado = null;
-            const equipoIdStr = String(equipo.equipo_id);
-            const dayStr = String(day);
+            const equipoIdStr = String(equipo.equipo_id);  // Convertir ID a string para acceso al objeto
+            const dayStr = String(day);  // Convertir día a string para acceso al objeto
             
-            // Obtener estado calculado del backend
+            // Buscar estado en window.estadosCalculados[equipoId][day]
             if (window.estadosCalculados && 
                 window.estadosCalculados[equipoIdStr] && 
                 window.estadosCalculados[equipoIdStr][dayStr]) {
                 const estadosDelDia = window.estadosCalculados[equipoIdStr][dayStr];
                 if (estadosDelDia && estadosDelDia.length > 0) {
-                    estado = estadosDelDia[0]; // Tomar el primer estado (mayor prioridad)
+                    estado = estadosDelDia[0];  // Tomar el primer estado (mayor prioridad)
                 }
             }
             
-            // Buscar OT para mostrar información adicional al hacer clic
-            const fechaActual = new Date(year, month, day);
-            const fechaISO = fechaActual.toISOString().split('T')[0];
+            // Paso 5.3.2: Buscar órdenes de trabajo para este equipo y día
+            // Esto permite mostrar información adicional al hacer clic en la celda
+            const fechaActual = new Date(year, month, day);  // Crear fecha para este día
+            const fechaISO = fechaActual.toISOString().split('T')[0];  // Convertir a formato ISO (YYYY-MM-DD)
             const otsDelDia = ordenesFiltradas.filter(ot => {
-                if (ot.equipo_id !== equipo.equipo_id) return false;
+                // Filtrar OTs que pertenecen a este equipo y están activas en este día
+                if (ot.equipo_id !== equipo.equipo_id) return false;  // Debe ser del mismo equipo
+                // Verificar si la fecha está dentro del rango de la OT
                 if (ot.fecha_inicio && ot.fecha_fin) {
+                    // CASO: OT con rango de fechas -> verificar si la fecha está dentro del rango
                     return fechaISO >= ot.fecha_inicio.split('T')[0] && fechaISO <= ot.fecha_fin.split('T')[0];
                 } else if (ot.fecha_inicio) {
+                    // CASO: OT solo con fecha inicio -> verificar si coincide con la fecha
                     return fechaISO === ot.fecha_inicio.split('T')[0];
                 } else if (ot.fecha_fin) {
+                    // CASO: OT solo con fecha fin -> verificar si coincide con la fecha
                     return fechaISO === ot.fecha_fin.split('T')[0];
                 }
-                return false;
+                return false;  // Si no tiene fechas, no incluir
             });
             
+            // Paso 5.3.3: Generar celda según si hay estado calculado o no
             if (estado) {
-                // Hay estado calculado (viene de OT, estado manual o asignación a faena)
-                const otId = otsDelDia.length > 0 ? otsDelDia[0].ot_id : null;
+                // CASO: Hay estado calculado (viene de OT, estado manual o asignación a faena)
+                const otId = otsDelDia.length > 0 ? otsDelDia[0].ot_id : null;  // ID de OT si existe
                 
-                // Buscar asignación a faena para este día
+                // Paso 5.3.3.1: Buscar asignación a faena para este día
+                // window.asignacionesFaena contiene las asignaciones de equipos a faenas
                 const asignacionesDelDia = (window.asignacionesFaena || []).filter(asig => {
-                    if (asig.equipo_id !== equipo.equipo_id) return false;
-                    const fechaInicio = asig.fecha_inicio ? asig.fecha_inicio.split('T')[0] : null;
-                    const fechaFin = asig.fecha_fin ? asig.fecha_fin.split('T')[0] : null;
+                    if (asig.equipo_id !== equipo.equipo_id) return false;  // Debe ser del mismo equipo
+                    const fechaInicio = asig.fecha_inicio ? asig.fecha_inicio.split('T')[0] : null;  // Fecha inicio sin hora
+                    const fechaFin = asig.fecha_fin ? asig.fecha_fin.split('T')[0] : null;  // Fecha fin sin hora
+                    // Verificar si la fecha está dentro del rango de la asignación
                     if (fechaInicio && fechaFin) {
-                        return fechaISO >= fechaInicio && fechaISO <= fechaFin;
+                        return fechaISO >= fechaInicio && fechaISO <= fechaFin;  // Dentro del rango
                     } else if (fechaInicio) {
-                        return fechaISO >= fechaInicio;
+                        return fechaISO >= fechaInicio;  // Desde fecha inicio (sin fin)
                     }
-                    return false;
+                    return false;  // Si no tiene fecha inicio, no incluir
                 });
                 
-                // Determinar qué mostrar al hacer clic
+                // Paso 5.3.3.2: Determinar qué función ejecutar al hacer clic en la celda
+                // Prioridad: OT > Asignación a faena > Estado general
                 let onclickAttr = '';
                 if (otId) {
+                    // Si hay OT, mostrar detalle de la OT al hacer clic
                     onclickAttr = `onclick="mostrarDetalleOT(${otId})"`;
                 } else if (asignacionesDelDia.length > 0) {
+                    // Si hay asignación a faena, mostrar información del estado
                     onclickAttr = `onclick="showEstadoInfoEquipo(${equipo.equipo_id}, ${day})"`;
                 } else {
+                    // Si solo hay estado general, mostrar información del estado
                     onclickAttr = `onclick="showEstadoInfoEquipo(${equipo.equipo_id}, ${day})"`;
                 }
                 
-                // Construir tooltip con información detallada
-                let tooltipText = estado.nombre || 'Sin nombre';
+                // Paso 5.3.3.3: Construir tooltip con información detallada para mostrar al pasar el mouse
+                let tooltipText = estado.nombre || 'Sin nombre';  // Nombre del estado
                 if (otsDelDia.length > 0) {
+                    // Si hay OT, agregar información de la OT al tooltip
                     const ot = otsDelDia[0];
-                    tooltipText += `\nOT: ${ot.folio}`;
+                    tooltipText += `\nOT: ${ot.folio}`;  // Folio de la OT
                     if (ot.estado_ot) {
-                        tooltipText += `\nEstado OT: ${ot.estado_ot}`;
+                        tooltipText += `\nEstado OT: ${ot.estado_ot}`;  // Estado de la OT
                     }
                     if (ot.estado_equipo) {
-                        tooltipText += `\nEstado Equipo: ${ot.estado_equipo}`;
+                        tooltipText += `\nEstado Equipo: ${ot.estado_equipo}`;  // Estado del equipo
                     }
                 } else if (asignacionesDelDia.length > 0) {
+                    // Si hay asignación a faena, agregar nombre de la faena al tooltip
                     const asig = asignacionesDelDia[0];
                     tooltipText += `\nFaena: ${asig.faena_nombre}`;
                 }
                 
-                // Usar la misma estructura que el calendario de personal
+                // Paso 5.3.3.4: Generar HTML de la celda con estado (usar colores del estado)
                 bodyHTML += `<td ${onclickAttr}
                                 style="background-color: ${estado.background_color}; color: ${estado.color};"
                                 title="${tooltipText.replace(/"/g, '&quot;')}">
                     <div class="estado-cell">${estado.nombre_corto}</div>
                 </td>`;
             } else {
-                // Sin estado - mostrar estado predeterminado si existe
-                const estadoPred = window.estadoPredeterminado;
+                // CASO: Sin estado calculado -> mostrar estado predeterminado si existe
+                const estadoPred = window.estadoPredeterminado;  // Estado por defecto (ej: "Disponible")
                 if (estadoPred) {
+                    // Si hay estado predeterminado, mostrar celda con ese estado
                     bodyHTML += `<td onclick="showEstadoInfoEquipo(${equipo.equipo_id}, ${day})"
                                     style="background-color: ${estadoPred.background_color}; color: ${estadoPred.color};"
                                     title="${estadoPred.nombre}">
                         <div class="estado-cell">${estadoPred.nombre_corto}</div>
                     </td>`;
                 } else {
+                    // Si no hay estado predeterminado, mostrar celda vacía
                     bodyHTML += `<td class="empty-cell" onclick="showEstadoInfoEquipo(${equipo.equipo_id}, ${day})"></td>`;
                 }
             }
         }
         
-        bodyHTML += '</tr>';
+        bodyHTML += '</tr>';  // Cerrar fila del equipo
     });
     
+    // Paso 6: Insertar el HTML generado en el tbody del calendario
     tbody.innerHTML = bodyHTML;
 }
 
-// Esta función ya no se usa, los colores vienen de los estados calculados
+// Nota: Los colores de estados ahora vienen de los estados calculados del backend
+// No se necesita función adicional para determinar colores
 
-// Filtrar equipos localmente (sin recargar página) - similar a tabla de personal
+// Función para filtrar equipos localmente sin recargar la página
+// Similar a la tabla de personal, filtra los equipos ya cargados en memoria según criterios de búsqueda
+// Solo funciona con el campo de búsqueda; los filtros de empresa y faena requieren recarga de página
 function filtrarEquiposLocalmente() {
-    const search = document.getElementById('searchInputMaquinarias')?.value || '';
-    const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';
-    const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';
+    // Paso 1: Obtener valores de los filtros del formulario
+    const search = document.getElementById('searchInputMaquinarias')?.value || '';  // Término de búsqueda
+    const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';  // ID de empresa (no se usa en filtro local)
+    const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';  // Nombre de faena (no se usa en filtro local)
     
-    // Filtrar equipos localmente basándose en el texto de búsqueda
+    // Paso 2: Filtrar equipos localmente basándose en el texto de búsqueda
+    // Convertir término de búsqueda a minúsculas para comparación case-insensitive
     const searchLower = search.toLowerCase();
     
+    // Paso 3: Filtrar equipos según criterios de búsqueda
     equiposFiltrados = window.equipos.filter(equipo => {
-        // Búsqueda por nombre, código interno o modelo
+        // Paso 3.1: Búsqueda por nombre, código interno o modelo
+        // El equipo coincide si no hay búsqueda o si alguno de estos campos contiene el término
         const matchBusqueda = !searchLower || 
             (equipo.nombreEquipo && equipo.nombreEquipo.toLowerCase().includes(searchLower)) ||
             (equipo.codigoInterno && equipo.codigoInterno.toLowerCase().includes(searchLower)) ||
             (equipo.modeloEquipo && equipo.modeloEquipo.toLowerCase().includes(searchLower));
         
-        // Filtro de empresa (si está seleccionado)
+        // Paso 3.2: Filtro de empresa (si está seleccionado)
+        // El equipo coincide si no hay filtro de empresa o si su empresa coincide
         const matchEmpresa = !empresa || (equipo.empresa && equipo.empresa === empresa);
         
-        // Filtro de faena (si está seleccionado)
-        let matchFaena = true;
+        // Paso 3.3: Filtro de faena (si está seleccionado)
+        // Este filtro requiere buscar en las asignaciones a faenas
+        let matchFaena = true;  // Por defecto, todos los equipos coinciden
         if (faena) {
+            // Obtener asignaciones del equipo desde window.asignacionesFaena
             const asignacionesEquipo = (window.asignacionesFaena || []).filter(asig => asig.equipo_id === equipo.equipo_id);
             if (faena === 'Sin asignar') {
-                // Equipos sin asignaciones activas
-                matchFaena = asignacionesEquipo.length === 0;
+                // CASO: Buscar equipos sin asignaciones activas
+                matchFaena = asignacionesEquipo.length === 0;  // No tiene asignaciones
             } else {
-                // Equipos con asignación a la faena específica
-                matchFaena = asignacionesEquipo.some(asig => asig.faena_nombre === faena);
+                // CASO: Buscar equipos con asignación a la faena específica
+                matchFaena = asignacionesEquipo.some(asig => asig.faena_nombre === faena);  // Tiene asignación a esta faena
             }
         }
         
+        // Paso 3.4: El equipo se incluye si cumple todos los criterios
         return matchBusqueda && matchEmpresa && matchFaena;
     });
     
-    // Re-renderizar calendario con equipos filtrados
+    // Paso 4: Re-renderizar calendario con equipos filtrados
+    // Esto actualiza la tabla sin recargar la página
     generarCalendarioMaquinarias();
 }
 
-// Aplicar filtros al calendario de maquinarias (recarga página para filtros de backend)
+// Función para aplicar filtros al calendario de maquinarias (recarga página)
+// Los filtros de empresa y faena requieren consulta al backend, por lo que se recarga la página
+// Mantiene los parámetros de fecha y paginación al recargar
 function aplicarFiltrosMaquinarias() {
-    const search = document.getElementById('searchInputMaquinarias')?.value || '';
-    const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';
-    const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';
+    // Paso 1: Obtener valores de los filtros del formulario
+    const search = document.getElementById('searchInputMaquinarias')?.value || '';  // Término de búsqueda
+    const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';  // ID de empresa para filtrar
+    const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';  // Nombre de faena para filtrar
     
-    // Construir URL con filtros y recargar página
+    // Paso 2: Construir URL con filtros y recargar página
+    // Crear objeto URL desde la URL actual para modificar parámetros
     const url = new URL(window.location.href);
     
-    // Mantener parámetros de fecha y paginación
-    const year = url.searchParams.get('year') || window.currentYear;
-    const month = url.searchParams.get('month') || window.currentMonth;
-    const page = url.searchParams.get('page') || '1';
-    const pageSize = url.searchParams.get('page_size') || window.pageSize || '25';
+    // Paso 3: Mantener parámetros de fecha y paginación existentes
+    const year = url.searchParams.get('year') || window.currentYear;  // Año actual o de la URL
+    const month = url.searchParams.get('month') || window.currentMonth;  // Mes actual o de la URL
+    const page = url.searchParams.get('page') || '1';  // Página actual o 1 por defecto
+    const pageSize = url.searchParams.get('page_size') || window.pageSize || '25';  // Tamaño de página
     
-    // Agregar filtros a la URL
+    // Paso 4: Agregar o eliminar filtros de la URL según sus valores
     if (search) {
-        url.searchParams.set('search', search);
+        url.searchParams.set('search', search);  // Agregar filtro de búsqueda si tiene valor
     } else {
-        url.searchParams.delete('search');
+        url.searchParams.delete('search');  // Eliminar filtro si está vacío
     }
     
     if (empresa) {
-        url.searchParams.set('empresa', empresa);
+        url.searchParams.set('empresa', empresa);  // Agregar filtro de empresa si tiene valor
     } else {
-        url.searchParams.delete('empresa');
+        url.searchParams.delete('empresa');  // Eliminar filtro si está vacío
     }
     
     if (faena) {
-        url.searchParams.set('faena', faena);
+        url.searchParams.set('faena', faena);  // Agregar filtro de faena si tiene valor
     } else {
-        url.searchParams.delete('faena');
+        url.searchParams.delete('faena');  // Eliminar filtro si está vacío
     }
     
-    // Mantener fecha y paginación
-    url.searchParams.set('year', year);
-    url.searchParams.set('month', month);
-    url.searchParams.set('page', '1'); // Resetear a página 1 al filtrar
-    url.searchParams.set('page_size', pageSize);
+    // Paso 5: Mantener fecha y paginación en la URL
+    url.searchParams.set('year', year);  // Mantener año
+    url.searchParams.set('month', month);  // Mantener mes
+    url.searchParams.set('page', '1');  // Resetear a página 1 al filtrar
+    url.searchParams.set('page_size', pageSize);  // Mantener tamaño de página
     
-    // Recargar página con filtros
+    // Paso 6: Recargar página con los nuevos filtros
+    // Esto hace que el backend recargue los equipos con los filtros aplicados
     window.location.href = url.toString();
 }
 
-// Limpiar filtros de maquinarias
+// Función para limpiar todos los filtros del calendario de maquinarias
+// Elimina todos los parámetros de filtro de la URL y recarga la página
+// Mantiene solo los parámetros de fecha y paginación
 function clearFiltersMaquinarias() {
-    // Construir URL sin filtros
+    // Paso 1: Construir URL desde la URL actual
     const url = new URL(window.location.href);
     
-    // Mantener solo fecha y paginación
-    const year = url.searchParams.get('year') || window.currentYear;
-    const month = url.searchParams.get('month') || window.currentMonth;
-    const pageSize = url.searchParams.get('page_size') || window.pageSize || '25';
+    // Paso 2: Obtener parámetros que se deben mantener (fecha y paginación)
+    const year = url.searchParams.get('year') || window.currentYear;  // Año actual
+    const month = url.searchParams.get('month') || window.currentMonth;  // Mes actual
+    const pageSize = url.searchParams.get('page_size') || window.pageSize || '25';  // Tamaño de página
     
-    // Limpiar todos los parámetros y reconstruir URL
-    url.search = '';
-    url.searchParams.set('year', year);
-    url.searchParams.set('month', month);
-    url.searchParams.set('page', '1');
-    url.searchParams.set('page_size', pageSize);
+    // Paso 3: Limpiar todos los parámetros y reconstruir URL solo con fecha y paginación
+    url.search = '';  // Limpiar todos los parámetros de búsqueda
+    url.searchParams.set('year', year);  // Agregar año
+    url.searchParams.set('month', month);  // Agregar mes
+    url.searchParams.set('page', '1');  // Resetear a página 1
+    url.searchParams.set('page_size', pageSize);  // Mantener tamaño de página
     
+    // Paso 4: Recargar página sin filtros
     window.location.href = url.toString();
 }
 
-// Cambiar tamaño de página para maquinarias
+// Función para cambiar el tamaño de página (cantidad de equipos por página)
+// Actualiza el parámetro page_size en la URL y recarga la página
+// Mantiene todos los demás parámetros (fecha, filtros, etc.)
+// Parámetros:
+//   newSize: Nuevo tamaño de página (ej: '10', '25', '50')
 function cambiarTamanioPaginaMaquinarias(newSize) {
+    // Paso 1: Construir URL desde la URL actual
     const url = new URL(window.location.href);
     
-    // Mantener parámetros actuales
-    const year = url.searchParams.get('year') || window.currentYear;
-    const month = url.searchParams.get('month') || window.currentMonth;
-    const search = url.searchParams.get('search') || '';
-    const empresa = url.searchParams.get('empresa') || '';
-    const estado = url.searchParams.get('estado') || '';
+    // Paso 2: Obtener parámetros actuales que se deben mantener
+    const year = url.searchParams.get('year') || window.currentYear;  // Año
+    const month = url.searchParams.get('month') || window.currentMonth;  // Mes
+    const search = url.searchParams.get('search') || '';  // Búsqueda
+    const empresa = url.searchParams.get('empresa') || '';  // Empresa
+    const estado = url.searchParams.get('estado') || '';  // Estado (si existe)
     
-    // Actualizar tamaño de página y resetear a página 1
-    url.search = '';
-    url.searchParams.set('year', year);
-    url.searchParams.set('month', month);
-    url.searchParams.set('page', '1');
-    url.searchParams.set('page_size', newSize);
+    // Paso 3: Limpiar parámetros y reconstruir URL con el nuevo tamaño de página
+    url.search = '';  // Limpiar todos los parámetros
+    url.searchParams.set('year', year);  // Agregar año
+    url.searchParams.set('month', month);  // Agregar mes
+    url.searchParams.set('page', '1');  // Resetear a página 1 al cambiar tamaño
+    url.searchParams.set('page_size', newSize);  // Establecer nuevo tamaño de página
     
+    // Paso 4: Agregar filtros si tienen valores
     if (search) url.searchParams.set('search', search);
     if (empresa) url.searchParams.set('empresa', empresa);
     if (estado) url.searchParams.set('estado', estado);
     
+    // Paso 5: Recargar página con el nuevo tamaño de página
     window.location.href = url.toString();
 }
 
-// Mostrar detalle de Equipo
-// Formatear fecha a formato chileno largo
+// Función helper para formatear fecha a formato chileno largo y legible
+// Convierte fechas del formato ISO al formato "Día de la semana, día de mes de año"
+// Ejemplo: "Lunes, 15 de enero de 2024"
+// Parámetros:
+//   fecha: String con la fecha en formato ISO (YYYY-MM-DD o YYYY-MM-DDTHH:MM:SS)
+// Retorna:
+//   String con la fecha formateada en formato largo chileno, o string vacío si no hay fecha
 function formatearFechaChilenaLarga(fecha) {
-    if (!fecha) return '';
+    if (!fecha) return '';  // Si no hay fecha, retornar string vacío
     
     try {
+        // Paso 1: Crear objeto Date desde el string ISO
         const date = new Date(fecha);
+        
+        // Paso 2: Definir arrays con nombres de días y meses en español
         const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
         
-        const diaSemana = diasSemana[date.getDay()];
-        const dia = date.getDate();
-        const mes = meses[date.getMonth()];
-        const anio = date.getFullYear();
+        // Paso 3: Extraer componentes de la fecha
+        const diaSemana = diasSemana[date.getDay()];  // Nombre del día de la semana
+        const dia = date.getDate();  // Día del mes (1-31)
+        const mes = meses[date.getMonth()];  // Nombre del mes
+        const anio = date.getFullYear();  // Año completo
         
+        // Paso 4: Retornar fecha formateada en formato largo chileno
         return `${diaSemana}, ${dia} de ${mes} de ${anio}`;
     } catch (error) {
-        console.error('Error formateando fecha:', error);
-        return fecha;
+        // CASO EXCEPCIÓN: Error al parsear o formatear la fecha
+        console.error('Error formateando fecha:', error);  // Registrar error en consola
+        return fecha;  // Retornar fecha original si hay error
     }
 }
 
-// Formatear fecha a formato chileno (DD-MM-YYYY)
+// Función helper para formatear fecha a formato chileno corto (DD-MM-YYYY)
+// Convierte fechas del formato ISO al formato DD-MM-YYYY más legible
+// Parámetros:
+//   fecha: String con la fecha en formato ISO (YYYY-MM-DD o YYYY-MM-DDTHH:MM:SS)
+// Retorna:
+//   String con la fecha formateada en formato DD-MM-YYYY, o string vacío si no hay fecha
 function formatearFechaChilena(fecha) {
-    if (!fecha) return '';
+    if (!fecha) return '';  // Si no hay fecha, retornar string vacío
     
     try {
+        // Paso 1: Crear objeto Date desde el string ISO
+        // Agregar 'T00:00:00' si solo tiene fecha para crear una fecha válida a medianoche
         const date = new Date(fecha + 'T00:00:00');
-        const dia = String(date.getDate()).padStart(2, '0');
-        const mes = String(date.getMonth() + 1).padStart(2, '0');
-        const anio = date.getFullYear();
+        
+        // Paso 2: Extraer componentes de la fecha y formatearlos
+        const dia = String(date.getDate()).padStart(2, '0');  // Día con cero a la izquierda si es necesario
+        const mes = String(date.getMonth() + 1).padStart(2, '0');  // Mes (getMonth() es 0-based, por eso +1)
+        const anio = date.getFullYear();  // Año completo
+        
+        // Paso 3: Retornar fecha formateada en formato DD-MM-YYYY
         return `${dia}-${mes}-${anio}`;
     } catch (error) {
-        console.error('Error formateando fecha:', error);
-        return fecha;
+        // CASO EXCEPCIÓN: Error al parsear o formatear la fecha
+        console.error('Error formateando fecha:', error);  // Registrar error en consola
+        return fecha;  // Retornar fecha original si hay error
     }
 }
 
@@ -824,26 +939,36 @@ function renderizarDocumentosEquipo(documentos, container) {
     container.innerHTML = html;
 }
 
-// Función helper para obtener color de estado OT (retorna objeto con bg y text)
+// Función helper para obtener colores del badge según el estado de la OT
+// Retorna un objeto con las clases CSS de Bootstrap para el fondo y el texto
+// Parámetros:
+//   estado: Nombre del estado de la OT (ej: "Pendiente", "En Proceso", "Finalizada")
+// Retorna:
+//   Objeto con propiedades 'bg' (clase de fondo) y 'text' (clase de texto)
 function getColorEstadoOT(estado) {
-    if (!estado) return { bg: 'secondary', text: 'text-white' };
-    const estadoLower = estado.toLowerCase();
-    if (estadoLower.includes('pendiente')) return { bg: 'secondary', text: 'text-white' }; // Gris con texto blanco
-    if (estadoLower.includes('proceso') || estadoLower.includes('en proceso')) return { bg: 'success', text: 'text-white' }; // Verde con texto blanco
-    if (estadoLower.includes('finalizada') || estadoLower.includes('terminada')) return { bg: 'dark', text: 'text-white' }; // Negro con texto blanco
-    if (estadoLower.includes('cancelada')) return { bg: 'danger', text: 'text-white' }; // Rojo con texto blanco
-    return { bg: 'secondary', text: 'text-white' };
+    if (!estado) return { bg: 'secondary', text: 'text-white' };  // Color por defecto si no hay estado
+    const estadoLower = estado.toLowerCase();  // Convertir a minúsculas para comparación
+    if (estadoLower.includes('pendiente')) return { bg: 'secondary', text: 'text-white' };  // Gris con texto blanco
+    if (estadoLower.includes('proceso') || estadoLower.includes('en proceso')) return { bg: 'success', text: 'text-white' };  // Verde con texto blanco
+    if (estadoLower.includes('finalizada') || estadoLower.includes('terminada')) return { bg: 'dark', text: 'text-white' };  // Negro con texto blanco
+    if (estadoLower.includes('cancelada')) return { bg: 'danger', text: 'text-white' };  // Rojo con texto blanco
+    return { bg: 'secondary', text: 'text-white' };  // Color por defecto para otros estados
 }
 
-// Función helper para obtener color de estado equipo (retorna objeto con bg y text)
+// Función helper para obtener colores del badge según el estado del equipo
+// Retorna un objeto con las clases CSS de Bootstrap para el fondo y el texto
+// Parámetros:
+//   estado: Nombre del estado del equipo (ej: "Disponible", "En Reparación", "Shutdown")
+// Retorna:
+//   Objeto con propiedades 'bg' (clase de fondo) y 'text' (clase de texto)
 function getColorEstadoEquipo(estado) {
-    if (!estado) return { bg: 'secondary', text: 'text-white' };
-    const estadoLower = estado.toLowerCase();
-    if (estadoLower.includes('shutdown')) return { bg: 'danger', text: 'text-white' }; // Rojo con texto blanco
-    if (estadoLower.includes('disponible') && !estadoLower.includes('reparación')) return { bg: 'success', text: 'text-dark' }; // Verde con texto negro
-    if (estadoLower.includes('reparación') || estadoLower.includes('en reparación')) return { bg: 'dark', text: 'text-white' }; // Negro con texto blanco
-    if (estadoLower.includes('operativo con anomalías') || estadoLower.includes('operativo con anomalias')) return { bg: 'warning', text: 'text-white' }; // Amarillo con texto blanco
-    return { bg: 'secondary', text: 'text-white' };
+    if (!estado) return { bg: 'secondary', text: 'text-white' };  // Color por defecto si no hay estado
+    const estadoLower = estado.toLowerCase();  // Convertir a minúsculas para comparación
+    if (estadoLower.includes('shutdown')) return { bg: 'danger', text: 'text-white' };  // Rojo con texto blanco
+    if (estadoLower.includes('disponible') && !estadoLower.includes('reparación')) return { bg: 'success', text: 'text-dark' };  // Verde con texto negro
+    if (estadoLower.includes('reparación') || estadoLower.includes('en reparación')) return { bg: 'dark', text: 'text-white' };  // Negro con texto blanco
+    if (estadoLower.includes('operativo con anomalías') || estadoLower.includes('operativo con anomalias')) return { bg: 'warning', text: 'text-white' };  // Amarillo con texto blanco
+    return { bg: 'secondary', text: 'text-white' };  // Color por defecto para otros estados
 }
 
 // Mostrar detalle de OT
@@ -900,41 +1025,58 @@ function mostrarDetalleOT(otId) {
     modal.show();
 }
 
-// Navegación del calendario actualizada para mantener filtros y paginación
+// Función para navegar por el calendario (cambiar mes o año)
+// Mantiene todos los filtros y parámetros de paginación al cambiar de mes/año
+// Parámetros:
+//   type: Tipo de navegación ('month' para cambiar mes, 'year' para cambiar año)
+//   direction: Dirección de navegación (1 para avanzar, -1 para retroceder)
 function navigateCalendar(type, direction) {
-    let newYear = window.currentYear;
-    let newMonth = window.currentMonth;
+    // Paso 1: Obtener año y mes actuales desde variables globales
+    let newYear = window.currentYear;  // Año actual
+    let newMonth = window.currentMonth;  // Mes actual
     
+    // Paso 2: Calcular nuevo año y mes según el tipo de navegación
     if (type === 'month') {
-        newMonth += direction;
+        // CASO: Navegación por mes
+        newMonth += direction;  // Sumar o restar meses
         if (newMonth < 1) {
+            // Si el mes es menor a 1, ir al mes 12 del año anterior
             newMonth = 12;
             newYear -= 1;
         } else if (newMonth > 12) {
+            // Si el mes es mayor a 12, ir al mes 1 del año siguiente
             newMonth = 1;
             newYear += 1;
         }
     } else if (type === 'year') {
-        newYear += direction;
+        // CASO: Navegación por año
+        newYear += direction;  // Sumar o restar años
     }
     
-    // Construir URL con parámetros actuales (mantener filtros y paginación)
+    // Paso 3: Construir URL con parámetros actuales (mantener filtros y paginación)
     const url = new URL(window.location.href);
-    url.searchParams.set('year', newYear);
-    url.searchParams.set('month', newMonth);
-    url.searchParams.set('page', '1'); // Resetear a página 1 al cambiar mes/año
+    url.searchParams.set('year', newYear);  // Establecer nuevo año
+    url.searchParams.set('month', newMonth);  // Establecer nuevo mes
+    url.searchParams.set('page', '1');  // Resetear a página 1 al cambiar mes/año
     
+    // Paso 4: Recargar página con el nuevo mes/año
     window.location.href = url.toString();
 }
 
-// Ir a hoy (mantener filtros y paginación)
+// Función para navegar al mes actual (hoy)
+// Establece el calendario al mes y año actuales
+// Mantiene todos los filtros y parámetros de paginación
 function goToToday() {
+    // Paso 1: Obtener fecha de hoy
     const today = new Date();
-    const url = new URL(window.location.href);
-    url.searchParams.set('year', today.getFullYear());
-    url.searchParams.set('month', today.getMonth() + 1);
-    url.searchParams.set('page', '1'); // Resetear a página 1
     
+    // Paso 2: Construir URL con el mes y año actuales
+    const url = new URL(window.location.href);
+    url.searchParams.set('year', today.getFullYear());  // Establecer año actual
+    url.searchParams.set('month', today.getMonth() + 1);  // Establecer mes actual (getMonth() es 0-based)
+    url.searchParams.set('page', '1');  // Resetear a página 1
+    
+    // Paso 3: Recargar página con el mes/año actual
     window.location.href = url.toString();
 }
 

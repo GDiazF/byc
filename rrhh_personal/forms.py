@@ -1,11 +1,26 @@
+"""
+Formularios Django para la gestión de personal y documentos relacionados.
+
+Este módulo contiene todos los formularios utilizados para crear, editar y validar
+información de personal, licencias, certificaciones, exámenes, ausentismos, etc.
+"""
 from django import forms
 from .models import *
 from datetime import date
 from gen_settings.widgets import DateInputChileno
 
 
-#formulario para la creacion de personas
+# ============================================================================
+# FORMULARIO PRINCIPAL: CREACIÓN Y EDICIÓN DE PERSONAL
+# ============================================================================
+
 class PersonalCreationForm(forms.ModelForm):
+    """
+    Formulario para crear y editar información de personal.
+    
+    Incluye campos personales básicos (nombre, RUT, fecha de nacimiento, etc.),
+    información de contacto, y todos los documentos personales requeridos.
+    """
 
     sexo_id = forms.ModelChoiceField(
         queryset=Sexo.objects.all(),
@@ -33,14 +48,31 @@ class PersonalCreationForm(forms.ModelForm):
 
 
     def __init__(self, *args, **kwargs):
+        """
+        Inicializa el formulario y configura validaciones de fecha.
+        
+        Args:
+            *args: Argumentos posicionales
+            **kwargs: Argumentos con nombre, puede incluir 'instance_id' para edición
+        """
+        # Extraer instance_id si se proporciona (para edición)
         self.instance_id = kwargs.pop('instance_id', None)
         super().__init__(*args, **kwargs)
         
-        # Establecer fecha máxima (hoy) para fecha de nacimiento
+        # Establecer fecha máxima (hoy) para fecha de nacimiento en el widget HTML
         if 'fechanac' in self.fields:
             self.fields['fechanac'].widget.attrs['max'] = date.today().isoformat()
 
     def clean_fechanac(self):
+        """
+        Valida que la fecha de nacimiento no sea posterior a la fecha actual.
+        
+        Returns:
+            date: La fecha de nacimiento validada
+            
+        Raises:
+            forms.ValidationError: Si la fecha es posterior a hoy
+        """
         fechanac = self.cleaned_data.get('fechanac')
         if fechanac and fechanac > date.today():
             raise forms.ValidationError('La fecha de nacimiento no puede ser posterior a la fecha actual.')
@@ -139,8 +171,16 @@ class PersonalCreationForm(forms.ModelForm):
 
     
 
-#formulario para ingresar la informacion laboral de las personas
+# ============================================================================
+# FORMULARIO DE INFORMACIÓN LABORAL
+# ============================================================================
+
 class InfoLaboralPersonalForm(forms.ModelForm):
+    """
+    Formulario para ingresar la información laboral de las personas.
+    
+    Permite asociar un personal con una empresa, departamento, cargo y fecha de contratación.
+    """
 
     empresa_id = forms.ModelChoiceField(
         queryset=Empresa.objects.all(),
@@ -169,8 +209,18 @@ class InfoLaboralPersonalForm(forms.ModelForm):
 
         labels = {'fechacontrata' : 'Fecha Contrata'}
 
-#formularios de licencias --------------------------------------------------------------
+# ============================================================================
+# FORMULARIOS DE LICENCIAS DE CONDUCIR
+# ============================================================================
+
 class LicenciasPersonal(forms.ModelForm):
+    """
+    Formulario para crear y editar licencias de conducir del personal.
+    
+    Permite seleccionar múltiples tipos de licencia (A, B, C, D, E, etc.)
+    y asociar un documento PDF con las fechas de emisión y vencimiento.
+    """
+    # Campo para seleccionar múltiples tipos de licencia
     tipos = forms.ModelMultipleChoiceField(
         queryset=TipoLicencia.objects.all().order_by('tipoLicencia'),
         widget=forms.CheckboxSelectMultiple(attrs={
@@ -214,8 +264,17 @@ class LicenciasPersonal(forms.ModelForm):
         return cleaned_data
 
 
-#formularios de licencias internas ------------------------------------------------------
+# ============================================================================
+# FORMULARIOS DE LICENCIAS INTERNAS
+# ============================================================================
+
 class LicenciasInternasPersonal(forms.ModelForm):
+    """
+    Formulario para crear y editar licencias internas de conducir del personal.
+    
+    Las licencias internas son emitidas por la empresa/faena, no por el estado.
+    Incluye número de licencia, empresa emisora, y documento asociado.
+    """
     tipoLicenciaInterna_id = forms.ModelChoiceField(
         queryset=None,  # Se establecerá en __init__
         empty_label='Seleccione un tipo de licencia',
@@ -227,7 +286,15 @@ class LicenciasInternasPersonal(forms.ModelForm):
     )
     
     def __init__(self, *args, **kwargs):
+        """
+        Inicializa el formulario y establece el queryset del campo tipoLicenciaInterna_id.
+        
+        Args:
+            *args: Argumentos posicionales
+            **kwargs: Argumentos con nombre
+        """
         super().__init__(*args, **kwargs)
+        # Cargar los tipos de licencia interna disponibles, ordenados alfabéticamente
         from .models import TipoLicenciaInterna
         self.fields['tipoLicenciaInterna_id'].queryset = TipoLicenciaInterna.objects.all().order_by('tipoLicenciaInterna')
 
@@ -265,10 +332,20 @@ class LicenciasInternasPersonal(forms.ModelForm):
         }
     
     def clean(self):
+        """
+        Valida que la fecha de vencimiento no sea anterior a la fecha de emisión.
+        
+        Returns:
+            dict: Datos del formulario validados
+            
+        Raises:
+            forms.ValidationError: Si la fecha de vencimiento es anterior a la de emisión
+        """
         cleaned_data = super().clean()
         fecha_emision = cleaned_data.get('fechaEmision')
         fecha_vencimiento = cleaned_data.get('fechaVencimiento')
         
+        # Validar que la fecha de vencimiento sea posterior o igual a la de emisión
         if fecha_emision and fecha_vencimiento:
             if fecha_vencimiento < fecha_emision:
                 raise forms.ValidationError('La fecha de vencimiento no puede ser anterior a la fecha de emisión.')
@@ -276,8 +353,18 @@ class LicenciasInternasPersonal(forms.ModelForm):
         return cleaned_data
 
 
-#formulario para certificacion------------------------------------------------------------  
+# ============================================================================
+# FORMULARIO DE CERTIFICACIONES
+# ============================================================================
+
 class CertificacionPersonal(forms.ModelForm):
+    """
+    Formulario para crear y editar certificaciones del personal.
+    
+    Las certificaciones son documentos que acreditan habilidades o competencias
+    específicas (ej: Operador de Grúa, Trabajo en Altura, etc.).
+    Incluye proveedor, tipo de certificación, fechas y documento asociado.
+    """
     proveedor_id = forms.ModelChoiceField(
         queryset=Proveedor.objects.all(), 
         empty_label='-----------',
@@ -308,10 +395,20 @@ class CertificacionPersonal(forms.ModelForm):
         }
     
     def clean(self):
+        """
+        Valida que la fecha de vencimiento no sea anterior a la fecha de emisión.
+        
+        Returns:
+            dict: Datos del formulario validados
+            
+        Raises:
+            forms.ValidationError: Si la fecha de vencimiento es anterior a la de emisión
+        """
         cleaned_data = super().clean()
         fecha_emision = cleaned_data.get('fechaEmision')
         fecha_vencimiento = cleaned_data.get('fechaVencimiento')
         
+        # Validar que la fecha de vencimiento sea posterior o igual a la de emisión
         if fecha_emision and fecha_vencimiento:
             if fecha_vencimiento < fecha_emision:
                 raise forms.ValidationError('La fecha de vencimiento no puede ser anterior a la fecha de emisión.')
@@ -319,8 +416,17 @@ class CertificacionPersonal(forms.ModelForm):
         return cleaned_data
 
 
-#formulario para examenes
+# ============================================================================
+# FORMULARIO DE EXÁMENES
+# ============================================================================
+
 class ExamenPersonal(forms.ModelForm):
+    """
+    Formulario para crear y editar exámenes médicos del personal.
+    
+    Los exámenes pueden ser de diferentes tipos (vista, audición, psicológico, etc.)
+    y tienen un resultado (Apto, No Apto, etc.). Incluye proveedor, fechas y documento asociado.
+    """
     tipoEx_id = forms.ModelChoiceField(
         queryset=TipoExamen.objects.all(), 
         empty_label='-----------',
@@ -357,10 +463,20 @@ class ExamenPersonal(forms.ModelForm):
         }
     
     def clean(self):
+        """
+        Valida que la fecha de vencimiento no sea anterior a la fecha de emisión.
+        
+        Returns:
+            dict: Datos del formulario validados
+            
+        Raises:
+            forms.ValidationError: Si la fecha de vencimiento es anterior a la de emisión
+        """
         cleaned_data = super().clean()
         fecha_emision = cleaned_data.get('fechaEmision')
         fecha_vencimiento = cleaned_data.get('fechaVencimiento')
         
+        # Validar que la fecha de vencimiento sea posterior o igual a la de emisión
         if fecha_emision and fecha_vencimiento:
             if fecha_vencimiento < fecha_emision:
                 raise forms.ValidationError('La fecha de vencimiento no puede ser anterior a la fecha de emisión.')
@@ -368,8 +484,18 @@ class ExamenPersonal(forms.ModelForm):
         return cleaned_data
 
 
-# Formulario para ausentismos
+# ============================================================================
+# FORMULARIO DE AUSENTISMOS
+# ============================================================================
+
 class AusentismoForm(forms.ModelForm):
+    """
+    Formulario para crear y editar ausentismos del personal.
+    
+    Los ausentismos pueden ser de diferentes tipos (vacaciones, permiso sin goce, etc.).
+    La fecha de fin se calcula automáticamente basándose en la fecha de inicio y los días.
+    Valida que no haya solapamientos con otros ausentismos del mismo personal.
+    """
     tipoausen_id = forms.ModelChoiceField(
         queryset=TipoAusentismo.objects.all().order_by('tipo'),
         empty_label='Seleccione un tipo',
@@ -400,6 +526,13 @@ class AusentismoForm(forms.ModelForm):
         }
     
     def __init__(self, *args, **kwargs):
+        """
+        Inicializa el formulario y configura el campo de fecha de fin calculada.
+        
+        Args:
+            *args: Argumentos posicionales
+            **kwargs: Argumentos con nombre, puede incluir 'personal_id' para validación
+        """
         super().__init__(*args, **kwargs)
         
         # Si es CREACIÓN (no edición), limpiar el valor por defecto del modelo
@@ -409,28 +542,52 @@ class AusentismoForm(forms.ModelForm):
         # Si es edición, calcular y mostrar la fecha de fin en formato chileno
         if self.instance and self.instance.pk:
             if self.instance.fechafin:
-                # Formatear fecha en formato chileno DD/MM/YYYY
+                # Formatear fecha en formato chileno DD/MM/YYYY para mostrar al usuario
                 self.fields['fechafin_display'].initial = self.instance.fechafin.strftime('%d/%m/%Y')
     
     def clean_dias_ausentismo(self):
+        """
+        Valida que los días de ausentismo sean al menos 1.
+        
+        Returns:
+            int: Los días de ausentismo validados
+            
+        Raises:
+            forms.ValidationError: Si los días son menores a 1
+        """
         dias = self.cleaned_data.get('dias_ausentismo')
         if dias and dias < 1:
             raise forms.ValidationError('Los días de ausentismo deben ser al menos 1.')
         return dias
     
     def clean(self):
+        """
+        Valida que no haya solapamiento de fechas con otros ausentismos del mismo personal.
+        
+        Calcula la fecha de fin basándose en la fecha de inicio y los días.
+        Luego verifica si hay otros ausentismos del mismo personal que se solapen
+        con el rango de fechas del ausentismo actual.
+        
+        Returns:
+            dict: Datos del formulario validados
+            
+        Raises:
+            forms.ValidationError: Si hay solapamiento con otro ausentismo existente
+        """
         cleaned_data = super().clean()
         fechaini = cleaned_data.get('fechaini')
         dias_ausentismo = cleaned_data.get('dias_ausentismo')
         
         if fechaini and dias_ausentismo:
             from datetime import timedelta
-            # Calcular fecha de fin
+            # Calcular fecha de fin: fecha_inicio + (días - 1)
+            # Ejemplo: Si inicia el 1 de enero y son 3 días, termina el 3 de enero
             fechafin = fechaini + timedelta(days=dias_ausentismo - 1)
             
             # Obtener el personal_id desde la vista (se pasa en el constructor)
             if hasattr(self, 'personal_id'):
                 # Verificar solapamiento con otros ausentismos del mismo personal
+                # Excluir el ausentismo actual si es una edición
                 solapamientos = Ausentismo.objects.filter(
                     personal_id=self.personal_id
                 ).exclude(
@@ -453,8 +610,18 @@ class AusentismoForm(forms.ModelForm):
         return cleaned_data
 
         
-# Formulario para ingresar licencias médicas
+# ============================================================================
+# FORMULARIO DE LICENCIAS MÉDICAS
+# ============================================================================
+
 class LicenciaMedicaPorPersonalForm(forms.ModelForm):
+    """
+    Formulario para crear y editar licencias médicas del personal.
+    
+    Las licencias médicas no tienen archivo asociado, solo registran fechas.
+    La fecha de fin se calcula automáticamente basándose en la fecha de emisión y los días.
+    Valida que no haya solapamientos con otras licencias médicas del mismo personal.
+    """
     tipoLicenciaMedica_id = forms.ModelChoiceField(
         queryset=TipoLicenciaMedica.objects.all().order_by('tipoLicenciaMedica'),
         empty_label='Seleccione un tipo',
@@ -483,18 +650,33 @@ class LicenciaMedicaPorPersonalForm(forms.ModelForm):
         }
     
     def clean(self):
+        """
+        Valida que no haya solapamiento de fechas con otras licencias médicas del mismo personal.
+        
+        Calcula la fecha de fin basándose en la fecha de emisión y los días.
+        Luego verifica si hay otras licencias médicas del mismo personal que se solapen
+        con el rango de fechas de la licencia actual.
+        
+        Returns:
+            dict: Datos del formulario validados
+            
+        Raises:
+            forms.ValidationError: Si hay solapamiento con otra licencia médica existente
+        """
         cleaned_data = super().clean()
         fecha_emision = cleaned_data.get('fechaEmision')
         dias_licencia = cleaned_data.get('dias_licencia')
         
         if fecha_emision and dias_licencia:
             from datetime import timedelta
-            # Calcular fecha de fin
+            # Calcular fecha de fin: fecha_emision + (días - 1)
+            # Ejemplo: Si se emite el 1 de enero y son 3 días, termina el 3 de enero
             fecha_fin = fecha_emision + timedelta(days=dias_licencia - 1)
             
             # Obtener el personal_id desde la vista (se pasa en el constructor)
             if hasattr(self, 'personal_id'):
                 # Verificar solapamiento con otras licencias médicas del mismo personal
+                # Excluir la licencia actual si es una edición
                 solapamientos = LicenciaMedicaPorPersonal.objects.filter(
                     personal_id=self.personal_id
                 ).exclude(

@@ -1,3 +1,13 @@
+"""
+Vistas Django para la gestión de personal y documentos relacionados.
+
+Este módulo contiene todas las vistas (clases y funciones) para:
+- Listar, crear, editar y eliminar personal
+- Gestionar documentos personales (licencias, certificaciones, exámenes)
+- Gestionar ausentismos y licencias médicas
+- APIs para historial y consultas
+- Descarga de documentación en ZIP
+"""
 from django.shortcuts import render
 
 # Create your views here.
@@ -39,7 +49,18 @@ from datetime import datetime
 # ============================================================================
 
 def obtener_nombre_completo_usuario(usuario):
-    """Obtiene el nombre completo de un usuario o retorna el username"""
+    """
+    Obtiene el nombre completo de un usuario o retorna el username como fallback.
+    
+    Intenta obtener el nombre completo desde first_name y last_name del modelo User.
+    Si no está disponible, usa el username. Si no hay usuario, retorna 'Sistema'.
+    
+    Args:
+        usuario: Instancia del modelo User de Django
+        
+    Returns:
+        str: Nombre completo del usuario, username, o 'Sistema' si no hay usuario
+    """
     if not usuario:
         return 'Sistema'
     
@@ -49,10 +70,25 @@ def obtener_nombre_completo_usuario(usuario):
         if nombre_completo:
             return nombre_completo
     
+    # Fallback: usar username si está disponible
     return usuario.username if usuario.username else 'Sistema'
 
 def obtener_url_archivo_historial(evento, personal):
-    """Obtiene la URL del archivo del historial si existe"""
+    """
+    Obtiene la URL del archivo del historial si existe.
+    
+    Busca el archivo en diferentes ubicaciones según el tipo de documento:
+    - Archivos eliminados: en la carpeta Documentacion_Eliminada
+    - Documentos personales: en los campos del modelo Personal
+    - Licencias, certificaciones, exámenes: en los modelos correspondientes
+    
+    Args:
+        evento: Instancia de HistorialDocumentoPersonal
+        personal: Instancia del modelo Personal
+        
+    Returns:
+        str: URL del archivo si existe, None si no se encuentra
+    """
     if not evento.archivo_ruta:
         return None
     
@@ -67,7 +103,7 @@ def obtener_url_archivo_historial(evento, personal):
                 url_relativa = evento.archivo_ruta.replace('\\', '/')
                 return os.path.join(settings.MEDIA_URL.rstrip('/'), url_relativa).replace('\\', '/')
         
-        # Para documentos personales, verificar si está en el campo actual
+        # Para documentos personales, verificar si está en el campo actual del modelo Personal
         if evento.campo_documento:
             campo_actual = getattr(personal, evento.campo_documento, None)
             if campo_actual and campo_actual.name == evento.archivo_ruta:
@@ -117,9 +153,18 @@ def obtener_url_archivo_historial(evento, personal):
         print(f"Error en obtener_url_archivo_historial: {str(e)}")
         return None
 
-# Vista para tabla de personal
-# Requiere permiso de ver personal (view_personal)
+# ============================================================================
+# VISTAS PRINCIPALES DE PERSONAL
+# ============================================================================
+
 class PersonalListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
+    """
+    Vista para listar el personal activo en formato de tabla.
+    
+    Requiere permiso 'rrhh_personal.view_personal'.
+    Optimiza las consultas usando prefetch_related para evitar N+1 queries.
+    Proporciona datos en JSON para DataTables y permisos del usuario.
+    """
     model = Personal
     template_name = 'personal/table_personal.html'
     context_object_name = 'personal'
@@ -128,16 +173,29 @@ class PersonalListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
     # Removido paginate_by para permitir que DataTables maneje la paginación
 
     def get_context_data(self, **kwargs):
+        """
+        Agrega datos adicionales al contexto de la vista.
+        
+        Incluye:
+        - Lista de empresas para filtros
+        - Datos del personal en formato JSON para DataTables
+        - Permisos del usuario en formato JSON
+        - Empresa seleccionada desde parámetros GET
+        
+        Returns:
+            dict: Contexto con todos los datos necesarios para el template
+        """
         context = super().get_context_data(**kwargs)
         from gen_settings.models import Empresa
         import json
         from django.core.serializers.json import DjangoJSONEncoder
         
+        # Obtener todas las empresas para el filtro
         context['empresas'] = Empresa.objects.all()
         
         # Preparar datos del personal para JSON - optimizado para evitar N+1 queries
+        # El queryset ya tiene prefetch_related, así que las relaciones están en memoria
         personal_data = []
-        # Usar el queryset optimizado que ya tiene prefetch_related
         for persona in context['personal']:
             # Acceder a la primera info laboral desde el prefetch (ya está en memoria)
             info_laboral = next(iter(persona.infolaboral_set.all()), None)
@@ -151,9 +209,11 @@ class PersonalListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
                 'activo': persona.activo
             })
         
+        # Convertir a JSON para usar en JavaScript (DataTables)
         context['personal_json'] = json.dumps(personal_data, cls=DjangoJSONEncoder)
         
         # Verificar permisos del usuario para pasar al template
+        # Esto permite mostrar/ocultar botones según los permisos del usuario
         user = self.request.user
         permisos = {
             'can_add_personal': user.has_perm('rrhh_personal.add_personal'),
@@ -174,7 +234,7 @@ class PersonalListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
         }
         context['permisos_json'] = json.dumps(permisos)
         
-        # Obtener y procesar empresa_id
+        # Obtener y procesar empresa_id desde parámetros GET (para filtros)
         empresa_id = self.request.GET.get('empresa')
         if empresa_id and empresa_id.strip():
             try:
@@ -187,13 +247,25 @@ class PersonalListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
         return context
 
     def get_queryset(self):
+        """
+        Obtiene el queryset de personal activo con optimizaciones.
+        
+        Filtra solo personal activo y usa prefetch_related para cargar
+        relaciones de información laboral en una sola consulta adicional.
+        Opcionalmente filtra por empresa si se proporciona en GET.
+        
+        Returns:
+            QuerySet: QuerySet optimizado de Personal activo
+        """
         # Solo mostrar personal ACTIVO
+        # Usar prefetch_related para evitar N+1 queries al acceder a info laboral
         queryset = Personal.objects.filter(activo=True).prefetch_related(
             'infolaboral_set__cargo_id',
             'infolaboral_set__depto_id',
             'infolaboral_set__empresa_id'
         )
         
+        # Filtrar por empresa si se proporciona en los parámetros GET
         empresa_id = self.request.GET.get('empresa')
         if empresa_id and empresa_id.strip():
             try:
@@ -204,9 +276,14 @@ class PersonalListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
         
         return queryset.distinct()
 
-# Vista para crear personal
-# Requiere permiso de agregar personal (add_personal)
 class PersonalCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView):
+    """
+    Vista para crear nuevo personal.
+    
+    Requiere permiso 'rrhh_personal.add_personal'.
+    Crea el personal y su información laboral en una transacción atómica.
+    Los documentos personales se pueden agregar después de la creación.
+    """
     # Permiso requerido: agregar personal
     permission_required = 'rrhh_personal.add_personal'
     model = Personal
@@ -237,6 +314,20 @@ class PersonalCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView
         return context
     
     def form_valid(self, form):
+        """
+        Valida y guarda el personal junto con su información laboral.
+        
+        Primero valida el formulario de información laboral.
+        Si ambos formularios son válidos, guarda todo en una transacción atómica.
+        Establece el usuario actual para las señales de historial.
+        
+        Args:
+            form: Formulario de creación de personal validado
+            
+        Returns:
+            HttpResponseRedirect: Redirección a la lista de personal si es exitoso
+            HttpResponse: Renderizado del formulario con errores si falla
+        """
         # PRIMERO validar el formulario laboral ANTES de guardar nada
         labor_form = InfoLaboralPersonalForm(self.request.POST)
         
@@ -256,16 +347,17 @@ class PersonalCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView
             context['labor_form'] = labor_form  # Pasar el formulario con errores
             return self.render_to_response(context)
         
-        # Si ambos formularios son válidos, guardar en transacción
+        # Si ambos formularios son válidos, guardar en transacción atómica
+        # Esto asegura que si falla algo, no se guarde nada
         try:
             with transaction.atomic():
-                # Guardar el personal
+                # Guardar el personal primero
                 self.object = form.save(commit=False)
-                # Pasar usuario a la señal
+                # Pasar usuario a la señal para registrar en historial
                 self.object._current_user = self.request.user
                 self.object.save()
                 
-                # Guardar información laboral
+                # Guardar información laboral asociada
                 info_laboral = labor_form.save(commit=False)
                 info_laboral.personal_id = self.object
                 info_laboral.save()
@@ -300,13 +392,30 @@ class PersonalCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView
 
 @login_required
 def get_cargos(request):
+    """
+    Vista AJAX para obtener cargos por departamento.
+    
+    Utilizada para poblar dinámicamente el campo de cargos
+    cuando se selecciona un departamento en el formulario.
+    
+    Args:
+        request: HttpRequest con parámetro GET 'depto_id'
+        
+    Returns:
+        JsonResponse: Diccionario con cargo_id como clave y cargo como valor
+    """
     depto_id = request.GET.get('depto_id')
     cargos = Cargo.objects.filter(depto_id=depto_id).values_list('cargo_id', 'cargo')
     return JsonResponse(dict(cargos))
 
-# Vista para editar personal
-# Requiere permiso de cambiar personal (change_personal)
 class PersonalUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
+    """
+    Vista para editar personal existente.
+    
+    Requiere permiso 'rrhh_personal.change_personal'.
+    Permite editar información personal y laboral.
+    Establece el usuario actual para las señales de historial.
+    """
     # Permiso requerido: cambiar personal
     permission_required = 'rrhh_personal.change_personal'
     model = Personal
@@ -369,16 +478,30 @@ class PersonalUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView
         messages.error(self.request, 'Error al actualizar el personal. Por favor revise los datos ingresados.')
         return self.render_to_response(self.get_context_data(form=form))
 
-# Vista para eliminar personal
-# Requiere permiso de eliminar personal (delete_personal)
 class PersonalDeleteView(PermissionRequiredMixin, LoginRequiredMixin, View):
+    """
+    Vista para eliminar personal.
+    
+    Requiere permiso 'rrhh_personal.delete_personal'.
+    Establece el usuario actual para las señales de historial.
+    """
     # Permiso requerido: eliminar personal
     permission_required = 'rrhh_personal.delete_personal'
     
     def post(self, request, pk):
+        """
+        Elimina el personal especificado.
+        
+        Args:
+            request: HttpRequest
+            pk: ID del personal a eliminar
+            
+        Returns:
+            HttpResponseRedirect: Redirección a la lista de personal
+        """
         personal = get_object_or_404(Personal, pk=pk)
         try:
-            # Pasar usuario a la señal
+            # Pasar usuario a la señal para registrar en historial
             personal._current_user = request.user
             personal.delete()
             messages.success(request, 'Personal eliminado exitosamente.')
@@ -390,6 +513,16 @@ class PersonalDeleteView(PermissionRequiredMixin, LoginRequiredMixin, View):
 @require_POST
 @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def toggle_personal_status(request, pk):
+    """
+    Vista AJAX para cambiar el estado activo/inactivo del personal.
+    
+    Args:
+        request: HttpRequest con POST 'activo' ('true' o 'false')
+        pk: ID del personal
+        
+    Returns:
+        JsonResponse: {'success': True/False, 'error': mensaje si hay error}
+    """
     try:
         personal = get_object_or_404(Personal, pk=pk)
         personal.activo = request.POST.get('activo') == 'true'
@@ -402,6 +535,19 @@ def toggle_personal_status(request, pk):
 @login_required
 @permission_required_custom('rrhh_personal.view_personal')
 def personal_documentation(request, personal_id):
+    """
+    Vista para mostrar y gestionar la documentación del personal.
+    
+    Muestra todos los documentos, licencias, certificaciones y exámenes
+    asociados al personal, y permite agregar nuevos.
+    
+    Args:
+        request: HttpRequest
+        personal_id: ID del personal
+        
+    Returns:
+        HttpResponse: Renderizado del template de documentación
+    """
     personal = get_object_or_404(Personal, personal_id=personal_id)
     licencias = LicenciaPorPersonal.objects.filter(personal_id=personal)
     examenes = Examen.objects.filter(personal_id=personal)
@@ -422,6 +568,16 @@ def personal_documentation(request, personal_id):
 @login_required
 @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def add_license(request, personal_id):
+    """
+    Vista para agregar una licencia de conducir al personal.
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        personal_id: ID del personal
+        
+    Returns:
+        HttpResponse: Renderizado del formulario o redirección si es exitoso
+    """
     if request.method == 'POST':
         try:
             personal = get_object_or_404(Personal, personal_id=personal_id)
@@ -488,6 +644,16 @@ def add_license(request, personal_id):
 @login_required
 @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def add_exam(request, personal_id):
+    """
+    Vista para agregar un examen médico al personal.
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        personal_id: ID del personal
+        
+    Returns:
+        HttpResponse: Renderizado del formulario o redirección si es exitoso
+    """
     if request.method == 'POST':
         try:
             personal = get_object_or_404(Personal, personal_id=personal_id)
@@ -551,6 +717,16 @@ def add_exam(request, personal_id):
 @login_required
 @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def delete_exam(request, exam_id):
+    """
+    Vista para eliminar un examen médico.
+    
+    Args:
+        request: HttpRequest
+        exam_id: ID del examen a eliminar
+        
+    Returns:
+        HttpResponseRedirect: Redirección a la documentación del personal
+    """
     if request.method == 'DELETE':
         try:
             exam = get_object_or_404(Examen, examen_id=exam_id)
@@ -564,6 +740,16 @@ def delete_exam(request, exam_id):
 @login_required
 @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def delete_license(request, license_id):
+    """
+    Vista para eliminar una licencia de conducir.
+    
+    Args:
+        request: HttpRequest
+        license_id: ID de la licencia a eliminar
+        
+    Returns:
+        HttpResponseRedirect: Redirección a la documentación del personal
+    """
     if request.method == 'DELETE':
         try:
             license = get_object_or_404(LicenciaPorPersonal, licenciaPorPersonal_id=license_id)
@@ -581,6 +767,16 @@ def delete_license(request, license_id):
 @login_required
 @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def add_internal_license(request, personal_id):
+    """
+    Vista para agregar una licencia interna de conducir al personal.
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        personal_id: ID del personal
+        
+    Returns:
+        HttpResponse: Renderizado del formulario o redirección si es exitoso
+    """
     """Vista para agregar licencia interna de conducir"""
     if request.method == 'POST':
         try:
@@ -641,6 +837,16 @@ def add_internal_license(request, personal_id):
 @login_required
 @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def edit_internal_license(request, license_id):
+    """
+    Vista para editar una licencia interna de conducir existente.
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        license_id: ID de la licencia interna a editar
+        
+    Returns:
+        HttpResponse: Renderizado del formulario o redirección si es exitoso
+    """
     """Vista para editar licencia interna de conducir"""
     if request.method == 'GET':
         try:
@@ -769,6 +975,16 @@ def edit_internal_license(request, license_id):
 
 @login_required
 def delete_internal_license(request, license_id):
+    """
+    Vista para eliminar una licencia interna de conducir.
+    
+    Args:
+        request: HttpRequest
+        license_id: ID de la licencia interna a eliminar
+        
+    Returns:
+        HttpResponseRedirect: Redirección a la documentación del personal
+    """
     """Vista para eliminar licencia interna de conducir"""
     if request.method == 'DELETE':
         try:
@@ -787,6 +1003,19 @@ def delete_internal_license(request, license_id):
 
 @login_required
 def upload_personal_document(request, personal_id):
+    """
+    Vista para subir un documento personal (AJAX).
+    
+    Permite subir documentos personales como curriculum, certificados, etc.
+    Valida el tipo de archivo y mueve archivos antiguos a la carpeta de eliminados.
+    
+    Args:
+        request: HttpRequest con archivo en POST
+        personal_id: ID del personal
+        
+    Returns:
+        JsonResponse: Resultado de la operación
+    """
     """Vista para subir/actualizar un documento personal individual"""
     if request.method == 'POST':
         try:
@@ -896,6 +1125,19 @@ def upload_personal_document(request, personal_id):
 
 @login_required
 def upload_carnet_document(request, personal_id):
+    """
+    Vista para subir documento de carnet con validación especial.
+    
+    Valida que el archivo sea una imagen y actualiza la fecha de vencimiento
+    del carnet si se proporciona.
+    
+    Args:
+        request: HttpRequest con archivo y fecha de vencimiento en POST
+        personal_id: ID del personal
+        
+    Returns:
+        JsonResponse: Resultado de la operación
+    """
     """Vista específica para subir carnet con fecha de vencimiento"""
     if request.method == 'POST':
         try:
@@ -993,6 +1235,19 @@ def upload_carnet_document(request, personal_id):
 
 @login_required
 def delete_personal_document(request, personal_id):
+    """
+    Vista para eliminar un documento personal (AJAX).
+    
+    Mueve el archivo a la carpeta de eliminados en lugar de borrarlo físicamente,
+    y registra la acción en el historial.
+    
+    Args:
+        request: HttpRequest con nombre del campo del documento en POST
+        personal_id: ID del personal
+        
+    Returns:
+        JsonResponse: Resultado de la operación
+    """
     """Vista para eliminar un documento personal individual"""
     if request.method == 'POST':
         try:
@@ -1099,6 +1354,19 @@ def delete_personal_document(request, personal_id):
 
 @login_required
 def documentation_view(request, pk):
+    """
+    Vista principal para gestionar toda la documentación del personal.
+    
+    Muestra todos los documentos, licencias, certificaciones, exámenes,
+    licencias médicas y ausentismos del personal en una vista unificada.
+    
+    Args:
+        request: HttpRequest
+        pk: ID del personal
+        
+    Returns:
+        HttpResponse: Renderizado del template de documentación completa
+    """
     # Verificar permisos: puede ver si tiene view_personal, change_personal, o permisos para agregar/editar documentación
     puede_ver = (
         request.user.has_perm('rrhh_personal.view_personal') or
@@ -1226,6 +1494,16 @@ def documentation_view(request, pk):
 @login_required
 @require_POST
 def save_certification(request, pk):
+    """
+    Vista para guardar una certificación nueva (AJAX).
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        pk: ID del personal
+        
+    Returns:
+        JsonResponse: Resultado de la operación
+    """
     try:
         personal = get_object_or_404(Personal, personal_id=pk)
         
@@ -1275,6 +1553,17 @@ def save_certification(request, pk):
 @login_required
 @require_POST
 def delete_certification(request, pk, certification_id):
+    """
+    Vista para eliminar una certificación.
+    
+    Args:
+        request: HttpRequest
+        pk: ID del personal
+        certification_id: ID de la certificación a eliminar
+        
+    Returns:
+        HttpResponseRedirect: Redirección a la documentación del personal
+    """
     try:
         certification = get_object_or_404(Certificacion, certif_id=certification_id, personal_id__personal_id=pk)
         certification._current_user = request.user
@@ -1291,6 +1580,12 @@ def delete_certification(request, pk, certification_id):
 
 # Vista para crear una licencia médica por personal
 class LicenciaMedicaPorPersonalCreateView(LoginRequiredMixin, CreateView):
+    """
+    Vista para crear una nueva licencia médica.
+    
+    Valida que no haya solapamiento con otras licencias médicas del mismo personal.
+    Calcula automáticamente la fecha de fin basándose en la fecha de emisión y los días.
+    """
     model = LicenciaMedicaPorPersonal
     form_class = LicenciaMedicaPorPersonalForm
     template_name = 'personal/create_licencia_medica.html'
@@ -1328,6 +1623,16 @@ class LicenciaMedicaPorPersonalCreateView(LoginRequiredMixin, CreateView):
 # Vista para listar y editar licencias médicas de un personal
 @login_required
 def listar_licencias_medicas_personal(request, personal_id):
+    """
+    Vista para listar las licencias médicas de un personal.
+    
+    Args:
+        request: HttpRequest
+        personal_id: ID del personal
+        
+    Returns:
+        HttpResponse: Renderizado del template con lista de licencias médicas
+    """
     """Vista mejorada para listar licencias médicas de un personal"""
     personal = get_object_or_404(Personal, personal_id=personal_id)
     licencias_medicas = LicenciaMedicaPorPersonal.objects.filter(
@@ -1342,6 +1647,12 @@ def listar_licencias_medicas_personal(request, personal_id):
 
 # Vista para editar una licencia médica específica
 class LicenciaMedicaPorPersonalUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
+    """
+    Vista para editar una licencia médica existente.
+    
+    Requiere permiso 'rrhh_personal.change_licenciamedicaporpersonal'.
+    Valida que no haya solapamiento con otras licencias médicas del mismo personal.
+    """
     permission_required = 'rrhh_personal.change_personal'
     model = LicenciaMedicaPorPersonal
     form_class = LicenciaMedicaPorPersonalForm
@@ -1384,6 +1695,16 @@ class LicenciaMedicaPorPersonalUpdateView(PermissionRequiredMixin, LoginRequired
 
 @login_required
 def delete_licencia_medica(request, licencia_id):
+    """
+    Vista para eliminar una licencia médica.
+    
+    Args:
+        request: HttpRequest
+        licencia_id: ID de la licencia médica a eliminar
+        
+    Returns:
+        HttpResponseRedirect: Redirección a la lista de licencias médicas
+    """
     if request.method == 'POST':
         try:
             licencia = get_object_or_404(LicenciaMedicaPorPersonal, licenciaMedicaPorPersonal_id=licencia_id)
@@ -1405,6 +1726,16 @@ def delete_licencia_medica(request, licencia_id):
 
 @login_required
 def listar_ausentismos_personal(request, personal_id):
+    """
+    Vista para listar los ausentismos de un personal.
+    
+    Args:
+        request: HttpRequest
+        personal_id: ID del personal
+        
+    Returns:
+        HttpResponse: Renderizado del template con lista de ausentismos
+    """
     """Vista para listar ausentismos de un personal"""
     personal = get_object_or_404(Personal, personal_id=personal_id)
     ausentismos = Ausentismo.objects.filter(
@@ -1422,6 +1753,18 @@ def listar_ausentismos_personal(request, personal_id):
 @login_required
 @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
 def crear_ausentismo(request, personal_id):
+    """
+    Vista para crear un nuevo ausentismo.
+    
+    Valida que no haya solapamiento con otros ausentismos del mismo personal.
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        personal_id: ID del personal
+        
+    Returns:
+        HttpResponse: Renderizado del formulario o redirección si es exitoso
+    """
     """Vista para crear un ausentismo"""
     personal = get_object_or_404(Personal, personal_id=personal_id)
     
@@ -1453,6 +1796,19 @@ def crear_ausentismo(request, personal_id):
 
 @login_required
 def actualizar_ausentismo(request, personal_id, ausentismo_id):
+    """
+    Vista para actualizar un ausentismo existente.
+    
+    Valida que no haya solapamiento con otros ausentismos del mismo personal.
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        personal_id: ID del personal
+        ausentismo_id: ID del ausentismo a actualizar
+        
+    Returns:
+        HttpResponse: Renderizado del formulario o redirección si es exitoso
+    """
     """Vista para actualizar un ausentismo"""
     ausentismo = get_object_or_404(Ausentismo, ausentismo_id=ausentismo_id)
     personal = ausentismo.personal_id
@@ -1484,6 +1840,16 @@ def actualizar_ausentismo(request, personal_id, ausentismo_id):
 
 @login_required
 def eliminar_ausentismo(request, ausentismo_id):
+    """
+    Vista para eliminar un ausentismo.
+    
+    Args:
+        request: HttpRequest
+        ausentismo_id: ID del ausentismo a eliminar
+        
+    Returns:
+        HttpResponseRedirect: Redirección a la lista de ausentismos
+    """
     """Vista para eliminar un ausentismo"""
     if request.method == 'POST':
         try:
@@ -1505,6 +1871,18 @@ def eliminar_ausentismo(request, ausentismo_id):
 
 
 def gestionar_ausencias(request):
+    """
+    Vista unificada para gestionar ausencias (licencias médicas y ausentismos).
+    
+    Muestra una vista consolidada de todas las ausencias del personal,
+    permitiendo filtrar y gestionar tanto licencias médicas como ausentismos.
+    
+    Args:
+        request: HttpRequest
+        
+    Returns:
+        HttpResponse: Renderizado del template de gestión de ausencias
+    """
     """Vista unificada para gestionar licencias médicas y ausentismos"""
     from gen_settings.models import Empresa
     from django.db.models import Count, Q
@@ -1554,6 +1932,16 @@ def gestionar_ausencias(request):
 
 @login_required
 def edit_license(request, license_id):
+    """
+    Vista para editar una licencia de conducir existente.
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        license_id: ID de la licencia a editar
+        
+    Returns:
+        HttpResponse: Renderizado del formulario o redirección si es exitoso
+    """
     """Vista para editar licencia de conducir"""
     if request.method == 'GET':
         try:
@@ -1678,6 +2066,16 @@ def edit_license(request, license_id):
 
 @login_required
 def edit_certification(request, cert_id):
+    """
+    Vista para editar una certificación existente.
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        cert_id: ID de la certificación a editar
+        
+    Returns:
+        HttpResponse: Renderizado del formulario o redirección si es exitoso
+    """
     """Vista para editar certificación"""
     if request.method == 'GET':
         try:
@@ -1798,6 +2196,16 @@ def edit_certification(request, cert_id):
 
 @login_required
 def edit_exam(request, exam_id):
+    """
+    Vista para editar un examen médico existente.
+    
+    Args:
+        request: HttpRequest con datos del formulario
+        exam_id: ID del examen a editar
+        
+    Returns:
+        HttpResponse: Renderizado del formulario o redirección si es exitoso
+    """
     """Vista para editar examen"""
     if request.method == 'GET':
         try:
@@ -1926,6 +2334,12 @@ def edit_exam(request, exam_id):
 # ============================================================================
 
 class PersonalDesactivadoListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
+    """
+    Vista para listar el personal desactivado.
+    
+    Requiere permiso 'rrhh_personal.view_personal'.
+    Similar a PersonalListView pero muestra solo personal inactivo.
+    """
     permission_required = 'rrhh_personal.view_personal'
     """Vista para listar personal desactivado"""
     model = Personal
@@ -2000,6 +2414,19 @@ class PersonalDesactivadoListView(PermissionRequiredMixin, ListView, LoginRequir
 )
 @require_http_methods(["GET"])
 def api_historial_personal(request, personal_id):
+    """
+    API endpoint para obtener el historial de cambios del personal (JSON).
+    
+    Retorna todos los eventos del historial (creación, modificación, activación, etc.)
+    en formato JSON para ser consumido por JavaScript.
+    
+    Args:
+        request: HttpRequest
+        personal_id: ID del personal
+        
+    Returns:
+        JsonResponse: Lista de eventos del historial
+    """
     """API para obtener el historial completo de un personal en formato JSON"""
     try:
         personal = get_object_or_404(Personal, personal_id=personal_id)
@@ -2051,6 +2478,19 @@ def api_historial_personal(request, personal_id):
 )
 @require_http_methods(["GET"])
 def api_historial_documentos_personal(request, personal_id):
+    """
+    API endpoint para obtener el historial de documentos del personal (JSON).
+    
+    Retorna todos los eventos relacionados con documentos (agregado, modificado, eliminado)
+    en formato JSON para ser consumido por JavaScript.
+    
+    Args:
+        request: HttpRequest
+        personal_id: ID del personal
+        
+    Returns:
+        JsonResponse: Lista de eventos del historial de documentos
+    """
     """API para obtener el historial de documentos de un personal en formato JSON"""
     try:
         personal = get_object_or_404(Personal, personal_id=personal_id)
@@ -2101,6 +2541,19 @@ def api_historial_documentos_personal(request, personal_id):
 @permission_required_custom('rrhh_personal.view_personal', is_ajax=True)
 @require_http_methods(["GET"])
 def api_obtener_info_personal(request, personal_id):
+    """
+    API endpoint para obtener información completa del personal (JSON).
+    
+    Retorna toda la información del personal incluyendo documentos, licencias,
+    certificaciones, exámenes, etc. en formato JSON.
+    
+    Args:
+        request: HttpRequest
+        personal_id: ID del personal
+        
+    Returns:
+        JsonResponse: Información completa del personal
+    """
     """
     API para obtener información completa del personal (personal y laboral).
     Retorna toda la información en formato JSON para mostrar en un modal.
@@ -2177,6 +2630,17 @@ def api_obtener_info_personal(request, personal_id):
 @require_POST
 def toggle_personal_activo(request):
     """
+    Vista AJAX para cambiar el estado activo/inactivo del personal.
+    
+    Versión alternativa de toggle_personal_status que acepta múltiples IDs.
+    
+    Args:
+        request: HttpRequest con POST 'personal_id' y 'activo'
+        
+    Returns:
+        JsonResponse: Resultado de la operación
+    """
+    """
     Toggle estado activo/inactivo de personal.
     
     Requiere permisos específicos según la acción:
@@ -2233,6 +2697,18 @@ def toggle_personal_activo(request):
 @permission_required_custom('rrhh_personal.view_personal')
 @require_POST
 def descargar_documentacion_zip(request):
+    """
+    Vista para descargar toda la documentación del personal en un archivo ZIP.
+    
+    Incluye documentos personales, licencias, certificaciones y exámenes.
+    Crea un archivo ZIP temporal y lo retorna como descarga.
+    
+    Args:
+        request: HttpRequest con POST 'personal_ids' (lista de IDs)
+        
+    Returns:
+        HttpResponse: Archivo ZIP con la documentación
+    """
     """
     Genera un archivo ZIP con la documentación de los personal seleccionados.
     Estructura del ZIP:

@@ -1,10 +1,16 @@
-// ============================================================================
-// HISTORIAL DE DOCUMENTOS PERSONAL
-// ============================================================================
+/**
+ * Gestión del historial de documentos del personal.
+ * 
+ * Maneja la carga, renderizado y visualización del historial de cambios
+ * de documentos personales, licencias, certificaciones y exámenes.
+ */
 
 let historialCompleto = [];
 
-// Mapeo de tipos de documentos a sus contenedores
+/**
+ * Mapeo de tipos de documentos a sus contenedores y configuraciones.
+ * Define qué tipo de documento corresponde a cada sección de la interfaz.
+ */
 const historialConfig = {
     'personal-docs': {
         tipo: 'DOCUMENTO_PERSONAL',
@@ -52,6 +58,12 @@ document.addEventListener('DOMContentLoaded', function() {
     cargarHistorialCompleto();
 });
 
+/**
+ * Inicializa los eventos para los botones de toggle del historial.
+ * 
+ * Configura los event listeners para cada sección de historial,
+ * verificando permisos antes de habilitar los botones.
+ */
 function inicializarEventosHistorial() {
     // Asegurar que permisosHistorial esté definido
     const permisos = window.permisosHistorial || {};
@@ -83,6 +95,12 @@ function inicializarEventosHistorial() {
 // FUNCIONES PARA CARGAR HISTORIAL
 // ============================================================================
 
+/**
+ * Carga el historial completo de documentos desde la API.
+ * 
+ * Obtiene todos los eventos del historial y actualiza las secciones
+ * que estén visibles en ese momento.
+ */
 function cargarHistorialCompleto() {
     if (!window.HISTORIAL_DOCUMENTOS_URL) {
         console.error('URL de historial no configurada');
@@ -110,7 +128,12 @@ function cargarHistorialCompleto() {
         });
 }
 
-// Función pública para recargar el historial desde otros scripts
+/**
+ * Función pública para recargar el historial desde otros scripts.
+ * 
+ * Útil cuando se agrega, modifica o elimina un documento y se necesita
+ * actualizar el historial sin recargar toda la página.
+ */
 function recargarHistorialDocumentos() {
     cargarHistorialCompleto();
 }
@@ -118,6 +141,16 @@ function recargarHistorialDocumentos() {
 // Hacer la función disponible globalmente
 window.recargarHistorialDocumentos = recargarHistorialDocumentos;
 
+/**
+ * Muestra u oculta el historial de un tipo de documento específico.
+ * 
+ * Verifica permisos antes de permitir el toggle y renderiza el historial
+ * si se está mostrando por primera vez.
+ * 
+ * @param {string} containerId - ID del contenedor del historial
+ * @param {string} btnId - ID del botón de toggle
+ * @param {string} tipoDocumento - Tipo de documento (DOCUMENTO_PERSONAL, LICENCIA_CONDUCIR, etc.)
+ */
 function toggleHistorial(containerId, btnId, tipoDocumento) {
     const container = document.getElementById(containerId);
     const btn = document.getElementById(btnId);
@@ -146,6 +179,12 @@ function toggleHistorial(containerId, btnId, tipoDocumento) {
     }
 }
 
+/**
+ * Renderiza el historial filtrado por tipo de documento en el tbody correspondiente.
+ * 
+ * @param {string} tipoDocumento - Tipo de documento a filtrar
+ * @param {string} containerId - ID del contenedor del historial
+ */
 function renderizarHistorialPorTipo(tipoDocumento, containerId) {
     // Encontrar el tbody correspondiente
     const config = Object.values(historialConfig).find(c => c.containerId === containerId);
@@ -194,6 +233,12 @@ function renderizarHistorialPorTipo(tipoDocumento, containerId) {
 // FUNCIONES AUXILIARES
 // ============================================================================
 
+/**
+ * Formatea una fecha y hora en formato DD/MM/YYYY HH:MM.
+ * 
+ * @param {string} fechaHoraStr - Fecha y hora en formato "YYYY-MM-DD HH:MM:SS"
+ * @returns {string} Fecha formateada o HTML con "N/A" si no hay fecha
+ */
 function formatearFechaHora(fechaHoraStr) {
     if (!fechaHoraStr) return '<span class="text-muted">N/A</span>';
     
@@ -212,6 +257,12 @@ function formatearFechaHora(fechaHoraStr) {
     }
 }
 
+/**
+ * Obtiene el HTML del badge según el tipo de acción del historial.
+ * 
+ * @param {string} accion - Tipo de acción (DOCUMENTO_AGREGADO, DOCUMENTO_ELIMINADO, etc.)
+ * @returns {string} HTML del badge con el color correspondiente
+ */
 function obtenerBadgeAccion(accion) {
     const badges = {
         'DOCUMENTO_AGREGADO': '<span class="badge bg-success">Agregado</span>',
@@ -223,6 +274,12 @@ function obtenerBadgeAccion(accion) {
     return badges[accion] || `<span class="badge bg-secondary">${accion}</span>`;
 }
 
+/**
+ * Escapa caracteres HTML para prevenir XSS.
+ * 
+ * @param {string} text - Texto a escapar
+ * @returns {string} Texto escapado
+ */
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -230,6 +287,15 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+/**
+ * Obtiene el HTML para mostrar el archivo del historial.
+ * 
+ * Solo muestra el archivo si el documento fue eliminado.
+ * Para documentos creados/modificados, el archivo está disponible en la tabla principal.
+ * 
+ * @param {Object} item - Item del historial
+ * @returns {string} HTML del botón para ver el archivo o "-" si no aplica
+ */
 function obtenerHtmlArchivo(item) {
     // Solo mostrar el archivo si el documento fue ELIMINADO
     // Si fue creado/agregado/modificado, el archivo está disponible en la tabla principal

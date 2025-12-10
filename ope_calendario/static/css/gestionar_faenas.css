@@ -2,7 +2,7 @@
    ESTILOS PARA GESTIÓN DE FAENAS
    ============================================================================ */
 
-/* Tarjetas de estadísticas compactas */
+/* Tarjetas de estadísticas compactas en la parte superior */
 .stat-card-compact {
     display: flex;
     align-items: center;
@@ -43,7 +43,7 @@
     margin-top: 0.25rem;
 }
 
-/* Cards de faenas - Compactas */
+/* Cards individuales de faenas (vista de tarjetas) */
 .faena-card {
     transition: all 0.2s ease;
     border: 1px solid #dee2e6;
@@ -80,7 +80,7 @@
     font-size: 0.75rem;
 }
 
-/* Tablas - Tamaño equilibrado */
+/* Estilos para tablas con tamaño de fuente equilibrado */
 .table th {
     font-weight: 600;
     font-size: 0.8rem !important;
@@ -100,7 +100,7 @@
     font-size: 0.75rem !important;
 }
 
-/* Mejoras generales */
+/* Mejoras generales para todas las cards */
 .card {
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -117,7 +117,7 @@
     letter-spacing: normal !important;
 }
 
-/* Sistema de pestañas */
+/* Estilos para el sistema de pestañas (tabs) */
 .nav-tabs .nav-link {
     color: #495057;
     font-weight: 500;
@@ -136,7 +136,7 @@
     padding: 0.25em 0.5em;
 }
 
-/* Vista de tabla */
+/* Estilos para la vista de tabla de faenas */
 .table-responsive {
     border-radius: 8px;
     overflow: hidden;
@@ -171,7 +171,7 @@
     padding: 0.75rem;
 }
 
-/* Faenas finalizadas */
+/* Estilos para faenas finalizadas (opacidad reducida) */
 .faena-finalizada {
     opacity: 0.85;
 }
@@ -180,7 +180,7 @@
     background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
 }
 
-/* Botón de vista activo */
+/* Estilos para botones de vista activos (tabla/cards) */
 .btn-group .btn-secondary.active {
     background-color: #212529;
     color: white;
@@ -195,13 +195,13 @@
     opacity: 1;
 }
 
-/* Mejoras en badges */
+/* Mejoras en badges de estado */
 .badge {
     font-weight: 500;
     padding: 0.35em 0.65em;
 }
 
-/* Animaciones suaves */
+/* Animaciones suaves para transiciones entre pestañas */
 .tab-pane {
     animation: fadeIn 0.3s ease-in;
 }
@@ -222,7 +222,7 @@
     border-radius: 8px;
 }
 
-/* Indicadores de inconsistencias en asignaciones */
+/* Indicadores visuales de inconsistencias en asignaciones (filas con advertencias) */
 .table-warning {
     background-color: #fff3cd !important;
 }
@@ -252,7 +252,7 @@
     padding: 0.25rem 0.5rem;
 }
 
-/* Modal de detalle de faena - fuente más pequeña */
+/* Estilos para el modal de detalle de faena (fuente más pequeña para mejor legibilidad) */
 #detalleFaenaModal .modal-body {
     font-size: 0.875rem;
 }
@@ -278,7 +278,7 @@
     font-size: 0.95rem;
 }
 
-/* Responsive */
+/* Estilos responsivos para dispositivos móviles */
 @media (max-width: 768px) {
     .stat-card-compact {
         padding: 0.6rem 0.8rem;

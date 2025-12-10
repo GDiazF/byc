@@ -1,4 +1,9 @@
-// Manejo de listado de licencias médicas
+/**
+ * Gestión de listado de licencias médicas con DataTables.
+ * 
+ * Inicializa la tabla de licencias médicas con DataTables y maneja
+ * la eliminación de licencias con confirmación mediante AJAX.
+ */
 
 $(document).ready(function() {
     // Verificar si la tabla existe (solo se renderiza si hay datos)

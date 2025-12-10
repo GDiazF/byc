@@ -18,7 +18,11 @@ if (typeof permisos === 'undefined') {
 // RECARGA DINÁMICA DE DATOS
 // ============================================================================
 
-// Recargar faenas desde la API
+/**
+ * Recarga las faenas desde la API y actualiza la visualización.
+ * Útil para refrescar los datos sin recargar toda la página.
+ * @returns {Promise<boolean>} true si se recargaron exitosamente, false si hubo error
+ */
 async function recargarFaenasDinamicamente() {
     try {
         const response = await fetch('/calendario/api/listar-faenas/', {
@@ -47,7 +51,11 @@ async function recargarFaenasDinamicamente() {
 // UTILIDADES
 // ============================================================================
 
-// Get CSRF token
+/**
+ * Obtiene el valor de una cookie por su nombre.
+ * @param {string} name - Nombre de la cookie a obtener
+ * @returns {string|null} Valor de la cookie o null si no existe
+ */
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -63,7 +71,11 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Formatear fecha a formato chileno (DD-MM-YYYY)
+/**
+ * Formatea una fecha al formato chileno (DD-MM-YYYY).
+ * @param {string|Date} fecha - Fecha a formatear (string ISO o Date)
+ * @returns {string} Fecha formateada en formato chileno o string vacío si no hay fecha
+ */
 function formatearFechaChilena(fecha) {
     if (!fecha) return '';
     
@@ -79,7 +91,11 @@ function formatearFechaChilena(fecha) {
     }
 }
 
-// Convertir fecha chilena (dd-mm-yyyy) a objeto Date
+/**
+ * Convierte una fecha en formato chileno (DD-MM-YYYY) o ISO (YYYY-MM-DD) a objeto Date.
+ * @param {string} fechaChilena - Fecha en formato chileno o ISO
+ * @returns {Date|null} Objeto Date o null si no se puede parsear
+ */
 function parsearFechaChilena(fechaChilena) {
     if (!fechaChilena) return null;
     
@@ -107,7 +123,12 @@ function parsearFechaChilena(fechaChilena) {
     }
 }
 
-// Verificar si una faena está activa o finalizada
+/**
+ * Verifica si una faena está activa (no ha finalizado).
+ * Una faena está activa si no tiene fecha de fin o si la fecha de fin es posterior a hoy.
+ * @param {Object} faena - Objeto faena con fechas
+ * @returns {boolean} true si la faena está activa, false si está finalizada
+ */
 function esFaenaActiva(faena) {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -130,7 +151,12 @@ function esFaenaActiva(faena) {
     return fechaFin >= hoy;
 }
 
-// Verificar si una faena es próxima (aún no ha comenzado)
+/**
+ * Verifica si una faena es próxima (aún no ha comenzado).
+ * Una faena es próxima si su fecha de inicio es posterior a hoy.
+ * @param {Object} faena - Objeto faena con fecha_inicio
+ * @returns {boolean} true si la faena es próxima, false si ya comenzó o no tiene fecha
+ */
 function esFaenaProxima(faena) {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -147,7 +173,12 @@ function esFaenaProxima(faena) {
     return fechaInicio > hoy;
 }
 
-// Verificar si una faena está realmente activa (empezó pero no terminó)
+/**
+ * Verifica si una faena está realmente en curso (empezó pero no terminó).
+ * Una faena está en curso si ya comenzó (fecha_inicio <= hoy) y no ha terminado (fecha_fin >= hoy o no tiene fecha_fin).
+ * @param {Object} faena - Objeto faena con fechas
+ * @returns {boolean} true si la faena está en curso, false si es próxima o finalizada
+ */
 function esFaenaEnCurso(faena) {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -176,7 +207,12 @@ function esFaenaEnCurso(faena) {
     return fechaFin >= hoy;
 }
 
-// Calcular duración de una faena en días
+/**
+ * Calcula la duración de una faena en días y la formatea de manera legible.
+ * Retorna la duración en días, meses o años según corresponda.
+ * @param {Object} faena - Objeto faena con fecha_inicio y fecha_fin
+ * @returns {string} Duración formateada (ej: "15 días", "2 meses", "1 año 3 meses") o "N/A" si no hay fechas
+ */
 function calcularDuracionFaena(faena) {
     if (!faena.fecha_inicio || !faena.fecha_fin) {
         return 'N/A';
@@ -202,7 +238,12 @@ function calcularDuracionFaena(faena) {
     }
 }
 
-// Obtener estado de la faena
+/**
+ * Obtiene el estado visual de una faena con badges HTML.
+ * Determina si está activa, próxima, finalizada y muestra días restantes o días para inicio.
+ * @param {Object} faena - Objeto faena con fechas
+ * @returns {string} HTML con badges de estado
+ */
 function obtenerEstadoFaena(faena) {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -251,7 +292,13 @@ function obtenerEstadoFaena(faena) {
     }
 }
 
-// Renderizar faenas en formato de cards compactas
+/**
+ * Renderiza una faena en formato de card (tarjeta) compacta.
+ * Incluye información de código, nombre, fechas, estado y botones de acción según permisos.
+ * @param {Object} faena - Objeto faena con todos sus datos
+ * @param {boolean} esActiva - Indica si la faena está activa (por defecto: true)
+ * @returns {string} HTML de la card de la faena
+ */
 function renderizarFaenaCard(faena, esActiva = true) {
     // Verificar permisos (usar permisos global si está disponible, sino asumir que tiene permisos)
     const canEdit = permisos && permisos.can_change_faena === true;
@@ -356,7 +403,13 @@ function renderizarFaenaCard(faena, esActiva = true) {
     `;
 }
 
-// Renderizar fila de tabla
+/**
+ * Renderiza una faena en formato de fila de tabla.
+ * Incluye información de código, nombre, descripción, fechas, personal asignado y botones de acción según permisos.
+ * @param {Object} faena - Objeto faena con todos sus datos
+ * @param {boolean} esActiva - Indica si la faena está activa (por defecto: true)
+ * @returns {string} HTML de la fila de tabla de la faena
+ */
 function renderizarFaenaFila(faena, esActiva = true) {
     // Verificar permisos (usar permisos global si está disponible, sino asumir que tiene permisos)
     const canEdit = permisos && permisos.can_change_faena === true;
@@ -431,7 +484,11 @@ function renderizarFaenaFila(faena, esActiva = true) {
     `;
 }
 
-// Renderizar faenas principales
+/**
+ * Renderiza todas las faenas separándolas en tres categorías: próximas, en curso y finalizadas.
+ * Usa la vista actual (cards o tabla) para mostrar las faenas.
+ * Actualiza los contadores de cada categoría.
+ */
 function renderizarFaenas() {
     // Asegurarse de que faenas está definido
     if (!faenas) {
@@ -518,7 +575,11 @@ function renderizarSeccion(faenasLista, tipo, esActiva, estadoTexto = 'activa') 
     tablaBody.innerHTML = faenasLista.map(f => renderizarFaenaFila(f, esActiva)).join('');
 }
 
-// Cambiar entre vista de cards y tabla
+/**
+ * Cambia entre la vista de cards y la vista de tabla.
+ * Actualiza los botones de vista y muestra/oculta los contenedores correspondientes.
+ * @param {string} vista - 'cards' o 'tabla'
+ */
 function cambiarVisualizacion(vista) {
     vistaActual = vista;
     
@@ -539,7 +600,11 @@ function cambiarVisualizacion(vista) {
     }
 }
 
-// Crear nueva faena
+/**
+ * Abre el modal para crear una nueva faena.
+ * Verifica permisos antes de abrir el modal.
+ * Limpia el formulario y resetea todos los campos.
+ */
 function mostrarModalNuevaFaena() {
     // Verificar permisos antes de abrir el modal
     const canAdd = permisos && permisos.can_add_faena === true;
@@ -560,7 +625,12 @@ function mostrarModalNuevaFaena() {
     modal.show();
 }
 
-// Editar faena
+/**
+ * Abre el modal para editar una faena existente.
+ * Verifica permisos antes de abrir el modal.
+ * Precarga todos los campos del formulario con los datos de la faena.
+ * @param {number} faenaId - ID de la faena a editar
+ */
 function editarFaena(faenaId) {
     // Verificar permisos antes de abrir el modal
     const canEdit = permisos && permisos.can_change_faena === true;
@@ -596,7 +666,13 @@ function editarFaena(faenaId) {
     modal.show();
 }
 
-// Guardar faena
+/**
+ * Guarda una nueva faena o actualiza una existente.
+ * Valida los datos del formulario antes de enviar.
+ * Muestra mensajes de éxito/error y recarga las faenas dinámicamente.
+ * Si hay conflictos con asignaciones, muestra un modal de advertencia.
+ * @param {Event} event - Evento del formulario (se previene el submit por defecto)
+ */
 async function guardarFaena(event) {
     event.preventDefault();
     
@@ -683,7 +759,12 @@ async function guardarFaena(event) {
 // Variable para guardar el ID de la faena a eliminar
 let faenaAEliminar = null;
 
-// Mostrar modal de confirmación para eliminar faena
+/**
+ * Muestra un modal de confirmación antes de eliminar una faena.
+ * Verifica permisos antes de abrir el modal.
+ * Muestra advertencia si la faena tiene personal asignado.
+ * @param {number} faenaId - ID de la faena a eliminar
+ */
 function confirmarEliminarFaena(faenaId) {
     // Verificar permisos antes de abrir el modal
     const canDelete = permisos && permisos.can_delete_faena === true;
@@ -723,7 +804,10 @@ function confirmarEliminarFaena(faenaId) {
     modal.show();
 }
 
-// Ejecutar eliminación de faena
+/**
+ * Ejecuta la eliminación de la faena confirmada.
+ * Llama a eliminarFaena() con el ID guardado en faenaAEliminar.
+ */
 function ejecutarEliminarFaena() {
     if (!faenaAEliminar) return;
     
@@ -739,7 +823,11 @@ function ejecutarEliminarFaena() {
     faenaAEliminar = null;
 }
 
-// Eliminar faena
+/**
+ * Elimina una faena haciendo una petición AJAX al backend.
+ * Muestra mensaje de éxito/error y recarga las faenas dinámicamente.
+ * @param {number} faenaId - ID de la faena a eliminar
+ */
 async function eliminarFaena(faenaId) {
     try {
         const response = await fetch('/calendario/api/eliminar-faena/', {
@@ -767,6 +855,12 @@ async function eliminarFaena(faenaId) {
 
 
 // Ver detalles de faena
+/**
+ * Muestra los detalles completos de una faena en un modal.
+ * Verifica permisos antes de abrir el modal.
+ * Muestra información de la faena, personal asignado y asignaciones.
+ * @param {number} faenaId - ID de la faena de la cual mostrar detalles
+ */
 function verDetallesFaena(faenaId) {
     // Verificar permisos antes de abrir el modal
     const canView = permisos && permisos.can_view_faena === true;
@@ -889,7 +983,13 @@ function verDetallesFaena(faenaId) {
 }
 
 
-// Mostrar notificación flotante estilo RRHH
+/**
+ * Muestra una notificación flotante en la esquina superior derecha.
+ * Crea un contenedor de mensajes si no existe.
+ * Auto-cierra después de 5 segundos (8 segundos para warnings).
+ * @param {string} mensaje - Mensaje a mostrar
+ * @param {string} tipo - Tipo de alerta: 'success', 'warning' o 'error'
+ */
 function mostrarAlerta(mensaje, tipo) {
     // Crear contenedor de alertas flotantes si no existe
     let container = document.querySelector('.messages-container');
@@ -939,7 +1039,13 @@ function mostrarAlerta(mensaje, tipo) {
     }, 5000);
 }
 
-// Mostrar alerta dentro del modal
+/**
+ * Muestra una alerta dentro del modal de faena.
+ * Limpia alertas anteriores y hace scroll al inicio del modal.
+ * No se auto-elimina, el usuario debe cerrarla manualmente.
+ * @param {string} mensaje - Mensaje a mostrar
+ * @param {string} tipo - Tipo de alerta: 'success' o 'error'
+ */
 function mostrarAlertaModal(mensaje, tipo) {
     const alertContainer = document.getElementById('alertContainerModal');
     const alertClass = tipo === 'success' ? 'alert-success' : 'alert-danger';
@@ -963,7 +1069,11 @@ function mostrarAlertaModal(mensaje, tipo) {
     // NO SE AUTO-ELIMINA - el usuario debe cerrarla manualmente
 }
 
-// Filtrar faenas por código o nombre
+/**
+ * Filtra las faenas mostradas por código o nombre.
+ * Funciona tanto en vista de cards como en vista de tabla.
+ * Oculta las faenas que no coinciden con la búsqueda.
+ */
 function filtrarFaenas() {
     const busqueda = document.getElementById('buscadorFaenas').value.trim().toUpperCase();
     
@@ -998,13 +1108,22 @@ function filtrarFaenas() {
     });
 }
 
-// Limpiar buscador
+/**
+ * Limpia el campo de búsqueda y muestra todas las faenas nuevamente.
+ */
 function limpiarBuscador() {
     document.getElementById('buscadorFaenas').value = '';
     filtrarFaenas();
 }
 
-// Mostrar modal de advertencia de conflictos al actualizar fechas de faena
+/**
+ * Muestra un modal de advertencia cuando se actualizan fechas de faena y hay conflictos.
+ * Informa sobre asignaciones actualizadas y desactivadas automáticamente.
+ * Muestra detalles de cada conflicto y recomendaciones para resolverlos.
+ * @param {number} asignacionesActualizadas - Cantidad de asignaciones que se ajustaron correctamente
+ * @param {number} asignacionesDesactivadas - Cantidad de asignaciones que se desactivaron por conflictos
+ * @param {Array} conflictos - Array de objetos con información de cada conflicto
+ */
 function mostrarModalAdvertenciaConflictos(asignacionesActualizadas, asignacionesDesactivadas, conflictos) {
     const contenido = document.getElementById('modalAdvertenciaContenido');
     

@@ -1,6 +1,10 @@
-// Gestión de ausentismos
+/**
+ * Gestión de ausentismos con DataTables.
+ * 
+ * Inicializa la tabla de ausentismos con DataTables y maneja
+ * la eliminación de ausentismos con confirmación.
+ */
 
-// Inicializar DataTable con jQuery
 $(document).ready(function() {
     console.log('=== Inicializando DataTable de Ausentismos ===');
     

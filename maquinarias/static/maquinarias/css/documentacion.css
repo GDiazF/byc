@@ -1,0 +1,29 @@
+/* Estilos para página de documentación de equipos */
+
+/* Contenedor del formulario de subir documento */
+.documento-form-container {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+/* Grupo de fecha de vencimiento - oculto por defecto */
+.fecha-vencimiento-group {
+    display: none !important;
+}
+
+/* Grupo de fecha de vencimiento - visible cuando tiene clase 'show' */
+.fecha-vencimiento-group.show {
+    display: block !important;
+}
+
+/* Badge de estado del documento */
+.estado-badge {
+    font-size: 0.75rem;
+    min-width: 80px;
+    display: inline-block;
+    text-align: center;
+}
+

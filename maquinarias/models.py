@@ -20,40 +20,73 @@ from django.db.models import Q, CheckConstraint
 def obtener_ruta_documento_maquinaria(instance, filename):
     """
     Función para determinar la ruta donde se guardarán los documentos de maquinarias.
-    La estructura será: Documentacion_Maquinarias/EQUIPO_ID/TIPO_DOCUMENTO/archivo
-    """
-    extension = os.path.splitext(filename)[1]
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     
-    # Usar el nombre de la clase para evitar referencias forward
+    Esta función se usa como upload_to en los campos FileField para organizar automáticamente
+    los archivos en una estructura de carpetas lógica. Los documentos se organizan por equipo
+    y tipo de documento para facilitar su gestión y acceso.
+    
+    La estructura será: Documentacion_Maquinarias/EQUIPO_ID/TIPO_DOCUMENTO/archivo
+    
+    Parámetros:
+        instance: Instancia del modelo que contiene el campo FileField
+        filename: Nombre original del archivo subido
+    
+    Retorna:
+        str: Ruta relativa (desde MEDIA_ROOT) donde se guardará el archivo
+    """
+    # Paso 1: Extraer la extensión del archivo original
+    # Esto preserva el tipo de archivo (ej: .pdf, .jpg)
+    extension = os.path.splitext(filename)[1]
+    
+    # Paso 2: Generar timestamp para hacer único el nombre del archivo
+    # Esto evita sobrescritura accidental si se suben archivos con el mismo nombre
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")  # Formato: YYYYMMDDHHMMSS
+    
+    # Paso 3: Obtener el nombre de la clase de la instancia
+    # Se usa el nombre de la clase en lugar de isinstance() para evitar referencias forward
+    # (cuando el modelo aún no está completamente definido)
     class_name = instance.__class__.__name__
     
+    # Paso 4: Determinar la ruta según el tipo de modelo
     if class_name == 'DocumentoMaquinaria':
-        equipo_id = instance.equipo_id.equipo_id
-        tipo_doc = instance.tipo_documento_id.nombre.replace(' ', '_').lower()
-        nombre_archivo = f"{tipo_doc}_{timestamp}{extension}"
+        # CASO 1: Documento actual (no histórico)
+        # Estructura: Documentacion_Maquinarias/EQUIPO_ID/TIPO_DOCUMENTO/archivo
+        equipo_id = instance.equipo_id.equipo_id  # ID del equipo
+        tipo_doc = instance.tipo_documento_id.nombre.replace(' ', '_').lower()  # Nombre del tipo normalizado
+        nombre_archivo = f"{tipo_doc}_{timestamp}{extension}"  # Nombre único con timestamp
         return os.path.join('Documentacion_Maquinarias', str(equipo_id), tipo_doc, nombre_archivo)
+    
     elif class_name == 'HistorialDocumentoMaquinaria':
-        equipo_id = instance.equipo_id.equipo_id
-        tipo_doc = instance.tipo_documento_nombre.replace(' ', '_').lower()
-        nombre_archivo = f"{tipo_doc}_{timestamp}_historial{extension}"
+        # CASO 2: Documento histórico (reemplazado o eliminado)
+        # Estructura: Documentacion_Maquinarias/EQUIPO_ID/Historial/TIPO_DOCUMENTO/archivo
+        equipo_id = instance.equipo_id.equipo_id  # ID del equipo
+        tipo_doc = instance.tipo_documento_nombre.replace(' ', '_').lower()  # Nombre del tipo (puede ser string)
+        nombre_archivo = f"{tipo_doc}_{timestamp}_historial{extension}"  # Nombre con sufijo _historial
         return os.path.join('Documentacion_Maquinarias', str(equipo_id), 'Historial', tipo_doc, nombre_archivo)
     
+    # CASO 3: Cualquier otro tipo (fallback)
+    # Si no coincide con ninguno de los casos anteriores, guardar en carpeta "Otros"
     return os.path.join('Documentacion_Maquinarias', 'Otros', filename)
 
 def mover_archivo_a_eliminados_maquinaria(archivo_field, equipo_id, nombre_documento):
     """
-    Mueve un archivo de maquinaria a la carpeta de eliminados en lugar de eliminarlo.
-    Estructura: Documentacion_Eliminada_Maquinarias/EQUIPO_ID/EQUIPO_ID_nombre_documento.pdf
+    Mueve un archivo de maquinaria a la carpeta de eliminados en lugar de eliminarlo físicamente.
+    
+    Esta función preserva los archivos eliminados en una carpeta especial para poder recuperarlos
+    si es necesario. Los archivos se organizan por equipo para facilitar su gestión.
+    
+    Estructura de carpetas: Documentacion_Eliminada_Maquinarias/EQUIPO_ID/EQUIPO_ID_nombre_documento.pdf
     
     Args:
-        archivo_field: Campo FileField del modelo
-        equipo_id: ID del equipo (int o string)
+        archivo_field: Campo FileField del modelo que contiene el archivo a mover
+        equipo_id: ID del equipo (int o string) para organizar en carpetas
         nombre_documento: Nombre descriptivo del documento (ej: "Permiso de Circulación")
     
     Returns:
-        str: Ruta relativa del archivo movido, o None si hubo error
+        str: Ruta relativa del archivo movido (desde MEDIA_ROOT), o None si hubo error
     """
+    # Paso 1: Validar que el archivo existe y tiene un nombre
+    # Si no hay archivo o nombre, no hay nada que mover
     if not archivo_field or not archivo_field.name:
         return None
     
@@ -61,112 +94,233 @@ def mover_archivo_a_eliminados_maquinaria(archivo_field, equipo_id, nombre_docum
         from django.conf import settings
         import shutil
         
-        # Obtener rutas
+        # Paso 2: Obtener la ruta completa del archivo original
+        # archivo_field.path devuelve la ruta absoluta del archivo en el sistema de archivos
         archivo_original_path = archivo_field.path
         if not os.path.exists(archivo_original_path):
+            # Si el archivo no existe físicamente, retornar None
             return None
         
-        # Crear nombre de archivo limpio (sin caracteres especiales)
-        # Formato: EQUIPO_ID_nombre_documento.pdf
-        nombre_limpio = nombre_documento.lower().replace(' ', '_').replace('/', '_')
-        # Obtener extensión del archivo original
-        extension = os.path.splitext(archivo_field.name)[1]
-        nombre_archivo_final = f"{equipo_id}_{nombre_limpio}{extension}"
+        # Paso 3: Crear nombre de archivo limpio y seguro para el sistema de archivos
+        # Se normaliza el nombre del documento eliminando caracteres especiales que podrían causar problemas
+        # Formato final: EQUIPO_ID_nombre_documento.pdf
+        nombre_limpio = nombre_documento.lower().replace(' ', '_').replace('/', '_')  # Normalizar nombre
+        extension = os.path.splitext(archivo_field.name)[1]  # Obtener extensión del archivo original (.pdf)
+        nombre_archivo_final = f"{equipo_id}_{nombre_limpio}{extension}"  # Nombre completo del archivo
         
-        # Ruta destino: Documentacion_Eliminada_Maquinarias/EQUIPO_ID/EQUIPO_ID_nombre_documento.pdf
+        # Paso 4: Crear la carpeta de destino si no existe
+        # La estructura es: MEDIA_ROOT/Documentacion_Eliminada_Maquinarias/EQUIPO_ID/
         carpeta_eliminados = os.path.join(settings.MEDIA_ROOT, 'Documentacion_Eliminada_Maquinarias', str(equipo_id))
-        os.makedirs(carpeta_eliminados, exist_ok=True)
+        os.makedirs(carpeta_eliminados, exist_ok=True)  # Crear carpeta si no existe (exist_ok evita error si ya existe)
         
+        # Paso 5: Construir ruta completa de destino
         ruta_destino = os.path.join(carpeta_eliminados, nombre_archivo_final)
         
-        # Si ya existe un archivo con ese nombre, agregar timestamp
+        # Paso 6: Manejar caso de archivo duplicado
+        # Si ya existe un archivo con ese nombre, agregar timestamp para evitar sobrescritura
         if os.path.exists(ruta_destino):
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            nombre_base, ext = os.path.splitext(nombre_archivo_final)
-            nombre_archivo_final = f"{nombre_base}_{timestamp}{ext}"
-            ruta_destino = os.path.join(carpeta_eliminados, nombre_archivo_final)
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")  # Timestamp en formato YYYYMMDDHHMMSS
+            nombre_base, ext = os.path.splitext(nombre_archivo_final)  # Separar nombre y extensión
+            nombre_archivo_final = f"{nombre_base}_{timestamp}{ext}"  # Agregar timestamp al nombre
+            ruta_destino = os.path.join(carpeta_eliminados, nombre_archivo_final)  # Actualizar ruta destino
         
-        # Mover el archivo
+        # Paso 7: Mover el archivo físicamente de la ubicación original a la carpeta de eliminados
+        # shutil.move() mueve el archivo (no copia), por lo que desaparece de su ubicación original
         shutil.move(archivo_original_path, ruta_destino)
         
-        # Retornar ruta relativa para guardar en historial
+        # Paso 8: Retornar ruta relativa (desde MEDIA_ROOT) para guardar en el historial
+        # Esta ruta se usa para referencia en la base de datos sin incluir la ruta absoluta del servidor
         ruta_relativa = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), nombre_archivo_final)
         return ruta_relativa
         
     except Exception as e:
-        # Si falla el movimiento, intentar eliminar normalmente
+        # Manejo de errores: si falla el movimiento, intentar eliminar normalmente
+        # Esto asegura que el archivo no quede huérfano si hay un error
         print(f"Error al mover archivo a eliminados: {str(e)}")
         try:
-            archivo_field.delete(save=False)
+            archivo_field.delete(save=False)  # Eliminar archivo sin guardar cambios en el modelo
         except:
-            pass
-        return None
+            pass  # Si falla la eliminación también, continuar sin hacer nada más
+        return None  # Retornar None para indicar que hubo un error
 
 
 class OverwriteStorage(FileSystemStorage):
     """
-    Storage class para desarrollo local que sobrescribe archivos existentes
+    Clase de almacenamiento personalizada para desarrollo local que sobrescribe archivos existentes.
+    
+    Esta clase extiende FileSystemStorage de Django y modifica el comportamiento para que,
+    cuando se intenta guardar un archivo con un nombre que ya existe, se elimine el archivo
+    anterior antes de guardar el nuevo. Esto es útil en desarrollo para evitar acumulación
+    de archivos duplicados.
+    
+    IMPORTANTE: Esta clase solo debe usarse en desarrollo, no en producción.
     """
     def get_available_name(self, name, max_length=None):
-        # Eliminar archivo existente si existe
+        """
+        Obtiene un nombre disponible para el archivo, eliminando el existente si hay uno.
+        
+        Este método se ejecuta automáticamente cuando Django intenta guardar un archivo.
+        Si ya existe un archivo con ese nombre, lo elimina antes de retornar el nombre.
+        
+        Parámetros:
+            name: Nombre del archivo a guardar
+            max_length: Longitud máxima del nombre (no usado en esta implementación)
+        
+        Retorna:
+            str: Nombre del archivo (el mismo que se recibió, después de eliminar el existente)
+        """
+        # Paso 1: Verificar si ya existe un archivo con ese nombre
         if self.exists(name):
+            # Paso 2: Si existe, eliminarlo para permitir sobrescribir
             self.delete(name)
+        
+        # Paso 3: Retornar el nombre original (ahora disponible)
         return name
 
 class TipoEquipo(models.Model):
+    """
+    Modelo que representa los tipos de equipos (categorías).
+    
+    Ejemplos: Grúa Torre, Excavadora, Camión, Cargador Frontal, etc.
+    Cada tipo tiene una sigla que se usa para generar nombres de equipos (ej: GT, EX, CM).
+    """
+    # Campo de clave primaria autoincremental
     tipoEquipo_id = models.AutoField(primary_key=True, null=False, blank=False)
+    
+    # Nombre completo del tipo de equipo (ej: "Grúa Torre", "Excavadora")
     tipoEquipo = models.CharField(max_length=100, null=False, blank=False)
+    
+    # Sigla del tipo de equipo (ej: "GT", "EX", "CM")
+    # Se usa para generar nombres de equipos automáticamente
     siglaEquipo = models.CharField(max_length=3, null=False, blank=False)
 
     def __str__(self):
+        """Representación en string del objeto (usado en admin y shell de Django)"""
         return self.tipoEquipo
 
 class MarcaEquipo(models.Model):
+    """
+    Modelo que representa las marcas de equipos.
+    
+    Ejemplos: Caterpillar, Komatsu, Liebherr, Volvo, etc.
+    Cada marca puede tener múltiples modelos asociados.
+    """
+    # Campo de clave primaria autoincremental
     marcaEquipo_id = models.AutoField(primary_key=True, null=False, blank=False)
+    
+    # Nombre de la marca (ej: "Caterpillar", "Komatsu", "Liebherr")
     marcaEquipo = models.CharField(max_length=100, null=False, blank=False)
 
     def __str__(self):
+        """Representación en string del objeto (usado en admin y shell de Django)"""
         return self.marcaEquipo
 
 class ModeloEquipo(models.Model):
+    """
+    Modelo que representa los modelos específicos de equipos.
+    
+    Cada modelo pertenece a un tipo y una marca específicos.
+    Ejemplos: CAT 320D (Tipo: Excavadora, Marca: Caterpillar), Komatsu PC200 (Tipo: Excavadora, Marca: Komatsu).
+    
+    La combinación de tipo, marca y nombre de modelo debe ser única para evitar duplicados.
+    """
+    # Campo de clave primaria autoincremental
     modeloEquipo_id = models.AutoField(primary_key=True, null=False, blank=False)
+    
+    # Nombre del modelo (ej: "CAT 320D", "Komatsu PC200", "Liebherr LTM 1100")
     modeloEquipo = models.CharField(max_length=100, null=False, blank=False)
+    
+    # Relación con TipoEquipo (tipo de equipo al que pertenece este modelo)
+    # CASCADE: Si se elimina el tipo, se eliminan todos sus modelos
     tipoEquipo_id = models.ForeignKey(TipoEquipo, on_delete=models.CASCADE, db_column='tipoEquipo_id', null=True, blank=True)
+    
+    # Relación con MarcaEquipo (marca del equipo)
+    # CASCADE: Si se elimina la marca, se eliminan todos sus modelos
     marcaEquipo_id = models.ForeignKey(MarcaEquipo, on_delete=models.CASCADE, db_column='marcaEquipo_id', null=True, blank=True)
 
     class Meta:
-        verbose_name = 'Modelo de Equipo'
-        verbose_name_plural = 'Modelos de Equipo'
-        # Un modelo es único para cada combinación de tipo, marca y nombre
+        """Configuración de metadatos del modelo"""
+        verbose_name = 'Modelo de Equipo'  # Nombre singular en español para el admin
+        verbose_name_plural = 'Modelos de Equipo'  # Nombre plural en español para el admin
+        
+        # Restricción de unicidad: Un modelo es único para cada combinación de tipo, marca y nombre
+        # Esto previene tener modelos duplicados con el mismo nombre en la misma marca y tipo
         unique_together = [['tipoEquipo_id', 'marcaEquipo_id', 'modeloEquipo']]
 
     def __str__(self):
+        """Representación en string del objeto (usado en admin y shell de Django)"""
         return f"{self.modeloEquipo} ({self.marcaEquipo_id.marcaEquipo})"
 
 class Equipo(models.Model):
+    """
+    Modelo principal que representa cada equipo físico individual en el sistema.
+    
+    Un equipo es una instancia específica de un modelo de equipo, perteneciente a una empresa.
+    Cada equipo tiene un código interno único dentro de su modelo, y un nombre que se genera
+    automáticamente basado en la sigla del tipo, código interno y patente.
+    
+    Ejemplo: Un equipo puede ser "GT01 - KJL556" (Grúa Torre código 01, patente KJL556).
+    """
+    # Campo de clave primaria autoincremental
     equipo_id = models.AutoField(primary_key=True, null=False, blank=False)
+    
+    # Relación con Empresa (empresa propietaria del equipo)
+    # CASCADE: Si se elimina la empresa, se eliminan todos sus equipos
     empresa_id = models.ForeignKey(Empresa, on_delete=models.CASCADE, db_column='empresa_id', null=False, blank=False)
+    
+    # Relación con ModeloEquipo (modelo específico del equipo)
+    # CASCADE: Si se elimina el modelo, se eliminan todos los equipos de ese modelo
     modeloEquipo_id = models.ForeignKey(ModeloEquipo, on_delete=models.CASCADE, db_column='modeloEquipo_id', null=False, blank=False)
+    
+    # Código interno único del equipo dentro de su modelo
+    # Ejemplo: "01", "02", "A001", etc.
+    # Debe ser único por modelo (no puede haber dos equipos del mismo modelo con el mismo código)
     codigoInterno = models.CharField(max_length=100, null=False, blank=False)
+    
+    # Patente del equipo (opcional)
+    # Ejemplo: "KJL556", "ABC123"
     patente = models.CharField(max_length=100, null=True, blank=True)
+    
+    # Horómetro: Horas de uso del equipo (opcional)
+    # Se usa para equipos que miden horas de funcionamiento (grúas, excavadoras, etc.)
     horometro = models.IntegerField(null=True, blank=True)
+    
+    # Odómetro: Kilómetros recorridos del equipo (opcional)
+    # Se usa para equipos que miden distancia recorrida (camiones, vehículos, etc.)
     odometro = models.IntegerField(null=True, blank=True)
+    
+    # Horómetro superestructural: Horas de uso de la superestructura (opcional)
+    # Se usa para equipos con partes separadas que tienen sus propios contadores
     horometroSuperEstructural = models.IntegerField(null=True, blank=True)
+    
+    # Nombre del equipo generado automáticamente
+    # Formato: {siglaTipo}{codigoInterno} - {patente}
+    # Ejemplo: "GT01 - KJL556"
+    # Se genera en el método save() basado en tipo, código y patente
     nombreEquipo = models.CharField(max_length=100, null=False, blank=True)  # Se genera automáticamente
+    
+    # Estado de activación del equipo
+    # True = activo (disponible para uso), False = inactivo (desactivado)
+    # Los equipos nuevos se crean activos por defecto
     activo = models.BooleanField(default=True, null=False, blank=False)
     
     class Meta:
-        # El código interno debe ser único POR TIPO de equipo
-        # Ahora el tipo se obtiene del modelo, así que la restricción es por modelo + código
+        """Configuración de metadatos del modelo"""
+        # Restricción de unicidad: El código interno debe ser único POR MODELO de equipo
+        # Esto permite que diferentes modelos tengan equipos con el mismo código interno
+        # Ejemplo: Puede haber "GT01" y "EX01" porque son modelos diferentes
         unique_together = [['modeloEquipo_id', 'codigoInterno']]
-        verbose_name = 'Equipo'
-        verbose_name_plural = 'Equipos'
+        
+        verbose_name = 'Equipo'  # Nombre singular en español para el admin
+        verbose_name_plural = 'Equipos'  # Nombre plural en español para el admin
+        
         # Permisos personalizados para acciones específicas dentro del modelo Equipo
+        # Estos permisos se pueden asignar a usuarios o grupos para controlar acceso granular
         permissions = [
-            ('desactivar_equipo', 'Puede desactivar equipos'),
-            ('activar_equipo', 'Puede activar equipos'),
-            ('exportar_equipos', 'Puede exportar datos de equipos'),
-            ('ver_historial_equipo', 'Puede ver historial completo de equipos'),
+            ('desactivar_equipo', 'Puede desactivar equipos'),  # Permiso para desactivar equipos
+            ('activar_equipo', 'Puede activar equipos'),  # Permiso para activar equipos
+            ('exportar_equipos', 'Puede exportar datos de equipos'),  # Permiso para exportar datos
+            ('ver_historial_equipo', 'Puede ver historial completo de equipos'),  # Permiso para ver historial
         ]
 
     def save(self, *args, **kwargs):
@@ -178,32 +332,58 @@ class Equipo(models.Model):
         
         Formato: {siglaEquipo}{codigoInterno} - {patente}
         Ejemplo: GT01 - KJL556
+        
+        Este método se ejecuta automáticamente cada vez que se guarda un equipo,
+        asegurando que el nombre siempre esté actualizado según los datos del equipo.
         """
-        # Obtener la sigla del tipo de equipo a través del modelo
+        # Paso 1: Obtener la sigla del tipo de equipo a través de la relación con el modelo
+        # La sigla identifica el tipo de equipo (ej: GT para Grúa Torre, EX para Excavadora)
+        # Se accede a través de: Equipo -> ModeloEquipo -> TipoEquipo -> siglaEquipo
         sigla = self.modeloEquipo_id.tipoEquipo_id.siglaEquipo if self.modeloEquipo_id and self.modeloEquipo_id.tipoEquipo_id else ''
         
-        # Construir el nombre base con sigla y código interno
+        # Paso 2: Construir el nombre base combinando la sigla con el código interno
+        # Ejemplo: "GT" + "01" = "GT01"
         nombre_base = f"{sigla}{self.codigoInterno}"
         
-        # Agregar patente si existe
+        # Paso 3: Agregar la patente al nombre si existe y no está vacía
+        # La patente se agrega separada por guión para mejor legibilidad
         if self.patente and self.patente.strip():
-            self.nombreEquipo = f"{nombre_base} - {self.patente.strip()}"
+            self.nombreEquipo = f"{nombre_base} - {self.patente.strip()}"  # Ejemplo: "GT01 - KJL556"
         else:
-            self.nombreEquipo = nombre_base
+            self.nombreEquipo = nombre_base  # Si no hay patente, solo usar sigla + código
         
+        # Paso 4: Llamar al método save() de la clase padre para guardar en la base de datos
+        # Esto ejecuta el guardado real del objeto con el nombreEquipo ya generado
         super().save(*args, **kwargs)
     
     @property
     def tipoEquipo(self):
-        """Propiedad para acceder al tipo de equipo a través del modelo"""
+        """
+        Propiedad para acceder directamente al tipo de equipo a través del modelo.
+        
+        Esta propiedad simplifica el acceso al tipo de equipo sin tener que navegar
+        manualmente por las relaciones: equipo.modeloEquipo_id.tipoEquipo_id
+        
+        Retorna:
+            TipoEquipo: Instancia del tipo de equipo al que pertenece este equipo
+        """
         return self.modeloEquipo_id.tipoEquipo_id
     
     @property
     def marcaEquipo(self):
-        """Propiedad para acceder a la marca a través del modelo"""
+        """
+        Propiedad para acceder directamente a la marca a través del modelo.
+        
+        Esta propiedad simplifica el acceso a la marca sin tener que navegar
+        manualmente por las relaciones: equipo.modeloEquipo_id.marcaEquipo_id
+        
+        Retorna:
+            MarcaEquipo: Instancia de la marca del equipo
+        """
         return self.modeloEquipo_id.marcaEquipo_id
 
     def __str__(self):
+        """Representación en string del objeto (usado en admin y shell de Django)"""
         return self.nombreEquipo
 
 

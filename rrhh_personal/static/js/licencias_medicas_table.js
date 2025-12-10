@@ -1,7 +1,8 @@
-// ============================================================================
-// LICENCIAS MÉDICAS - TABLA PERSONALIZADA
-// Sin DataTables/jQuery - JavaScript vanilla
-// ============================================================================
+/**
+ * Gestión de tabla de licencias médicas con JavaScript vanilla (sin DataTables/jQuery).
+ * 
+ * Maneja el renderizado, ordenamiento, paginación y eliminación de licencias médicas.
+ */
 
 // Variables globales
 let licencias = [];
@@ -33,6 +34,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // EVENT LISTENERS
 // ============================================================================
 
+/**
+ * Inicializa todos los event listeners de la página.
+ * Configura listeners para ordenamiento y modales de eliminación.
+ */
 function inicializarEventListeners() {
     // Ordenamiento por columnas
     document.querySelectorAll('.sortable').forEach(th => {
@@ -55,6 +60,12 @@ function inicializarEventListeners() {
 // RENDERIZADO DE TABLA
 // ============================================================================
 
+/**
+ * Renderiza la tabla de licencias médicas con ordenamiento y paginación aplicados.
+ * 
+ * Filtra, ordena y pagina las licencias según la configuración actual,
+ * y actualiza los contadores y controles de paginación.
+ */
 function renderizarTabla() {
     const tbody = document.getElementById('licenciasTableBody');
     
@@ -162,6 +173,11 @@ function renderizarTabla() {
 // PAGINACIÓN
 // ============================================================================
 
+/**
+ * Renderiza los controles de paginación.
+ * 
+ * @param {number} totalPaginas - Número total de páginas
+ */
 function renderizarPaginacion(totalPaginas) {
     const paginacion = document.getElementById('paginacion');
     
@@ -202,11 +218,19 @@ function renderizarPaginacion(totalPaginas) {
     paginacion.innerHTML = html;
 }
 
+/**
+ * Cambia a una página específica y re-renderiza la tabla.
+ * 
+ * @param {number} nuevaPagina - Número de página a mostrar
+ */
 function cambiarPagina(nuevaPagina) {
     paginaActual = nuevaPagina;
     renderizarTabla();
 }
 
+/**
+ * Cambia la cantidad de registros por página y re-renderiza la tabla.
+ */
 function cambiarRegistrosPorPagina() {
     registrosPorPagina = parseInt(document.getElementById('registrosPorPagina').value);
     paginaActual = 1;
@@ -217,6 +241,11 @@ function cambiarRegistrosPorPagina() {
 // ORDENAMIENTO
 // ============================================================================
 
+/**
+ * Ordena la tabla por una columna específica.
+ * 
+ * @param {string} columna - Nombre de la columna por la cual ordenar
+ */
 function ordenarPor(columna) {
     if (ordenActual.columna === columna) {
         ordenActual.direccion = ordenActual.direccion === 'asc' ? 'desc' : 'asc';
@@ -227,6 +256,10 @@ function ordenarPor(columna) {
     renderizarTabla();
 }
 
+/**
+ * Actualiza los iconos de ordenamiento en los encabezados de columna.
+ * Muestra flecha arriba/abajo según la dirección del ordenamiento actual.
+ */
 function actualizarIconosOrdenamiento() {
     document.querySelectorAll('.sortable i').forEach(icon => {
         icon.className = 'bi bi-arrow-down-up ms-1';
@@ -245,12 +278,22 @@ function actualizarIconosOrdenamiento() {
 // ELIMINACIÓN
 // ============================================================================
 
+/**
+ * Abre el modal de confirmación para eliminar una licencia médica.
+ * 
+ * @param {number} licenciaId - ID de la licencia médica a eliminar
+ */
 function abrirModalEliminar(licenciaId) {
     licenciaIdToDelete = licenciaId;
     const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
     modal.show();
 }
 
+/**
+ * Confirma la eliminación de la licencia médica.
+ * 
+ * Crea un formulario POST con el CSRF token y lo envía al servidor.
+ */
 function confirmarEliminacion() {
     if (!licenciaIdToDelete) return;
     

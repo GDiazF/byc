@@ -1,6 +1,9 @@
-// ============================================================================
-// MANEJO DE CARGOS SEGÚN DEPARTAMENTO - VANILLA JS
-// ============================================================================
+/**
+ * Manejo dinámico de cargos según departamento seleccionado.
+ * 
+ * Cuando se selecciona un departamento, carga los cargos asociados
+ * mediante una petición AJAX y actualiza el select de cargos.
+ */
 
 document.addEventListener('DOMContentLoaded', function() {
     const deptoSelect = document.getElementById('id_depto_id');

@@ -1,5 +1,12 @@
 """
 Señales Django para capturar cambios automáticamente y registrar en historial.
+
+Este módulo contiene todos los receivers de señales Django que se ejecutan
+automáticamente cuando se crean, modifican o eliminan registros de Personal
+y sus documentos relacionados (licencias, certificaciones, exámenes, etc.).
+
+Las señales permiten mantener un historial completo de auditoría sin necesidad
+de modificar manualmente el código de las vistas.
 """
 from django.db.models.signals import post_save, pre_delete, pre_save
 from django.dispatch import receiver
@@ -12,14 +19,25 @@ from .models import LicenciaPorPersonal, LicenciaMedicaPorPersonal, LicenciaInte
 def registrar_cambio_personal(sender, instance, created, **kwargs):
     """
     Registra en el historial cuando se crea o modifica un Personal.
+    
+    Esta señal se ejecuta después de guardar un registro de Personal.
+    Detecta si es una creación nueva o una modificación, y registra los cambios
+    relevantes en HistorialPersonal. También crea notificaciones si la app
+    de notificaciones está disponible.
+    
+    Args:
+        sender: El modelo que envió la señal (Personal)
+        instance: La instancia del Personal que se guardó
+        created: Boolean que indica si es un registro nuevo (True) o una modificación (False)
+        **kwargs: Argumentos adicionales de la señal
     """
-    # Obtener el usuario actual si está disponible
+    # Obtener el usuario actual si está disponible (se establece en las vistas)
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
     if created:
-        # Personal creado
+        # Caso: Personal creado (nuevo registro)
         HistorialPersonal.registrar(
             personal=instance,
             accion='PERSONAL_CREADO',
@@ -36,7 +54,7 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
             }
         )
         
-        # Crear notificación de personal creado
+        # Intentar crear notificación de personal creado (si la app está disponible)
         try:
             from notificaciones.utils import crear_notificacion_por_tipo
             crear_notificacion_por_tipo(
@@ -51,16 +69,19 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
                 }
             )
         except ImportError:
-            pass  # La app de notificaciones no está disponible
+            # La app de notificaciones no está disponible, continuar sin error
+            pass
     else:
-        # Personal modificado - verificar cambios importantes
+        # Caso: Personal modificado (registro existente)
+        # Verificar cambios importantes comparando con el estado previo
         if hasattr(instance, '_previous_state'):
             previo = instance._previous_state
             cambios = []
             
-            # Verificar cambio de estado activo/inactivo
+            # Verificar cambio de estado activo/inactivo (cambio crítico)
             if previo.get('activo') != instance.activo:
                 if instance.activo:
+                    # Personal fue activado
                     HistorialPersonal.registrar(
                         personal=instance,
                         accion='PERSONAL_ACTIVADO',
@@ -70,7 +91,7 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
                         datos_nuevos={'activo': True}
                     )
                     
-                    # Crear notificación de personal activado
+                    # Intentar crear notificación de personal activado
                     try:
                         from notificaciones.utils import crear_notificacion_por_tipo
                         crear_notificacion_por_tipo(
@@ -85,8 +106,10 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
                             }
                         )
                     except ImportError:
-                        pass  # La app de notificaciones no está disponible
+                        # La app de notificaciones no está disponible, continuar sin error
+                        pass
                 else:
+                    # Personal fue desactivado
                     HistorialPersonal.registrar(
                         personal=instance,
                         accion='PERSONAL_DESACTIVADO',
@@ -96,7 +119,7 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
                         datos_nuevos={'activo': False}
                     )
                     
-                    # Crear notificación de personal desactivado
+                    # Intentar crear notificación de personal desactivado
                     try:
                         from notificaciones.utils import crear_notificacion_por_tipo
                         crear_notificacion_por_tipo(
@@ -111,10 +134,13 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
                             }
                         )
                     except ImportError:
-                        pass  # La app de notificaciones no está disponible
+                        # La app de notificaciones no está disponible, continuar sin error
+                        pass
             else:
-                # Otros cambios
+                # Caso: Otros cambios (no relacionados con activación/desactivación)
+                # Comparar todos los campos importantes para detectar modificaciones
                 cambios_detallados = []
+                # Diccionario que mapea nombres de campos de BD a nombres legibles
                 campos_importantes = {
                     'nombre': 'Nombre',
                     'apepat': 'Apellido Paterno',
@@ -133,10 +159,12 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
                 datos_previos = {}
                 datos_nuevos = {}
                 
+                # Iterar sobre todos los campos importantes para detectar cambios
                 for campo_db, campo_display in campos_importantes.items():
                     valor_previo = previo.get(campo_db)
                     
                     # Obtener valor nuevo según el tipo de campo
+                    # Manejar campos ForeignKey de manera especial para obtener nombres legibles
                     if campo_db == 'estcivil_id':
                         valor_nuevo = instance.estcivil_id_id if instance.estcivil_id else None
                         # Comparar también el nombre del estado civil para la descripción
@@ -190,8 +218,19 @@ def registrar_cambio_personal(sender, instance, created, **kwargs):
 def guardar_estado_previo_personal(sender, instance, **kwargs):
     """
     Guarda el estado previo del Personal antes de guardar para comparar cambios.
+    
+    Esta señal se ejecuta ANTES de guardar un registro de Personal.
+    Guarda el estado anterior en un atributo temporal (_previous_state) que
+    será usado por registrar_cambio_personal para detectar qué cambió.
+    
+    Args:
+        sender: El modelo que envió la señal (Personal)
+        instance: La instancia del Personal que se va a guardar
+        **kwargs: Argumentos adicionales de la señal
     """
-    if instance.pk:  # Solo si ya existe (no es creación)
+    # Solo guardar estado previo si el registro ya existe (tiene PK)
+    # Si no tiene PK, es un registro nuevo y no hay estado previo
+    if instance.pk:
         try:
             personal_anterior = Personal.objects.get(pk=instance.pk)
             instance._previous_state = {
@@ -221,7 +260,16 @@ def guardar_estado_previo_personal(sender, instance, **kwargs):
 def registrar_eliminacion_personal(sender, instance, **kwargs):
     """
     Registra en el historial cuando se elimina un Personal.
+    
+    Esta señal se ejecuta ANTES de eliminar un registro de Personal.
+    Guarda información del personal eliminado en el historial para auditoría.
+    
+    Args:
+        sender: El modelo que envió la señal (Personal)
+        instance: La instancia del Personal que se va a eliminar
+        **kwargs: Argumentos adicionales de la señal
     """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
@@ -241,14 +289,31 @@ def registrar_eliminacion_personal(sender, instance, **kwargs):
     )
 
 
-# Señales para documentos de personal
+# ============================================================================
+# SEÑALES PARA DOCUMENTOS DE PERSONAL
+# ============================================================================
+
 @receiver(post_save, sender=LicenciaPorPersonal)
 def registrar_licencia_conducir(sender, instance, created, **kwargs):
-    """Registra cuando se agrega o modifica una licencia de conducir."""
+    """
+    Registra cuando se agrega o modifica una licencia de conducir.
+    
+    Esta señal se ejecuta después de guardar un registro de LicenciaPorPersonal.
+    Registra la acción en HistorialDocumentoPersonal para mantener un historial
+    completo de todas las licencias de conducir del personal.
+    
+    Args:
+        sender: El modelo que envió la señal (LicenciaPorPersonal)
+        instance: La instancia de la licencia que se guardó
+        created: Boolean que indica si es un registro nuevo (True) o una modificación (False)
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento con los tipos de licencia
     tipos_str = ", ".join([t.tipoLicencia for t in instance.tipos.all()])
     nombre_doc = f"Licencia de Conducir - Tipos: {tipos_str}"
     
@@ -281,15 +346,29 @@ def registrar_licencia_conducir(sender, instance, created, **kwargs):
 
 @receiver(pre_delete, sender=LicenciaPorPersonal)
 def registrar_eliminacion_licencia_conducir(sender, instance, **kwargs):
-    """Registra cuando se elimina una licencia de conducir y mueve el archivo a eliminados."""
+    """
+    Registra cuando se elimina una licencia de conducir y mueve el archivo a eliminados.
+    
+    Esta señal se ejecuta ANTES de eliminar un registro de LicenciaPorPersonal.
+    Mueve el archivo físico a la carpeta de eliminados (en lugar de borrarlo)
+    para mantener un historial de documentos eliminados.
+    
+    Args:
+        sender: El modelo que envió la señal (LicenciaPorPersonal)
+        instance: La instancia de la licencia que se va a eliminar
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento
     tipos_str = ", ".join([t.tipoLicencia for t in instance.tipos.all()])
     nombre_doc = f"Licencia de Conducir - Tipos: {tipos_str}"
     
     # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    # Esto permite mantener un historial de documentos eliminados
     archivo_ruta_historial = None
     if instance.rutaDoc and instance.rutaDoc.name:
         from .models import mover_archivo_a_eliminados
@@ -298,7 +377,7 @@ def registrar_eliminacion_licencia_conducir(sender, instance, **kwargs):
             instance.personal_id.rut,
             nombre_doc
         )
-        # Si no se pudo mover, usar la ruta original
+        # Si no se pudo mover, usar la ruta original como fallback
         if not archivo_ruta_historial:
             archivo_ruta_historial = instance.rutaDoc.name
     
@@ -320,14 +399,27 @@ def registrar_eliminacion_licencia_conducir(sender, instance, **kwargs):
 
 @receiver(post_save, sender=LicenciaMedicaPorPersonal)
 def registrar_licencia_medica(sender, instance, created, **kwargs):
-    """Registra cuando se agrega o modifica una licencia médica."""
+    """
+    Registra cuando se agrega o modifica una licencia médica.
+    
+    Esta señal se ejecuta después de guardar un registro de LicenciaMedicaPorPersonal.
+    Las licencias médicas no tienen archivo asociado, solo son registros de fechas.
+    
+    Args:
+        sender: El modelo que envió la señal (LicenciaMedicaPorPersonal)
+        instance: La instancia de la licencia médica que se guardó
+        created: Boolean que indica si es un registro nuevo (True) o una modificación (False)
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento
     nombre_doc = f"Licencia Médica - {instance.tipoLicenciaMedica_id.tipoLicenciaMedica if instance.tipoLicenciaMedica_id else 'N/A'}"
     
-    # Las licencias médicas no tienen archivo asociado (rutaDoc), solo son registros
+    # Nota: Las licencias médicas no tienen archivo asociado (rutaDoc), solo son registros
     if created:
         HistorialDocumentoPersonal.registrar(
             personal=instance.personal_id,
@@ -352,14 +444,26 @@ def registrar_licencia_medica(sender, instance, created, **kwargs):
 
 @receiver(pre_delete, sender=LicenciaMedicaPorPersonal)
 def registrar_eliminacion_licencia_medica(sender, instance, **kwargs):
-    """Registra cuando se elimina una licencia médica."""
+    """
+    Registra cuando se elimina una licencia médica.
+    
+    Esta señal se ejecuta ANTES de eliminar un registro de LicenciaMedicaPorPersonal.
+    Las licencias médicas no tienen archivo asociado, solo se registra la eliminación.
+    
+    Args:
+        sender: El modelo que envió la señal (LicenciaMedicaPorPersonal)
+        instance: La instancia de la licencia médica que se va a eliminar
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento
     nombre_doc = f"Licencia Médica - {instance.tipoLicenciaMedica_id.tipoLicenciaMedica if instance.tipoLicenciaMedica_id else 'N/A'}"
     
-    # Las licencias médicas no tienen archivo asociado (rutaDoc), solo son registros
+    # Nota: Las licencias médicas no tienen archivo asociado (rutaDoc), solo son registros
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
         tipo_documento='LICENCIA_MEDICA',
@@ -373,11 +477,25 @@ def registrar_eliminacion_licencia_medica(sender, instance, **kwargs):
 
 @receiver(post_save, sender=LicenciaInternaPorPersonal)
 def registrar_licencia_interna(sender, instance, created, **kwargs):
-    """Registra cuando se agrega o modifica una licencia interna."""
+    """
+    Registra cuando se agrega o modifica una licencia interna.
+    
+    Esta señal se ejecuta después de guardar un registro de LicenciaInternaPorPersonal.
+    Registra la acción en HistorialDocumentoPersonal para mantener un historial
+    completo de todas las licencias internas del personal.
+    
+    Args:
+        sender: El modelo que envió la señal (LicenciaInternaPorPersonal)
+        instance: La instancia de la licencia interna que se guardó
+        created: Boolean que indica si es un registro nuevo (True) o una modificación (False)
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento
     nombre_doc = f"Licencia Interna - {instance.tipoLicenciaInterna_id.tipoLicenciaInterna if instance.tipoLicenciaInterna_id else 'N/A'}"
     
     if created:
@@ -404,14 +522,28 @@ def registrar_licencia_interna(sender, instance, created, **kwargs):
 
 @receiver(pre_delete, sender=LicenciaInternaPorPersonal)
 def registrar_eliminacion_licencia_interna(sender, instance, **kwargs):
-    """Registra cuando se elimina una licencia interna y mueve el archivo a eliminados."""
+    """
+    Registra cuando se elimina una licencia interna y mueve el archivo a eliminados.
+    
+    Esta señal se ejecuta ANTES de eliminar un registro de LicenciaInternaPorPersonal.
+    Mueve el archivo físico a la carpeta de eliminados (en lugar de borrarlo)
+    para mantener un historial de documentos eliminados.
+    
+    Args:
+        sender: El modelo que envió la señal (LicenciaInternaPorPersonal)
+        instance: La instancia de la licencia interna que se va a eliminar
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento
     nombre_doc = f"Licencia Interna - {instance.tipoLicenciaInterna_id.tipoLicenciaInterna if instance.tipoLicenciaInterna_id else 'N/A'}"
     
     # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    # Esto permite mantener un historial de documentos eliminados
     archivo_ruta_historial = None
     if instance.rutaDoc and instance.rutaDoc.name:
         from .models import mover_archivo_a_eliminados
@@ -420,7 +552,7 @@ def registrar_eliminacion_licencia_interna(sender, instance, **kwargs):
             instance.personal_id.rut,
             nombre_doc
         )
-        # Si no se pudo mover, usar la ruta original
+        # Si no se pudo mover, usar la ruta original como fallback
         if not archivo_ruta_historial:
             archivo_ruta_historial = instance.rutaDoc.name
     
@@ -437,11 +569,25 @@ def registrar_eliminacion_licencia_interna(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Certificacion)
 def registrar_certificacion(sender, instance, created, **kwargs):
-    """Registra cuando se agrega o modifica una certificación."""
+    """
+    Registra cuando se agrega o modifica una certificación.
+    
+    Esta señal se ejecuta después de guardar un registro de Certificacion.
+    Registra la acción en HistorialDocumentoPersonal para mantener un historial
+    completo de todas las certificaciones del personal.
+    
+    Args:
+        sender: El modelo que envió la señal (Certificacion)
+        instance: La instancia de la certificación que se guardó
+        created: Boolean que indica si es un registro nuevo (True) o una modificación (False)
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento
     nombre_doc = f"Certificación - {instance.tipoCertificacion_id.tipoCertificacion if instance.tipoCertificacion_id else 'N/A'}"
     
     if created:
@@ -468,14 +614,28 @@ def registrar_certificacion(sender, instance, created, **kwargs):
 
 @receiver(pre_delete, sender=Certificacion)
 def registrar_eliminacion_certificacion(sender, instance, **kwargs):
-    """Registra cuando se elimina una certificación y mueve el archivo a eliminados."""
+    """
+    Registra cuando se elimina una certificación y mueve el archivo a eliminados.
+    
+    Esta señal se ejecuta ANTES de eliminar un registro de Certificacion.
+    Mueve el archivo físico a la carpeta de eliminados (en lugar de borrarlo)
+    para mantener un historial de documentos eliminados.
+    
+    Args:
+        sender: El modelo que envió la señal (Certificacion)
+        instance: La instancia de la certificación que se va a eliminar
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento
     nombre_doc = f"Certificación - {instance.tipoCertificacion_id.tipoCertificacion if instance.tipoCertificacion_id else 'N/A'}"
     
     # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    # Esto permite mantener un historial de documentos eliminados
     archivo_ruta_historial = None
     if instance.rutaDoc and instance.rutaDoc.name:
         from .models import mover_archivo_a_eliminados
@@ -484,7 +644,7 @@ def registrar_eliminacion_certificacion(sender, instance, **kwargs):
             instance.personal_id.rut,
             nombre_doc
         )
-        # Si no se pudo mover, usar la ruta original
+        # Si no se pudo mover, usar la ruta original como fallback
         if not archivo_ruta_historial:
             archivo_ruta_historial = instance.rutaDoc.name
     
@@ -501,11 +661,25 @@ def registrar_eliminacion_certificacion(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Examen)
 def registrar_examen(sender, instance, created, **kwargs):
-    """Registra cuando se agrega o modifica un examen."""
+    """
+    Registra cuando se agrega o modifica un examen.
+    
+    Esta señal se ejecuta después de guardar un registro de Examen.
+    Registra la acción en HistorialDocumentoPersonal para mantener un historial
+    completo de todos los exámenes del personal.
+    
+    Args:
+        sender: El modelo que envió la señal (Examen)
+        instance: La instancia del examen que se guardó
+        created: Boolean que indica si es un registro nuevo (True) o una modificación (False)
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento
     nombre_doc = f"Examen - {instance.tipoEx_id.tipoExamen if instance.tipoEx_id else 'N/A'}"
     
     if created:
@@ -532,14 +706,28 @@ def registrar_examen(sender, instance, created, **kwargs):
 
 @receiver(pre_delete, sender=Examen)
 def registrar_eliminacion_examen(sender, instance, **kwargs):
-    """Registra cuando se elimina un examen y mueve el archivo a eliminados."""
+    """
+    Registra cuando se elimina un examen y mueve el archivo a eliminados.
+    
+    Esta señal se ejecuta ANTES de eliminar un registro de Examen.
+    Mueve el archivo físico a la carpeta de eliminados (en lugar de borrarlo)
+    para mantener un historial de documentos eliminados.
+    
+    Args:
+        sender: El modelo que envió la señal (Examen)
+        instance: La instancia del examen que se va a eliminar
+        **kwargs: Argumentos adicionales de la señal
+    """
+    # Obtener el usuario actual si está disponible
     usuario = None
     if hasattr(instance, '_current_user'):
         usuario = instance._current_user
     
+    # Construir nombre descriptivo del documento
     nombre_doc = f"Examen - {instance.tipoEx_id.tipoExamen if instance.tipoEx_id else 'N/A'}"
     
     # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    # Esto permite mantener un historial de documentos eliminados
     archivo_ruta_historial = None
     if instance.rutaDoc and instance.rutaDoc.name:
         from .models import mover_archivo_a_eliminados
@@ -548,7 +736,7 @@ def registrar_eliminacion_examen(sender, instance, **kwargs):
             instance.personal_id.rut,
             nombre_doc
         )
-        # Si no se pudo mover, usar la ruta original
+        # Si no se pudo mover, usar la ruta original como fallback
         if not archivo_ruta_historial:
             archivo_ruta_historial = instance.rutaDoc.name
     

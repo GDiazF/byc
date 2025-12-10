@@ -211,29 +211,6 @@
     {% endif %}
 </script>
 <script src="{% static 'maquinarias/js/form_equipo.js' %}"></script>
-<script>
-    // Validaciones adicionales para números negativos
-    document.addEventListener('DOMContentLoaded', function() {
-        const camposNumericos = ['horometro', 'odometro', 'horometroSuperEstructural'];
-        
-        camposNumericos.forEach(campo => {
-            const input = document.getElementById(campo);
-            if (input) {
-                input.addEventListener('input', function() {
-                    if (this.value && parseFloat(this.value) < 0) {
-                        this.value = 0;
-                    }
-                });
-                
-                input.addEventListener('keypress', function(e) {
-                    // Prevenir signo negativo
-                    if (e.key === '-') {
-                        e.preventDefault();
-                    }
-                });
-            }
-        });
-    });
-</script>
+<script src="{% static 'maquinarias/js/form_equipo_validaciones.js' %}"></script>
 {% endblock %}
 

@@ -1,4 +1,6 @@
 /* Estilos específicos para formulario de orden de trabajo */
+
+/* Contenedor de cada sección de la orden de trabajo */
 .item-seccion {
     background-color: #f8f9fa;
     padding: 1rem;
@@ -7,6 +9,7 @@
     border: 1px solid #dee2e6;
 }
 
+/* Contenedor de checkboxes de personal con scroll */
 .personal-checkbox-container {
     max-height: 400px;
     overflow-y: auto;
@@ -16,10 +19,12 @@
     background-color: #f8f9fa;
 }
 
+/* Labels de checkboxes con cursor pointer */
 .form-check-label {
     cursor: pointer;
 }
 
+/* Lista de tipos de reparación */
 .tipos-reparacion-list {
     min-height: 50px;
 }

@@ -1,4 +1,6 @@
 /* Estilos específicos para lista de ordenes de trabajo */
+
+/* Tabla de órdenes de trabajo */
 #ordenesTable {
     font-size: 0.875rem;
 }
@@ -7,16 +9,18 @@
     vertical-align: middle;
 }
 
+/* Badges de estado */
 .badge {
     font-size: 0.75rem;
 }
 
-/* Timeline styles */
+/* Estilos para timeline del historial */
 .timeline-item {
     position: relative;
     padding-left: 30px;
 }
 
+/* Línea vertical del timeline */
 .timeline-item::before {
     content: '';
     position: absolute;
@@ -27,14 +31,17 @@
     background: #dee2e6;
 }
 
+/* Ocultar línea en el último item */
 .timeline-item:last-child::before {
     display: none;
 }
 
+/* Transición en cards del timeline */
 .timeline-item .card {
     transition: box-shadow 0.2s;
 }
 
+/* Efecto hover en cards del timeline */
 .timeline-item .card:hover {
     box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1) !important;
 }

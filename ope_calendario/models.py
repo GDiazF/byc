@@ -1,3 +1,9 @@
+# ============================================================================
+# MODELOS DE CALENDARIO DE OPERACIONES
+# ============================================================================
+# Este módulo define los modelos para el sistema de calendario de operaciones,
+# incluyendo estados dinámicos, turnos, faenas, asignaciones y estados manuales.
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
@@ -7,11 +13,12 @@ from django.db.models import Q, CheckConstraint, F
 from datetime import datetime, timedelta
 from rrhh_personal.models import Personal, DeptoEmpresa, Cargo, InfoLaboral, Ausentismo, TipoAusentismo, LicenciaPorPersonal, Certificacion, Examen, Comuna, Region, EstadoCivil, Sexo, TipoLicenciaMedica, LicenciaMedicaPorPersonal
 from gen_settings.models import Empresa
-# Create your models here.
-#MODELOS NUEVOS PARA CALENDARIO Y TENER ESTADOS DINAMICOS
 
-
-#1 ESTADOS DINAMICOS
+# ============================================================================
+# 1. ESTADOS DINÁMICOS
+# ============================================================================
+# Los estados dinámicos permiten configurar diferentes estados que puede tener
+# el personal (Día, Noche, Descanso, Licencia, etc.) sin necesidad de modificar código.
 class Estado(models.Model):
     """
     Estado configurable desde admin. Ejemplos: 'Día', 'Noche', 'Descanso',
@@ -58,14 +65,19 @@ class Estado(models.Model):
         ]
 
     def clean(self):
-        """Validar que solo haya un estado predeterminado"""
+        """
+        Validar que solo haya un estado predeterminado activo.
+        Este método se ejecuta automáticamente antes de guardar el modelo.
+        """
         if self.es_predeterminado:
-            # Verificar si ya existe otro estado predeterminado
+            # Paso 1: Verificar si ya existe otro estado predeterminado activo
+            # Excluir el estado actual (self.pk) para permitir actualizaciones
             otros_predeterminados = Estado.objects.filter(
                 es_predeterminado=True,
                 activo=True
             ).exclude(pk=self.pk)
             
+            # Paso 2: Si existe otro estado predeterminado, lanzar error de validación
             if otros_predeterminados.exists():
                 raise ValidationError(
                     'Ya existe otro estado marcado como predeterminado. '
@@ -73,13 +85,21 @@ class Estado(models.Model):
                 )
 
     def save(self, *args, **kwargs):
-        """Asegurar que solo haya un estado predeterminado"""
+        """
+        Asegurar que solo haya un estado predeterminado al guardar.
+        Si este estado se marca como predeterminado, desmarca todos los demás.
+        """
         if self.es_predeterminado:
-            # Desmarcar otros estados predeterminados
+            # Paso 1: Desmarcar otros estados predeterminados
+            # Esto asegura que solo este estado sea el predeterminado
             Estado.objects.filter(
                 es_predeterminado=True
             ).exclude(pk=self.pk).update(es_predeterminado=False)
+        
+        # Paso 2: Ejecutar validaciones del modelo
         self.clean()
+        
+        # Paso 3: Guardar el modelo llamando al método save de la clase padre
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -134,7 +154,14 @@ class Turno(models.Model):
     @property
     def longitud_ciclo(self) -> int:
         """
-        Suma total de días del ciclo (ej: 7+7+7+7 = 28).
+        Calcula la longitud total del ciclo del turno en días.
+        Suma la duración de todos los bloques que componen el turno.
+        
+        Ejemplo: Para un turno '7x7x7x7' con bloques de 7, 7, 7, 7 días,
+        retorna 28 días.
+        
+        Retorna:
+            int: Suma total de días del ciclo
         """
         return sum(self.bloques.values_list("duracion_dias", flat=True))
 
@@ -195,25 +222,39 @@ class Faena(models.Model):
         ]
 
     def clean(self):
-        """Validar que la fecha de fin sea posterior a la fecha de inicio"""
+        """
+        Validar que la fecha de fin sea posterior a la fecha de inicio.
+        Este método se ejecuta automáticamente antes de guardar el modelo.
+        """
         super().clean()
+        # Validar que si ambas fechas están definidas, la fecha de fin sea posterior a la de inicio
         if self.fecha_inicio and self.fecha_fin and self.fecha_fin < self.fecha_inicio:
             raise ValidationError({
                 'fecha_fin': 'La fecha de fin debe ser posterior a la fecha de inicio.'
             })
 
     def save(self, *args, **kwargs):
-        """Validar antes de guardar"""
-        self.full_clean()
-        super().save(*args, **kwargs)
+        """
+        Validar el modelo antes de guardar.
+        Ejecuta todas las validaciones (clean, full_clean) antes de persistir en la base de datos.
+        """
+        self.full_clean()  # Ejecutar todas las validaciones del modelo
+        super().save(*args, **kwargs)  # Guardar en la base de datos
 
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
     
     @property
     def duracion_dias(self):
-        """Calcula la duración en días de la faena"""
+        """
+        Calcula la duración en días de la faena.
+        Incluye tanto el día de inicio como el día de fin en el cálculo.
+        
+        Retorna:
+            int: Cantidad de días de duración de la faena, o None si faltan fechas
+        """
         if self.fecha_inicio and self.fecha_fin:
+            # Sumar 1 para incluir tanto el día de inicio como el de fin
             return (self.fecha_fin - self.fecha_inicio).days + 1
         return None
 
@@ -266,56 +307,74 @@ class AsignacionFaena(models.Model):
         return f"{self.personal} → {self.faena} [{self.turno}] {self.fecha_inicio} → {ffin}"
 
     def clean(self):
-        # Validación: el bloque_inicio debe pertenecer al turno
+        """
+        Validar que el bloque de inicio pertenezca al turno asignado.
+        Este método se ejecuta automáticamente antes de guardar el modelo.
+        """
+        # Validación: el bloque_inicio debe pertenecer al turno asignado
+        # Esto asegura la integridad de los datos: no se puede iniciar un turno
+        # con un bloque que pertenece a otro turno diferente
         if self.bloque_inicio and self.bloque_inicio.turno_id != self.turno_id:
             raise ValidationError({"bloque_inicio": _("El bloque de inicio no pertenece al turno asignado.")})
 
     def obtener_estado_en_fecha(self, fecha):
         """
-        Calcula el estado de la persona en una fecha específica basado en el turno.
-        Retorna el Estado correspondiente.
+        Calcula el estado de la persona en una fecha específica basado en el turno asignado.
+        Considera el ciclo del turno, el bloque de inicio y la fecha de la asignación.
+        
+        Parámetros:
+            fecha: datetime.date - Fecha para la cual se quiere calcular el estado
+        
+        Retorna:
+            Estado: El estado correspondiente a la fecha, o None si la fecha está fuera del rango
         """
+        # Paso 1: Validar que la asignación esté activa y la fecha esté dentro del rango
         if not self.activo or fecha < self.fecha_inicio:
-            return None
+            return None  # Asignación inactiva o fecha antes del inicio
         
         if self.fecha_fin and fecha > self.fecha_fin:
-            return None
+            return None  # Fecha después del fin de la asignación
         
-        # Calcular días transcurridos desde el inicio
+        # Paso 2: Calcular días transcurridos desde el inicio de la asignación
         dias_transcurridos = (fecha - self.fecha_inicio).days
         
-        # Encontrar el bloque correspondiente
+        # Paso 3: Obtener la longitud del ciclo del turno
         longitud_ciclo = self.turno.longitud_ciclo
         if longitud_ciclo == 0:
-            return None
+            return None  # Turno sin bloques definidos
         
-        # Calcular posición en el ciclo
+        # Paso 4: Calcular posición en el ciclo usando módulo
+        # Esto permite que el ciclo se repita indefinidamente
         posicion_ciclo = dias_transcurridos % longitud_ciclo
         
-        # Encontrar el bloque que corresponde a esa posición
+        # Paso 5: Obtener todos los bloques del turno ordenados por orden
         bloques = self.turno.bloques.all().order_by('orden')
         
-        # Ajustar por bloque_inicio si está configurado
+        # Paso 6: Calcular offset basado en el bloque de inicio
+        # El bloque_inicio permite que diferentes personas empiecen en diferentes
+        # partes del ciclo (ej: una empieza en Día, otra en Noche)
         offset_inicio = 0
         if self.bloque_inicio:
-            # Calcular el offset basado en el bloque de inicio
+            # Sumar la duración de todos los bloques anteriores al bloque de inicio
             for bloque in bloques:
                 if bloque.orden < self.bloque_inicio.orden:
                     offset_inicio += bloque.duracion_dias
                 else:
                     break
         
-        # Ajustar la posición del ciclo con el offset
+        # Paso 7: Ajustar la posición del ciclo con el offset de inicio
+        # Esto desplaza el ciclo para que comience desde el bloque_inicio
         posicion_ajustada = (posicion_ciclo + offset_inicio) % longitud_ciclo
         
-        # Encontrar el bloque que corresponde a esa posición ajustada
+        # Paso 8: Encontrar el bloque que corresponde a la posición ajustada
+        # Recorrer los bloques acumulando días hasta encontrar el bloque correcto
         dias_acumulados = 0
         for bloque in bloques:
             if posicion_ajustada < dias_acumulados + bloque.duracion_dias:
-                return bloque.estado
+                return bloque.estado  # Retornar el estado del bloque encontrado
             dias_acumulados += bloque.duracion_dias
         
-        return None
+        return None  # No se encontró bloque (no debería ocurrir)
 
 
 class AsignacionEquipoFaena(models.Model):
@@ -429,7 +488,20 @@ class HistorialFaena(models.Model):
     @classmethod
     def registrar(cls, faena, accion, descripcion, usuario=None, personal=None, datos_previos=None, datos_nuevos=None):
         """
-        Método helper para registrar fácilmente un evento en el historial.
+        Método helper para registrar fácilmente un evento en el historial de faenas.
+        Simplifica la creación de registros de historial con todos los datos necesarios.
+        
+        Parámetros:
+            faena: Faena - La faena relacionada con el evento
+            accion: str - Tipo de acción realizada (debe ser una de ACCION_CHOICES)
+            descripcion: str - Descripción detallada del cambio o evento
+            usuario: User (opcional) - Usuario que realizó la acción
+            personal: Personal (opcional) - Personal involucrado en la acción
+            datos_previos: dict (opcional) - Estado anterior antes del cambio (JSON)
+            datos_nuevos: dict (opcional) - Estado nuevo después del cambio (JSON)
+        
+        Retorna:
+            HistorialFaena: Instancia creada del historial
         """
         return cls.objects.create(
             faena=faena,
@@ -480,96 +552,121 @@ class EstadoManual(models.Model):
     def __str__(self):
         return f"{self.personal} · {self.estado.nombre} · {self.fecha_inicio} → {self.fecha_fin}"
 
-#5 MÉTODO UTILITARIO PARA CALCULAR ESTADO FINAL
+# ============================================================================
+# 5. MÉTODOS UTILITARIOS PARA CALCULAR ESTADO FINAL
+# ============================================================================
+
 def obtener_estado_final_personal_fecha(personal, fecha):
     """
-    Método utilitario que calcula el estado final de una persona en una fecha,
-    considerando todas las fuentes y prioridades.
+    Método utilitario que calcula el estado final de una persona en una fecha específica,
+    considerando todas las fuentes de estados y sus prioridades.
     
-    Orden de prioridad:
-    1. Estados manuales (más alta prioridad)
-    2. Estados de fuentes externas (según prioridad del estado)
+    Este método consolida estados de diferentes fuentes (manuales, fuentes externas, turnos)
+    y aplica reglas de prioridad para determinar el estado final.
+    
+    Orden de prioridad (de mayor a menor):
+    1. Estados manuales (más alta prioridad, pueden ser bloqueantes)
+    2. Estados de fuentes externas (según prioridad del estado configurada)
     3. Estados derivados de turnos (más baja prioridad)
+    4. Estado predeterminado (si no hay ningún otro estado)
     
-    Retorna una lista de estados cuando hay conflictos de prioridad.
+    Parámetros:
+        personal: Personal - La persona para la cual calcular el estado
+        fecha: datetime.date - Fecha para la cual calcular el estado
+    
+    Retorna:
+        list[Estado]: Lista de estados (normalmente uno, pero puede haber múltiples
+                      si tienen la misma prioridad máxima y no son bloqueantes)
     """
     from django.db.models import Q
     
-    # 1. Buscar estados manuales activos
+    # Paso 1: Buscar estados manuales activos para esta fecha
+    # Los estados manuales tienen la mayor prioridad y pueden sobrescribir otros estados
     estados_manuales = EstadoManual.objects.filter(
         personal=personal,
-        fecha_inicio__lte=fecha,
-        fecha_fin__gte=fecha,
+        fecha_inicio__lte=fecha,  # La fecha debe ser >= fecha_inicio
+        fecha_fin__gte=fecha,  # La fecha debe ser <= fecha_fin
         activo=True
-    ).select_related('estado').order_by('-estado__prioridad')
+    ).select_related('estado').order_by('-estado__prioridad')  # Ordenar por prioridad descendente
     
     if estados_manuales.exists():
-        # Si hay estados bloqueantes, retornar el de mayor prioridad
+        # Paso 1.1: Si hay estados bloqueantes, retornar solo el de mayor prioridad
+        # Los estados bloqueantes siempre tienen prioridad absoluta
         bloqueantes = [em for em in estados_manuales if em.estado.es_bloqueante]
         if bloqueantes:
-            return [bloqueantes[0].estado]
-        # Si no hay bloqueantes, retornar el de mayor prioridad
+            return [bloqueantes[0].estado]  # Retornar el bloqueante de mayor prioridad
+        
+        # Paso 1.2: Si no hay bloqueantes, retornar el estado manual de mayor prioridad
         return [estados_manuales.first().estado]
     
-    # 2. Buscar estados de fuentes externas
+    # Paso 2: Buscar estados de fuentes externas (Ausentismo, Licencias, etc.)
+    # Estos estados se obtienen dinámicamente desde otros modelos configurados en EstadoFuente
     estados_fuente = []
     for estado_fuente in EstadoFuente.objects.select_related('estado', 'content_type').all():
+        # Paso 2.1: Verificar que el estado esté activo
         if not estado_fuente.estado.activo:
             continue
-            
-        # Construir consulta dinámica
+        
+        # Paso 2.2: Obtener la clase del modelo desde el ContentType
         modelo = estado_fuente.content_type.model_class()
         if not modelo:
-            continue
-            
+            continue  # Si el modelo no existe, continuar con el siguiente
+        
+        # Paso 2.3: Construir consulta dinámica usando los campos configurados
+        # Los campos se configuran en EstadoFuente (campo_personal, campo_fecha_inicio, etc.)
         filtros = Q(**{
-            f"{estado_fuente.campo_personal}": personal,
-            f"{estado_fuente.campo_fecha_inicio}__lte": fecha,
-            f"{estado_fuente.campo_fecha_fin}__gte": fecha,
+            f"{estado_fuente.campo_personal}": personal,  # Filtrar por personal
+            f"{estado_fuente.campo_fecha_inicio}__lte": fecha,  # Fecha >= inicio
+            f"{estado_fuente.campo_fecha_fin}__gte": fecha,  # Fecha <= fin
         })
         
-        # Aplicar filtros extra si existen
+        # Paso 2.4: Aplicar filtros extra si existen (ej: tipo='Permiso')
+        # Estos filtros permiten refinar la búsqueda (ej: solo ausentismos de tipo "Permiso")
         if estado_fuente.filtro_extra:
             for campo, valor in estado_fuente.filtro_extra.items():
                 filtros &= Q(**{campo: valor})
         
+        # Paso 2.5: Verificar si existe algún registro que cumpla los filtros
         if modelo.objects.filter(filtros).exists():
-            estados_fuente.append(estado_fuente.estado)
+            estados_fuente.append(estado_fuente.estado)  # Agregar el estado encontrado
     
-    # 3. Buscar estado derivado de turno
+    # Paso 3: Buscar estado derivado de turno (asignación a faena)
+    # El estado del turno se calcula basándose en el ciclo del turno y la fecha
     estado_turno = None
     asignaciones_activas = AsignacionFaena.objects.filter(
         personal=personal,
-        fecha_inicio__lte=fecha,
+        fecha_inicio__lte=fecha,  # La asignación debe haber comenzado antes o en la fecha
         activo=True
     ).filter(
-        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha)
-    ).select_related('turno').first()
+        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha)  # Sin fecha fin o fecha fin >= fecha
+    ).select_related('turno').first()  # Obtener la primera asignación activa
     
     if asignaciones_activas:
+        # Calcular el estado del turno para esta fecha específica
         estado_turno = asignaciones_activas.obtener_estado_en_fecha(fecha)
     
-    # 4. Resolver conflictos de prioridad
+    # Paso 4: Resolver conflictos de prioridad entre todos los estados encontrados
+    # Consolidar todos los estados en una lista con su tipo y prioridad
     todos_estados = []
     
-    # Agregar estados de fuentes externas
+    # Paso 4.1: Agregar estados de fuentes externas a la lista consolidada
     for estado in estados_fuente:
         todos_estados.append({
             'estado': estado,
-            'tipo': 'fuente',
-            'prioridad': estado.prioridad
+            'tipo': 'fuente',  # Tipo de fuente del estado
+            'prioridad': estado.prioridad  # Prioridad del estado
         })
     
-    # Agregar estado de turno si existe
+    # Paso 4.2: Agregar estado de turno si existe
     if estado_turno:
         todos_estados.append({
             'estado': estado_turno,
-            'tipo': 'turno',
-            'prioridad': estado_turno.prioridad
+            'tipo': 'turno',  # Tipo de fuente del estado
+            'prioridad': estado_turno.prioridad  # Prioridad del estado
         })
     
+    # Paso 4.3: Si no hay ningún estado, retornar el estado predeterminado
     if not todos_estados:
-        # Si no hay nada, retornar estado por defecto
         try:
             estado_predeterminado = Estado.objects.filter(
                 activo=True,
@@ -577,24 +674,26 @@ def obtener_estado_final_personal_fecha(personal, fecha):
             ).first()
             
             if estado_predeterminado:
-                return [estado_predeterminado]
+                return [estado_predeterminado]  # Retornar estado predeterminado
             
-            return []
+            return []  # No hay estados disponibles
         except:
-            return []
+            return []  # Error al obtener estado predeterminado
     
-    # Ordenar por prioridad (mayor número = mayor prioridad)
+    # Paso 4.4: Ordenar todos los estados por prioridad (mayor número = mayor prioridad)
     todos_estados.sort(key=lambda x: x['prioridad'], reverse=True)
     
-    # Si hay estados bloqueantes, solo retornar el de mayor prioridad
+    # Paso 4.5: Si hay estados bloqueantes, solo retornar el de mayor prioridad
+    # Los estados bloqueantes tienen prioridad absoluta sobre los demás
     bloqueantes = [x for x in todos_estados if x['estado'].es_bloqueante]
     if bloqueantes:
-        return [bloqueantes[0]['estado']]
+        return [bloqueantes[0]['estado']]  # Retornar el bloqueante de mayor prioridad
     
-    # Obtener la prioridad más alta
+    # Paso 4.6: Obtener la prioridad más alta de todos los estados
     prioridad_maxima = todos_estados[0]['prioridad']
     
-    # Retornar todos los estados que tengan la prioridad más alta
+    # Paso 4.7: Retornar todos los estados que tengan la prioridad más alta
+    # Esto permite manejar casos donde múltiples estados tienen la misma prioridad máxima
     estados_misma_prioridad = [
         x['estado'] for x in todos_estados 
         if x['prioridad'] == prioridad_maxima
@@ -604,46 +703,60 @@ def obtener_estado_final_personal_fecha(personal, fecha):
 
 def obtener_calendario_mensual(anio, mes, personal_filtro=None):
     """
-    Obtiene el calendario completo para un mes específico.
+    Obtiene el calendario completo para un mes específico con todos los estados calculados.
+    Genera una estructura de datos que incluye el personal y sus estados para cada día del mes.
     
-    Args:
-        anio: Año (ej: 2025)
-        mes: Mes (1-12)
-        personal_filtro: QuerySet opcional para filtrar personal
+    Parámetros:
+        anio: int - Año del calendario (ej: 2025)
+        mes: int - Mes del calendario (1-12)
+        personal_filtro: QuerySet (opcional) - QuerySet de Personal para filtrar.
+                        Si es None, se obtienen todos los personal activos.
     
-    Returns:
-        dict con estructura: {
-            'personal': [lista de personal],
-            'estados': {personal_id: {dia: estado}}
-        }
+    Retorna:
+        dict: Diccionario con la siguiente estructura:
+            {
+                'personal': [lista de objetos Personal],
+                'estados': {
+                    personal_id: {
+                        dia: [lista de estados]  # día es el número del día (1-31)
+                    }
+                },
+                'fechas': [lista de objetos date para cada día del mes]
+            }
     """
     from datetime import date
     from calendar import monthrange
     
-    # Obtener rango de fechas del mes
+    # Paso 1: Obtener rango de fechas del mes
+    # monthrange retorna (día de la semana del primer día, último día del mes)
     _, ultimo_dia = monthrange(anio, mes)
-    fecha_inicio = date(anio, mes, 1)
-    fecha_fin = date(anio, mes, ultimo_dia)
+    fecha_inicio = date(anio, mes, 1)  # Primer día del mes
+    fecha_fin = date(anio, mes, ultimo_dia)  # Último día del mes
     
-    # Obtener personal activo
+    # Paso 2: Obtener personal activo según el filtro proporcionado
     if personal_filtro is None:
+        # Si no hay filtro, obtener todos los personal activos ordenados por nombre
         personal = Personal.objects.filter(activo=True).order_by('nombre')
     else:
+        # Si hay filtro, aplicarlo y filtrar solo activos
         personal = personal_filtro.filter(activo=True).order_by('nombre')
     
-    # Inicializar estructura de resultados
+    # Paso 3: Inicializar estructura de resultados del calendario
     calendario = {
-        'personal': list(personal),
-        'estados': {},
-        'fechas': [fecha_inicio + timedelta(days=i) for i in range(ultimo_dia)]
+        'personal': list(personal),  # Lista de objetos Personal
+        'estados': {},  # Diccionario para almacenar estados por personal y día
+        'fechas': [fecha_inicio + timedelta(days=i) for i in range(ultimo_dia)]  # Lista de fechas del mes
     }
     
-    # Calcular estado para cada persona en cada día
+    # Paso 4: Calcular estado para cada persona en cada día del mes
     for persona in personal:
-        calendario['estados'][persona.personal_id] = {}
+        calendario['estados'][persona.personal_id] = {}  # Inicializar diccionario para esta persona
         
+        # Calcular estado para cada fecha del mes
         for fecha in calendario['fechas']:
+            # Obtener estados finales para esta persona en esta fecha
             estados = obtener_estado_final_personal_fecha(persona, fecha)
+            # Almacenar estados usando el número del día como clave
             calendario['estados'][persona.personal_id][fecha.day] = estados
     
     return calendario

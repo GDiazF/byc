@@ -19,7 +19,11 @@ let personalFiltrado = [];
 // UTILIDADES
 // ============================================================================
 
-// Get CSRF token
+/**
+ * Obtiene el valor de una cookie por su nombre.
+ * @param {string} name - Nombre de la cookie a obtener
+ * @returns {string|null} Valor de la cookie o null si no existe
+ */
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -35,7 +39,11 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Formatear fecha a formato chileno (DD-MM-YYYY)
+/**
+ * Formatea una fecha al formato chileno (DD-MM-YYYY).
+ * @param {string|Date} fecha - Fecha a formatear (string ISO o Date)
+ * @returns {string} Fecha formateada en formato chileno o string vacío si no hay fecha
+ */
 function formatearFechaChilena(fecha) {
     if (!fecha) return '';
     
@@ -55,7 +63,12 @@ function formatearFechaChilena(fecha) {
 // RENDERIZADO DE TABLA
 // ============================================================================
 
-// Renderizar tabla de personal con paginación
+/**
+ * Renderiza la tabla de personal disponible para asignar con paginación y filtros.
+ * Filtra por búsqueda, estado (disponible/asignado), cargo y empresa.
+ * Excluye personal ya asignado a esta faena.
+ * Muestra información de conflictos con otras asignaciones u OTs.
+ */
 function renderizarTablaPersonal() {
     const tbody = document.getElementById('personalTableBody');
     const busqueda = document.getElementById('searchInput').value.toLowerCase();
@@ -220,7 +233,11 @@ function renderizarTablaPersonal() {
     actualizarContador();
 }
 
-// Renderizar controles de paginación
+/**
+ * Renderiza los controles de paginación para la tabla de personal.
+ * Muestra botones de anterior/siguiente y números de página con elipsis si hay muchas páginas.
+ * @param {number} totalPaginas - Total de páginas a mostrar
+ */
 function renderizarPaginacion(totalPaginas) {
     const paginacionContainer = document.getElementById('paginacion');
     
@@ -283,13 +300,19 @@ function renderizarPaginacion(totalPaginas) {
     paginacionContainer.innerHTML = html;
 }
 
-// Cambiar de página
+/**
+ * Cambia a una nueva página y re-renderiza la tabla.
+ * @param {number} nuevaPagina - Número de página a mostrar
+ */
 function cambiarPagina(nuevaPagina) {
     paginaActual = nuevaPagina;
     renderizarTablaPersonal();
 }
 
-// Cambiar registros por página
+/**
+ * Cambia la cantidad de registros por página y resetea a la página 1.
+ * Re-renderiza la tabla con el nuevo tamaño de página.
+ */
 function cambiarRegistrosPorPagina() {
     registrosPorPagina = parseInt(document.getElementById('registrosPorPagina').value);
     paginaActual = 1; // Volver a la primera página
@@ -300,7 +323,11 @@ function cambiarRegistrosPorPagina() {
 // GESTIÓN DE SELECCIÓN
 // ============================================================================
 
-// Actualizar contador
+/**
+ * Actualiza el contador de personal total y seleccionado.
+ * Habilita/deshabilita el botón de asignar masivo según la cantidad seleccionada.
+ * Solo cuenta checkboxes que no estén deshabilitados (sin conflictos).
+ */
 function actualizarContador() {
     const total = document.querySelectorAll('.personal-checkbox:not(:disabled)').length;
     // Solo contar checkboxes seleccionados que NO estén deshabilitados
@@ -319,7 +346,12 @@ function actualizarContador() {
     }
 }
 
-// Manejar checkbox
+/**
+ * Maneja el cambio de estado de un checkbox de personal.
+ * Agrega o elimina el ID del personal del array de seleccionados.
+ * Ignora checkboxes deshabilitados (con conflictos).
+ * @param {HTMLInputElement} checkbox - Checkbox que cambió de estado
+ */
 function onCheckboxChange(checkbox) {
     // Ignorar checkboxes deshabilitados
     if (checkbox.disabled) {
@@ -338,7 +370,10 @@ function onCheckboxChange(checkbox) {
     renderizarTablaPersonal();
 }
 
-// Seleccionar/deseleccionar todos visibles
+/**
+ * Selecciona o deselecciona todos los checkboxes visibles que no estén deshabilitados.
+ * Actualiza el array de personal seleccionado y re-renderiza la tabla.
+ */
 function toggleSeleccionarTodos() {
     // Solo considerar checkboxes que NO estén deshabilitados
     const checkboxes = document.querySelectorAll('.personal-checkbox:not(:disabled)');
@@ -360,13 +395,18 @@ function toggleSeleccionarTodos() {
     renderizarTablaPersonal();
 }
 
-// Limpiar selección
+/**
+ * Limpia la selección de personal y re-renderiza la tabla.
+ */
 function limpiarSeleccion() {
     personalSeleccionados = [];
     renderizarTablaPersonal();
 }
 
-// Limpiar filtros
+/**
+ * Limpia todos los filtros de búsqueda y resetea a la página 1.
+ * Cierra advertencias persistentes y re-renderiza la tabla.
+ */
 function limpiarFiltros() {
     document.getElementById('searchInput').value = '';
     document.getElementById('filtroEstado').value = '';
@@ -381,7 +421,10 @@ function limpiarFiltros() {
 // GESTIÓN DE TURNOS
 // ============================================================================
 
-// Renderizar selector de turnos
+/**
+ * Renderiza el selector de turnos con todas las opciones disponibles.
+ * Muestra el nombre del turno y la longitud del ciclo en días.
+ */
 function renderizarTurnos() {
     const select = document.getElementById('turno_id');
     select.innerHTML = '<option value="">Seleccione un turno...</option>' +
@@ -390,7 +433,11 @@ function renderizarTurnos() {
         `).join('');
 }
 
-// Al seleccionar turno, mostrar bloques
+/**
+ * Maneja el cambio de turno seleccionado.
+ * Actualiza las opciones de bloques disponibles y muestra/oculta información del turno.
+ * Selecciona automáticamente el primer bloque si no hay uno seleccionado.
+ */
 function onTurnoChange() {
     const turnoId = parseInt(document.getElementById('turno_id').value);
     const container = document.getElementById('bloqueContainer');
@@ -472,7 +519,11 @@ function onTurnoChange() {
         `).join('');
 }
 
-// Al seleccionar estado manual, mostrar información
+/**
+ * Maneja el cambio de estado manual seleccionado.
+ * Actualiza el popover con información del estado seleccionado.
+ * Habilita/deshabilita visualmente el botón de información según si hay estado seleccionado.
+ */
 function onEstadoManualChange() {
     const estadoId = parseInt(document.getElementById('estadoManualSelect').value);
     const btnInfoEstadoManual = document.getElementById('btnInfoEstadoManual');
@@ -542,7 +593,12 @@ function onEstadoManualChange() {
 // ASIGNACIÓN MASIVA
 // ============================================================================
 
-// Asignar masivamente
+/**
+ * Asigna masivamente múltiples trabajadores a la faena con el turno y fechas especificados.
+ * Valida que las fechas estén dentro del rango de la faena.
+ * Muestra advertencias persistentes si hay errores parciales.
+ * Recarga la página después de asignar exitosamente.
+ */
 async function asignarMasivo() {
     const turnoId = document.getElementById('turno_id').value;
     const fechaInicio = document.getElementById('fecha_inicio').value;
@@ -672,7 +728,13 @@ async function asignarMasivo() {
 // NOTIFICACIONES
 // ============================================================================
 
-// Mostrar notificación flotante estilo RRHH
+/**
+ * Muestra una notificación flotante en la esquina superior derecha.
+ * Crea un contenedor de mensajes si no existe.
+ * Auto-cierra después de 5 segundos.
+ * @param {string} mensaje - Mensaje a mostrar
+ * @param {string} tipo - Tipo de alerta: 'success' o 'error'
+ */
 function mostrarAlerta(mensaje, tipo) {
     // Crear contenedor de alertas flotantes si no existe
     let container = document.querySelector('.messages-container');
@@ -714,7 +776,15 @@ function mostrarAlerta(mensaje, tipo) {
 // INICIALIZACIÓN
 // ============================================================================
 
-// Inicializar variables desde el template (se llama desde el HTML)
+/**
+ * Inicializa las variables globales con datos del template Django.
+ * Se llama desde el HTML cuando se carga la página.
+ * @param {Array} personalData - Array de objetos con datos del personal
+ * @param {Array} turnosData - Array de objetos con datos de turnos
+ * @param {Object} faenaData - Objeto con datos de la faena
+ * @param {string} fechaInicio - Fecha de inicio de la faena (formato ISO)
+ * @param {string} fechaFin - Fecha de fin de la faena (formato ISO)
+ */
 function initData(personalData, turnosData, faenaData, fechaInicio, fechaFin) {
     personal = personalData;
     turnos = turnosData;
@@ -730,7 +800,11 @@ function initData(personalData, turnosData, faenaData, fechaInicio, fechaFin) {
 // Variables globales para filtrado de personal asignado
 let asignacionesFiltradas = [];
 
-// Renderizar tabla de personal asignado
+/**
+ * Renderiza la tabla de personal ya asignado a la faena.
+ * Muestra información de turno, bloque, fechas y estado (activo/finalizado).
+ * Incluye botones de editar y eliminar según permisos.
+ */
 function renderizarPersonalAsignado() {
     const tbody = document.getElementById('tablaPersonalAsignadoBody');
     
@@ -817,7 +891,11 @@ function renderizarPersonalAsignado() {
     }).join('');
 }
 
-// Filtrar personal asignado
+/**
+ * Filtra el personal asignado por búsqueda, cargo y empresa.
+ * @param {boolean} rerender - Si es true, re-renderiza la tabla automáticamente (por defecto: true)
+ * @returns {Array} Array de asignaciones filtradas
+ */
 function filtrarPersonalAsignado(rerender = true) {
     if (!faena.asignaciones || faena.asignaciones.length === 0) {
         return [];
@@ -849,7 +927,9 @@ function filtrarPersonalAsignado(rerender = true) {
     return filtradas;
 }
 
-// Limpiar filtros de personal asignado
+/**
+ * Limpia todos los filtros de personal asignado y re-renderiza la tabla.
+ */
 function limpiarFiltrosAsignados() {
     document.getElementById('searchAsignadosInput').value = '';
     document.getElementById('filtroCargoAsignados').value = '';
@@ -857,7 +937,11 @@ function limpiarFiltrosAsignados() {
     renderizarPersonalAsignado();
 }
 
-// Editar asignación individual
+/**
+ * Abre el modal para editar una asignación individual existente.
+ * Precarga todos los campos del formulario con los datos de la asignación.
+ * @param {number} asignacionId - ID de la asignación a editar
+ */
 function editarAsignacionDirecta(asignacionId) {
     const asignacion = faena.asignaciones.find(a => a.id === asignacionId);
     if (!asignacion) {
@@ -942,7 +1026,12 @@ function cargarBloquesEdicion() {
     });
 }
 
-// Guardar edición de asignación
+/**
+ * Guarda los cambios de una asignación editada.
+ * Valida que las fechas estén dentro del rango de la faena.
+ * Actualiza los datos localmente y re-renderiza la tabla.
+ * @param {Event} event - Evento del formulario (se previene el submit por defecto)
+ */
 async function guardarEdicionAsignacion(event) {
     event.preventDefault();
     
@@ -1026,7 +1115,12 @@ async function guardarEdicionAsignacion(event) {
     }
 }
 
-// Mostrar alerta en modal específico
+/**
+ * Muestra una alerta dentro de un modal específico.
+ * @param {string} mensaje - Mensaje a mostrar
+ * @param {string} tipo - Tipo de alerta: 'success' o 'error'
+ * @param {string} containerId - ID del contenedor dentro del modal donde mostrar la alerta
+ */
 function mostrarAlertaEnModal(mensaje, tipo, containerId) {
     const container = document.getElementById(containerId);
     if (!container) {
@@ -1048,7 +1142,11 @@ function mostrarAlertaEnModal(mensaje, tipo, containerId) {
 // Variable para guardar el ID de la asignación a eliminar
 let asignacionAEliminar = null;
 
-// Mostrar modal de confirmación para eliminar
+/**
+ * Muestra un modal de confirmación antes de eliminar una asignación.
+ * Guarda el ID de la asignación para usar en la confirmación.
+ * @param {number} asignacionId - ID de la asignación a eliminar
+ */
 function eliminarAsignacionDirecta(asignacionId) {
     const asignacion = faena.asignaciones.find(a => a.id === asignacionId);
     if (!asignacion) return;
@@ -1067,7 +1165,11 @@ function eliminarAsignacionDirecta(asignacionId) {
     modal.show();
 }
 
-// Confirmar y ejecutar eliminación
+/**
+ * Confirma y ejecuta la eliminación de la asignación.
+ * Hace una petición AJAX al backend y actualiza la tabla localmente.
+ * Muestra mensaje de éxito/error.
+ */
 async function confirmarEliminacion() {
     if (!asignacionAEliminar) return;
     
@@ -1233,7 +1335,14 @@ document.addEventListener('DOMContentLoaded', function() {
 // ADVERTENCIAS Y MENSAJES
 // ============================================================================
 
-// Mostrar advertencia persistente en el cuerpo de la página
+/**
+ * Muestra una advertencia persistente en el cuerpo de la página con información de asignaciones exitosas y errores.
+ * Se muestra cuando hay asignaciones parciales (algunas exitosas, otras con errores).
+ * El usuario puede cerrarla manualmente.
+ * @param {number} totalAsignados - Cantidad de trabajadores asignados exitosamente
+ * @param {number} totalErrores - Cantidad de errores
+ * @param {Array} errores - Array de mensajes de error detallados
+ */
 function mostrarAdvertenciaPersistente(totalAsignados, totalErrores, errores) {
     // Detectar el contenedor correcto según el tab activo
     const hash = window.location.hash;
@@ -1313,6 +1422,9 @@ function mostrarAdvertenciaPersistente(totalAsignados, totalErrores, errores) {
 }
 
 // Cerrar advertencia persistente
+/**
+ * Cierra la advertencia persistente removiendo ambos contenedores del DOM.
+ */
 function cerrarAdvertencia() {
     // Cerrar ambos contenedores de advertencias
     const container1 = document.getElementById('areaAdvertencias');
@@ -1334,6 +1446,12 @@ function cerrarAdvertencia() {
 // ============================================================================
 
 // Mostrar modal de mensaje/validación
+/**
+ * Muestra un modal genérico con título, mensaje y tipo específico.
+ * @param {string} titulo - Título del modal
+ * @param {string} mensaje - Mensaje a mostrar
+ * @param {string} tipo - Tipo de modal: 'info', 'success', 'error' (por defecto: 'info')
+ */
 function mostrarModal(titulo, mensaje, tipo = 'info') {
     const modal = document.getElementById('modalMensaje');
     const header = document.getElementById('modalMensajeHeader');
@@ -1673,7 +1791,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Cargar datos para el Gantt
+/**
+ * Carga los datos del personal asignado a la faena desde la API para el gráfico Gantt.
+ * Procesa los datos y renderiza el gráfico.
+ */
 async function cargarDatosGantt() {
     try {
         // Cargar personal de la faena
@@ -1689,7 +1810,11 @@ async function cargarDatosGantt() {
     }
 }
 
-// Procesar datos para el Gantt
+/**
+ * Procesa los datos del personal para el gráfico Gantt.
+ * Asigna colores a los turnos y estructura los datos para la visualización.
+ * @param {Array} personalArray - Array de objetos con datos del personal y sus asignaciones
+ */
 function procesarDatosGantt(personalArray) {
     ganttPersonalData = [];
     ganttTurnos = {};
@@ -1744,7 +1869,9 @@ function procesarDatosGantt(personalArray) {
     document.getElementById('totalPersonalGantt').textContent = totalPersonalUnico;
 }
 
-// Llenar filtro de turnos
+/**
+ * Llena el selector de filtro de turnos con las opciones disponibles en el Gantt.
+ */
 function llenarFiltroTurnos() {
     const selectTurno = document.getElementById('filtroTurnoGantt');
     if (!selectTurno) return;
@@ -1757,7 +1884,9 @@ function llenarFiltroTurnos() {
     selectTurno.innerHTML = html;
 }
 
-// Renderizar leyenda de turnos
+/**
+ * Renderiza la leyenda de turnos en el gráfico Gantt mostrando los colores asignados a cada turno.
+ */
 function renderizarLeyendaTurnos() {
     const legendContainer = document.getElementById('leyendaTurnosGantt');
     if (!legendContainer) return;
@@ -1782,7 +1911,10 @@ function renderizarLeyendaTurnos() {
     legendContainer.innerHTML = html;
 }
 
-// Aplicar filtros
+/**
+ * Aplica los filtros al gráfico Gantt (turno, búsqueda, orden).
+ * Filtra y ordena el personal y re-renderiza el gráfico.
+ */
 function aplicarFiltrosGantt() {
     const filtroTurno = document.getElementById('filtroTurnoGantt').value;
     const busqueda = document.getElementById('buscarPersonalGantt').value.toLowerCase();
@@ -1813,7 +1945,9 @@ function aplicarFiltrosGantt() {
     renderizarGantt();
 }
 
-// Limpiar filtros
+/**
+ * Limpia todos los filtros del gráfico Gantt y re-renderiza.
+ */
 function limpiarFiltrosGantt() {
     document.getElementById('filtroTurnoGantt').value = '';
     document.getElementById('buscarPersonalGantt').value = '';
@@ -1821,7 +1955,11 @@ function limpiarFiltrosGantt() {
     aplicarFiltrosGantt();
 }
 
-// Renderizar Gantt
+/**
+ * Renderiza el gráfico Gantt con el personal filtrado.
+ * Genera una tabla con timeline mostrando las asignaciones de cada trabajador.
+ * Calcula el rango de fechas y muestra los períodos activos con colores según el turno.
+ */
 function renderizarGantt() {
     const container = document.getElementById('ganttContainer');
     const mensajeSinPersonal = document.getElementById('mensajeSinPersonalGantt');
@@ -1985,7 +2123,12 @@ function renderizarGantt() {
     container.innerHTML = html;
 }
 
-// Calcular rango de fechas para el Gantt (días individuales)
+/**
+ * Calcula el rango de fechas para el gráfico Gantt.
+ * Usa las fechas de la faena o calcula del personal asignado.
+ * Si hay más de 90 días, agrupa por semanas; si no, muestra días individuales.
+ * @returns {Object} Objeto con periodos, usar_semanas, fecha_min, fecha_max
+ */
 function calcularRangoFechasGantt() {
     // Usar las fechas de la faena o calcular del personal
     let fechaMin = faenaFechaInicio ? new Date(faenaFechaInicio + 'T00:00:00') : null;
@@ -2110,7 +2253,11 @@ let registrosPorPaginaEstadosManuales = 25;
 // FUNCIONES DE SELECCIÓN
 // ============================================================================
 
-// Toggle select all en Asignar Personal
+/**
+ * Selecciona o deselecciona todos los checkboxes visibles en la tabla de asignar personal.
+ * Solo selecciona checkboxes que no estén deshabilitados (sin conflictos).
+ * Actualiza el contador y re-renderiza la tabla.
+ */
 function toggleSelectAllAsignar() {
     const selectAll = document.getElementById('selectAllAsignar');
     const checkboxes = document.querySelectorAll('.personal-checkbox');
@@ -2142,7 +2289,11 @@ function toggleSelectAllAsignar() {
 // FUNCIONES DE ORDENAMIENTO CON FLECHAS
 // ============================================================================
 
-// Ordenar tabla de Asignar Personal
+/**
+ * Ordena la tabla de asignar personal por la columna especificada.
+ * Alterna entre orden ascendente y descendente al hacer clic en la misma columna.
+ * @param {string} columna - Nombre de la columna por la cual ordenar
+ */
 function ordenarTablaAsignar(columna) {
     if (ordenAsignar.columna === columna) {
         ordenAsignar.direccion = ordenAsignar.direccion === 'asc' ? 'desc' : 'asc';
@@ -2154,7 +2305,11 @@ function ordenarTablaAsignar(columna) {
     renderizarTablaPersonal();
 }
 
-// Ordenar tabla de Asignar Turno Manual
+/**
+ * Ordena la tabla de asignar turno manual por la columna especificada.
+ * Alterna entre orden ascendente y descendente al hacer clic en la misma columna.
+ * @param {string} columna - Nombre de la columna por la cual ordenar
+ */
 function ordenarTablaManual(columna) {
     if (ordenManual.columna === columna) {
         ordenManual.direccion = ordenManual.direccion === 'asc' ? 'desc' : 'asc';
@@ -2166,7 +2321,11 @@ function ordenarTablaManual(columna) {
     ordenarYRenderizarManual();
 }
 
-// Ordenar tabla de Personal Asignado
+/**
+ * Ordena la tabla de personal asignado (gestionar) por la columna especificada.
+ * Alterna entre orden ascendente y descendente al hacer clic en la misma columna.
+ * @param {string} columna - Nombre de la columna por la cual ordenar
+ */
 function ordenarTablaGestionar(columna) {
     if (ordenGestionar.columna === columna) {
         ordenGestionar.direccion = ordenGestionar.direccion === 'asc' ? 'desc' : 'asc';
@@ -2178,7 +2337,11 @@ function ordenarTablaGestionar(columna) {
     ordenarYRenderizarGestionar();
 }
 
-// Ordenar tabla de Estados Manuales
+/**
+ * Ordena la tabla de estados manuales por la columna especificada.
+ * Alterna entre orden ascendente y descendente al hacer clic en la misma columna.
+ * @param {string} columna - Nombre de la columna por la cual ordenar
+ */
 function ordenarTablaEstadosManuales(columna) {
     if (ordenEstadosManuales.columna === columna) {
         ordenEstadosManuales.direccion = ordenEstadosManuales.direccion === 'asc' ? 'desc' : 'asc';
@@ -2190,7 +2353,12 @@ function ordenarTablaEstadosManuales(columna) {
     filtrarEstadosManuales();
 }
 
-// Actualizar iconos de ordenamiento
+/**
+ * Actualiza los iconos de ordenamiento en los encabezados de tabla.
+ * Limpia todos los iconos y actualiza el de la columna ordenada actualmente.
+ * @param {string} tabId - ID del tab (selector CSS) donde está la tabla
+ * @param {Object} ordenActual - Objeto con {columna: string, direccion: 'asc'|'desc'}
+ */
 function actualizarIconosOrdenamiento(tabId, ordenActual) {
     // Limpiar todos los iconos de esa tabla
     document.querySelectorAll(`${tabId} .sortable i`).forEach(icon => {
@@ -2207,7 +2375,9 @@ function actualizarIconosOrdenamiento(tabId, ordenActual) {
     }
 }
 
-// Ordenar y re-renderizar tabla manual
+/**
+ * Ordena y re-renderiza la tabla de asignar turno manual aplicando los filtros.
+ */
 function ordenarYRenderizarManual() {
     filtrarPersonalManual();
 }
@@ -2216,6 +2386,10 @@ function ordenarYRenderizarManual() {
 // PAGINACIÓN PARA TABLA GESTIONAR (Personal Asignado con Turnos)
 // ============================================================================
 
+/**
+ * Ordena y re-renderiza la tabla de personal asignado (gestionar).
+ * Aplica filtros, ordenamiento y paginación.
+ */
 function ordenarYRenderizarGestionar() {
     if (!faena.asignaciones) return;
     
@@ -2341,7 +2515,10 @@ function ordenarYRenderizarGestionar() {
     generarPaginacionGestionar(totalPaginas);
 }
 
-// Generar paginación para tabla gestionar
+/**
+ * Genera los controles de paginación para la tabla de gestionar.
+ * @param {number} totalPaginas - Total de páginas a mostrar
+ */
 function generarPaginacionGestionar(totalPaginas) {
     const paginacion = document.getElementById('paginacionGestionar');
     if (!paginacion) return;
@@ -2377,11 +2554,19 @@ function generarPaginacionGestionar(totalPaginas) {
     paginacion.innerHTML = html;
 }
 
+/**
+ * Cambia a una nueva página en la tabla de gestionar y re-renderiza.
+ * @param {number} pagina - Número de página a mostrar
+ */
 function cambiarPaginaGestionar(pagina) {
     paginaActualGestionar = pagina;
     ordenarYRenderizarGestionar();
 }
 
+/**
+ * Cambia la cantidad de registros por página en la tabla de gestionar.
+ * Resetea a la página 1 y re-renderiza.
+ */
 function cambiarRegistrosPorPaginaGestionar() {
     registrosPorPaginaGestionar = parseInt(document.getElementById('registrosPorPaginaGestionar').value);
     paginaActualGestionar = 1;
@@ -2397,6 +2582,11 @@ document.addEventListener('DOMContentLoaded', function() {
     llenarTablaManual();
 });
 
+/**
+ * Llena la tabla de asignar turno manual con el personal disponible.
+ * Aplica ordenamiento y paginación.
+ * NO excluye personal ya asignado (en turno manual pueden tener múltiples asignaciones).
+ */
 function llenarTablaManual() {
     const tbody = document.getElementById('personalManualTableBody');
     if (!tbody || !personal) return;
@@ -2488,7 +2678,10 @@ function llenarTablaManual() {
     });
 }
 
-// Generar paginación para tabla manual
+/**
+ * Genera los controles de paginación para la tabla de asignar turno manual.
+ * @param {number} totalPaginas - Total de páginas a mostrar
+ */
 function generarPaginacionManual(totalPaginas) {
     const paginacion = document.getElementById('paginacionManual');
     if (!paginacion) return;
@@ -2524,18 +2717,30 @@ function generarPaginacionManual(totalPaginas) {
     paginacion.innerHTML = html;
 }
 
+/**
+ * Cambia a una nueva página en la tabla de asignar turno manual y re-renderiza.
+ * @param {number} pagina - Número de página a mostrar
+ */
 function cambiarPaginaManual(pagina) {
     paginaActualManual = pagina;
     llenarTablaManual();
 }
 
+/**
+ * Cambia la cantidad de registros por página en la tabla de asignar turno manual.
+ * Resetea a la página 1 y aplica filtros.
+ */
 function cambiarRegistrosPorPaginaManual() {
     registrosPorPaginaManual = parseInt(document.getElementById('registrosPorPaginaManual').value);
     paginaActualManual = 1;
     filtrarPersonalManual();
 }
 
-// Toggle select all manual
+/**
+ * Selecciona o deselecciona todos los checkboxes visibles en la tabla de asignar turno manual.
+ * Solo selecciona checkboxes que no estén deshabilitados (sin conflictos).
+ * Actualiza el resumen manual.
+ */
 function toggleSelectAllManual() {
     const selectAll = document.getElementById('selectAllManual');
     // Solo seleccionar checkboxes que NO estén deshabilitados
@@ -2548,7 +2753,11 @@ function toggleSelectAllManual() {
     actualizarResumenManual();
 }
 
-// Actualizar resumen manual
+/**
+ * Actualiza el resumen de personal seleccionado en la tabla de asignar turno manual.
+ * Habilita/deshabilita el botón de asignar según la cantidad seleccionada.
+ * Solo cuenta checkboxes que no estén deshabilitados (sin conflictos).
+ */
 function actualizarResumenManual() {
     // Solo contar checkboxes seleccionados que NO estén deshabilitados
     const checkboxes = document.querySelectorAll('.personal-manual-checkbox:checked:not(:disabled)');
@@ -2580,7 +2789,11 @@ function actualizarResumenManual() {
     }
 }
 
-// Filtrar personal manual
+/**
+ * Filtra el personal en la tabla de asignar turno manual por búsqueda, cargo y empresa.
+ * NO excluye personal ya asignado (en turno manual pueden tener múltiples asignaciones).
+ * Resetea la paginación y re-renderiza la tabla.
+ */
 function filtrarPersonalManual() {
     const search = document.getElementById('searchManualInput').value.toLowerCase();
     const filtroCargo = document.getElementById('filtroCargoManual').value;
@@ -2607,7 +2820,11 @@ function filtrarPersonalManual() {
     renderizarTablaManualFiltrada(personalFiltrado);
 }
 
-// Renderizar tabla manual filtrada con paginación
+/**
+ * Renderiza la tabla de asignar turno manual con el personal filtrado.
+ * Aplica ordenamiento, paginación y muestra información de conflictos.
+ * @param {Array} personalFiltrado - Array de objetos de personal ya filtrado
+ */
 function renderizarTablaManualFiltrada(personalFiltrado) {
     const tbody = document.getElementById('personalManualTableBody');
     
@@ -2716,7 +2933,10 @@ function renderizarTablaManualFiltrada(personalFiltrado) {
     actualizarResumenManual();
 }
 
-// Limpiar filtros manual
+/**
+ * Limpia todos los filtros de la tabla de asignar turno manual.
+ * Resetea la paginación y re-renderiza la tabla completa.
+ */
 function limpiarFiltrosManual() {
     document.getElementById('searchManualInput').value = '';
     document.getElementById('filtroCargoManual').value = '';
@@ -2729,7 +2949,10 @@ function limpiarFiltrosManual() {
 // PAGINACIÓN Y FUNCIONES PARA TABLA ESTADOS MANUALES
 // ============================================================================
 
-// Filtrar estados manuales
+/**
+ * Filtra los estados manuales por búsqueda, cargo y empresa.
+ * Resetea la paginación y renderiza la tabla filtrada.
+ */
 function filtrarEstadosManuales() {
     const search = document.getElementById('searchEstadosManualesInput')?.value.toLowerCase() || '';
     const filtroCargo = document.getElementById('filtroCargoEstadosManuales')?.value || '';
@@ -2760,7 +2983,11 @@ function filtrarEstadosManuales() {
     renderizarTablaEstadosManualesFiltrada(filasFiltradas);
 }
 
-// Renderizar tabla estados manuales filtrada con paginación
+/**
+ * Renderiza la tabla de estados manuales con las filas filtradas.
+ * Aplica ordenamiento y paginación.
+ * @param {Array} filas - Array de elementos TR (filas de tabla) ya filtradas
+ */
 function renderizarTablaEstadosManualesFiltrada(filas) {
     const tbody = document.getElementById('tablaEstadosManualesBody');
     
@@ -2833,7 +3060,10 @@ function renderizarTablaEstadosManualesFiltrada(filas) {
     generarPaginacionEstadosManuales(totalPaginas);
 }
 
-// Generar paginación para tabla estados manuales
+/**
+ * Genera los controles de paginación para la tabla de estados manuales.
+ * @param {number} totalPaginas - Total de páginas a mostrar
+ */
 function generarPaginacionEstadosManuales(totalPaginas) {
     const paginacion = document.getElementById('paginacionEstadosManuales');
     if (!paginacion) return;
@@ -2869,18 +3099,29 @@ function generarPaginacionEstadosManuales(totalPaginas) {
     paginacion.innerHTML = html;
 }
 
+/**
+ * Cambia a una nueva página en la tabla de estados manuales y re-renderiza.
+ * @param {number} pagina - Número de página a mostrar
+ */
 function cambiarPaginaEstadosManuales(pagina) {
     paginaActualEstadosManuales = pagina;
     filtrarEstadosManuales();
 }
 
+/**
+ * Cambia la cantidad de registros por página en la tabla de estados manuales.
+ * Resetea a la página 1 y aplica filtros.
+ */
 function cambiarRegistrosPorPaginaEstadosManuales() {
     registrosPorPaginaEstadosManuales = parseInt(document.getElementById('registrosPorPaginaEstadosManuales').value);
     paginaActualEstadosManuales = 1;
     filtrarEstadosManuales();
 }
 
-// Limpiar filtros estados manuales
+/**
+ * Limpia todos los filtros de la tabla de estados manuales.
+ * Resetea la paginación y re-renderiza la tabla completa.
+ */
 function limpiarFiltrosEstadosManuales() {
     document.getElementById('searchEstadosManualesInput').value = '';
     document.getElementById('filtroCargoEstadosManuales').value = '';
@@ -2901,7 +3142,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // ELIMINAR ESTADO MANUAL
 // ============================================================================
 
-// Función para eliminar estado manual con modal de confirmación
+/**
+ * Muestra un modal de confirmación antes de eliminar un estado manual.
+ * Crea el modal dinámicamente y maneja la eliminación mediante AJAX.
+ * @param {number} estadoManualId - ID del estado manual a eliminar
+ * @param {string} nombrePersonal - Nombre del personal para mostrar en el modal
+ */
 function eliminarEstadoManual(estadoManualId, nombrePersonal) {
     // Crear modal de confirmación
     const modalHtml = `
@@ -3038,7 +3284,11 @@ function eliminarEstadoManual(estadoManualId, nombrePersonal) {
 // ASIGNAR ESTADO MANUAL DESDE TAB
 // ============================================================================
 
-// Asignar estado manual desde el tab
+/**
+ * Asigna estados manuales a múltiples trabajadores desde el tab de asignar turno manual.
+ * Valida que las fechas estén dentro del rango de la faena.
+ * Muestra mensajes de éxito/error y recarga la página si es exitoso.
+ */
 async function asignarEstadoManualTab() {
     const estado = document.getElementById('estadoManualSelect').value;
     const fechaInicio = document.getElementById('fechaInicioManual').value;
