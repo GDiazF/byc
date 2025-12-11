@@ -8,9 +8,22 @@ from django.contrib.auth.forms import PasswordChangeForm as DjangoPasswordChange
 
 
 class PasswordChangeForm(DjangoPasswordChangeForm):
-    # Formulario personalizado para cambiar contraseña con mensajes en español
+    """
+    Formulario personalizado para cambiar contraseña con mensajes en español.
+    
+    Extiende el formulario de Django para cambiar contraseña, personalizando
+    las etiquetas y mensajes de ayuda en español para mejorar la experiencia
+    del usuario.
+    """
     
     def __init__(self, *args, **kwargs):
+        """
+        Inicializa el formulario con etiquetas y mensajes personalizados en español.
+        
+        Args:
+            *args: Argumentos posicionales del formulario.
+            **kwargs: Argumentos de palabra clave del formulario.
+        """
         super().__init__(*args, **kwargs)
         
         # Personalizar help_text de los campos en español

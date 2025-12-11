@@ -18,8 +18,12 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
 
 def procesar_vencimientos():
-    # Tarea periódica que procesa vencimientos de documentos y crea notificaciones.
-    # Se ejecuta todos los días a las 2:00 AM.
+    """
+    Tarea periódica que procesa vencimientos de documentos y crea notificaciones.
+    
+    Se ejecuta todos los días a las 2:00 AM mediante APScheduler.
+    Llama a la función procesar_vencimientos_documentos() del módulo tasks.
+    """
     from .tasks import procesar_vencimientos_documentos
     
     try:
@@ -30,7 +34,17 @@ def procesar_vencimientos():
 
 
 def start():
-    # Inicia el scheduler y programa las tareas periódicas.
+    """
+    Inicia el scheduler y programa las tareas periódicas.
+    
+    Configura APScheduler con DjangoJobStore para persistir trabajos en la BD,
+    programa la tarea de procesamiento de vencimientos y registra eventos
+    para logging. Verifica que las tablas de django_apscheduler existan antes
+    de iniciar.
+    
+    Raises:
+        Exception: Si hay un error al iniciar el scheduler (se loguea pero no se propaga)
+    """
     if scheduler.running:
         logger.warning("Scheduler ya está corriendo")
         return

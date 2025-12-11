@@ -1,5 +1,11 @@
+/**
+ * Script para gestionar la interfaz de unidades de medida.
+ * 
+ * Maneja la inicialización de DataTable, creación, edición y eliminación
+ * de unidades de medida mediante AJAX.
+ */
 $(document).ready(function() {
-    // Inicializar DataTable
+    // Inicializar DataTable para la tabla de unidades de medida
     const table = $('#unidadMedidaTable').DataTable({
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"

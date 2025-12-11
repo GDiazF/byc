@@ -8,9 +8,31 @@ from gen_permissions.models import UserProfile, Rol, PermisoVista
 
 
 class Command(BaseCommand):
+    """
+    Comando de diagnóstico para verificar permisos de navegación.
+    
+    Verifica que los permisos de navegación estén correctamente configurados:
+    - Que existan en PermisoVista
+    - Que tengan Permission de Django asociado
+    - Que los usuarios tengan los permisos asignados correctamente
+    - Detecta y corrige problemas comunes de sincronización
+    """
     help = 'Diagnostica problemas con permisos de navegacion'
 
     def handle(self, *args, **options):
+        """
+        Ejecuta el diagnóstico de permisos de navegación.
+        
+        Verifica:
+        1. Que el permiso exista en PermisoVista
+        2. Que tenga Permission de Django asociado
+        3. Que los usuarios tengan los permisos asignados correctamente
+        4. Detecta y corrige problemas de sincronización
+        
+        Args:
+            *args: Argumentos posicionales.
+            **options: Opciones del comando.
+        """
         self.stdout.write("=" * 80)
         self.stdout.write("DIAGNOSTICO DE PERMISOS DE NAVEGACION")
         self.stdout.write("=" * 80)

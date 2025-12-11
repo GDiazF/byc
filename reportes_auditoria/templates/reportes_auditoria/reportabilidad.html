@@ -6,35 +6,6 @@
 
 {% block extrastyles %}
 <link rel="stylesheet" href="{% static 'css/auditoria.css' %}">
-<style>
-    .report-card {
-        height: 100%;
-        border: 1px solid #dee2e6;
-        transition: all 0.2s;
-        border-radius: 12px;
-    }
-    .report-card:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        border-color: #adb5bd;
-    }
-    .report-icon {
-        font-size: 2.5rem;
-        margin-bottom: 0.75rem;
-    }
-    .modal-body .form-label {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-    }
-    /* Posicionar modales centrados horizontalmente pero más arriba verticalmente */
-    .modal-dialog {
-        margin: 3rem auto;
-    }
-    @media (max-width: 768px) {
-        .modal-dialog {
-            margin: 1rem auto;
-        }
-    }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -200,7 +171,17 @@
 
 {% block extrajs %}
 <script>
-    // Función para limpiar backdrops de Bootstrap
+    /**
+     * ============================================================================
+     * REPORTABILIDAD - JavaScript para generación de reportes estadísticos
+     * ============================================================================
+     */
+    
+    /**
+     * Limpia los backdrops de Bootstrap que pueden quedar después de cerrar modales.
+     * También remueve las clases y estilos del body relacionados con modales abiertos.
+     * Esto soluciona problemas de múltiples backdrops acumulados.
+     */
     function limpiarBackdrops() {
         const backdrops = document.querySelectorAll('.modal-backdrop');
         backdrops.forEach(backdrop => backdrop.remove());
@@ -213,7 +194,11 @@
         }
     }
     
-    // Limpiar backdrops cuando se carga la página
+    /**
+     * Inicializa los event listeners cuando el DOM está listo.
+     * Limpia backdrops al cargar la página y agrega listener global para limpiar
+     * cuando se cierre cualquier modal.
+     */
     document.addEventListener('DOMContentLoaded', function() {
         limpiarBackdrops();
         
@@ -223,8 +208,14 @@
         });
     });
     
+    /**
+     * Abre el modal de configuración para un tipo de reporte específico.
+     * Carga el formulario de configuración según el tipo de reporte seleccionado
+     * e inicializa los date pickers de Chile.
+     * 
+     * @param {string} tipoReporte - Tipo de reporte a generar (faenas_activas, personal_activo, etc.).
+     */
     function abrirReporte(tipoReporte) {
-        // Limpiar backdrops antes de abrir un nuevo modal
         limpiarBackdrops();
         
         const modalElement = document.getElementById('modalReporte');
@@ -385,12 +376,22 @@
         }
     }
     
-    // Evento para generar reporte
+    /**
+     * Event listener para el botón de generar reporte.
+     * Extrae el tipo de reporte del atributo data-tipo-reporte y llama a generarReporte().
+     */
     document.getElementById('btnGenerarReporte')?.addEventListener('click', function() {
         const tipoReporte = this.getAttribute('data-tipo-reporte');
         generarReporte(tipoReporte);
     });
     
+    /**
+     * Genera un reporte llamando a la API con los parámetros del formulario.
+     * Obtiene los valores de los campos según el tipo de reporte y realiza
+     * una petición AJAX a la API de reportabilidad.
+     * 
+     * @param {string} tipoReporte - Tipo de reporte a generar.
+     */
     function generarReporte(tipoReporte) {
         const btnGenerar = document.getElementById('btnGenerarReporte');
         const modalBody = document.getElementById('modalReporteBody');
@@ -475,6 +476,14 @@
         });
     }
     
+    /**
+     * Muestra los resultados del reporte en el modal.
+     * Cambia el tamaño del modal a grande (modal-xl) y renderiza una tabla
+     * con los datos recibidos. También guarda los datos para exportación.
+     * 
+     * @param {Object} data - Objeto con los datos del reporte (columnas, datos, total).
+     * @param {string} tipoReporte - Tipo de reporte generado.
+     */
     function mostrarResultadosReporte(data, tipoReporte) {
         const modalBody = document.getElementById('modalReporteBody');
         const btnGenerar = document.getElementById('btnGenerarReporte');
@@ -541,6 +550,13 @@
         window.reporteActual = data;
     }
     
+    /**
+     * Exporta el reporte actual a un archivo CSV.
+     * Usa los datos guardados en window.reporteActual para generar el CSV
+     * y lo descarga automáticamente.
+     * 
+     * @param {string} tipoReporte - Tipo de reporte a exportar (para el nombre del archivo).
+     */
     function exportarReporte(tipoReporte) {
         if (!window.reporteActual || !window.reporteActual.datos) {
             alert('No hay datos para exportar');
@@ -576,6 +592,11 @@
         document.body.removeChild(link);
     }
     
+    /**
+     * Vuelve a mostrar el formulario de configuración del reporte actual.
+     * Cierra el modal de resultados y lo vuelve a abrir con el formulario de configuración,
+     * permitiendo generar un nuevo reporte con diferentes parámetros.
+     */
     function volverAConfigurar() {
         if (window.tipoReporteActual) {
             // Cerrar modal actual y limpiar backdrop

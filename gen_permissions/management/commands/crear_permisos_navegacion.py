@@ -14,10 +14,28 @@ from gen_permissions.models import PermisoVista
 
 
 class Command(BaseCommand):
+    """
+    Comando de gestión para crear permisos de navegación.
+    
+    Crea permisos personalizados para controlar el acceso a las secciones
+    del navbar. Si un usuario no tiene el permiso de navegación, el elemento
+    del navbar aparecerá desactivado u oculto.
+    """
     help = 'Crea permisos de navegacion para las secciones del navbar'
 
     def handle(self, *args, **options):
-        # Crea los permisos de navegacion para cada seccion del navbar.
+        """
+        Ejecuta el comando para crear permisos de navegación.
+        
+        Crea PermisoVista y Permission de Django para:
+        - Permisos de navegación del navbar (navigate_rrhh, navigate_maquinarias, etc.)
+        - Permisos de dashboards individuales (view_dashboard_rrhh, etc.)
+        - Permisos de reportes (view_auditoria, view_reportabilidad)
+        
+        Args:
+            *args: Argumentos posicionales.
+            **options: Opciones del comando.
+        """
         # Lista de permisos de navegacion a crear
         # Formato: (codigo, nombre, app_label, vista_nombre, descripcion)
         permisos_navegacion = [

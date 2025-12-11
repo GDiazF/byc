@@ -12,10 +12,13 @@ import json
 
 
 class PermissionDeniedMiddleware:
-    # Middleware que convierte errores PermissionDenied en respuestas JSON
-    # para peticiones AJAX.
-    # Si la peticion es AJAX y se lanza PermissionDenied, retorna un JSON
-    # con un mensaje amigable en lugar de un error 403 HTML.
+    """
+    Middleware que convierte errores PermissionDenied en respuestas JSON para peticiones AJAX.
+    
+    Si la petición es AJAX y se lanza PermissionDenied, retorna un JSON con un mensaje
+    amigable en lugar de un error 403 HTML. Esto permite que el frontend maneje los
+    errores de permisos de forma más elegante.
+    """
     
     def __init__(self, get_response):
         self.get_response = get_response
@@ -25,7 +28,21 @@ class PermissionDeniedMiddleware:
         return response
 
     def process_exception(self, request, exception):
-        # Procesa excepciones y convierte PermissionDenied en JSON para AJAX.
+        """
+        Procesa excepciones y convierte PermissionDenied en JSON para AJAX.
+        
+        Si la excepción es PermissionDenied y la petición es AJAX, retorna una
+        respuesta JSON con un mensaje amigable en lugar de dejar que Django maneje
+        el error 403 normalmente.
+        
+        Args:
+            request: Objeto HttpRequest.
+            exception: Excepción lanzada.
+            
+        Returns:
+            JsonResponse|None: Respuesta JSON si es PermissionDenied y AJAX,
+                              None en caso contrario para que Django maneje el error.
+        """
         if isinstance(exception, PermissionDenied):
             # Verificar si es una peticion AJAX
             is_ajax = (

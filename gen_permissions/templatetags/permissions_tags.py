@@ -21,8 +21,18 @@ register = template.Library()
 
 @register.filter(name='has_perm')
 def has_perm(user, permiso_codigo):
-    # Template filter que verifica si el usuario tiene un permiso especifico.
-    # Formato del permiso: 'app_label.codename' (ej: 'rrhh_personal.view_personal')
+    """
+    Template filter que verifica si el usuario tiene un permiso específico.
+    
+    Formato del permiso: 'app_label.codename' (ej: 'rrhh_personal.view_personal')
+    
+    Args:
+        user: Objeto User de Django.
+        permiso_codigo (str): Código del permiso a verificar.
+        
+    Returns:
+        bool: True si el usuario tiene el permiso, False en caso contrario.
+    """
     if not user or not user.is_authenticated:
         return False
     return user.has_perm(permiso_codigo)
@@ -30,8 +40,18 @@ def has_perm(user, permiso_codigo):
 
 @register.filter(name='has_any_perm')
 def has_any_perm(user, permisos_codigos):
-    # Template filter que verifica si el usuario tiene AL MENOS UNO de los permisos especificados.
-    # Los permisos deben estar separados por coma (ej: 'app.add_model,app.change_model')
+    """
+    Template filter que verifica si el usuario tiene AL MENOS UNO de los permisos especificados.
+    
+    Los permisos deben estar separados por coma (ej: 'app.add_model,app.change_model').
+    
+    Args:
+        user: Objeto User de Django.
+        permisos_codigos (str): Códigos de permisos separados por coma.
+        
+    Returns:
+        bool: True si el usuario tiene al menos uno de los permisos, False en caso contrario.
+    """
     if not user or not user.is_authenticated:
         return False
     permisos = [p.strip() for p in permisos_codigos.split(',')]
@@ -40,8 +60,18 @@ def has_any_perm(user, permisos_codigos):
 
 @register.filter(name='has_all_perms')
 def has_all_perms(user, permisos_codigos):
-    # Template filter que verifica si el usuario tiene TODOS los permisos especificados.
-    # Los permisos deben estar separados por coma (ej: 'app.view_model,app.add_model')
+    """
+    Template filter que verifica si el usuario tiene TODOS los permisos especificados.
+    
+    Los permisos deben estar separados por coma (ej: 'app.view_model,app.add_model').
+    
+    Args:
+        user: Objeto User de Django.
+        permisos_codigos (str): Códigos de permisos separados por coma.
+        
+    Returns:
+        bool: True si el usuario tiene todos los permisos, False en caso contrario.
+    """
     if not user or not user.is_authenticated:
         return False
     permisos = [p.strip() for p in permisos_codigos.split(',')]
@@ -50,8 +80,17 @@ def has_all_perms(user, permisos_codigos):
 
 @register.simple_tag
 def user_rol(user):
-    # Template tag que retorna el nombre del rol del usuario.
-    # Retorna 'Sin rol asignado' si el usuario no tiene rol.
+    """
+    Template tag que retorna el nombre del rol del usuario.
+    
+    Retorna 'Sin rol asignado' si el usuario no tiene rol o no está autenticado.
+    
+    Args:
+        user: Objeto User de Django.
+        
+    Returns:
+        str: Nombre del rol del usuario o 'Sin rol asignado'.
+    """
     if not user or not user.is_authenticated:
         return 'Sin rol asignado'
     try:

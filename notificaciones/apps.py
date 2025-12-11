@@ -2,13 +2,25 @@ from django.apps import AppConfig
 
 
 class NotificacionesConfig(AppConfig):
+    """
+    Configuración de la aplicación notificaciones.
+    
+    Esta aplicación gestiona el sistema de notificaciones del sistema, incluyendo
+    la creación automática de notificaciones mediante signals, el envío en tiempo
+    real mediante Server-Sent Events, y el procesamiento periódico de vencimientos.
+    """
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'notificaciones'
     
     def ready(self):
-        # Se ejecuta cuando Django está listo.
-        # Aquí registramos signals. El scheduler se inicia después de que Django esté completamente inicializado.
-        # Importar signals para que se registren
+        """
+        Se ejecuta cuando Django está listo.
+        
+        Registra los signals de la aplicación y inicia el scheduler de tareas
+        periódicas en un thread separado para no bloquear la inicialización.
+        El scheduler se inicia con un delay de 1 segundo para asegurar que
+        Django esté completamente inicializado y las migraciones estén listas.
+        """
         from . import signals
         
         # Iniciar scheduler después de que Django esté completamente listo
@@ -16,7 +28,12 @@ class NotificacionesConfig(AppConfig):
         import threading
         
         def iniciar_scheduler_diferido():
-            # Inicia el scheduler después de un pequeño delay para asegurar que Django esté completamente listo
+            """
+            Inicia el scheduler después de un pequeño delay para asegurar que Django esté completamente listo.
+            
+            Espera 1 segundo antes de iniciar el scheduler para permitir que Django
+            termine de inicializar y las migraciones estén disponibles.
+            """
             import time
             time.sleep(1)  # Esperar 1 segundo para que Django termine de inicializar
             try:

@@ -100,7 +100,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Funciones para cargar cada dashboard
+/**
+ * Carga los datos del dashboard de RRHH desde la API y los renderiza.
+ * 
+ * Realiza una petición AJAX a la API de RRHH, procesa la respuesta y llama
+ * a renderizarDashboardRRHH para mostrar los datos. Solo carga los datos una vez
+ * por sesión usando el atributo dataset.loaded.
+ */
 function cargarDashboardRRHH() {
     console.log('[Dashboard RRHH] funcion cargarDashboardRRHH llamada');
     const container = document.getElementById('rrhh-content');
@@ -152,6 +158,13 @@ function cargarDashboardRRHH() {
         });
 }
 
+/**
+ * Carga los datos del dashboard de Operaciones desde la API y los renderiza.
+ * 
+ * Realiza una petición AJAX a la API de Operaciones, procesa la respuesta y llama
+ * a renderizarDashboardOperaciones para mostrar los datos. Solo carga los datos una vez
+ * por sesión usando el atributo dataset.loaded.
+ */
 function cargarDashboardOperaciones() {
     const container = document.getElementById('operaciones-content');
     if (container.dataset.loaded === 'true') return;
@@ -172,6 +185,13 @@ function cargarDashboardOperaciones() {
         });
 }
 
+/**
+ * Carga los datos del dashboard de Maquinarias desde la API y los renderiza.
+ * 
+ * Realiza una petición AJAX a la API de Maquinarias, procesa la respuesta y llama
+ * a renderizarDashboardMaquinarias para mostrar los datos. Solo carga los datos una vez
+ * por sesión usando el atributo dataset.loaded.
+ */
 function cargarDashboardMaquinarias() {
     const container = document.getElementById('maquinarias-content');
     if (container.dataset.loaded === 'true') return;
@@ -192,6 +212,13 @@ function cargarDashboardMaquinarias() {
         });
 }
 
+/**
+ * Carga los datos del dashboard de Gerencia desde la API y los renderiza.
+ * 
+ * Realiza una petición AJAX a la API de Gerencia, procesa la respuesta y llama
+ * a renderizarDashboardGerencia para mostrar los datos. Solo carga los datos una vez
+ * por sesión usando el atributo dataset.loaded.
+ */
 function cargarDashboardGerencia() {
     const container = document.getElementById('gerencia-content');
     if (container.dataset.loaded === 'true') return;
@@ -212,7 +239,15 @@ function cargarDashboardGerencia() {
         });
 }
 
-// Funciones para renderizar cada dashboard (copiadas del template original)
+/**
+ * Renderiza el dashboard de RRHH con los datos recibidos de la API.
+ * 
+ * Crea las tarjetas de estadísticas, gráficos con Chart.js y tablas con los datos
+ * de personal, documentos por vencer, faenas activas, etc.
+ * 
+ * @param {Object} data - Datos del dashboard recibidos de la API
+ * @param {HTMLElement} container - Contenedor donde se renderizará el dashboard
+ */
 function renderizarDashboardRRHH(data, container) {
     let html = `
         <div class="row mb-4">
@@ -439,6 +474,12 @@ function renderizarDashboardRRHH(data, container) {
     }
 }
 
+/**
+ * Muestra un modal con los detalles de la distribución de personal.
+ * 
+ * @param {string} tipo - Tipo de distribución ('empresa', 'ausentismo', 'licencia_medica')
+ * @param {Object} data - Datos completos del dashboard de RRHH
+ */
 function mostrarDetallesDistribucion(tipo, data) {
     let titulo = '';
     let modalHTML = '';
@@ -642,6 +683,15 @@ function mostrarDetallesDistribucion(tipo, data) {
     });
 }
 
+/**
+ * Renderiza el dashboard de Operaciones con los datos recibidos de la API.
+ * 
+ * Crea las tarjetas de estadísticas, gráficos con Chart.js y tablas con los datos
+ * de personal, equipos, faenas y documentos por vencer.
+ * 
+ * @param {Object} data - Datos del dashboard recibidos de la API
+ * @param {HTMLElement} container - Contenedor donde se renderizará el dashboard
+ */
 function renderizarDashboardOperaciones(data, container) {
     let html = `
         <div class="row mb-4">
@@ -1011,6 +1061,15 @@ function renderizarDashboardOperaciones(data, container) {
     });
 }
 
+/**
+ * Renderiza el dashboard de Maquinarias con los datos recibidos de la API.
+ * 
+ * Crea las tarjetas de estadísticas, gráficos con Chart.js y tablas con los datos
+ * de equipos, órdenes de trabajo y documentos por vencer.
+ * 
+ * @param {Object} data - Datos del dashboard recibidos de la API
+ * @param {HTMLElement} container - Contenedor donde se renderizará el dashboard
+ */
 function renderizarDashboardMaquinarias(data, container) {
     let html = `
         <div class="row mb-4">
@@ -1351,6 +1410,12 @@ function renderizarDashboardMaquinarias(data, container) {
     }
 }
 
+/**
+ * Muestra un modal con los detalles de equipos por estado.
+ * 
+ * @param {string} estado - Estado de los equipos ('En Faena', 'Con Anomalías', 'Shutdown', etc.)
+ * @param {Object} data - Datos completos del dashboard de Operaciones o Maquinarias
+ */
 function mostrarDetallesEquipos(estado, data) {
     let titulo = '';
     let modalHTML = '';
@@ -1535,6 +1600,15 @@ function mostrarDetallesEquipos(estado, data) {
     });
 }
 
+/**
+ * Renderiza el dashboard de Gerencia con los datos recibidos de la API.
+ * 
+ * Crea las tarjetas de KPIs estratégicos, gráficos consolidadas y tablas con métricas
+ * de todas las áreas del sistema (RRHH, Operaciones, Maquinarias).
+ * 
+ * @param {Object} data - Datos del dashboard recibidos de la API
+ * @param {HTMLElement} container - Contenedor donde se renderizará el dashboard
+ */
 function renderizarDashboardGerencia(data, container) {
     // Calcular datos para graficos
     const resumen = data.resumen_ejecutivo || {};
@@ -2076,6 +2150,12 @@ function renderizarDashboardGerencia(data, container) {
 }
 
 // Funciones para mostrar detalles de graficos de gerencia
+/**
+ * Muestra un modal con los detalles de personal para el dashboard de Gerencia.
+ * 
+ * @param {string} tipo - Tipo de personal ('disponible', 'en_faena', 'con_licencia', 'con_ausentismo')
+ * @param {Object} data - Datos completos del dashboard de Gerencia
+ */
 function mostrarDetallesPersonalGerencia(tipo, data) {
     let titulo = '';
     let detalles = [];
@@ -2235,6 +2315,12 @@ function mostrarDetallesPersonalGerencia(tipo, data) {
     });
 }
 
+/**
+ * Muestra un modal con los detalles de equipos para el dashboard de Gerencia.
+ * 
+ * @param {string} tipo - Tipo de equipos ('disponibles', 'en_faena', 'anomalias', 'shutdown')
+ * @param {Object} data - Datos completos del dashboard de Gerencia
+ */
 function mostrarDetallesEquiposGerencia(tipo, data) {
     let titulo = '';
     let detalles = [];
@@ -2333,6 +2419,12 @@ function mostrarDetallesEquiposGerencia(tipo, data) {
     });
 }
 
+/**
+ * Muestra un modal con los detalles de OTs preventivas o correctivas.
+ * 
+ * @param {string} tipo - Tipo de mantenimiento ('preventivo' o 'correctivo')
+ * @param {Object} data - Datos completos del dashboard de Gerencia
+ */
 function mostrarDetallesPreventivoCorrectivo(tipo, data) {
     let titulo = '';
     let detalles = [];
@@ -2426,6 +2518,12 @@ function mostrarDetallesPreventivoCorrectivo(tipo, data) {
     });
 }
 
+/**
+ * Muestra un modal con los detalles de órdenes de trabajo para el dashboard de Gerencia.
+ * 
+ * @param {string} tipo - Tipo de OTs ('activas' o 'finalizadas')
+ * @param {Object} data - Datos completos del dashboard de Gerencia
+ */
 function mostrarDetallesOTsGerencia(tipo, data) {
     let titulo = '';
     let detalles = [];

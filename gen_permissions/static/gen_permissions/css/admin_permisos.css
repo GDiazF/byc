@@ -1,7 +1,12 @@
 /**
- * Estilos CSS para el admin de permisos.
- * 
- * Agrega estilos visuales para diferenciar permisos de tablas maestras.
+ * ============================================================================
+ * ESTILOS CSS PARA EL ADMIN DE PERMISOS
+ * ============================================================================
+ * Este archivo contiene estilos para el admin de Django que permiten
+ * diferenciar visualmente los permisos de tablas maestras de los permisos
+ * de tablas principales. Los permisos de tablas maestras se muestran con
+ * color amarillo y etiqueta "(Maestra)".
+ * ============================================================================
  */
 
 /* Estilo para permisos de tablas maestras en el widget filter_horizontal */

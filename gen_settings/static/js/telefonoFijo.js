@@ -1,5 +1,18 @@
+/**
+ * Script para agregar prefijo fijo +56 a campos de teléfono.
+ * 
+ * Transforma campos de teléfono normales en campos con prefijo fijo +56
+ * visible para el usuario, manteniendo el valor completo en un campo oculto.
+ */
 $(document).ready(function() {
-    // Función para crear un campo teléfono con prefijo fijo +56
+    /**
+     * Crea un campo de teléfono con prefijo fijo +56 visible.
+     * 
+     * Transforma un campo de teléfono normal en un campo con prefijo +56
+     * visible para el usuario. El valor completo se mantiene en un campo oculto.
+     * 
+     * @param {string} selector - Selector jQuery del campo de teléfono original
+     */
     function crearCampoTelefonoConPrefijoFijo(selector) {
         // Seleccionar el campo original
         const inputOriginal = $(selector);

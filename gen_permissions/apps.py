@@ -12,9 +12,14 @@ from django.apps import AppConfig
 
 
 class GenPermissionsConfig(AppConfig):
-    # Configuracion de la app gen_permissions.
-    # Esta clase configura la app y asegura que los signals se registren
-    # correctamente cuando Django carga la app.
+    """
+    Configuración de la aplicación gen_permissions.
+    
+    Esta clase configura la app y asegura que los signals se registren
+    correctamente cuando Django carga la app. Los signals se importan en el
+    método ready() para garantizar que se registren después de que Django
+    esté completamente inicializado.
+    """
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'gen_permissions'
     

@@ -235,6 +235,12 @@ class PautaMantenimientoPreventivoAdmin(admin.ModelAdmin):
 
 @admin.register(ItemPauta)
 class ItemPautaAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo ItemPauta.
+    
+    ItemPauta representa un item individual dentro de una pauta de mantenimiento.
+    Cada item asocia una sección con múltiples tipos de reparación que deben realizarse.
+    """
     list_display = ('itemPauta_id', 'pauta_id', 'seccion_id', 'total_tipos_reparacion')
     list_filter = ('pauta_id', 'seccion_id')
     filter_horizontal = ('tipos_reparacion',)
@@ -249,6 +255,12 @@ class ItemPautaAdmin(admin.ModelAdmin):
 
 @admin.register(TipoDocumentoMaquinaria)
 class TipoDocumentoMaquinariaAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo TipoDocumentoMaquinaria.
+    
+    TipoDocumentoMaquinaria representa los tipos de documentos que pueden asociarse
+    a equipos (ej: Permiso de Circulación, Seguro, Certificado de Inspección).
+    """
     list_display = ('tipoDocumento_id', 'nombre', 'requiere_fecha_vencimiento', 'activo', 'fecha_creacion')
     list_filter = ('activo', 'requiere_fecha_vencimiento', 'fecha_creacion')
     search_fields = ('nombre', 'descripcion')
@@ -268,6 +280,12 @@ class TipoDocumentoMaquinariaAdmin(admin.ModelAdmin):
 
 @admin.register(DocumentoMaquinaria)
 class DocumentoMaquinariaAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo DocumentoMaquinaria.
+    
+    DocumentoMaquinaria representa los documentos físicos asociados a equipos.
+    Cada documento tiene un archivo, fecha de vencimiento (si aplica) y estado.
+    """
     list_display = ('documento_id', 'equipo_id', 'tipo_documento_id', 'fecha_vencimiento', 'fecha_subida', 'estado_documento')
     list_filter = ('tipo_documento_id', 'fecha_vencimiento', 'fecha_subida')
     search_fields = ('equipo_id__nombreEquipo', 'tipo_documento_id__nombre', 'observaciones')
@@ -285,6 +303,15 @@ class DocumentoMaquinariaAdmin(admin.ModelAdmin):
     )
     
     def estado_documento(self, obj):
+        """
+        Método personalizado que determina el estado del documento según su fecha de vencimiento.
+        
+        Args:
+            obj: Instancia del modelo DocumentoMaquinaria.
+            
+        Returns:
+            str: Estado del documento ('Vencido', 'Por vencer', o 'Vigente').
+        """
         if obj.esta_vencido:
             return 'Vencido'
         elif obj.esta_por_vencer:
@@ -296,6 +323,12 @@ class DocumentoMaquinariaAdmin(admin.ModelAdmin):
 
 @admin.register(HistorialDocumentoMaquinaria)
 class HistorialDocumentoMaquinariaAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo HistorialDocumentoMaquinaria.
+    
+    HistorialDocumentoMaquinaria almacena documentos que fueron reemplazados o eliminados.
+    Permite mantener un registro histórico de todos los documentos que ha tenido un equipo.
+    """
     list_display = ('historial_id', 'equipo_id', 'tipo_documento_nombre', 'fecha_vencimiento', 'fecha_reemplazo')
     list_filter = ('tipo_documento_id', 'fecha_reemplazo', 'fecha_vencimiento')
     search_fields = ('equipo_id__nombreEquipo', 'tipo_documento_nombre', 'observaciones')
@@ -318,6 +351,12 @@ class HistorialDocumentoMaquinariaAdmin(admin.ModelAdmin):
 
 @admin.register(TipoMantenimiento)
 class TipoMantenimientoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo TipoMantenimiento.
+    
+    TipoMantenimiento representa los tipos de mantenimiento que se pueden realizar
+    en equipos (ej: Preventivo, Correctivo, Predictivo).
+    """
     list_display = ('tipoMantenimiento_id', 'nombre', 'descripcion', 'activo')
     list_filter = ('activo',)
     search_fields = ('nombre', 'descripcion')
@@ -326,6 +365,12 @@ class TipoMantenimientoAdmin(admin.ModelAdmin):
 
 @admin.register(EstadoOT)
 class EstadoOTAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo EstadoOT.
+    
+    EstadoOT representa los estados posibles de una orden de trabajo
+    (ej: Pendiente, En Proceso, Completada, Cancelada).
+    """
     list_display = ('estadoOT_id', 'nombre', 'color', 'orden', 'activo')
     list_filter = ('activo', 'color')
     search_fields = ('nombre', 'descripcion')
@@ -334,6 +379,12 @@ class EstadoOTAdmin(admin.ModelAdmin):
 
 @admin.register(EstadoEquipo)
 class EstadoEquipoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo EstadoEquipo.
+    
+    EstadoEquipo representa los estados posibles de un equipo
+    (ej: Operativo, En Mantenimiento, Fuera de Servicio).
+    """
     list_display = ('estadoEquipo_id', 'nombre', 'color', 'orden', 'activo')
     list_filter = ('activo', 'color')
     search_fields = ('nombre', 'descripcion')
@@ -344,6 +395,12 @@ class EstadoEquipoAdmin(admin.ModelAdmin):
 
 @admin.register(EstadoCalendarioEquipo)
 class EstadoCalendarioEquipoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo EstadoCalendarioEquipo.
+    
+    EstadoCalendarioEquipo representa los estados que se muestran en el calendario
+    de maquinarias. Cada estado tiene colores, prioridad y puede ser bloqueante.
+    """
     list_display = ('nombre', 'nombre_corto', 'color', 'background_color', 'prioridad', 'es_bloqueante', 'es_predeterminado', 'activo')
     list_filter = ('activo', 'es_bloqueante', 'es_predeterminado')
     search_fields = ('nombre', 'nombre_corto')
@@ -363,6 +420,12 @@ class EstadoCalendarioEquipoAdmin(admin.ModelAdmin):
 
 @admin.register(EstadoFuenteEquipo)
 class EstadoFuenteEquipoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo EstadoFuenteEquipo.
+    
+    EstadoFuenteEquipo mapea estados de calendario con estados de equipo,
+    permitiendo determinar qué estado mostrar en el calendario según el estado del equipo.
+    """
     list_display = ('estado_calendario', 'estado_equipo', 'filtro_extra')
     list_filter = ('estado_calendario', 'estado_equipo')
     search_fields = ('estado_calendario__nombre', 'estado_equipo__nombre')
@@ -371,6 +434,12 @@ class EstadoFuenteEquipoAdmin(admin.ModelAdmin):
 
 @admin.register(EstadoManualEquipo)
 class EstadoManualEquipoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo EstadoManualEquipo.
+    
+    EstadoManualEquipo permite asignar estados temporales a equipos independientemente
+    de las órdenes de trabajo o asignaciones a faenas.
+    """
     list_display = ('equipo', 'estado', 'fecha_inicio', 'fecha_fin', 'fecha_creacion')
     list_filter = ('estado', 'fecha_inicio', 'fecha_fin')
     search_fields = ('equipo__nombreEquipo', 'estado__nombre', 'observaciones')
@@ -381,6 +450,12 @@ class EstadoManualEquipoAdmin(admin.ModelAdmin):
 # ==================== MODELOS DE ORDEN DE TRABAJO ====================
 
 class ItemSeccionOTInline(admin.TabularInline):
+    """
+    Configuración inline para editar items de sección de OT directamente desde la OT.
+    
+    Permite agregar, editar y eliminar items de sección (secciones y tipos de reparación)
+    directamente desde el formulario de edición de la orden de trabajo.
+    """
     model = ItemSeccionOT
     extra = 0
     filter_horizontal = ('tipos_reparacion',)
@@ -389,6 +464,12 @@ class ItemSeccionOTInline(admin.TabularInline):
 
 
 class HistorialObservacionesOTInline(admin.TabularInline):
+    """
+    Configuración inline para ver el historial de observaciones de una OT.
+    
+    Muestra todas las observaciones agregadas a la orden de trabajo en orden cronológico.
+    Las observaciones no se pueden eliminar desde aquí (solo lectura).
+    """
     model = HistorialObservacionesOT
     extra = 0
     fields = ('observacion', 'usuario', 'fecha')
@@ -398,6 +479,13 @@ class HistorialObservacionesOTInline(admin.TabularInline):
 
 @admin.register(OrdenTrabajo)
 class OrdenTrabajoAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo OrdenTrabajo.
+    
+    OrdenTrabajo representa las órdenes de trabajo para mantenimiento de equipos.
+    Cada OT incluye información del equipo, personal asignado, secciones a reparar,
+    y un historial de observaciones y cambios de estado.
+    """
     list_display = ('folio', 'equipo_id', 'empresa_id', 'tipo_mantenimiento_id', 'estado_ot_id', 'estado_equipo_id', 'fecha_creacion', 'fecha_inicio', 'fecha_fin')
     list_filter = ('estado_ot_id', 'estado_equipo_id', 'tipo_mantenimiento_id', 'empresa_id', 'fecha_creacion')
     search_fields = ('folio', 'equipo_id__nombreEquipo', 'equipo_id__codigoInterno', 'observaciones')
@@ -485,6 +573,12 @@ class OrdenTrabajoAdmin(admin.ModelAdmin):
 
 @admin.register(ItemSeccionOT)
 class ItemSeccionOTAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo ItemSeccionOT.
+    
+    ItemSeccionOT representa una sección específica dentro de una orden de trabajo,
+    asociada con múltiples tipos de reparación que deben realizarse en esa sección.
+    """
     list_display = ('itemSeccionOT_id', 'ot_id', 'seccion_id', 'estado_seccion_id', 'total_tipos_reparacion')
     list_filter = ('ot_id', 'seccion_id', 'estado_seccion_id')
     search_fields = ('ot_id__folio', 'seccion_id__nombre')
@@ -498,6 +592,12 @@ class ItemSeccionOTAdmin(admin.ModelAdmin):
 
 @admin.register(HistorialObservacionesOT)
 class HistorialObservacionesOTAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo HistorialObservacionesOT.
+    
+    HistorialObservacionesOT almacena todas las observaciones agregadas a una orden de trabajo,
+    incluyendo quién las agregó y cuándo, para mantener un registro completo de cambios.
+    """
     list_display = ('historial_id', 'ot_id', 'usuario', 'fecha', 'observacion_preview')
     list_filter = ('ot_id', 'usuario', 'fecha')
     search_fields = ('ot_id__folio', 'observacion')
@@ -505,12 +605,29 @@ class HistorialObservacionesOTAdmin(admin.ModelAdmin):
     ordering = ('-fecha',)
     
     def observacion_preview(self, obj):
+        """
+        Método personalizado que muestra una vista previa de la observación.
+        
+        Si la observación es muy larga, la trunca a 100 caracteres y agrega '...'.
+        
+        Args:
+            obj: Instancia del modelo HistorialObservacionesOT.
+            
+        Returns:
+            str: Observación completa o truncada a 100 caracteres.
+        """
         return obj.observacion[:100] + '...' if len(obj.observacion) > 100 else obj.observacion
     observacion_preview.short_description = 'Observación'
 
 
 @admin.register(HistorialOT)
 class HistorialOTAdmin(admin.ModelAdmin):
+    """
+    Configuración del admin para el modelo HistorialOT.
+    
+    HistorialOT almacena todos los cambios realizados en órdenes de trabajo,
+    incluyendo quién hizo el cambio, cuándo y qué datos cambiaron.
+    """
     list_display = ['ot', 'fecha_hora', 'accion', 'usuario', 'descripcion_corta']
     list_filter = ['accion', 'fecha_hora', 'ot']
     search_fields = ['ot__folio', 'descripcion', 'usuario__username']
@@ -532,18 +649,51 @@ class HistorialOTAdmin(admin.ModelAdmin):
     )
     
     def descripcion_corta(self, obj):
+        """
+        Método personalizado que muestra una vista previa de la descripción.
+        
+        Si la descripción es muy larga, la trunca a 80 caracteres y agrega '...'.
+        
+        Args:
+            obj: Instancia del modelo HistorialOT.
+            
+        Returns:
+            str: Descripción completa o truncada a 80 caracteres, o '-' si no hay descripción.
+        """
         if obj.descripcion:
             return obj.descripcion[:80] + "..." if len(obj.descripcion) > 80 else obj.descripcion
         return "-"
     descripcion_corta.short_description = "Descripción"
     
     def has_add_permission(self, request):
-        # No permitir crear manualmente desde admin (se crea automáticamente)
+        """
+        No permite crear manualmente registros de historial desde el admin.
+        
+        Los registros de historial se crean automáticamente mediante signals cuando
+        se realizan cambios en las órdenes de trabajo.
+        
+        Args:
+            request: Objeto HttpRequest de Django.
+            
+        Returns:
+            bool: Siempre False, no se pueden crear manualmente.
+        """
         return False
     
     def has_delete_permission(self, request, obj=None):
-        # Permitir eliminación solo si el usuario es superuser (para pruebas y limpieza)
-        # En producción, esto debería ser False para mantener la integridad de auditoría
+        """
+        Permite eliminación solo si el usuario es superuser.
+        
+        En producción, esto debería ser False para mantener la integridad de auditoría,
+        pero se permite para pruebas y limpieza de datos.
+        
+        Args:
+            request: Objeto HttpRequest de Django.
+            obj: Instancia del modelo (opcional).
+            
+        Returns:
+            bool: True solo si el usuario es superuser, False en caso contrario.
+        """
         return request.user.is_superuser
     
     def get_queryset(self, request):

@@ -14,10 +14,19 @@ from gen_permissions.models import Rol
 
 
 class TipoNotificacion(models.Model):
-    # Catálogo de tipos de notificaciones disponibles en el sistema.
-    # Cada tipo de notificación tiene un código único que se usa para identificarlo
-    # y crear notificaciones del mismo tipo.
-    # Ejemplos: RRHH_PERSONAL_ACTIVADO, RRHH_LICENCIA_MEDICA_CREADA, etc.
+    """
+    Catálogo de tipos de notificaciones disponibles en el sistema.
+    
+    Cada tipo de notificación tiene un código único que se usa para identificarlo
+    y crear notificaciones del mismo tipo. Los tipos definen la categoría, prioridad
+    por defecto y templates opcionales para título y mensaje.
+    
+    Ejemplos de códigos:
+    - RRHH_PERSONAL_ACTIVADO
+    - RRHH_LICENCIA_MEDICA_CREADA
+    - MAQUINARIAS_EQUIPO_ACTIVADO
+    - PLANIFICACION_FAENA_CREADA
+    """
     
     CATEGORIA_CHOICES = [
         ('RRHH', 'Recursos Humanos'),
@@ -88,10 +97,14 @@ class TipoNotificacion(models.Model):
 
 
 class ConfiguracionNotificacionRol(models.Model):
-    # Configuración de qué tipos de notificaciones puede recibir cada rol.
-    # Cuando se crea una notificación de un tipo específico, se busca qué roles
-    # tienen habilitado ese tipo y se crean notificaciones para todos los usuarios
-    # con esos roles.
+    """
+    Configuración de qué tipos de notificaciones puede recibir cada rol.
+    
+    Cuando se crea una notificación de un tipo específico, se busca qué roles
+    tienen habilitado ese tipo y se crean notificaciones para todos los usuarios
+    activos con esos roles. Esto permite controlar quién recibe qué tipo de
+    notificaciones según su rol en el sistema.
+    """
     rol = models.ForeignKey(
         Rol,
         on_delete=models.CASCADE,
@@ -131,9 +144,14 @@ class ConfiguracionNotificacionRol(models.Model):
 
 
 class Notificacion(models.Model):
-    # Notificaciones individuales para usuarios específicos.
-    # Cada notificación está asociada a un usuario y un tipo de notificación.
-    # Contiene el título, mensaje y metadatos adicionales.
+    """
+    Notificaciones individuales para usuarios específicos.
+    
+    Cada notificación está asociada a un usuario y un tipo de notificación.
+    Contiene el título, mensaje, metadatos adicionales y estado de lectura/archivado.
+    Las notificaciones se ordenan por fecha de creación descendente y tienen
+    índices optimizados para consultas frecuentes.
+    """
     usuario = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -210,21 +228,36 @@ class Notificacion(models.Model):
         return f"{self.usuario.username} - {self.titulo}"
     
     def marcar_como_leida(self):
-        # Marca la notificación como leída
+        """
+        Marca la notificación como leída.
+        
+        Actualiza el estado de lectura y guarda la fecha de lectura.
+        Solo marca como leída si no estaba ya leída.
+        """
         if not self.leida:
             self.leida = True
             self.fecha_leida = timezone.now()
             self.save(update_fields=['leida', 'fecha_leida'])
     
     def archivar(self):
-        # Archiva la notificación
+        """
+        Archiva la notificación.
+        
+        Marca la notificación como archivada y guarda la fecha de archivado.
+        Solo archiva si no estaba ya archivada.
+        """
         if not self.archivada:
             self.archivada = True
             self.fecha_archivada = timezone.now()
             self.save(update_fields=['archivada', 'fecha_archivada'])
     
     def desarchivar(self):
-        # Desarchiva la notificación
+        """
+        Desarchiva la notificación.
+        
+        Remueve el estado de archivado y limpia la fecha de archivado.
+        Solo desarchiva si estaba archivada.
+        """
         if self.archivada:
             self.archivada = False
             self.fecha_archivada = None

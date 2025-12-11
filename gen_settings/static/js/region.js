@@ -1,5 +1,11 @@
+/**
+ * Script para gestionar la interfaz de regiones.
+ * 
+ * Maneja la inicialización de DataTable, creación, edición y eliminación
+ * de regiones mediante AJAX.
+ */
 $(document).ready(function() {
-    // Inicializar DataTable
+    // Inicializar DataTable para la tabla de regiones
     const table = $('#regionTable').DataTable({
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"

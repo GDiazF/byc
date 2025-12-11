@@ -13,21 +13,40 @@ from .utils import es_permiso_tabla_maestra
 
 
 class PermisosFilteredSelectMultiple(FilteredSelectMultiple):
-    # Widget personalizado que extiende FilteredSelectMultiple para mostrar
-    # etiquetas visuales en permisos de tablas maestras.
-    # Muestra "(Maestra)" junto a los permisos que pertenecen a tablas maestras,
-    # facilitando la identificacion visual al asignar permisos a roles.
+    """
+    Widget personalizado que extiende FilteredSelectMultiple para mostrar etiquetas visuales.
+    
+    Muestra "(Maestra)" junto a los permisos que pertenecen a tablas maestras,
+    facilitando la identificación visual al asignar permisos a roles en el admin de Django.
+    """
     
     def __init__(self, *args, **kwargs):
-        # Inicializa el widget y carga los permisos en memoria para formateo rapido.
+        """
+        Inicializa el widget y carga los permisos en memoria para formateo rápido.
+        
+        Args:
+            *args: Argumentos posicionales del widget padre.
+            **kwargs: Argumentos de palabra clave del widget padre.
+        """
         super().__init__(*args, **kwargs)
         # Cache de permisos para evitar multiples consultas
         self._permisos_cache = {}
     
     def render_option(self, selected_choices, option_value, option_label):
-        # Renderiza una opcion del select con etiqueta especial si es tabla maestra.
-        # Este metodo se llama para cada opcion en el select. Agrega la etiqueta
-        # "(Maestra)" y estilos especiales a los permisos de tablas maestras.
+        """
+        Renderiza una opción del select con etiqueta especial si es tabla maestra.
+        
+        Este método se llama para cada opción en el select. Agrega la etiqueta
+        "(Maestra)" a los permisos de tablas maestras para facilitar la identificación visual.
+        
+        Args:
+            selected_choices: Lista de valores seleccionados.
+            option_value: Valor de la opción.
+            option_label: Etiqueta de la opción.
+            
+        Returns:
+            str: HTML de la opción renderizada.
+        """
         # Obtener el permiso para verificar si es tabla maestra
         from django.contrib.auth.models import Permission
         
@@ -50,11 +69,27 @@ class PermisosFilteredSelectMultiple(FilteredSelectMultiple):
         return super().render_option(selected_choices, option_value, option_label)
     
     def format_value(self, value):
-        # Formatea el valor antes de renderizarlo.
+        """
+        Formatea el valor antes de renderizarlo.
+        
+        Args:
+            value: Valor a formatear.
+            
+        Returns:
+            str: Valor formateado.
+        """
         return super().format_value(value)
     
     def format_label(self, option):
-        # Formatea el label de una opcion agregando "(Maestra)" si corresponde.
+        """
+        Formatea el label de una opción agregando "(Maestra)" si corresponde.
+        
+        Args:
+            option: Diccionario con información de la opción (debe tener 'label' y 'value').
+            
+        Returns:
+            str: Label formateado con etiqueta "(Maestra)" si es tabla maestra.
+        """
         from django.contrib.auth.models import Permission
         
         label = option.get('label', '')
@@ -85,9 +120,12 @@ class PermisosFilteredSelectMultiple(FilteredSelectMultiple):
 
 
 class NotificacionesCheckboxWidget(Widget):
-    # Widget personalizado que muestra checkboxes de notificaciones agrupadas por categoria.
-    # Muestra todas las notificaciones existentes como checkboxes organizadas por categoria
-    # (RRHH, MAQUINARIAS, PLANIFICACION, GENERAL) para facilitar la seleccion.
+    """
+    Widget personalizado que muestra checkboxes de notificaciones agrupadas por categoría.
+    
+    Muestra todas las notificaciones existentes como checkboxes organizadas por categoría
+    (RRHH, MAQUINARIAS, PLANIFICACION, GENERAL) para facilitar la selección en el admin.
+    """
     
     template_name = 'gen_permissions/widgets/notificaciones_checkboxes.html'
     
@@ -96,7 +134,20 @@ class NotificacionesCheckboxWidget(Widget):
         self.choices = None
     
     def get_context(self, name, value, attrs):
-        # Obtiene el contexto para renderizar el widget.
+        """
+        Obtiene el contexto para renderizar el widget.
+        
+        Agrupa las notificaciones por categoría y prepara los valores seleccionados
+        para mostrarlos en el template.
+        
+        Args:
+            name: Nombre del campo.
+            value: Valor actual del campo (puede ser lista o None).
+            attrs: Atributos HTML del widget.
+            
+        Returns:
+            dict: Contexto con notificaciones agrupadas y valores seleccionados.
+        """
         context = super().get_context(name, value, attrs)
         
         # Obtener todas las notificaciones activas agrupadas por categoria
@@ -145,8 +196,20 @@ class NotificacionesCheckboxWidget(Widget):
         return context
     
     def value_from_datadict(self, data, files, name):
-        # Obtiene los valores seleccionados del formulario.
-        # Los checkboxes con el mismo name envian multiples valores.
+        """
+        Obtiene los valores seleccionados del formulario.
+        
+        Los checkboxes con el mismo name envían múltiples valores. Este método
+        los recopila y los convierte a una lista de enteros.
+        
+        Args:
+            data: Diccionario con los datos del formulario.
+            files: Diccionario con archivos subidos (no usado).
+            name: Nombre del campo.
+            
+        Returns:
+            list: Lista de IDs de notificaciones seleccionadas.
+        """
         # Obtener todos los valores con el mismo nombre (multiples checkboxes)
         values = data.getlist(name)
         

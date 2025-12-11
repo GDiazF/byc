@@ -15,10 +15,30 @@ logger = logging.getLogger(__name__)
 
 
 class CustomLoginView(LoginView):
-    # Vista personalizada de login que detecta intentos fallidos y crea notificaciones.
+    """
+    Vista personalizada de login que detecta intentos fallidos y crea notificaciones.
+    
+    Extiende la vista de login de Django para agregar funcionalidad de seguridad:
+    - Detecta intentos de login fallidos
+    - Cuenta intentos consecutivos usando cache
+    - Crea notificaciones de seguridad cuando se alcanzan 3 intentos fallidos
+    - Limpia el contador cuando el login es exitoso
+    """
     
     def form_invalid(self, form):
-        # Se ejecuta cuando el formulario de login es inválido (credenciales incorrectas).
+        """
+        Se ejecuta cuando el formulario de login es inválido (credenciales incorrectas).
+        
+        Registra el intento fallido en cache y crea una notificación de seguridad
+        cuando se alcanzan 3 intentos fallidos consecutivos. Solo registra intentos
+        para usuarios que existen en la base de datos para evitar spam.
+        
+        Args:
+            form: Formulario de login inválido.
+            
+        Returns:
+            HttpResponse: Respuesta del método padre con el formulario inválido.
+        """
         # Obtener el username del formulario (aunque sea inválido, el campo username puede tener valor)
         username = form.data.get('username', '') or form.cleaned_data.get('username', '')
         
@@ -41,9 +61,20 @@ class CustomLoginView(LoginView):
         return super().form_invalid(form)
     
     def _registrar_intento_fallido(self, user):
-        # Registra un intento de login fallido y crea notificación SOLO cuando se alcancen 3 intentos.
-        # Cada usuario tiene su propio contador independiente.
-        # Funciona con cualquier backend de cache (local, Redis, Memcached, etc.)
+        """
+        Registra un intento de login fallido y crea notificación cuando se alcancen 3 intentos.
+        
+        Usa el sistema de cache de Django para contar intentos fallidos por usuario.
+        Cada usuario tiene su propio contador independiente que expira después de 15 minutos.
+        Solo crea una notificación cuando se alcanzan exactamente 3 intentos fallidos
+        para evitar spam de notificaciones.
+        
+        Funciona con cualquier backend de cache (LocMemCache, Redis, Memcached, etc.).
+        Si el cache no está disponible, no crea notificaciones para evitar falsos positivos.
+        
+        Args:
+            user (User): Usuario para el cual se registra el intento fallido.
+        """
         cache_key = f'login_failed_{user.id}'
         intentos = 0
         
@@ -98,8 +129,18 @@ class CustomLoginView(LoginView):
                 logger.error(f"Error al crear notificación de login fallido: {str(e)}")
     
     def form_valid(self, form):
-        # Se ejecuta cuando el login es exitoso.
-        # Limpia el contador de intentos fallidos.
+        """
+        Se ejecuta cuando el login es exitoso.
+        
+        Limpia el contador de intentos fallidos del usuario en cache
+        para resetear el contador después de un login exitoso.
+        
+        Args:
+            form: Formulario de login válido.
+            
+        Returns:
+            HttpResponse: Respuesta del método padre con el login exitoso.
+        """
         username = form.cleaned_data.get('username')
         user = authenticate(
             username=username,

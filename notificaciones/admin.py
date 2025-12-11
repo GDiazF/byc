@@ -11,6 +11,12 @@ from .models import TipoNotificacion, Notificacion, ConfiguracionNotificacionRol
 
 @admin.register(TipoNotificacion)
 class TipoNotificacionAdmin(admin.ModelAdmin):
+    """
+    Configuración del panel de administración para el modelo TipoNotificacion.
+    
+    Define cómo se muestra y se interactúa con los tipos de notificaciones
+    en el admin de Django, incluyendo campos de búsqueda, filtros y ordenamiento.
+    """
     list_display = ('codigo', 'nombre', 'categoria', 'prioridad', 'activo')
     list_filter = ('categoria', 'prioridad', 'activo')
     search_fields = ('codigo', 'nombre', 'descripcion')
@@ -29,6 +35,13 @@ class TipoNotificacionAdmin(admin.ModelAdmin):
 
 @admin.register(Notificacion)
 class NotificacionAdmin(admin.ModelAdmin):
+    """
+    Configuración del panel de administración para el modelo Notificacion.
+    
+    Define cómo se muestra y se interactúa con las notificaciones individuales
+    en el admin de Django, incluyendo campos de búsqueda, filtros, ordenamiento
+    y jerarquía de fechas.
+    """
     list_display = ('usuario', 'titulo', 'tipo_notificacion', 'leida', 'prioridad', 'fecha_creacion')
     list_filter = ('tipo_notificacion', 'leida', 'prioridad', 'archivada', 'fecha_creacion')
     search_fields = ('titulo', 'mensaje', 'usuario__username', 'usuario__email')
@@ -64,6 +77,13 @@ class NotificacionAdmin(admin.ModelAdmin):
 
 @admin.register(ConfiguracionNotificacionRol)
 class ConfiguracionNotificacionRolAdmin(admin.ModelAdmin):
+    """
+    Configuración del panel de administración para el modelo ConfiguracionNotificacionRol.
+    
+    Define cómo se muestra y se interactúa con las configuraciones de notificaciones
+    por rol en el admin de Django. Permite gestionar qué tipos de notificaciones
+    puede recibir cada rol del sistema.
+    """
     list_display = ('rol', 'tipo_notificacion', 'activo', 'fecha_modificacion')
     list_filter = ('activo', 'tipo_notificacion__categoria', 'fecha_modificacion')
     search_fields = ('rol__nombre', 'tipo_notificacion__nombre', 'tipo_notificacion__codigo')

@@ -18,8 +18,21 @@ from django.utils.dateparse import parse_date
 @login_required
 @permission_required_custom('reportes_auditoria.view_auditoria')
 def auditoria_view(request):
-    """Vista principal de auditoría - muestra todos los historiales consolidados"""
-    # Obtener lista de usuarios para el filtro
+    """
+    Vista principal de auditoría - muestra todos los historiales consolidados.
+    
+    Esta vista renderiza la página principal de auditoría donde se pueden consultar
+    todos los eventos de historial del sistema (Personal, Documentos, Equipos, Faenas, OTs)
+    con filtros avanzados y paginación.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP de Django.
+        
+    Returns:
+        HttpResponse: Renderiza el template 'reportes_auditoria/auditoria.html' con
+                     la lista de usuarios activos para el filtro.
+    """
+    # Obtener lista de usuarios activos para el filtro de usuario
     from django.contrib.auth.models import User
     usuarios = User.objects.filter(is_active=True).order_by('username')
     context = {
@@ -31,7 +44,24 @@ def auditoria_view(request):
 @login_required
 @permission_required_custom('reportes_auditoria.view_reportabilidad')
 def reportabilidad_view(request):
-    """Vista principal de reportabilidad - consultas estadísticas"""
+    """
+    Vista principal de reportabilidad - consultas estadísticas.
+    
+    Esta vista renderiza la página principal de reportabilidad donde se pueden
+    generar diferentes tipos de reportes estadísticos del sistema:
+    - Faenas Activas
+    - Personal Activo
+    - Equipos en Mantención
+    - Asignaciones de Personal
+    - Asignaciones de Equipos
+    - Órdenes de Trabajo
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP de Django.
+        
+    Returns:
+        HttpResponse: Renderiza el template 'reportes_auditoria/reportabilidad.html'.
+    """
     return render(request, 'reportes_auditoria/reportabilidad.html')
 
 
@@ -41,14 +71,46 @@ def reportabilidad_view(request):
 @require_http_methods(["GET"])
 def api_auditoria(request):
     """
-    API para obtener todos los historiales consolidados con filtros y paginación
+    API para obtener todos los historiales consolidados con filtros y paginación.
+    
+    Esta función consolida eventos de auditoría de múltiples modelos del sistema:
+    - HistorialPersonal (rrhh_personal)
+    - HistorialDocumentoPersonal (rrhh_personal)
+    - HistorialEquipo (maquinarias)
+    - HistorialFaena (ope_calendario)
+    - HistorialOT (maquinarias)
+    
+    Los eventos se pueden filtrar por:
+    - Tipo de entidad (PERSONAL, DOCUMENTO, EQUIPO, FAENA, OT)
+    - Rango de fechas (fecha_desde, fecha_hasta)
+    - Usuario que realizó la acción
+    - Acción realizada
+    - Búsqueda de texto libre
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET:
+            - page (int): Número de página (default: 1)
+            - per_page (int): Elementos por página (default: 25, 10000+ para exportación)
+            - tipo_entidad[] (list): Lista de tipos de entidad a filtrar
+            - fecha_desde (str): Fecha desde en formato YYYY-MM-DD
+            - fecha_hasta (str): Fecha hasta en formato YYYY-MM-DD
+            - usuario_id (int): ID del usuario
+            - accion (str): Tipo de acción
+            - busqueda (str): Texto de búsqueda libre
+            
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - eventos (list): Lista de eventos formateados
+            - pagination (dict): Información de paginación
+            - error (str): Mensaje de error si success=False
     """
     try:
         # Parámetros de paginación
         page = int(request.GET.get('page', 1))
         per_page = int(request.GET.get('per_page', 25))
         
-        # Filtros
+        # Filtros de la solicitud
         tipo_entidad = request.GET.getlist('tipo_entidad[]', [])  # ['PERSONAL', 'EQUIPO', 'FAENA', 'OT', 'DOCUMENTO']
         fecha_desde = request.GET.get('fecha_desde', None)
         fecha_hasta = request.GET.get('fecha_hasta', None)
@@ -56,17 +118,17 @@ def api_auditoria(request):
         accion = request.GET.get('accion', None)
         busqueda = request.GET.get('busqueda', '').strip()
         
-        # Convertir usuario_id a int si existe
+        # Convertir usuario_id a int si existe, manejar errores de conversión
         if usuario_id:
             try:
                 usuario_id = int(usuario_id)
             except (ValueError, TypeError):
                 usuario_id = None
         
-        # Lista para consolidar todos los eventos
+        # Lista para consolidar todos los eventos de diferentes modelos
         eventos = []
         
-        # 1. Historial de Personal
+        # 1. Historial de Personal - Obtener eventos relacionados con personal
         if not tipo_entidad or 'PERSONAL' in tipo_entidad:
             historial_personal = HistorialPersonal.objects.select_related('personal', 'usuario').all()
             
@@ -104,7 +166,7 @@ def api_auditoria(request):
                     'datos_nuevos': evento.datos_nuevos,
                 })
         
-        # 2. Historial de Documentos de Personal
+        # 2. Historial de Documentos de Personal - Obtener eventos relacionados con documentos
         if not tipo_entidad or 'DOCUMENTO' in tipo_entidad:
             historial_docs = HistorialDocumentoPersonal.objects.select_related('personal', 'usuario').all()
             
@@ -142,7 +204,7 @@ def api_auditoria(request):
                     'datos_nuevos': evento.datos_nuevos,
                 })
         
-        # 3. Historial de Equipos
+        # 3. Historial de Equipos - Obtener eventos relacionados con equipos
         if not tipo_entidad or 'EQUIPO' in tipo_entidad:
             historial_equipos = HistorialEquipo.objects.select_related('equipo', 'usuario').all()
             
@@ -179,7 +241,7 @@ def api_auditoria(request):
                     'datos_nuevos': evento.datos_nuevos,
                 })
         
-        # 4. Historial de Faenas
+        # 4. Historial de Faenas - Obtener eventos relacionados con faenas
         if not tipo_entidad or 'FAENA' in tipo_entidad:
             historial_faenas = HistorialFaena.objects.select_related('faena', 'usuario', 'personal').all()
             
@@ -215,7 +277,7 @@ def api_auditoria(request):
                     'datos_nuevos': evento.datos_nuevos,
                 })
         
-        # 5. Historial de OTs
+        # 5. Historial de OTs - Obtener eventos relacionados con órdenes de trabajo
         if not tipo_entidad or 'OT' in tipo_entidad:
             historial_ots = HistorialOT.objects.select_related('ot', 'usuario').all()
             
@@ -251,10 +313,11 @@ def api_auditoria(request):
                     'datos_nuevos': evento.datos_nuevos,
                 })
         
-        # Ordenar por fecha_hora descendente
+        # Ordenar todos los eventos por fecha_hora descendente (más recientes primero)
         eventos.sort(key=lambda x: x['fecha_hora'], reverse=True)
         
-        # Si per_page es muy grande (exportación), devolver todos sin paginación
+        # Si per_page es muy grande (>= 10000), se trata de una exportación
+        # Devolver todos los eventos sin paginación
         if per_page >= 10000:
             # Formatear fechas para el frontend
             eventos_data = []
@@ -278,11 +341,11 @@ def api_auditoria(request):
                 }
             })
         
-        # Paginación normal
+        # Paginación normal para visualización en la tabla
         paginator = Paginator(eventos, per_page)
         page_obj = paginator.get_page(page)
         
-        # Formatear fechas para el frontend
+        # Formatear fechas de los eventos para el frontend
         eventos_data = []
         for evento in page_obj:
             eventos_data.append({
@@ -317,7 +380,39 @@ def api_auditoria(request):
 @require_http_methods(["GET"])
 def api_reportabilidad(request):
     """
-    API para consultas estadísticas y reportes
+    API para consultas estadísticas y reportes del sistema.
+    
+    Esta función genera diferentes tipos de reportes estadísticos según el parámetro
+    'tipo_reporte'. Los reportes disponibles son:
+    
+    - 'faenas_activas': Reporte de faenas activas con personal y equipos asignados
+    - 'personal_activo': Reporte de personal activo en una fecha o rango de fechas
+    - 'equipos_mantencion': Reporte de equipos en mantención o detenidos
+    - 'asignaciones_personal': Reporte de asignaciones de personal a faenas
+    - 'asignaciones_equipos': Reporte de asignaciones de equipos a faenas u OTs
+    - 'ordenes_trabajo': Reporte de órdenes de trabajo con filtros
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET:
+            - tipo_reporte (str): Tipo de reporte a generar (requerido)
+            - fecha_desde (str): Fecha desde en formato DD/MM/YYYY
+            - fecha_hasta (str): Fecha hasta en formato DD/MM/YYYY
+            - fecha (str): Fecha específica en formato DD/MM/YYYY (solo para personal_activo)
+            - incluir_personal (bool): Incluir personal asignado (solo para faenas_activas)
+            - incluir_equipos (bool): Incluir equipos asignados (solo para faenas_activas)
+            - tipo_estado (str): Tipo de estado ('mantencion' o 'detenido', solo para equipos_mantencion)
+            - tipo_asignacion (str): Tipo de asignación ('faena' o 'ot', solo para asignaciones_equipos)
+            - estado_ot (str): Estado de OT a filtrar (solo para ordenes_trabajo)
+            
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - tipo_reporte (str): Tipo de reporte generado
+            - columnas (list): Lista de nombres de columnas del reporte
+            - datos (list): Lista de filas del reporte (cada fila es un dict con las columnas)
+            - total (int): Total de registros en el reporte
+            - error (str): Mensaje de error si success=False
+            - traceback (str): Traceback del error si ocurrió una excepción
     """
     try:
         tipo_reporte = request.GET.get('tipo_reporte', None)
@@ -325,35 +420,38 @@ def api_reportabilidad(request):
         fecha_hasta_str = request.GET.get('fecha_hasta', None)
         fecha_str = request.GET.get('fecha', None)
         
-        # Convertir fechas de formato DD/MM/YYYY a objetos date
+        # Convertir fechas de formato DD/MM/YYYY (del frontend) a objetos date de Python
         fecha_desde = None
         fecha_hasta = None
         fecha = None
         
+        # Procesar fecha_desde
         if fecha_desde_str:
             try:
                 # Formato esperado: DD/MM/YYYY
                 partes = fecha_desde_str.split('/')
                 if len(partes) == 3:
                     fecha_desde = datetime(int(partes[2]), int(partes[1]), int(partes[0])).date()
-            except:
-                pass
+            except (ValueError, IndexError):
+                pass  # Si hay error, dejar como None
         
+        # Procesar fecha_hasta
         if fecha_hasta_str:
             try:
                 partes = fecha_hasta_str.split('/')
                 if len(partes) == 3:
                     fecha_hasta = datetime(int(partes[2]), int(partes[1]), int(partes[0])).date()
-            except:
-                pass
+            except (ValueError, IndexError):
+                pass  # Si hay error, dejar como None
         
+        # Procesar fecha específica (para reporte de personal_activo)
         if fecha_str:
             try:
                 partes = fecha_str.split('/')
                 if len(partes) == 3:
                     fecha = datetime(int(partes[2]), int(partes[1]), int(partes[0])).date()
-            except:
-                pass
+            except (ValueError, IndexError):
+                pass  # Si hay error, dejar como None
         
         # Parámetros adicionales según el tipo de reporte
         incluir_personal = request.GET.get('incluir_personal', 'true').lower() == 'true'
@@ -372,7 +470,7 @@ def api_reportabilidad(request):
         columnas = []
         
         if tipo_reporte == 'faenas_activas':
-            # Reporte de Faenas Activas
+            # Reporte de Faenas Activas - Muestra faenas activas con opción de incluir personal y equipos asignados
             faenas = Faena.objects.filter(activo=True)
             
             if fecha_desde:
@@ -429,7 +527,7 @@ def api_reportabilidad(request):
                 datos.append(fila)
         
         elif tipo_reporte == 'personal_activo':
-            # Reporte de Personal Activo
+            # Reporte de Personal Activo - Muestra personal activo en una fecha específica o rango de fechas
             if fecha:
                 # Una fecha específica
                 asignaciones = AsignacionFaena.objects.filter(
@@ -473,8 +571,8 @@ def api_reportabilidad(request):
                     })
         
         elif tipo_reporte == 'equipos_mantencion':
-            # Reporte de Equipos en Mantención
-            # El estado del equipo se obtiene a través de las OTs activas
+            # Reporte de Equipos en Mantención - Muestra equipos que han estado en mantención o detenidos
+            # El estado del equipo se obtiene a través de las OTs activas relacionadas
             hoy = datetime.now().date()
             fecha_filtro_desde = fecha_desde if fecha_desde else hoy
             fecha_filtro_hasta = fecha_hasta if fecha_hasta else hoy
@@ -528,7 +626,7 @@ def api_reportabilidad(request):
                             })
         
         elif tipo_reporte == 'asignaciones_personal':
-            # Reporte de Asignaciones de Personal
+            # Reporte de Asignaciones de Personal - Muestra todas las asignaciones de personal a faenas
             asignaciones = AsignacionFaena.objects.filter(activo=True).select_related('personal', 'faena', 'turno')
             
             if fecha_desde:
@@ -551,11 +649,12 @@ def api_reportabilidad(request):
                 })
         
         elif tipo_reporte == 'asignaciones_equipos':
-            # Reporte de Asignaciones de Equipos
+            # Reporte de Asignaciones de Equipos - Muestra asignaciones a faenas u OTs según tipo_asignacion
             if tipo_asignacion == 'faena':
+                # Asignaciones a faenas
                 asignaciones = AsignacionEquipoFaena.objects.filter(activo=True).select_related('equipo', 'faena')
             elif tipo_asignacion == 'ot':
-                # Asignaciones a OTs (a través de la relación en OrdenTrabajo)
+                # Asignaciones a OTs (a través de la relación equipo_id en OrdenTrabajo)
                 ots = OrdenTrabajo.objects.filter(
                     equipo_id__isnull=False
                 ).select_related('equipo_id')
@@ -583,7 +682,7 @@ def api_reportabilidad(request):
                     'total': len(datos)
                 })
             else:
-                # Todas las asignaciones (faenas)
+                # Si no se especifica tipo_asignacion, mostrar todas las asignaciones a faenas
                 asignaciones = AsignacionEquipoFaena.objects.filter(activo=True).select_related('equipo', 'faena')
             
             if fecha_desde:
@@ -605,7 +704,7 @@ def api_reportabilidad(request):
                 })
         
         elif tipo_reporte == 'ordenes_trabajo':
-            # Reporte de Órdenes de Trabajo
+            # Reporte de Órdenes de Trabajo - Muestra OTs con filtros por fecha y estado
             ots = OrdenTrabajo.objects.select_related('equipo_id', 'estado_ot_id', 'tipo_mantenimiento_id')
             
             if fecha_desde:
@@ -641,6 +740,7 @@ def api_reportabilidad(request):
         })
         
     except Exception as e:
+        # En caso de error, retornar información detallada para debugging
         import traceback
         return JsonResponse({
             'success': False,

@@ -1,11 +1,20 @@
 /**
- * JavaScript para gestionar notificaciones en el navbar
+ * ============================================================================
+ * JAVASCRIPT PARA GESTIONAR NOTIFICACIONES EN EL NAVBAR
+ * ============================================================================
+ * Este módulo maneja la visualización de notificaciones en el dropdown del navbar,
+ * incluyendo carga de notificaciones, actualización del contador, Server-Sent Events
+ * para actualizaciones en tiempo real, y sonidos de notificación.
+ * ============================================================================
  */
 
 (function() {
     'use strict';
     
-    // Función para cargar notificaciones
+    /**
+     * Carga las notificaciones desde la API y actualiza el dropdown.
+     * Carga las últimas 10 notificaciones no archivadas (leídas y no leídas).
+     */
     function cargarNotificaciones() {
         // Cargar todas las notificaciones (leídas y no leídas) pero solo no archivadas
         fetch('/notificaciones/api/?limit=10&archivada=false')
@@ -23,7 +32,13 @@
             });
     }
     
-    // Función para actualizar el badge
+    /**
+     * Actualiza el badge del contador de notificaciones en el navbar.
+     * 
+     * @param {number} count - Número de notificaciones no leídas.
+     *                         Si es mayor a 99, muestra "99+".
+     *                         Si es 0, oculta el badge.
+     */
     function actualizarBadge(count) {
         const badge = document.getElementById('notificationsBadge');
         if (badge) {
@@ -42,7 +57,15 @@
         }
     }
     
-    // Función para actualizar el dropdown
+    /**
+     * Actualiza el contenido del dropdown de notificaciones.
+     * 
+     * Renderiza las notificaciones en el dropdown, preservando la posición
+     * del scroll si el usuario estaba navegando. Aplica estilos diferentes
+     * según el estado de lectura y tipo de notificación.
+     * 
+     * @param {Array} notificaciones - Array de objetos notificación a mostrar.
+     */
     function actualizarDropdown(notificaciones) {
         const dropdown = document.querySelector('#notificationsDropdown + .dropdown-menu');
         if (!dropdown) return;
@@ -194,7 +217,12 @@
         }
     }
     
-    // Función para mostrar detalles de la notificación en un modal
+    /**
+     * Muestra los detalles completos de una notificación en un modal.
+     * 
+     * @param {Object} notif - Objeto con los datos de la notificación
+     *                         (titulo, mensaje, fecha_creacion, etc.)
+     */
     function mostrarDetalleNotificacion(notif) {
         const modal = document.getElementById('modalDetalleNotificacion');
         const modalBody = document.getElementById('modalDetalleNotificacionBody');
@@ -222,14 +250,27 @@
         bsModal.show();
     }
     
-    // Función auxiliar para escapar HTML
+    /**
+     * Escapa caracteres HTML especiales para prevenir XSS.
+     * 
+     * @param {string} text - Texto a escapar.
+     * @returns {string} Texto escapado seguro para HTML.
+     */
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
     
-    // Función para marcar como leída
+    /**
+     * Marca una notificación como leída.
+     * 
+     * Actualiza visualmente el estado de la notificación antes de llamar
+     * al servidor (feedback inmediato) y luego sincroniza con el servidor.
+     * Si falla, revierte los cambios visuales.
+     * 
+     * @param {number} notificacionId - ID de la notificación a marcar como leída.
+     */
     function marcarComoLeida(notificacionId) {
         // Verificar primero si ya está marcada como leída en el DOM para evitar doble procesamiento
         const item = document.querySelector(`[data-notif-id="${notificacionId}"]`);
@@ -286,7 +327,12 @@
         });
     }
     
-    // Función para obtener cookie CSRF
+    /**
+     * Obtiene el valor de una cookie por su nombre.
+     * 
+     * @param {string} name - Nombre de la cookie.
+     * @returns {string|null} Valor de la cookie o null si no existe.
+     */
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -310,7 +356,13 @@
     const MAX_INTENTOS_RECONEXION = 5;
     const DELAY_RECONEXION = 3000; // 3 segundos
     
-    // Función para iniciar conexión SSE
+    /**
+     * Inicia la conexión Server-Sent Events (SSE) para recibir notificaciones en tiempo real.
+     * 
+     * Establece una conexión SSE con el servidor y configura los event listeners
+     * para manejar diferentes tipos de eventos: connected, notification, count_update,
+     * heartbeat, timeout y error. Si SSE no está disponible, usa polling como fallback.
+     */
     function iniciarSSE() {
         // Cerrar conexión anterior si existe
         if (eventSource) {
@@ -439,7 +491,12 @@
         }
     }
     
-    // Función para programar reconexión
+    /**
+     * Programa una reconexión SSE después de un delay exponencial.
+     * 
+     * Si se alcanza el máximo de intentos de reconexión, cambia a polling
+     * como método de actualización.
+     */
     function programarReconexion() {
         if (reconexionTimeout) {
             clearTimeout(reconexionTimeout);
@@ -459,7 +516,12 @@
         }
     }
     
-    // Función de fallback a polling (si SSE no está disponible)
+    /**
+     * Inicia polling como método de actualización cuando SSE no está disponible.
+     * 
+     * Usa un intervalo adaptativo que aumenta cuando no hay cambios y disminuye
+     * cuando se detectan cambios. Evita hacer polling cuando el dropdown está abierto.
+     */
     function iniciarPollingFallback() {
         console.log('Usando polling como método de actualización');
         let intervaloPolling = 15000;
@@ -549,7 +611,13 @@
     let audioContextGlobal = null;
     let audioInicializado = false;
     
-    // Inicializar audio con cualquier interacción del usuario
+    /**
+     * Inicializa el contexto de audio para reproducir sonidos de notificación.
+     * 
+     * Crea un AudioContext global que se reutiliza para todas las notificaciones.
+     * El audio solo se puede inicializar después de una interacción del usuario
+     * debido a las políticas del navegador.
+     */
     function inicializarAudio() {
         if (!audioInicializado) {
             try {
@@ -567,7 +635,12 @@
         }
     }
     
-    // Función para reproducir sonido de notificación estilo moderno (como Facebook/WhatsApp)
+    /**
+     * Reproduce un sonido de notificación estilo moderno (similar a Facebook/WhatsApp).
+     * 
+     * Crea un sonido suave y melódico usando Web Audio API con dos tonos
+     * armoniosos que se superponen ligeramente.
+     */
     function reproducirSonidoNotificacion() {
         try {
             // Si no está inicializado, intentar inicializar
@@ -597,7 +670,14 @@
         }
     }
     
-    // Función para crear sonido de notificación moderno (suave y agradable)
+    /**
+     * Crea el sonido de notificación usando Web Audio API.
+     * 
+     * Genera dos tonos melódicos (C5 y E5) con envolventes suaves que se superponen
+     * para crear un sonido agradable y no intrusivo.
+     * 
+     * @param {AudioContext} audioContext - Contexto de audio para generar el sonido.
+     */
     function crearSonidoNotificacionModerno(audioContext) {
         try {
             const now = audioContext.currentTime;
@@ -658,7 +738,14 @@
         setTimeout(inicializarAudio, 100);
     }
     
-    // Función para actualizar el contador desde el servidor (más confiable)
+    /**
+     * Actualiza el contador de notificaciones no leídas desde el servidor.
+     * 
+     * Hace una petición al servidor para obtener el contador actualizado.
+     * Si el contador aumentó desde la última vez, reproduce un sonido de notificación.
+     * 
+     * @returns {Promise<number>} Promise que resuelve con el número de notificaciones no leídas.
+     */
     function actualizarContadorDesdeServidor() {
         return fetch('/notificaciones/api/contar/')
             .then(response => {
@@ -695,7 +782,12 @@
             });
     }
     
-    // Función para actualizar el contador rápidamente (optimista)
+    /**
+     * Actualiza el contador de forma optimista (sin esperar respuesta del servidor).
+     * 
+     * Resta 1 del contador actual inmediatamente para dar feedback visual instantáneo,
+     * y luego sincroniza con el servidor para asegurar precisión.
+     */
     function actualizarContadorRapido() {
         // Actualizar inmediatamente de forma optimista (sin esperar respuesta del servidor)
         // Esto hace que la UI responda instantáneamente
@@ -719,7 +811,12 @@
         actualizarContadorDesdeServidor();
     }
     
-    // Función para configurar el listener del botón "Marcar todas como leídas"
+    /**
+     * Configura el event listener del botón "Marcar todas como leídas" en el dropdown.
+     * 
+     * Clona el botón para remover listeners anteriores y agrega un nuevo listener
+     * que marca todas las notificaciones como leídas y actualiza el contador.
+     */
     function configurarBotonMarcarTodas() {
         const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
         if (!dropdownMenu) return;

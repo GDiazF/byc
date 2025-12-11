@@ -11,6 +11,12 @@ from notificaciones.utils import crear_notificacion_por_tipo, crear_notificacion
 
 
 class Command(BaseCommand):
+    """
+    Management command para crear notificaciones de prueba.
+    
+    Permite crear notificaciones de prueba para usuarios específicos,
+    útil para testing y desarrollo del sistema de notificaciones.
+    """
     help = 'Crea notificaciones de prueba para el usuario actual o especificado'
 
     def add_arguments(self, parser):
@@ -33,6 +39,16 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """
+        Ejecuta el comando para crear notificaciones de prueba.
+        
+        Args:
+            *args: Argumentos posicionales (no usados).
+            **options: Opciones del comando:
+                - usuario (str): Username del usuario destinatario (opcional).
+                - tipo (str): Código del tipo de notificación (default: 'RRHH_PERSONAL_ACTIVADO').
+                - cantidad (int): Cantidad de notificaciones a crear (default: 1).
+        """
         username = options.get('usuario')
         tipo_codigo = options.get('tipo')
         cantidad = options.get('cantidad')

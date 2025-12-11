@@ -17,9 +17,24 @@ from django.views import View
 from .forms import PasswordChangeForm
 
 class HomeView(TemplateView, LoginRequiredMixin):
+    """
+    Vista principal del dashboard de la aplicación.
+    
+    Renderiza la página de inicio del sistema después del login.
+    En el futuro se determinará qué dashboard mostrar según el rol del usuario.
+    """
     template_name = 'home/index.html'
     
     def get_context_data(self, **kwargs):
+        """
+        Prepara el contexto para el template del dashboard.
+        
+        Args:
+            **kwargs: Argumentos adicionales del contexto.
+            
+        Returns:
+            dict: Contexto con datos para renderizar el template.
+        """
         context = super().get_context_data(**kwargs)
         # Preparar contexto para el dashboard
         # En el futuro, aquí se determinará qué dashboard mostrar según el rol del usuario
@@ -34,7 +49,18 @@ class HomeView(TemplateView, LoginRequiredMixin):
 
 @login_required
 def perfil_view(request):
-    # Vista para mostrar el perfil del usuario
+    """
+    Vista para mostrar el perfil del usuario autenticado.
+    
+    Muestra la información del usuario actual incluyendo datos básicos,
+    permisos y opciones de configuración.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP del usuario autenticado.
+        
+    Returns:
+        HttpResponse: Renderiza el template 'home/perfil.html' con los datos del usuario.
+    """
     user = request.user
     context = {
         'user': user,
@@ -43,7 +69,23 @@ def perfil_view(request):
 
 @login_required
 def cambiar_contraseña_view(request):
-    # Vista para cambiar la contraseña del usuario
+    """
+    Vista para cambiar la contraseña del usuario autenticado.
+    
+    Permite al usuario cambiar su contraseña mediante un formulario.
+    Después de cambiar la contraseña exitosamente, crea una notificación
+    de seguridad y actualiza la sesión para evitar logout automático.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP del usuario autenticado.
+                              Método POST para procesar el cambio, GET para mostrar el formulario.
+        
+    Returns:
+        HttpResponse: 
+            - Si es POST y válido: Redirige al perfil con mensaje de éxito.
+            - Si es POST e inválido: Renderiza el formulario con errores.
+            - Si es GET: Renderiza el formulario vacío.
+    """
     if request.method == 'POST':
         form = PasswordChangeForm(request.user, request.POST)
         if form.is_valid():

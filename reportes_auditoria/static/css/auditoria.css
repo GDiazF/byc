@@ -144,10 +144,41 @@ label.small {
 
 /* Report cards para reportabilidad */
 .report-card {
+    height: 100%;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s;
     border-radius: 12px;
+}
+
+.report-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-color: #adb5bd;
 }
 
 .report-card .card-body {
     padding: 1.25rem;
+}
+
+/* Iconos de reportes */
+.report-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Labels en modales */
+.modal-body .form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Posicionar modales centrados horizontalmente pero más arriba verticalmente */
+.modal-dialog {
+    margin: 3rem auto;
+}
+
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 1rem auto;
+    }
 }
 

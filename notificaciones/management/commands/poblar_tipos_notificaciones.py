@@ -10,9 +10,25 @@ from notificaciones.models import TipoNotificacion
 
 
 class Command(BaseCommand):
+    """
+    Management command para poblar tipos de notificaciones.
+    
+    Crea o actualiza todos los tipos de notificaciones iniciales del sistema,
+    incluyendo tipos para RRHH, Maquinarias, Planificación y General.
+    """
     help = 'Pobla la base de datos con los tipos de notificaciones iniciales'
 
     def handle(self, *args, **options):
+        """
+        Ejecuta el comando para poblar tipos de notificaciones.
+        
+        Crea o actualiza todos los tipos de notificaciones definidos en el sistema.
+        Si un tipo ya existe, se actualiza con los nuevos valores.
+        
+        Args:
+            *args: Argumentos posicionales (no usados).
+            **options: Opciones del comando (no usadas actualmente).
+        """
         tipos_notificaciones = [
             # RRHH
             {

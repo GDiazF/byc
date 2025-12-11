@@ -55,17 +55,25 @@ TABLAS_MAESTRAS = {
 
 
 def es_tabla_maestra(app_label, model_name):
-    # Verifica si un modelo es una tabla maestra (catalogo).
-    # Args:
-    #     app_label (str): Nombre de la app (ej: 'rrhh_personal')
-    #     model_name (str): Nombre del modelo en minusculas (ej: 'sexo')
-    # Returns:
-    #     bool: True si es tabla maestra, False en caso contrario
-    # Ejemplo:
-    #     >>> es_tabla_maestra('rrhh_personal', 'sexo')
-    #     True
-    #     >>> es_tabla_maestra('rrhh_personal', 'personal')
-    #     False
+    """
+    Verifica si un modelo es una tabla maestra (catálogo).
+    
+    Las tablas maestras son modelos de catálogo que generalmente solo deben ser
+    modificados por administradores (ej: Sexo, EstadoCivil, TipoEquipo, etc.).
+    
+    Args:
+        app_label (str): Nombre de la app (ej: 'rrhh_personal').
+        model_name (str): Nombre del modelo en minúsculas (ej: 'sexo').
+        
+    Returns:
+        bool: True si es tabla maestra, False en caso contrario.
+        
+    Ejemplo:
+        >>> es_tabla_maestra('rrhh_personal', 'sexo')
+        True
+        >>> es_tabla_maestra('rrhh_personal', 'personal')
+        False
+    """
     # Convertir a minusculas para comparacion case-insensitive
     app_label = app_label.lower()
     model_name = model_name.lower()
@@ -79,19 +87,26 @@ def es_tabla_maestra(app_label, model_name):
 
 
 def es_permiso_tabla_maestra(permission):
-    # Verifica si un Permission de Django es de una tabla maestra.
-    # NO marca permisos de navegacion o dashboards como maestras.
-    # Args:
-    #     permission: Objeto Permission de Django
-    # Returns:
-    #     bool: True si es permiso de tabla maestra, False en caso contrario
-    # Ejemplo:
-    #     >>> perm = Permission.objects.get(codename='add_sexo')
-    #     >>> es_permiso_tabla_maestra(perm)
-    #     True
-    #     >>> perm = Permission.objects.get(codename='navigate_rrhh')
-    #     >>> es_permiso_tabla_maestra(perm)
-    #     False
+    """
+    Verifica si un Permission de Django es de una tabla maestra.
+    
+    NO marca permisos de navegación o dashboards como maestras, solo permisos
+    de modelos que están en el catálogo TABLAS_MAESTRAS.
+    
+    Args:
+        permission: Objeto Permission de Django.
+        
+    Returns:
+        bool: True si es permiso de tabla maestra, False en caso contrario.
+        
+    Ejemplo:
+        >>> perm = Permission.objects.get(codename='add_sexo')
+        >>> es_permiso_tabla_maestra(perm)
+        True
+        >>> perm = Permission.objects.get(codename='navigate_rrhh')
+        >>> es_permiso_tabla_maestra(perm)
+        False
+    """
     if not permission or not permission.content_type:
         return False
     
@@ -119,18 +134,26 @@ def es_permiso_tabla_maestra(permission):
 
 
 def formatear_nombre_permiso(permission):
-    # Formatea el nombre de un permiso agregando etiqueta si es tabla maestra.
-    # Args:
-    #     permission: Objeto Permission de Django
-    # Returns:
-    #     str: Nombre del permiso con etiqueta "(Maestra)" si corresponde
-    # Ejemplo:
-    #     >>> perm = Permission.objects.get(codename='add_sexo')
-    #     >>> formatear_nombre_permiso(perm)
-    #     'Can add sexo (Maestra)'
-    #     >>> perm = Permission.objects.get(codename='add_personal')
-    #     >>> formatear_nombre_permiso(perm)
-    #     'Can add personal'
+    """
+    Formatea el nombre de un permiso agregando etiqueta si es tabla maestra.
+    
+    Útil para mostrar visualmente en el admin qué permisos pertenecen a tablas
+    maestras y cuáles a tablas principales.
+    
+    Args:
+        permission: Objeto Permission de Django.
+        
+    Returns:
+        str: Nombre del permiso con etiqueta "(Maestra)" si corresponde.
+        
+    Ejemplo:
+        >>> perm = Permission.objects.get(codename='add_sexo')
+        >>> formatear_nombre_permiso(perm)
+        'Can add sexo (Maestra)'
+        >>> perm = Permission.objects.get(codename='add_personal')
+        >>> formatear_nombre_permiso(perm)
+        'Can add personal'
+    """
     nombre_base = str(permission.name) if hasattr(permission, 'name') else permission.codename
     
     # Si es tabla maestra, agregar etiqueta
@@ -141,22 +164,32 @@ def formatear_nombre_permiso(permission):
 
 
 def obtener_modelos_maestros(app_label):
-    # Retorna la lista de modelos maestros de una app especifica.
-    # Args:
-    #     app_label (str): Nombre de la app
-    # Returns:
-    #     list: Lista de nombres de modelos maestros (en minusculas)
+    """
+    Retorna la lista de modelos maestros de una app específica.
+    
+    Args:
+        app_label (str): Nombre de la app.
+        
+    Returns:
+        list: Lista de nombres de modelos maestros (en minúsculas).
+    """
     app_label = app_label.lower()
     return TABLAS_MAESTRAS.get(app_label, [])
 
 
 def obtener_modelos_principales(app_label):
-    # Retorna la lista de modelos principales (NO maestros) de una app especifica.
-    # Esto se calcula obteniendo todos los ContentTypes de la app y excluyendo los maestros.
-    # Args:
-    #     app_label (str): Nombre de la app
-    # Returns:
-    #     list: Lista de nombres de modelos principales (en minusculas)
+    """
+    Retorna la lista de modelos principales (NO maestros) de una app específica.
+    
+    Esto se calcula obteniendo todos los ContentTypes de la app y excluyendo los maestros.
+    Los modelos principales son aquellos que no están en el catálogo TABLAS_MAESTRAS.
+    
+    Args:
+        app_label (str): Nombre de la app.
+        
+    Returns:
+        list: Lista de nombres de modelos principales (en minúsculas).
+    """
     from django.contrib.contenttypes.models import ContentType
     
     # Obtener todos los ContentTypes de la app

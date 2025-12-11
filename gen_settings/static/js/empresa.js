@@ -1,12 +1,28 @@
+/**
+ * Script para gestionar la interfaz de empresas.
+ * 
+ * Maneja la inicialización de DataTable, creación, edición y eliminación
+ * de empresas mediante AJAX. También gestiona la carga dinámica de comunas
+ * según la región seleccionada.
+ */
 $(document).ready(function() {
-    // Inicializar DataTable
+    // Inicializar DataTable para la tabla de empresas
     const table = $('#empresaTable').DataTable({
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
         },
     });
 
-    // Función para cargar comunas
+    /**
+     * Carga las comunas de una región específica mediante AJAX.
+     * 
+     * Actualiza el select de comunas con las opciones correspondientes a la región
+     * seleccionada. Puede usarse tanto para el formulario de creación como de edición.
+     * 
+     * @param {string|number} regionId - ID de la región
+     * @param {string|number|null} comunaId - ID de la comuna a preseleccionar (opcional)
+     * @param {boolean} isEdit - true si es el formulario de edición, false si es creación
+     */
     function cargarComunas(regionId, comunaId = null, isEdit = false) {
         // Determinar qué select de comuna usar
         const comunaSelect = isEdit ? $('#edit-comuna') : $('#id_comuna');

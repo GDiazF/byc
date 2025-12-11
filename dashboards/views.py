@@ -37,8 +37,24 @@ from ope_calendario.models import Faena, AsignacionFaena
     require_all=False  # Requiere al menos uno de los permisos
 )
 def dashboards_view(request):
-    # Vista principal de dashboards con tabs por area.
-    # Muestra diferentes dashboards segun los permisos del usuario.
+    """
+    Vista principal de dashboards con tabs por área.
+    
+    Renderiza la página HTML que contiene los diferentes dashboards organizados
+    por áreas (RRHH, Operaciones, Maquinarias, Gerencia). Los dashboards se
+    muestran según los permisos del usuario.
+    
+    Requisitos:
+        - Usuario autenticado
+        - Al menos uno de los permisos: view_dashboard_rrhh, view_dashboard_operaciones,
+          view_dashboard_maquinarias, view_dashboard_gerencia
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP del usuario autenticado.
+        
+    Returns:
+        HttpResponse: Renderiza el template 'dashboards/dashboards.html'.
+    """
     return render(request, 'dashboards/dashboards.html')
 
 
@@ -47,8 +63,31 @@ def dashboards_view(request):
 @permission_required_custom('dashboards.view_dashboard_rrhh', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_rrhh(request):
-    # API para obtener datos del dashboard de RRHH.
-    # Retorna estadisticas de personal, documentos por vencer, faenas activas, etc.
+    """
+    API para obtener datos del dashboard de RRHH.
+    
+    Retorna estadísticas completas de recursos humanos incluyendo:
+    - Total de personal activo e inactivo
+    - Personal disponible, en faena, con licencia médica, con ausentismo
+    - Documentos por vencer en los próximos 30 días (exámenes, certificaciones,
+      licencias de conducir, licencias internas, carnets)
+    - Distribución de personal por empresa
+    - Cambios recientes en el historial
+    - Faenas activas con su personal asignado
+    - Tipos de ausentismo y licencias médicas con conteos
+    
+    Requisitos:
+        - Usuario autenticado
+        - Permiso 'dashboards.view_dashboard_rrhh'
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP GET.
+        
+    Returns:
+        JsonResponse: 
+            - success=True: Datos del dashboard en formato JSON
+            - success=False: Error con mensaje y traceback (solo para superusuarios)
+    """
     try:
         hoy = date.today()
         fecha_limite_30_dias = hoy + timedelta(days=30)
@@ -323,8 +362,28 @@ def api_dashboard_rrhh(request):
 @permission_required_custom('dashboards.view_dashboard_operaciones', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_operaciones(request):
-    # API para obtener datos del dashboard de Operaciones/Planificaciones.
-    # Incluye datos de personal, equipos, faenas y documentos por vencer.
+    """
+    API para obtener datos del dashboard de Operaciones/Planificaciones.
+    
+    Retorna estadísticas consolidadas de operaciones incluyendo:
+    - Datos de personal (disponible, en faena, con licencia, con ausentismo)
+    - Estadísticas de equipos (activos, inactivos, distribución por estado)
+    - Equipos en faena, con anomalías, shutdown
+    - Faenas activas, próximas, en curso, finalizadas
+    - Documentos por vencer de personal y maquinarias
+    
+    Requisitos:
+        - Usuario autenticado
+        - Permiso 'dashboards.view_dashboard_operaciones'
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP GET.
+        
+    Returns:
+        JsonResponse: 
+            - success=True: Datos del dashboard en formato JSON
+            - success=False: Error con mensaje
+    """
     try:
         hoy = date.today()
         fecha_limite_30_dias = hoy + timedelta(days=30)
@@ -974,8 +1033,29 @@ def api_dashboard_operaciones(request):
 @permission_required_custom('dashboards.view_dashboard_maquinarias', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_maquinarias(request):
-    # API para obtener datos del dashboard de Maquinarias.
-    # Incluye estadisticas de equipos, ordenes de trabajo y documentos por vencer.
+    """
+    API para obtener datos del dashboard de Maquinarias.
+    
+    Retorna estadísticas de maquinarias incluyendo:
+    - Equipos activos e inactivos
+    - Distribución de equipos por estado (disponible, en faena, con anomalías, etc.)
+    - Órdenes de trabajo por estado
+    - Documentos de maquinarias por vencer
+    - Ranking de equipos más intervenidos (con más OTs)
+    - Detalles de equipos por estado para modales
+    
+    Requisitos:
+        - Usuario autenticado
+        - Permiso 'dashboards.view_dashboard_maquinarias'
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP GET.
+        
+    Returns:
+        JsonResponse: 
+            - success=True: Datos del dashboard en formato JSON
+            - success=False: Error con mensaje
+    """
     try:
         from maquinarias.models import EstadoOT, EstadoEquipo, EstadoCalendarioEquipo, EstadoFuenteEquipo, EstadoManualEquipo, DocumentoMaquinaria
         from ope_calendario.models import AsignacionEquipoFaena
@@ -1276,8 +1356,31 @@ def api_dashboard_maquinarias(request):
 @permission_required_custom('dashboards.view_dashboard_gerencia', is_ajax=True)
 @require_http_methods(["GET"])
 def api_dashboard_gerencia(request):
-    # API para obtener datos del dashboard de Gerencia.
-    # Proporciona metricas estrategicas consolidadas de todas las areas.
+    """
+    API para obtener datos del dashboard de Gerencia.
+    
+    Proporciona métricas estratégicas consolidadas de todas las áreas del sistema:
+    - KPIs consolidados (personal total, equipos totales, disponibilidad)
+    - Documentos críticos por vencer (en 5 y 7 días)
+    - Documentos por vencer en 30 días (personal y maquinarias)
+    - Estadísticas de faenas (activas, próximas, en curso)
+    - Estadísticas de equipos (disponibles, en faena, con anomalías, shutdown)
+    - Estadísticas de personal (disponible, en faena, con licencia, con ausentismo)
+    - Órdenes de trabajo por estado
+    - Métricas de productividad y eficiencia
+    
+    Requisitos:
+        - Usuario autenticado
+        - Permiso 'dashboards.view_dashboard_gerencia'
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP GET.
+        
+    Returns:
+        JsonResponse: 
+            - success=True: Datos del dashboard en formato JSON
+            - success=False: Error con mensaje
+    """
     try:
         from maquinarias.models import EstadoOT, EstadoEquipo, EstadoCalendarioEquipo, EstadoFuenteEquipo, EstadoManualEquipo, DocumentoMaquinaria, TipoMantenimiento
         from ope_calendario.models import AsignacionEquipoFaena, AsignacionFaena

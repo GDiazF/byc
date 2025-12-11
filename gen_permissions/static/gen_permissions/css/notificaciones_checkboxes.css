@@ -1,4 +1,11 @@
-/* Estilos para el widget de checkboxes de notificaciones */
+/**
+ * ============================================================================
+ * ESTILOS CSS PARA EL WIDGET DE CHECKBOXES DE NOTIFICACIONES
+ * ============================================================================
+ * Este archivo contiene estilos para el widget personalizado que muestra
+ * checkboxes de notificaciones agrupadas por categoría en el admin de roles.
+ * ============================================================================
+ */
 
 .notificaciones-checkboxes-widget {
     max-height: 500px;

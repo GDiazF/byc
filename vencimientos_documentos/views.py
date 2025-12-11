@@ -1,5 +1,11 @@
 """
-Vistas para el panel de vencimientos de documentos.
+============================================================================
+VISTAS PARA EL PANEL DE VENCIMIENTOS DE DOCUMENTOS
+============================================================================
+Este módulo contiene las vistas para gestionar y visualizar los vencimientos
+de documentos de personal y maquinarias, incluyendo APIs para obtener datos,
+exportar a Excel y ejecutar procesamiento manual de vencimientos.
+============================================================================
 """
 
 from django.shortcuts import render
@@ -26,6 +32,15 @@ logger = logging.getLogger(__name__)
 def vencimientos_view(request):
     """
     Vista principal del panel de vencimientos de documentos.
+    
+    Renderiza la página HTML con las pestañas para visualizar documentos
+    de personal y maquinarias próximos a vencer.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP.
+        
+    Returns:
+        HttpResponse: Renderiza el template 'vencimientos_documentos/vencimientos.html'.
     """
     return render(request, 'vencimientos_documentos/vencimientos.html')
 
@@ -34,15 +49,27 @@ def aplicar_filtros_documento(estado: dict, filtro_estado: str, filtro_tipo: str
     """
     Aplica los filtros a un documento para determinar si debe incluirse en los resultados.
     
+    Evalúa si un documento cumple con los criterios de filtrado especificados.
+    Los filtros se aplican en orden: tipo de documento, estado de vencimiento,
+    y rango de días restantes.
+    
     Args:
-        estado: Diccionario con el estado del documento
-        filtro_estado: Filtro por estado ('todos', 'vencidos', 'por_vencer', 'vigentes')
-        filtro_tipo: Filtro por tipo de documento
-        filtro_dias: Filtro por rango de días (número como string)
-        tipo_doc: Tipo de documento actual
+        estado (dict): Diccionario con el estado del documento, debe contener
+                      al menos la clave 'dias_restantes' (int|None).
+        filtro_estado (str): Filtro por estado de vencimiento:
+                            - 'todos': No filtra por estado
+                            - 'vencidos': Solo documentos vencidos (días < 0)
+                            - 'por_vencer': Solo documentos por vencer (0-44 días)
+                            - 'vigentes': Solo documentos vigentes (días >= 0)
+        filtro_tipo (str): Filtro por tipo de documento (ej: 'LICENCIA_CONDUCIR').
+                          Si está vacío, no filtra por tipo.
+        filtro_dias (str): Filtro por días máximos restantes (número como string).
+                          Solo muestra documentos con días restantes <= este valor.
+        tipo_doc (str): Tipo de documento actual a evaluar.
     
     Returns:
-        True si el documento debe incluirse, False en caso contrario
+        bool: True si el documento cumple con todos los filtros y debe incluirse
+              en los resultados, False en caso contrario.
     """
     # Filtro por tipo de documento
     if filtro_tipo and filtro_tipo != tipo_doc:
@@ -75,8 +102,25 @@ def aplicar_filtros_documento(estado: dict, filtro_estado: str, filtro_tipo: str
 
 def _obtener_documentos_personal(request):
     """
-    Función auxiliar para obtener documentos de personal (reutilizable).
-    Retorna la lista de documentos sin crear respuesta JSON.
+    Función auxiliar para obtener documentos de personal próximos a vencer.
+    
+    Obtiene todos los documentos de personal activo que están próximos a vencer
+    (<= 45 días), incluyendo carnet, licencias de conducir, licencias internas,
+    certificaciones y exámenes. Aplica filtros según los parámetros GET de la request.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET opcionales:
+            - estado (str): Filtro por estado ('todos', 'vencidos', 'por_vencer', 'vigentes')
+            - tipo (str): Filtro por tipo de documento
+            - dias (str): Filtro por días máximos restantes
+            - buscar (str): Texto de búsqueda (nombre, apellido, RUT)
+            - solo_activos (str): 'true' para solo personal activo (default: 'true')
+            
+    Returns:
+        list: Lista de diccionarios con información de documentos próximos a vencer.
+              Cada diccionario contiene: tipo, tipo_nombre, nombre, personal_id,
+              personal_nombre, personal_rut, fecha_vencimiento, dias_restantes,
+              estado, color, badge_class, icono, texto_estado, identificador, url_editar.
     """
     documentos = []
     
@@ -299,6 +343,20 @@ def _obtener_documentos_personal(request):
 def api_vencimientos_personal(request):
     """
     API para obtener todos los documentos de personal con sus estados de vencimiento.
+    
+    Endpoint JSON que retorna la lista de documentos de personal próximos a vencer,
+    aplicando los filtros especificados en los parámetros GET.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET opcionales
+                              (ver _obtener_documentos_personal para detalles).
+        
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - documentos (list): Lista de documentos próximos a vencer
+            - total (int): Número total de documentos encontrados
+            - error (str): Mensaje de error si success=False
     """
     try:
         documentos = _obtener_documentos_personal(request)
@@ -324,8 +382,25 @@ def api_vencimientos_personal(request):
 
 def _obtener_documentos_maquinarias(request):
     """
-    Función auxiliar para obtener documentos de maquinarias (reutilizable).
-    Retorna la lista de documentos sin crear respuesta JSON.
+    Función auxiliar para obtener documentos de maquinarias próximos a vencer.
+    
+    Obtiene todos los documentos de equipos activos que están próximos a vencer
+    (<= 45 días). Aplica filtros según los parámetros GET de la request.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET opcionales:
+            - estado (str): Filtro por estado ('todos', 'vencidos', 'por_vencer', 'vigentes')
+            - tipo (str): Filtro por tipo de documento
+            - dias (str): Filtro por días máximos restantes
+            - buscar (str): Texto de búsqueda (nombre, código, patente)
+            - solo_activos (str): 'true' para solo equipos activos (default: 'true')
+            
+    Returns:
+        list: Lista de diccionarios con información de documentos próximos a vencer.
+              Cada diccionario contiene: tipo, tipo_nombre, nombre, equipo_id,
+              equipo_nombre, equipo_codigo, equipo_patente, fecha_vencimiento,
+              dias_restantes, estado, color, badge_class, icono, texto_estado,
+              identificador, url_editar.
     """
     hoy = date.today()
     
@@ -404,6 +479,20 @@ def _obtener_documentos_maquinarias(request):
 def api_vencimientos_maquinarias(request):
     """
     API para obtener todos los documentos de maquinarias con sus estados de vencimiento.
+    
+    Endpoint JSON que retorna la lista de documentos de equipos próximos a vencer,
+    aplicando los filtros especificados en los parámetros GET.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET opcionales
+                              (ver _obtener_documentos_maquinarias para detalles).
+        
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - documentos (list): Lista de documentos próximos a vencer
+            - total (int): Número total de documentos encontrados
+            - error (str): Mensaje de error si success=False
     """
     try:
         documentos = _obtener_documentos_maquinarias(request)
@@ -432,7 +521,19 @@ def api_vencimientos_maquinarias(request):
 @require_http_methods(["GET"])
 def exportar_excel_personal(request):
     """
-    Exporta los documentos de personal a Excel.
+    Exporta los documentos de personal próximos a vencer a un archivo Excel.
+    
+    Genera un archivo Excel (.xlsx) con todos los documentos de personal que están
+    próximos a vencer, aplicando los mismos filtros que la vista principal.
+    Las filas se colorean según el estado de vencimiento.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET opcionales
+                              para filtrar los documentos.
+        
+    Returns:
+        HttpResponse: Respuesta HTTP con el archivo Excel como attachment.
+                      Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
     """
     from django.http import HttpResponse
     import openpyxl
@@ -509,7 +610,19 @@ def exportar_excel_personal(request):
 @require_http_methods(["GET"])
 def exportar_excel_maquinarias(request):
     """
-    Exporta los documentos de maquinarias a Excel.
+    Exporta los documentos de maquinarias próximos a vencer a un archivo Excel.
+    
+    Genera un archivo Excel (.xlsx) con todos los documentos de equipos que están
+    próximos a vencer, aplicando los mismos filtros que la vista principal.
+    Las filas se colorean según el estado de vencimiento.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET opcionales
+                              para filtrar los documentos.
+        
+    Returns:
+        HttpResponse: Respuesta HTTP con el archivo Excel como attachment.
+                      Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
     """
     from django.http import HttpResponse
     import openpyxl
@@ -587,7 +700,20 @@ def exportar_excel_maquinarias(request):
 def ejecutar_procesar_vencimientos(request):
     """
     Vista para ejecutar manualmente el procesamiento de vencimientos y crear notificaciones.
-    Solo para pruebas.
+    
+    Ejecuta el procesamiento de vencimientos de documentos y crea notificaciones
+    automáticamente para todos los documentos próximos a vencer. Esta función está
+    pensada principalmente para pruebas y ejecución manual, ya que normalmente el
+    procesamiento se ejecuta automáticamente mediante el scheduler.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP (método POST).
+        
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - message (str): Mensaje descriptivo del resultado
+            - error (str): Mensaje de error si success=False
     """
     try:
         from notificaciones.tasks import procesar_vencimientos_documentos

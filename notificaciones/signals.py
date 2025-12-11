@@ -26,7 +26,18 @@ from .models import Notificacion
 
 @receiver(post_save, sender='rrhh_personal.LicenciaMedicaPorPersonal')
 def notificar_licencia_medica(sender, instance, created, **kwargs):
-    # Notifica cuando se crea una licencia médica.
+    """
+    Signal que notifica cuando se crea una licencia médica.
+    
+    Crea una notificación del tipo 'RRHH_LICENCIA_MEDICA_CREADA' para los usuarios
+    con roles configurados para recibir este tipo de notificación.
+    
+    Args:
+        sender: Modelo que disparó el signal (LicenciaMedicaPorPersonal)
+        instance: Instancia del modelo que se guardó
+        created (bool): True si se creó un nuevo registro, False si se actualizó
+        **kwargs: Argumentos adicionales del signal
+    """
     if created:
         fecha_inicio = instance.fechaEmision.strftime('%d/%m/%Y') if instance.fechaEmision else 'N/A'
         fecha_fin = instance.fecha_fin_licencia.strftime('%d/%m/%Y') if instance.fecha_fin_licencia else 'N/A'
@@ -50,7 +61,18 @@ def notificar_licencia_medica(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender='rrhh_personal.Ausentismo')
 def notificar_ausentismo(sender, instance, created, **kwargs):
-    # Notifica cuando se crea un ausentismo.
+    """
+    Signal que notifica cuando se crea un ausentismo.
+    
+    Crea una notificación del tipo 'RRHH_AUSENTISMO_CREADO' para los usuarios
+    con roles configurados para recibir este tipo de notificación.
+    
+    Args:
+        sender: Modelo que disparó el signal (Ausentismo)
+        instance: Instancia del modelo que se guardó
+        created (bool): True si se creó un nuevo registro, False si se actualizó
+        **kwargs: Argumentos adicionales del signal
+    """
     if created:
         tipo_ausentismo = instance.tipoausen_id.tipo if instance.tipoausen_id else 'N/A'
         fecha_desde = instance.fechaini.strftime('%d/%m/%Y') if instance.fechaini else 'N/A'
@@ -81,7 +103,18 @@ def notificar_ausentismo(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender='maquinarias.Equipo')
 def notificar_cambio_estado_equipo(sender, instance, created, **kwargs):
-    # Notifica cuando se activa o desactiva un equipo.
+    """
+    Signal que notifica cuando se activa o desactiva un equipo.
+    
+    Detecta cambios en el campo 'activo' del equipo y crea notificaciones
+    del tipo 'MAQUINARIAS_EQUIPO_ACTIVADO' o 'MAQUINARIAS_EQUIPO_DESACTIVADO'.
+    
+    Args:
+        sender: Modelo que disparó el signal (Equipo)
+        instance: Instancia del modelo que se guardó
+        created (bool): True si se creó un nuevo registro, False si se actualizó
+        **kwargs: Argumentos adicionales del signal
+    """
     if created:
         # Equipo nuevo activado
         crear_notificacion_por_tipo(
@@ -131,7 +164,17 @@ def notificar_cambio_estado_equipo(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender='maquinarias.Equipo')
 def guardar_estado_previo_equipo(sender, instance, **kwargs):
-    # Guarda el estado previo del equipo para detectar cambios.
+    """
+    Signal que guarda el estado previo del equipo para detectar cambios.
+    
+    Almacena el valor anterior del campo 'activo' en '_previous_activo'
+    para que el signal post_save pueda detectar si cambió el estado.
+    
+    Args:
+        sender: Modelo que disparó el signal (Equipo)
+        instance: Instancia del modelo que se va a guardar
+        **kwargs: Argumentos adicionales del signal
+    """
     if instance.pk:
         try:
             old_instance = sender.objects.get(pk=instance.pk)
@@ -144,7 +187,19 @@ def guardar_estado_previo_equipo(sender, instance, **kwargs):
 
 @receiver(post_save, sender='maquinarias.OrdenTrabajo')
 def notificar_cambio_ot(sender, instance, created, **kwargs):
-    # Notifica cuando se crea una OT o cambia su estado.
+    """
+    Signal que notifica cuando se crea una OT o cambia su estado.
+    
+    Crea notificaciones del tipo 'MAQUINARIAS_OT_CREADA' cuando se crea una OT,
+    o 'MAQUINARIAS_EQUIPO_DISPONIBLE' / 'MAQUINARIAS_OT_ESTADO_CAMBIADO'
+    cuando cambia el estado de la OT.
+    
+    Args:
+        sender: Modelo que disparó el signal (OrdenTrabajo)
+        instance: Instancia del modelo que se guardó
+        created (bool): True si se creó un nuevo registro, False si se actualizó
+        **kwargs: Argumentos adicionales del signal
+    """
     if created:
         # OT creada
         crear_notificacion_por_tipo(
@@ -205,7 +260,17 @@ def notificar_cambio_ot(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender='maquinarias.OrdenTrabajo')
 def guardar_estado_previo_ot(sender, instance, **kwargs):
-    # Guarda el estado previo de la OT para detectar cambios.
+    """
+    Signal que guarda el estado previo de la OT para detectar cambios.
+    
+    Almacena el valor anterior del campo 'estado_ot_id' en '_previous_estado_ot_id'
+    para que el signal post_save pueda detectar si cambió el estado.
+    
+    Args:
+        sender: Modelo que disparó el signal (OrdenTrabajo)
+        instance: Instancia del modelo que se va a guardar
+        **kwargs: Argumentos adicionales del signal
+    """
     if instance.pk:
         try:
             old_instance = sender.objects.get(pk=instance.pk)
@@ -218,7 +283,18 @@ def guardar_estado_previo_ot(sender, instance, **kwargs):
 
 @receiver(post_save, sender='ope_calendario.AsignacionEquipoFaena')
 def notificar_asignacion_equipo_faena(sender, instance, created, **kwargs):
-    # Notifica cuando se asigna un equipo a una faena.
+    """
+    Signal que notifica cuando se asigna un equipo a una faena.
+    
+    Crea una notificación del tipo 'MAQUINARIAS_EQUIPO_ASIGNADO_FAENA' cuando
+    se crea una nueva asignación de equipo a faena.
+    
+    Args:
+        sender: Modelo que disparó el signal (AsignacionEquipoFaena)
+        instance: Instancia del modelo que se guardó
+        created (bool): True si se creó un nuevo registro, False si se actualizó
+        **kwargs: Argumentos adicionales del signal
+    """
     if created:
         crear_notificacion_por_tipo(
             codigo_tipo='MAQUINARIAS_EQUIPO_ASIGNADO_FAENA',
@@ -243,7 +319,18 @@ def notificar_asignacion_equipo_faena(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender='ope_calendario.Faena')
 def notificar_faena(sender, instance, created, **kwargs):
-    # Notifica cuando se crea, edita o elimina una faena.
+    """
+    Signal que notifica cuando se crea o edita una faena.
+    
+    Crea notificaciones del tipo 'PLANIFICACION_FAENA_CREADA' cuando se crea
+    una faena, o 'PLANIFICACION_FAENA_EDITADA' cuando cambian las fechas.
+    
+    Args:
+        sender: Modelo que disparó el signal (Faena)
+        instance: Instancia del modelo que se guardó
+        created (bool): True si se creó un nuevo registro, False si se actualizó
+        **kwargs: Argumentos adicionales del signal
+    """
     if created:
         crear_notificacion_por_tipo(
             codigo_tipo='PLANIFICACION_FAENA_CREADA',
@@ -287,7 +374,18 @@ def notificar_faena(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender='ope_calendario.Faena')
 def guardar_estado_previo_faena(sender, instance, **kwargs):
-    # Guarda el estado previo de la faena para detectar cambios.
+    """
+    Signal que guarda el estado previo de la faena para detectar cambios.
+    
+    Almacena los valores anteriores de 'fecha_inicio' y 'fecha_fin' en
+    '_previous_fecha_inicio' y '_previous_fecha_fin' para que el signal
+    post_save pueda detectar si cambiaron las fechas.
+    
+    Args:
+        sender: Modelo que disparó el signal (Faena)
+        instance: Instancia del modelo que se va a guardar
+        **kwargs: Argumentos adicionales del signal
+    """
     if instance.pk:
         try:
             old_instance = sender.objects.get(pk=instance.pk)
@@ -303,7 +401,18 @@ def guardar_estado_previo_faena(sender, instance, **kwargs):
 
 @receiver(post_save, sender='ope_calendario.AsignacionFaena')
 def notificar_asignacion_personal_faena(sender, instance, created, **kwargs):
-    # Notifica cuando se asigna personal a una faena.
+    """
+    Signal que notifica cuando se asigna personal a una faena.
+    
+    Crea una notificación del tipo 'PLANIFICACION_PERSONAL_ASIGNADO_FAENA' cuando
+    se crea una nueva asignación de personal a faena.
+    
+    Args:
+        sender: Modelo que disparó el signal (AsignacionFaena)
+        instance: Instancia del modelo que se guardó
+        created (bool): True si se creó un nuevo registro, False si se actualizó
+        **kwargs: Argumentos adicionales del signal
+    """
     if created:
         crear_notificacion_por_tipo(
             codigo_tipo='PLANIFICACION_PERSONAL_ASIGNADO_FAENA',
@@ -341,8 +450,19 @@ def notificar_asignacion_personal_faena(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=Notificacion)
 def enviar_evento_sse_notificacion(sender, instance, created, **kwargs):
-    # Envía un evento SSE cuando se crea una nueva notificación.
-    # Esto permite que el cliente reciba la notificación en tiempo real.
+    """
+    Signal que envía un evento SSE cuando se crea una nueva notificación.
+    
+    Cuando se crea una nueva notificación, envía un evento Server-Sent Events
+    al usuario destinatario para que reciba la notificación en tiempo real
+    sin necesidad de recargar la página.
+    
+    Args:
+        sender: Modelo que disparó el signal (Notificacion)
+        instance: Instancia del modelo que se guardó
+        created (bool): True si se creó un nuevo registro, False si se actualizó
+        **kwargs: Argumentos adicionales del signal
+    """
     if created:
         try:
             import logging

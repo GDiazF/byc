@@ -16,34 +16,53 @@ from django.contrib.auth.mixins import AccessMixin
 
 
 class PermissionRequiredMixin(AccessMixin):
-    # Mixin para verificar que el usuario tenga un permiso especifico.
-    # Similar al PermissionRequiredMixin de Django, pero mas flexible.
-    # Permite especificar un solo permiso o multiples permisos.
-    # Atributos de clase:
-    #     permission_required (str o list): Permiso(s) requerido(s).
-    #                                      Formato: 'app_label.codename'
-    #     permission_required_all (bool): Si True, requiere TODOS los permisos.
-    #                                    Si False, requiere AL MENOS UNO.
-    #                                    Solo aplica si permission_required es una lista.
-    #                                    Default: True
-    # Ejemplo:
-    #     class ListaPersonalView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
-    #         permission_required = 'rrhh_personal.view_personal'
-    #         model = Personal
-    #         template_name = 'personal/lista.html'
-    #     class CrearPersonalView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
-    #         permission_required = ['rrhh_personal.view_personal', 'rrhh_personal.add_personal']
-    #         permission_required_all = True  # Requiere ambos permisos
-    #         model = Personal
-    #         form_class = PersonalForm
+    """
+    Mixin para verificar que el usuario tenga un permiso específico en vistas basadas en clases.
+    
+    Similar al PermissionRequiredMixin de Django, pero más flexible. Permite especificar
+    un solo permiso o múltiples permisos. Si el usuario no tiene los permisos requeridos,
+    redirige con mensaje de error en lugar de lanzar PermissionDenied.
+    
+    Atributos de clase:
+        permission_required (str o list): Permiso(s) requerido(s).
+                                         Formato: 'app_label.codename'
+        permission_required_all (bool): Si True, requiere TODOS los permisos.
+                                      Si False, requiere AL MENOS UNO.
+                                      Solo aplica si permission_required es una lista.
+                                      Default: True.
+        
+    Ejemplo:
+        class ListaPersonalView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+            permission_required = 'rrhh_personal.view_personal'
+            model = Personal
+            template_name = 'personal/lista.html'
+            
+        class CrearPersonalView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+            permission_required = ['rrhh_personal.view_personal', 'rrhh_personal.add_personal']
+            permission_required_all = True  # Requiere ambos permisos
+            model = Personal
+            form_class = PersonalForm
+    """
     # Permiso requerido (puede ser string o lista)
     permission_required = None
     # Si es lista, indica si requiere todos o al menos uno
     permission_required_all = True
     
     def dispatch(self, request, *args, **kwargs):
-        # Metodo que se ejecuta antes de cualquier metodo HTTP (get, post, etc.).
-        # Verifica que el usuario tenga el permiso requerido antes de continuar.
+        """
+        Método que se ejecuta antes de cualquier método HTTP (get, post, etc.).
+        
+        Verifica que el usuario tenga el permiso requerido antes de continuar.
+        Si no tiene los permisos, llama a handle_no_permission().
+        
+        Args:
+            request: Objeto HttpRequest.
+            *args: Argumentos posicionales.
+            **kwargs: Argumentos de palabra clave.
+            
+        Returns:
+            HttpResponse: Respuesta de la vista o redirección si no tiene permisos.
+        """
         # Verificar que se haya especificado un permiso
         if self.permission_required is None:
             raise ValueError(
@@ -77,9 +96,15 @@ class PermissionRequiredMixin(AccessMixin):
         return super().dispatch(request, *args, **kwargs)
     
     def handle_no_permission(self):
-        # Metodo que se ejecuta cuando el usuario no tiene permiso.
-        # En lugar de lanzar PermissionDenied (403 Forbidden), redirige a la pagina anterior
-        # con un mensaje de error usando el sistema de mensajes de Django.
+        """
+        Método que se ejecuta cuando el usuario no tiene permiso.
+        
+        En lugar de lanzar PermissionDenied (403 Forbidden), redirige a la página anterior
+        con un mensaje de error usando el sistema de mensajes de Django.
+        
+        Returns:
+            HttpResponseRedirect: Redirección a la página anterior o al inicio.
+        """
         from django.shortcuts import redirect
         from django.contrib import messages
         

@@ -1,5 +1,11 @@
 /**
- * JavaScript para el panel de vencimientos de documentos.
+ * ============================================================================
+ * JAVASCRIPT PARA EL PANEL DE VENCIMIENTOS DE DOCUMENTOS
+ * ============================================================================
+ * Este módulo maneja la lógica JavaScript para el panel de vencimientos,
+ * incluyendo carga de datos desde APIs, renderizado de tablas, filtros,
+ * exportación a Excel y ejecución manual del procesamiento de vencimientos.
+ * ============================================================================
  */
 
 const API_PERSONAL = '/vencimientos/api/personal/';
@@ -63,7 +69,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Carga los documentos de personal desde la API.
+ * Carga los documentos de personal próximos a vencer desde la API.
+ * 
+ * Hace una petición GET a la API de vencimientos de personal, aplica los filtros
+ * configurados y renderiza los resultados en la tabla correspondiente.
+ * Muestra un spinner de carga mientras se obtienen los datos.
  */
 function cargarDocumentosPersonal() {
     const tbody = document.getElementById('tbodyPersonal');
@@ -131,7 +141,11 @@ function cargarDocumentosPersonal() {
 }
 
 /**
- * Carga los documentos de maquinarias desde la API.
+ * Carga los documentos de maquinarias próximos a vencer desde la API.
+ * 
+ * Hace una petición GET a la API de vencimientos de maquinarias, aplica los filtros
+ * configurados y renderiza los resultados en la tabla correspondiente.
+ * Muestra un spinner de carga mientras se obtienen los datos.
  */
 function cargarDocumentosMaquinarias() {
     const tbody = document.getElementById('tbodyMaquinarias');
@@ -199,7 +213,11 @@ function cargarDocumentosMaquinarias() {
 }
 
 /**
- * Obtiene los valores de los filtros de personal.
+ * Obtiene los valores actuales de los filtros de personal.
+ * 
+ * @returns {Object} Objeto con los valores de los filtros:
+ *                   - buscar (string): Texto de búsqueda
+ *                   - solo_activos (boolean): Siempre true
  */
 function obtenerFiltrosPersonal() {
     return {
@@ -209,7 +227,11 @@ function obtenerFiltrosPersonal() {
 }
 
 /**
- * Obtiene los valores de los filtros de maquinarias.
+ * Obtiene los valores actuales de los filtros de maquinarias.
+ * 
+ * @returns {Object} Objeto con los valores de los filtros:
+ *                   - buscar (string): Texto de búsqueda
+ *                   - solo_activos (boolean): Siempre true
  */
 function obtenerFiltrosMaquinarias() {
     return {
@@ -219,7 +241,13 @@ function obtenerFiltrosMaquinarias() {
 }
 
 /**
- * Renderiza la tabla de documentos de personal.
+ * Renderiza la tabla de documentos de personal con los datos proporcionados.
+ * 
+ * Genera las filas HTML de la tabla con la información de cada documento,
+ * aplicando colores según el estado de vencimiento. Si no hay documentos,
+ * muestra un mensaje indicando que no se encontraron resultados.
+ * 
+ * @param {Array} documentos - Array de objetos con información de documentos próximos a vencer.
  */
 function renderizarTablaPersonal(documentos) {
     const tbody = document.getElementById('tbodyPersonal');
@@ -257,7 +285,13 @@ function renderizarTablaPersonal(documentos) {
 }
 
 /**
- * Renderiza la tabla de documentos de maquinarias.
+ * Renderiza la tabla de documentos de maquinarias con los datos proporcionados.
+ * 
+ * Genera las filas HTML de la tabla con la información de cada documento,
+ * aplicando colores según el estado de vencimiento. Si no hay documentos,
+ * muestra un mensaje indicando que no se encontraron resultados.
+ * 
+ * @param {Array} documentos - Array de objetos con información de documentos próximos a vencer.
  */
 function renderizarTablaMaquinarias(documentos) {
     const tbody = document.getElementById('tbodyMaquinarias');
@@ -295,7 +329,16 @@ function renderizarTablaMaquinarias(documentos) {
 }
 
 /**
- * Obtiene la clase CSS para el color de la fila según los días restantes.
+ * Obtiene la clase CSS para el color de fondo de la fila según los días restantes.
+ * 
+ * Determina el color de fondo de una fila de tabla según el estado de vencimiento:
+ * - table-danger: Vencido o crítico (< 15 días)
+ * - table-warning: Por vencer (15-44 días)
+ * - Sin clase: Más de 45 días o sin fecha
+ * 
+ * @param {number|null} diasRestantes - Días restantes hasta el vencimiento.
+ *                                      null si no hay fecha de vencimiento.
+ * @returns {string} Clase CSS de Bootstrap para el color de fondo de la fila.
  */
 function obtenerColorFila(diasRestantes) {
     if (diasRestantes === null) return '';
@@ -307,7 +350,10 @@ function obtenerColorFila(diasRestantes) {
 }
 
 /**
- * Exporta los documentos de personal a Excel.
+ * Exporta los documentos de personal a un archivo Excel.
+ * 
+ * Construye la URL de exportación con los filtros actuales y redirige al navegador
+ * para descargar el archivo Excel generado por el servidor.
  */
 function exportarExcelPersonal() {
     const filtros = obtenerFiltrosPersonal();
@@ -320,7 +366,10 @@ function exportarExcelPersonal() {
 }
 
 /**
- * Exporta los documentos de maquinarias a Excel.
+ * Exporta los documentos de maquinarias a un archivo Excel.
+ * 
+ * Construye la URL de exportación con los filtros actuales y redirige al navegador
+ * para descargar el archivo Excel generado por el servidor.
  */
 function exportarExcelMaquinarias() {
     const filtros = obtenerFiltrosMaquinarias();
@@ -333,7 +382,10 @@ function exportarExcelMaquinarias() {
 }
 
 /**
- * Obtiene el valor de una cookie.
+ * Obtiene el valor de una cookie por su nombre.
+ * 
+ * @param {string} name - Nombre de la cookie.
+ * @returns {string|null} Valor de la cookie o null si no existe.
  */
 function getCookie(name) {
     let cookieValue = null;
@@ -351,7 +403,10 @@ function getCookie(name) {
 }
 
 /**
- * Escapa HTML para prevenir XSS.
+ * Escapa caracteres HTML especiales para prevenir ataques XSS.
+ * 
+ * @param {string} text - Texto a escapar.
+ * @returns {string} Texto escapado seguro para insertar en HTML.
  */
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -360,7 +415,12 @@ function escapeHtml(text) {
 }
 
 /**
- * Muestra un mensaje de error.
+ * Muestra un mensaje de error al usuario.
+ * 
+ * Por ahora usa alert() y console.error(). En el futuro se puede implementar
+ * un sistema de notificaciones más sofisticado.
+ * 
+ * @param {string} mensaje - Mensaje de error a mostrar.
  */
 function mostrarError(mensaje) {
     // Puedes implementar un sistema de notificaciones aquí
@@ -370,6 +430,10 @@ function mostrarError(mensaje) {
 
 /**
  * Ejecuta el procesamiento de vencimientos manualmente (solo para pruebas).
+ * 
+ * Hace una petición POST al servidor para ejecutar el procesamiento de vencimientos
+ * y crear notificaciones automáticamente. Muestra un diálogo de confirmación antes
+ * de ejecutar y deshabilita el botón durante el procesamiento.
  */
 function ejecutarProcesamientoVencimientos() {
     if (!confirm('¿Está seguro de ejecutar el procesamiento de vencimientos? Esto creará notificaciones para todos los documentos próximos a vencer.')) {

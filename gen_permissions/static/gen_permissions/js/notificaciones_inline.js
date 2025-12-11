@@ -10,7 +10,12 @@
     function inicializar() {
         var $ = django.jQuery || jQuery;
         
-        // Funcion para actualizar las opciones disponibles en todos los selects
+        /**
+         * Actualiza las opciones disponibles en todos los selects de notificaciones.
+         * 
+         * Oculta las opciones que ya están seleccionadas en otros selects del mismo
+         * formulario para evitar duplicados en el inline de notificaciones.
+         */
         function actualizarOpcionesNotificaciones() {
             // Buscar todos los selects de tipo_notificacion en el inline
             // Probar multiples selectores para asegurar compatibilidad

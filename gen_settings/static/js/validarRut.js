@@ -1,4 +1,12 @@
-// Función para calcular el dígito verificador
+/**
+ * Calcula el dígito verificador de un RUT chileno.
+ * 
+ * Utiliza el algoritmo estándar chileno para calcular el dígito verificador
+ * basado en los dígitos del RUT.
+ * 
+ * @param {string} rut - RUT sin dígito verificador (solo números)
+ * @returns {string} Dígito verificador calculado ('0'-'9' o 'K')
+ */
 function calcularDV(rut) {
     let suma = 0;
     let multiplicador = 2;
@@ -17,14 +25,30 @@ function calcularDV(rut) {
     return dv.toString();
 }
 
-// Función para formatear el RUT - DESHABILITADA
-// Esta función ya no se usa para evitar formateo con puntos
+/**
+ * Formatea un RUT eliminando puntos y guiones.
+ * 
+ * NOTA: Esta función está deshabilitada y ya no se usa para evitar
+ * formateo con puntos. Solo limpia el RUT.
+ * 
+ * @param {string} rut - RUT a formatear
+ * @returns {string} RUT limpio sin puntos ni guiones
+ * @deprecated Esta función ya no se usa para evitar formateo con puntos
+ */
 function formatearRut(rut) {
     // Solo devolver el RUT limpio sin formateo
     return rut.replace(/\./g, '').replace(/-/g, '');
 }
 
-// Función para validar el RUT
+/**
+ * Valida un RUT chileno completo (con dígito verificador).
+ * 
+ * Verifica que el formato sea correcto y que el dígito verificador
+ * coincida con el calculado según el algoritmo chileno.
+ * 
+ * @param {string} rut - RUT completo a validar (puede incluir puntos y guión)
+ * @returns {boolean} true si el RUT es válido, false en caso contrario
+ */
 function validarRut(rut) {
     // Eliminar puntos y guión
     rut = rut.replace(/\./g, '').replace(/-/g, '');
@@ -41,14 +65,31 @@ function validarRut(rut) {
     return dvIngresado === dvCalculado;
 }
 
-// Función para limpiar el RUT (dejar solo números)
+/**
+ * Limpia un RUT eliminando puntos y guiones.
+ * 
+ * Deja solo los caracteres numéricos y la K (si existe) del dígito verificador.
+ * 
+ * @param {string} rut - RUT a limpiar
+ * @returns {string} RUT limpio sin puntos ni guiones
+ */
 function limpiarRut(rut) {
     return rut.replace(/\./g, '').replace(/-/g, '');
 }
 
-// Configurar los eventos para los campos de RUT
+// Configurar los eventos para los campos de RUT cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
-    // Función para configurar los eventos en un campo RUT
+    /**
+     * Configura los eventos para un campo RUT y su campo de dígito verificador.
+     * 
+     * Configura eventos para:
+     * - Calcular automáticamente el dígito verificador al salir del campo RUT
+     * - Limpiar caracteres no numéricos mientras se escribe
+     * - Validar el RUT completo al enviar el formulario
+     * 
+     * @param {HTMLElement} rutInput - Campo de entrada para el RUT
+     * @param {HTMLElement} dvInput - Campo de entrada para el dígito verificador
+     */
     function configurarCampoRut(rutInput, dvInput) {
         if (!rutInput || !dvInput) return;
 

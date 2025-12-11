@@ -8,7 +8,14 @@ from django.apps import AppConfig
 
 
 class DashboardsConfig(AppConfig):
-    # Configuracion de la aplicacion Dashboards.
-    # Define el nombre de la aplicacion y el campo auto por defecto.
+    """
+    Configuración de la aplicación Dashboards.
+    
+    Esta aplicación gestiona los dashboards del sistema organizados por áreas:
+    - RRHH: Recursos Humanos
+    - Operaciones: Planificación y faenas
+    - Maquinarias: Equipos y órdenes de trabajo
+    - Gerencia: Métricas consolidadas y KPIs estratégicos
+    """
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'dashboards'

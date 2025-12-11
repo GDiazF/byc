@@ -388,7 +388,13 @@ class Equipo(models.Model):
 
 
 class Seccion(models.Model):
-    """Secciones/sistemas de un equipo (motor, radiador, sistema hidráulico, etc.)"""
+    """
+    Modelo que representa las secciones o sistemas de un equipo.
+    
+    Las secciones son partes específicas de un equipo que pueden requerir mantenimiento
+    o reparación. Ejemplos: Motor, Radiador, Sistema Hidráulico, Transmisión, etc.
+    Cada sección puede tener múltiples tipos de reparación asociados.
+    """
     seccion_id = models.AutoField(primary_key=True, null=False, blank=False)
     nombre = models.CharField(max_length=100, unique=True, null=False, blank=False)
     descripcion = models.TextField(blank=True, null=True)
@@ -404,7 +410,13 @@ class Seccion(models.Model):
 
 
 class EstadoOT(models.Model):
-    """Estados de una Orden de Trabajo"""
+    """
+    Modelo que representa los estados posibles de una Orden de Trabajo.
+    
+    Los estados permiten rastrear el progreso de una OT desde su creación hasta
+    su finalización. Ejemplos: Pendiente, En Proceso, Completada, Cancelada.
+    Cada estado tiene un color asociado para visualización en la interfaz.
+    """
     estadoOT_id = models.AutoField(primary_key=True, null=False, blank=False)
     nombre = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='Nombre')
     descripcion = models.TextField(blank=True, null=True, verbose_name='Descripción')
@@ -423,7 +435,13 @@ class EstadoOT(models.Model):
 
 
 class TipoReparacion(models.Model):
-    """Tipos de reparación para cada sección"""
+    """
+    Modelo que representa los tipos específicos de reparaciones que se pueden realizar.
+    
+    Cada tipo de reparación pertenece a una sección específica del equipo.
+    Ejemplos: Cambio de aceite (Motor), Reemplazo de filtro (Radiador), Ajuste de válvulas (Motor).
+    La combinación de sección y nombre debe ser única.
+    """
     tipoReparacion_id = models.AutoField(primary_key=True, null=False, blank=False)
     seccion_id = models.ForeignKey(Seccion, on_delete=models.CASCADE, db_column='seccion_id', related_name='tipos_reparacion', null=False, blank=False)
     nombre = models.CharField(max_length=200, null=False, blank=False)
@@ -437,11 +455,23 @@ class TipoReparacion(models.Model):
         ordering = ['seccion_id', 'nombre']
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre del tipo de reparación seguido del nombre de la sección.
+        """
         return f"{self.nombre} ({self.seccion_id.nombre})"
 
 
 class PautaMantenimientoPreventivo(models.Model):
-    """Pauta de mantenimiento preventivo para un modelo de equipo"""
+    """
+    Modelo que representa una pauta de mantenimiento preventivo para un modelo de equipo.
+    
+    Una pauta define qué secciones y tipos de reparación deben revisarse o realizarse
+    en un modelo específico de equipo durante el mantenimiento preventivo.
+    Cada pauta contiene múltiples items (ItemPauta) que especifican las secciones y reparaciones.
+    """
     pauta_id = models.AutoField(primary_key=True, null=False, blank=False)
     modeloEquipo_id = models.ForeignKey(ModeloEquipo, on_delete=models.CASCADE, db_column='modeloEquipo_id', related_name='pautas_mantenimiento', null=False, blank=False)
     nombre = models.CharField(max_length=200, null=False, blank=False)
@@ -463,6 +493,12 @@ class PautaMantenimientoPreventivo(models.Model):
         ]
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre de la pauta seguido del modelo de equipo.
+        """
         return f"{self.nombre} - {self.modeloEquipo_id}"
 
 
@@ -486,6 +522,12 @@ class ItemPauta(models.Model):
         unique_together = [['pauta_id', 'seccion_id']]
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre de la pauta seguido del nombre de la sección.
+        """
         return f"{self.pauta_id.nombre} - {self.seccion_id.nombre}"
 
 
@@ -494,7 +536,12 @@ class ItemPauta(models.Model):
 # ============================================================================
 
 class TipoDocumentoMaquinaria(models.Model):
-    """Tipos de documentos que puede tener una maquinaria (revisión técnica, seguro, permiso de circulación, etc.)"""
+    """
+    Modelo que representa los tipos de documentos que puede tener una maquinaria.
+    
+    Ejemplos: Revisión Técnica, Seguro, Permiso de Circulación, Certificado de Inspección.
+    Cada tipo puede requerir o no una fecha de vencimiento según su naturaleza.
+    """
     tipoDocumento_id = models.AutoField(primary_key=True, null=False, blank=False)
     nombre = models.CharField(max_length=100, unique=True, null=False, blank=False, verbose_name='Nombre del Documento')
     descripcion = models.TextField(blank=True, null=True, verbose_name='Descripción')
@@ -520,7 +567,13 @@ class TipoDocumentoMaquinaria(models.Model):
 
 
 class DocumentoMaquinaria(models.Model):
-    """Documentos actuales de una maquinaria"""
+    """
+    Modelo que representa los documentos actuales asociados a una maquinaria.
+    
+    Cada documento tiene un archivo, tipo de documento, fecha de vencimiento (si aplica)
+    y observaciones. Un equipo solo puede tener un documento activo de cada tipo.
+    Los documentos reemplazados se mueven al historial (HistorialDocumentoMaquinaria).
+    """
     documento_id = models.AutoField(primary_key=True, null=False, blank=False)
     equipo_id = models.ForeignKey(
         Equipo, 
@@ -571,7 +624,15 @@ class DocumentoMaquinaria(models.Model):
     
     @property
     def esta_vencido(self):
-        """Determina si el documento está vencido"""
+        """
+        Determina si el documento está vencido.
+        
+        Un documento está vencido si tiene fecha de vencimiento y esa fecha
+        es anterior a la fecha actual.
+        
+        Returns:
+            bool: True si el documento está vencido, False en caso contrario.
+        """
         from datetime import date
         if not self.fecha_vencimiento:
             return False
@@ -579,7 +640,15 @@ class DocumentoMaquinaria(models.Model):
     
     @property
     def esta_por_vencer(self):
-        """Determina si el documento está por vencer (menos de 30 días)"""
+        """
+        Determina si el documento está por vencer (menos de 30 días).
+        
+        Un documento está por vencer si tiene fecha de vencimiento y quedan
+        entre 0 y 30 días para que venza.
+        
+        Returns:
+            bool: True si el documento está por vencer, False en caso contrario.
+        """
         from datetime import date, timedelta
         if not self.fecha_vencimiento:
             return False
@@ -587,11 +656,23 @@ class DocumentoMaquinaria(models.Model):
         return 0 <= dias_restantes <= 30
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre del tipo de documento seguido del nombre del equipo.
+        """
         return f"{self.tipo_documento_id.nombre} - {self.equipo_id.nombreEquipo}"
 
 
 class HistorialDocumentoMaquinaria(models.Model):
-    """Historial de documentos reemplazados de una maquinaria"""
+    """
+    Modelo que almacena el historial de documentos reemplazados o eliminados.
+    
+    Cuando un documento es reemplazado por uno nuevo, el documento anterior se mueve
+    a este modelo para mantener un registro histórico. Esto permite rastrear todos
+    los documentos que ha tenido un equipo a lo largo del tiempo.
+    """
     historial_id = models.AutoField(primary_key=True, null=False, blank=False)
     equipo_id = models.ForeignKey(
         Equipo,
@@ -648,6 +729,12 @@ class HistorialDocumentoMaquinaria(models.Model):
         ordering = ['-fecha_reemplazo']
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre del tipo de documento seguido del nombre del equipo y etiqueta "(Historial)".
+        """
         return f"{self.tipo_documento_nombre} - {self.equipo_id.nombreEquipo} (Historial)"
 
 
@@ -656,7 +743,12 @@ class HistorialDocumentoMaquinaria(models.Model):
 # ============================================================================
 
 class TipoMantenimiento(models.Model):
-    """Tipos de mantenimiento (Preventivo, Correctivo, etc.)"""
+    """
+    Modelo que representa los tipos de mantenimiento que se pueden realizar.
+    
+    Ejemplos: Preventivo, Correctivo, Predictivo, Emergencia.
+    Cada orden de trabajo tiene un tipo de mantenimiento asociado.
+    """
     tipoMantenimiento_id = models.AutoField(primary_key=True, null=False, blank=False)
     nombre = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='Nombre')
     descripcion = models.TextField(blank=True, null=True, verbose_name='Descripción')
@@ -673,7 +765,13 @@ class TipoMantenimiento(models.Model):
 
 
 class EstadoEquipo(models.Model):
-    """Estados de un equipo durante una OT"""
+    """
+    Modelo que representa los estados posibles de un equipo durante una orden de trabajo.
+    
+    Los estados indican la condición del equipo mientras se realiza el mantenimiento.
+    Ejemplos: Operativo, En Mantenimiento, Fuera de Servicio, En Reparación.
+    Cada estado tiene un color asociado para visualización en la interfaz.
+    """
     estadoEquipo_id = models.AutoField(primary_key=True, null=False, blank=False)
     nombre = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='Nombre')
     descripcion = models.TextField(blank=True, null=True, verbose_name='Descripción')
@@ -688,6 +786,12 @@ class EstadoEquipo(models.Model):
         ordering = ['orden', 'nombre']
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre del estado de equipo.
+        """
         return self.nombre
 
 
@@ -751,7 +855,15 @@ class EstadoCalendarioEquipo(models.Model):
         ]
 
     def clean(self):
-        """Validar que solo haya un estado predeterminado"""
+        """
+        Valida que solo haya un estado predeterminado activo.
+        
+        Si este estado está marcado como predeterminado, verifica que no exista
+        otro estado predeterminado activo. Si existe, lanza ValidationError.
+        
+        Raises:
+            ValidationError: Si ya existe otro estado predeterminado activo.
+        """
         if self.es_predeterminado:
             # Verificar si ya existe otro estado predeterminado
             otros_predeterminados = EstadoCalendarioEquipo.objects.filter(
@@ -766,7 +878,12 @@ class EstadoCalendarioEquipo(models.Model):
                 )
 
     def save(self, *args, **kwargs):
-        """Asegurar que solo haya un estado predeterminado"""
+        """
+        Asegura que solo haya un estado predeterminado.
+        
+        Si este estado está marcado como predeterminado, desmarca automáticamente
+        todos los demás estados predeterminados antes de guardar.
+        """
         if self.es_predeterminado:
             # Desmarcar otros estados predeterminados
             EstadoCalendarioEquipo.objects.filter(
@@ -776,6 +893,12 @@ class EstadoCalendarioEquipo(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre del estado de calendario.
+        """
         return self.nombre
 
 
@@ -810,6 +933,12 @@ class EstadoFuenteEquipo(models.Model):
         unique_together = [['estado_calendario', 'estado_equipo']]
 
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre del estado de calendario seguido del nombre del estado de equipo.
+        """
         return f"Fuente({self.estado_calendario.nombre}) → {self.estado_equipo.nombre}"
 
 
@@ -842,15 +971,31 @@ class EstadoManualEquipo(models.Model):
         ordering = ['-fecha_creacion']
 
     def clean(self):
-        """Validar que fecha_fin sea mayor o igual a fecha_inicio"""
+        """
+        Valida que la fecha de fin sea mayor o igual a la fecha de inicio.
+        
+        Raises:
+            ValidationError: Si fecha_fin es anterior a fecha_inicio.
+        """
         if self.fecha_fin < self.fecha_inicio:
             raise ValidationError('La fecha de fin debe ser mayor o igual a la fecha de inicio.')
 
     def save(self, *args, **kwargs):
+        """
+        Valida y guarda el estado manual.
+        
+        Ejecuta clean() antes de guardar para asegurar que las fechas sean válidas.
+        """
         self.clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre del equipo, estado y rango de fechas.
+        """
         return f"{self.equipo.nombreEquipo} - {self.estado.nombre} ({self.fecha_inicio} a {self.fecha_fin})"
 
 
@@ -966,7 +1111,14 @@ def obtener_estado_final_equipo_fecha(equipo, fecha):
 
 
 class OrdenTrabajo(models.Model):
-    """Orden de Trabajo para mantenimiento de equipos"""
+    """
+    Modelo principal que representa una Orden de Trabajo para mantenimiento de equipos.
+    
+    Una OT registra el trabajo de mantenimiento realizado en un equipo específico,
+    incluyendo el tipo de mantenimiento, fechas, personal asignado, secciones a reparar,
+    estados y observaciones. Cada OT tiene un folio único y mantiene un historial
+    completo de todos los cambios realizados.
+    """
     
     ot_id = models.AutoField(primary_key=True, null=False, blank=False)
     folio = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='Folio')
@@ -1074,12 +1226,25 @@ class OrdenTrabajo(models.Model):
         ]
     
     def __str__(self):
-        # Si el folio ya tiene el prefijo OT-, mostrarlo tal cual, sino agregarlo
+        """
+        Representación en string del objeto.
+        
+        Si el folio ya tiene el prefijo OT-, se muestra tal cual, sino se agrega.
+        
+        Returns:
+            str: Folio de la OT seguido del nombre del equipo.
+        """
         folio_display = self.folio if self.folio.startswith('OT-') else f"OT-{self.folio}"
         return f"{folio_display} - {self.equipo_id.nombreEquipo}"
     
     def save(self, *args, **kwargs):
-        """Genera el folio automáticamente si no existe"""
+        """
+        Genera el folio automáticamente si no existe.
+        
+        Busca el número más alto de los folios existentes con formato OT-{número}
+        y genera el siguiente número secuencial. Si no hay folios previos, usa
+        el conteo total de OTs como respaldo.
+        """
         if not self.folio:
             # Buscar el número más alto de los folios existentes con formato OT-{número}
             ultimo_numero = 0
@@ -1113,7 +1278,13 @@ class OrdenTrabajo(models.Model):
 
 
 class ItemSeccionOT(models.Model):
-    """Items de secciones y tipos de reparación para una OT (cuando NO es pauta)"""
+    """
+    Modelo que representa una sección específica dentro de una orden de trabajo.
+    
+    Cada item asocia una sección con múltiples tipos de reparación que deben
+    realizarse en esa sección durante la OT. También incluye el estado de la sección.
+    Se usa cuando la OT NO corresponde a una pauta de mantenimiento preventivo.
+    """
     
     itemSeccionOT_id = models.AutoField(primary_key=True, null=False, blank=False)
     ot_id = models.ForeignKey(
@@ -1157,11 +1328,23 @@ class ItemSeccionOT(models.Model):
         ordering = ['seccion_id__nombre']
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Folio de la OT seguido del nombre de la sección.
+        """
         return f"{self.ot_id.folio} - {self.seccion_id.nombre}"
 
 
 class HistorialObservacionesOT(models.Model):
-    """Historial de observaciones (bitácora) de una OT"""
+    """
+    Modelo que almacena el historial de observaciones (bitácora) de una OT.
+    
+    Cada vez que se agrega una observación a una orden de trabajo, se registra
+    aquí con el usuario que la agregó y la fecha/hora. Esto permite mantener
+    un registro cronológico completo de todas las observaciones realizadas.
+    """
     historial_id = models.AutoField(primary_key=True, null=False, blank=False)
     ot_id = models.ForeignKey(
         OrdenTrabajo,
@@ -1190,6 +1373,12 @@ class HistorialObservacionesOT(models.Model):
         ordering = ['-fecha']
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Folio de la OT seguido de la fecha y hora de la observación.
+        """
         return f"{self.ot_id.folio} - {self.fecha.strftime('%Y-%m-%d %H:%M')}"
 
 
@@ -1261,12 +1450,32 @@ class HistorialOT(models.Model):
         ]
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Folio de la OT, acción realizada y fecha/hora.
+        """
         return f"{self.ot.folio} - {self.get_accion_display()} - {self.fecha_hora.strftime('%d/%m/%Y %H:%M')}"
     
     @classmethod
     def registrar(cls, ot, accion, descripcion, usuario=None, datos_previos=None, datos_nuevos=None):
         """
         Método helper para registrar fácilmente un evento en el historial.
+        
+        Crea un nuevo registro en el historial con la información proporcionada.
+        Se usa desde signals y vistas para registrar cambios en las OTs.
+        
+        Args:
+            ot: Instancia de OrdenTrabajo.
+            accion: Código de la acción (debe estar en ACCION_CHOICES).
+            descripcion: Descripción detallada del cambio.
+            usuario: Usuario que realizó la acción (opcional).
+            datos_previos: Estado anterior antes del cambio en formato JSON (opcional).
+            datos_nuevos: Estado nuevo después del cambio en formato JSON (opcional).
+            
+        Returns:
+            HistorialOT: Instancia del registro de historial creado.
         """
         return cls.objects.create(
             ot=ot,
@@ -1347,12 +1556,32 @@ class HistorialEquipo(models.Model):
         ]
     
     def __str__(self):
+        """
+        Representación en string del objeto.
+        
+        Returns:
+            str: Nombre del equipo, acción realizada y fecha/hora.
+        """
         return f"{self.equipo.nombreEquipo} - {self.get_accion_display()} - {self.fecha_hora.strftime('%d/%m/%Y %H:%M')}"
     
     @classmethod
     def registrar(cls, equipo, accion, descripcion, usuario=None, datos_previos=None, datos_nuevos=None):
         """
         Método helper para registrar fácilmente un evento en el historial.
+        
+        Crea un nuevo registro en el historial con la información proporcionada.
+        Se usa desde signals y vistas para registrar cambios en los equipos.
+        
+        Args:
+            equipo: Instancia de Equipo.
+            accion: Código de la acción (debe estar en ACCION_CHOICES).
+            descripcion: Descripción detallada del cambio.
+            usuario: Usuario que realizó la acción (opcional).
+            datos_previos: Estado anterior antes del cambio en formato JSON (opcional).
+            datos_nuevos: Estado nuevo después del cambio en formato JSON (opcional).
+            
+        Returns:
+            HistorialEquipo: Instancia del registro de historial creado.
         """
         return cls.objects.create(
             equipo=equipo,

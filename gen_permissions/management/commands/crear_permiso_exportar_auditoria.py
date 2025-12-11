@@ -1,13 +1,38 @@
-﻿from django.core.management.base import BaseCommand
+﻿"""
+============================================================================
+COMANDO DE GESTIÓN PARA CREAR PERMISO DE EXPORTAR AUDITORÍA
+============================================================================
+Este comando crea el permiso 'exportar_auditoria' para la app reportes_auditoria.
+Uso: python manage.py crear_permiso_exportar_auditoria
+============================================================================
+"""
+
+from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from gen_permissions.models import PermisoVista
 
 
 class Command(BaseCommand):
+    """
+    Comando de gestión para crear el permiso exportar_auditoria.
+    
+    Crea un PermisoVista y su Permission de Django asociado para permitir
+    exportar eventos de auditoría a Excel.
+    """
     help = 'Crea el permiso exportar_auditoria para reportes_auditoria'
 
     def handle(self, *args, **options):
+        """
+        Ejecuta el comando para crear el permiso exportar_auditoria.
+        
+        Crea o actualiza el PermisoVista y su Permission de Django asociado.
+        Si el permiso ya existe, solo lo actualiza si es necesario.
+        
+        Args:
+            *args: Argumentos posicionales.
+            **options: Opciones del comando.
+        """
         # Verificar si ya existe
         codigo_permiso = 'reportes_auditoria.exportar_auditoria'
         

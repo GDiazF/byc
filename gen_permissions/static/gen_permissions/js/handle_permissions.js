@@ -19,6 +19,9 @@
     
     /**
      * Muestra un alert con el mensaje de error de permisos.
+     * 
+     * @param {string} message - Mensaje de error a mostrar. Si no se proporciona,
+     *                          se usa el mensaje genérico.
      */
     function showPermissionAlert(message) {
         // Intentar usar el mensaje personalizado si esta disponible, sino usar el generico
@@ -28,6 +31,12 @@
     
     /**
      * Extrae el mensaje de error de una respuesta JSON.
+     * 
+     * Intenta obtener el mensaje de diferentes campos posibles en la respuesta
+     * (message, error, detail, statusText) y retorna un mensaje genérico si no encuentra ninguno.
+     * 
+     * @param {Object|string} response - Respuesta JSON o string con el error.
+     * @returns {string} Mensaje de error extraído o mensaje genérico.
      */
     function extractErrorMessage(response) {
         if (response && typeof response === 'object') {
@@ -43,6 +52,12 @@
     
     /**
      * Maneja errores 403 en respuestas AJAX.
+     * 
+     * Extrae el mensaje de error de la respuesta y muestra un alert al usuario.
+     * 
+     * @param {XMLHttpRequest} xhr - Objeto XMLHttpRequest de la petición.
+     * @param {Object|string} response - Respuesta de la petición (JSON o string).
+     * @returns {boolean} True si se manejó el error, False en caso contrario.
      */
     function handle403Error(xhr, response) {
         if (xhr.status === 403) {

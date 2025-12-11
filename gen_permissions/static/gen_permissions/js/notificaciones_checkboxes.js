@@ -6,7 +6,12 @@
     'use strict';
     
     $(document).ready(function() {
-        // Contador de notificaciones seleccionadas
+        /**
+         * Actualiza el contador de notificaciones seleccionadas.
+         * 
+         * Cuenta cuántos checkboxes de notificaciones están marcados y actualiza
+         * el elemento que muestra el contador en la interfaz.
+         */
         function updateSelectedCount() {
             var selected = $('.notificacion-checkbox:checked').length;
             var total = $('.notificacion-checkbox').length;

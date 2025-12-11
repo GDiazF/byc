@@ -1,5 +1,11 @@
 """
-Widgets personalizados para formularios Django
+============================================================================
+WIDGETS PERSONALIZADOS PARA FORMULARIOS DJANGO
+============================================================================
+Este módulo contiene widgets personalizados para formularios Django,
+específicamente DateInputChileno que maneja fechas en formato chileno
+(DD-MM-YYYY) y las convierte al formato ISO (YYYY-MM-DD) que Django requiere.
+============================================================================
 """
 from django import forms
 from django.forms.widgets import TextInput
@@ -8,8 +14,11 @@ from datetime import datetime
 
 class DateInputChileno(TextInput):
     """
-    Widget personalizado para inputs de fecha con formato chileno (DD-MM-YYYY)
-    Se renderiza como un input de texto que será convertido por JavaScript a date picker
+    Widget personalizado para inputs de fecha con formato chileno (DD-MM-YYYY).
+    
+    Se renderiza como un input de texto que será convertido por JavaScript
+    a un date picker. Maneja la conversión entre formato chileno (DD-MM-YYYY)
+    y formato ISO (YYYY-MM-DD) que Django requiere internamente.
     """
     input_type = 'text'
     
@@ -26,8 +35,17 @@ class DateInputChileno(TextInput):
     
     def format_value(self, value):
         """
-        Convierte el valor del campo (datetime.date) a string en formato ISO (YYYY-MM-DD)
-        El JavaScript se encargará de convertirlo a formato chileno
+        Convierte el valor del campo a string en formato ISO (YYYY-MM-DD).
+        
+        Acepta objetos date, datetime o strings en formato ISO o chileno.
+        El JavaScript se encargará de convertirlo a formato chileno para mostrar
+        al usuario.
+        
+        Args:
+            value: Valor del campo (date, datetime, str o None).
+            
+        Returns:
+            str: Valor en formato ISO (YYYY-MM-DD) o string vacío si es None.
         """
         if value is None:
             return ''
@@ -64,8 +82,19 @@ class DateInputChileno(TextInput):
     
     def value_from_datadict(self, data, files, name):
         """
-        Convierte el valor del formulario (DD-MM-YYYY) a formato ISO (YYYY-MM-DD)
-        para que Django lo pueda procesar correctamente
+        Convierte el valor del formulario de formato chileno a formato ISO.
+        
+        Cuando el usuario envía el formulario, el valor viene en formato
+        chileno (DD-MM-YYYY) y este método lo convierte a formato ISO
+        (YYYY-MM-DD) para que Django lo pueda procesar correctamente.
+        
+        Args:
+            data: Diccionario con los datos del formulario.
+            files: Diccionario con archivos subidos (no usado).
+            name: Nombre del campo.
+            
+        Returns:
+            str|None: Valor en formato ISO (YYYY-MM-DD) o None si está vacío.
         """
         value = data.get(name)
         

@@ -20,17 +20,28 @@ def crear_notificacion_por_tipo(
     prioridad=None,
     usuarios_especificos=None
 ):
-    # Crea notificaciones para usuarios basándose en el tipo de notificación y roles.
-    # Args:
-    #   codigo_tipo: Código del tipo de notificación (ej: 'RRHH_PERSONAL_ACTIVADO')
-    #   titulo: Título de la notificación
-    #   mensaje: Mensaje de la notificación
-    #   datos_adicionales: Diccionario con datos adicionales (opcional)
-    #   prioridad: Prioridad de la notificación (opcional, usa la del tipo si no se especifica)
-    #   usuarios_especificos: Lista de usuarios específicos a notificar (opcional)
-    #                         Si se especifica, solo se notifica a estos usuarios
-    # Returns:
-    #   Lista de notificaciones creadas
+    """
+    Crea notificaciones para usuarios basándose en el tipo de notificación y roles.
+    
+    Busca qué roles tienen habilitado el tipo de notificación y crea notificaciones
+    para todos los usuarios activos con esos roles. Si se especifican usuarios
+    específicos, solo se notifica a esos usuarios.
+    
+    Args:
+        codigo_tipo (str): Código del tipo de notificación (ej: 'RRHH_PERSONAL_ACTIVADO')
+        titulo (str): Título de la notificación
+        mensaje (str): Mensaje de la notificación
+        datos_adicionales (dict, optional): Diccionario con datos adicionales en formato JSON
+        prioridad (str, optional): Prioridad de la notificación. Si no se especifica,
+                                   usa la prioridad por defecto del tipo de notificación
+        usuarios_especificos (list, optional): Lista de usuarios específicos a notificar.
+                                               Si se especifica, solo se notifica a estos usuarios
+                                               y se ignora la configuración por roles
+                                               
+    Returns:
+        list: Lista de objetos Notificacion creados. Lista vacía si el tipo no existe
+              o está inactivo, o si no se encontraron usuarios destinatarios.
+    """
     try:
         tipo_notificacion = TipoNotificacion.objects.get(codigo=codigo_tipo, activo=True)
     except TipoNotificacion.DoesNotExist:
@@ -103,16 +114,22 @@ def crear_notificacion_para_usuario(
     datos_adicionales=None,
     prioridad=None
 ):
-    # Crea una notificación para un usuario específico.
-    # Args:
-    #   usuario: Usuario destinatario (User o ID)
-    #   codigo_tipo: Código del tipo de notificación
-    #   titulo: Título de la notificación
-    #   mensaje: Mensaje de la notificación
-    #   datos_adicionales: Diccionario con datos adicionales (opcional)
-    #   prioridad: Prioridad de la notificación (opcional)
-    # Returns:
-    #   Notificación creada o None si el tipo no existe
+    """
+    Crea una notificación para un usuario específico.
+    
+    Args:
+        usuario (User|int): Usuario destinatario (objeto User o ID de usuario)
+        codigo_tipo (str): Código del tipo de notificación
+        titulo (str): Título de la notificación
+        mensaje (str): Mensaje de la notificación
+        datos_adicionales (dict, optional): Diccionario con datos adicionales en formato JSON
+        prioridad (str, optional): Prioridad de la notificación. Si no se especifica,
+                                   usa la prioridad por defecto del tipo de notificación
+                                   
+    Returns:
+        Notificacion|None: Objeto Notificacion creado, o None si el tipo no existe,
+                          está inactivo, o el usuario no existe.
+    """
     try:
         tipo_notificacion = TipoNotificacion.objects.get(codigo=codigo_tipo, activo=True)
     except TipoNotificacion.DoesNotExist:
@@ -140,12 +157,18 @@ def crear_notificacion_para_usuario(
 
 
 def obtener_notificaciones_no_leidas(usuario, limit=None):
-    # Obtiene las notificaciones no leídas de un usuario.
-    # Args:
-    #   usuario: Usuario (User o ID)
-    #   limit: Límite de resultados (opcional)
-    # Returns:
-    #   QuerySet de notificaciones no leídas
+    """
+    Obtiene las notificaciones no leídas de un usuario.
+    
+    Args:
+        usuario (User|int): Usuario (objeto User o ID de usuario)
+        limit (int, optional): Límite máximo de resultados a retornar
+        
+    Returns:
+        QuerySet: QuerySet de notificaciones no leídas y no archivadas,
+                 ordenadas por fecha de creación descendente. QuerySet vacío
+                 si el usuario no existe.
+    """
     if isinstance(usuario, int):
         try:
             usuario = User.objects.get(pk=usuario)
@@ -165,11 +188,16 @@ def obtener_notificaciones_no_leidas(usuario, limit=None):
 
 
 def contar_notificaciones_no_leidas(usuario):
-    # Cuenta las notificaciones no leídas de un usuario.
-    # Args:
-    #   usuario: Usuario (User o ID)
-    # Returns:
-    #   Número de notificaciones no leídas
+    """
+    Cuenta las notificaciones no leídas de un usuario.
+    
+    Args:
+        usuario (User|int): Usuario (objeto User o ID de usuario)
+        
+    Returns:
+        int: Número de notificaciones no leídas y no archivadas del usuario.
+             Retorna 0 si el usuario no existe.
+    """
     if isinstance(usuario, int):
         try:
             usuario = User.objects.get(pk=usuario)

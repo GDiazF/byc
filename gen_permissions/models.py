@@ -17,9 +17,14 @@ from django.dispatch import receiver
 
 
 class Rol(models.Model):
-    # Roles del sistema que agrupan permisos.
-    # Ejemplos: 'Administrador', 'Jefe de RRHH', 'Trabajador de RRHH', etc.
-    # Al asignar un rol a un usuario, este hereda automaticamente todos los permisos del rol.
+    """
+    Roles del sistema que agrupan permisos.
+    
+    Los roles permiten agrupar múltiples permisos y asignarlos a usuarios de forma
+    masiva. Ejemplos: 'Administrador', 'Jefe de RRHH', 'Trabajador de RRHH', etc.
+    Al asignar un rol a un usuario, este hereda automáticamente todos los permisos
+    del rol mediante signals y métodos del UserProfile.
+    """
     nombre = models.CharField(
         max_length=100, 
         unique=True,
@@ -54,23 +59,37 @@ class Rol(models.Model):
         return self.nombre
     
     def get_permisos_count(self):
-        # Retorna la cantidad de permisos asignados al rol
+        """
+        Retorna la cantidad de permisos asignados al rol.
+        
+        Returns:
+            int: Número de permisos asociados al rol.
+        """
         return self.permisos.count()
     
     def get_usuarios_count(self):
-        # Retorna la cantidad de usuarios que tienen este rol
+        """
+        Retorna la cantidad de usuarios que tienen este rol asignado.
+        
+        Returns:
+            int: Número de usuarios con este rol.
+        """
         return self.userprofile_set.count()
 
 
 class UserProfile(models.Model):
-    # Perfil extendido del usuario con relacion a Rol.
-    # Este modelo extiende el modelo User de Django agregando:
-    # - Relacion con Rol (un usuario tiene un rol)
-    # - Fechas de asignacion y modificacion del rol
-    # - Asignacion automatica de permisos cuando se asigna un rol
-    # Cuando se asigna un rol a un usuario, automaticamente se le asignan
-    # todos los permisos de ese rol mediante el metodo asignar_permisos_del_rol().
-    # Relacion OneToOne: cada usuario tiene un solo perfil y viceversa
+    """
+    Perfil extendido del usuario con relación a Rol.
+    
+    Este modelo extiende el modelo User de Django agregando:
+    - Relación con Rol (un usuario tiene un rol)
+    - Fechas de asignación y modificación del rol
+    - Asignación automática de permisos cuando se asigna un rol
+    
+    Cuando se asigna un rol a un usuario, automáticamente se le asignan
+    todos los permisos de ese rol mediante el método asignar_permisos_del_rol().
+    La relación es OneToOne: cada usuario tiene un solo perfil y viceversa.
+    """
     user = models.OneToOneField(
         User, 
         on_delete=models.CASCADE, 
@@ -108,12 +127,16 @@ class UserProfile(models.Model):
         return f"{self.user.username} - {rol_nombre}"
     
     def asignar_permisos_del_rol(self):
-        # Asigna automaticamente los permisos del rol al usuario.
-        # Este metodo se llama automaticamente cuando se guarda el UserProfile.
-        # Si el usuario tiene un rol, se le asignan todos los permisos de ese rol.
-        # Si no tiene rol, se eliminan todos sus permisos.
-        # IMPORTANTE: Despues de asignar permisos, se refresca el objeto User desde la BD
-        # y se limpia la cache de permisos para que los cambios se reflejen inmediatamente.
+        """
+        Asigna automáticamente los permisos del rol al usuario.
+        
+        Este método se llama automáticamente cuando se guarda el UserProfile.
+        Si el usuario tiene un rol, se le asignan todos los permisos de ese rol.
+        Si no tiene rol, se eliminan todos sus permisos.
+        
+        IMPORTANTE: Después de asignar permisos, se refresca el objeto User desde la BD
+        y se limpia la caché de permisos para que los cambios se reflejen inmediatamente.
+        """
         if self.rol:
             # Obtener todos los permisos del rol
             permisos_del_rol = list(self.rol.permisos.all())
@@ -135,10 +158,15 @@ class UserProfile(models.Model):
             delattr(self.user, '_user_perm_cache')
     
     def save(self, *args, **kwargs):
-        # Sobrescribe el metodo save para asignar permisos automaticamente.
-        # Cada vez que se guarda el UserProfile (incluyendo cuando se cambia el rol),
-        # se actualizan automaticamente los permisos del usuario.
-        # IMPORTANTE: Se usa update_fields para evitar loops infinitos con signals.
+        """
+        Sobrescribe el método save para asignar permisos automáticamente.
+        
+        Cada vez que se guarda el UserProfile (incluyendo cuando se cambia el rol),
+        se actualizan automáticamente los permisos del usuario.
+        
+        IMPORTANTE: Se usa transaction.on_commit para evitar loops infinitos con signals
+        y asegurar que los permisos se asignen después de que el objeto esté guardado.
+        """
         # Guardar primero el objeto
         super().save(*args, **kwargs)
         
@@ -149,10 +177,15 @@ class UserProfile(models.Model):
 
 
 class PermisoVista(models.Model):
-    # Permisos para vistas que NO tienen modelo asociado.
-    # Algunas vistas no estan asociadas a un modelo especifico (ej: dashboards, reportes).
-    # Este modelo permite crear permisos para esas vistas y asociarlos a un Permission de Django.
-    # Ejemplo: 'dashboards.view_dashboard_rrhh' para la vista del dashboard de RRHH
+    """
+    Permisos para vistas que NO tienen modelo asociado.
+    
+    Algunas vistas no están asociadas a un modelo específico (ej: dashboards, reportes).
+    Este modelo permite crear permisos para esas vistas y asociarlos a un Permission
+    de Django para poder gestionarlos desde el sistema de roles.
+    
+    Ejemplo: 'dashboards.view_dashboard_rrhh' para la vista del dashboard de RRHH.
+    """
     codigo = models.CharField(
         max_length=100, 
         unique=True,
@@ -206,10 +239,13 @@ class PermisoVista(models.Model):
 
 
 class PermisoModelo(models.Model):
-    # Catalogo de permisos por modelo (para referencia y documentacion).
-    # Este modelo sirve como catalogo/documentacion de que permisos estan disponibles
-    # para cada modelo del sistema. No es estrictamente necesario para el funcionamiento,
-    # pero ayuda a documentar y gestionar los permisos.
+    """
+    Catálogo de permisos por modelo (para referencia y documentación).
+    
+    Este modelo sirve como catálogo/documentación de qué permisos están disponibles
+    para cada modelo del sistema. No es estrictamente necesario para el funcionamiento,
+    pero ayuda a documentar y gestionar los permisos de forma centralizada.
+    """
     modelo = models.ForeignKey(
         ContentType, 
         on_delete=models.CASCADE,
@@ -244,11 +280,14 @@ class PermisoModelo(models.Model):
 
 
 class PermisoAccion(models.Model):
-    # Permisos personalizados para acciones especificas dentro de un modelo.
-    # Permite crear permisos mas granulares que los basicos (add, change, delete, view).
-    # Por ejemplo: 'desactivar_personal', 'activar_personal', 'exportar_personal', etc.
-    # Estos permisos se definen en el Meta.permissions del modelo y luego se registran aqui
-    # para facilitar su gestion y documentacion.
+    """
+    Permisos personalizados para acciones específicas dentro de un modelo.
+    
+    Permite crear permisos más granulares que los básicos (add, change, delete, view).
+    Por ejemplo: 'desactivar_personal', 'activar_personal', 'exportar_personal', etc.
+    Estos permisos se definen en el Meta.permissions del modelo y luego se registran
+    aquí para facilitar su gestión y documentación.
+    """
     codigo = models.CharField(
         max_length=100, 
         unique=True,
@@ -308,9 +347,18 @@ class PermisoAccion(models.Model):
 
 @receiver(post_save, sender=User)
 def crear_user_profile(sender, instance, created, **kwargs):
-    # Signal que crea automaticamente un UserProfile cuando se crea un User.
-    # Esto asegura que todos los usuarios tengan un perfil asociado,
-    # incluso si se crean desde el admin de Django o desde codigo.
+    """
+    Signal que crea automáticamente un UserProfile cuando se crea un User.
+    
+    Esto asegura que todos los usuarios tengan un perfil asociado,
+    incluso si se crean desde el admin de Django o desde código.
+    
+    Args:
+        sender: Clase que envía el signal (User).
+        instance: Instancia del User creado.
+        created: True si el usuario fue creado, False si fue actualizado.
+        **kwargs: Argumentos adicionales del signal.
+    """
     if created:
         # Crear UserProfile solo si no existe (evitar duplicados)
         UserProfile.objects.get_or_create(user=instance)
@@ -318,23 +366,41 @@ def crear_user_profile(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=UserProfile)
 def actualizar_permisos_usuario(sender, instance, **kwargs):
-    # Signal que actualiza los permisos del usuario cuando cambia su rol.
-    # Cada vez que se guarda un UserProfile (incluyendo cuando se cambia el rol),
-    # se actualizan automaticamente los permisos del usuario.
-    # El método asignar_permisos_del_rol() ya se llama en el save() del modelo,
-    # pero este signal asegura que también funcione si se modifica desde otros lugares
+    """
+    Signal que actualiza los permisos del usuario cuando cambia su rol.
+    
+    Cada vez que se guarda un UserProfile (incluyendo cuando se cambia el rol),
+    se actualizan automáticamente los permisos del usuario.
+    El método asignar_permisos_del_rol() ya se llama en el save() del modelo,
+    pero este signal asegura que también funcione si se modifica desde otros lugares.
+    
+    Args:
+        sender: Clase que envía el signal (UserProfile).
+        instance: Instancia del UserProfile guardado.
+        **kwargs: Argumentos adicionales del signal.
+    """
     instance.asignar_permisos_del_rol()
 
 
 @receiver(m2m_changed, sender=Rol.permisos.through)
 def actualizar_permisos_usuarios_del_rol(sender, instance, action, **kwargs):
-    # Signal que actualiza los permisos de TODOS los usuarios que tienen este rol
-    # cuando se modifican los permisos del rol (agregar, quitar, limpiar).
-    # Esto asegura que si cambias los permisos de un rol, todos los usuarios
-    # con ese rol se actualicen automaticamente sin necesidad de guardarlos manualmente.
-    # IMPORTANTE: Este signal se ejecuta DESPUES de que se guardan los cambios en la relacion ManyToMany,
-    # a diferencia de post_save que se ejecuta antes.
-    # Solo procesar cuando se agregan, quitan o limpian permisos (no en pre_add, pre_remove, etc.)
+    """
+    Signal que actualiza los permisos de TODOS los usuarios que tienen este rol.
+    
+    Se ejecuta cuando se modifican los permisos del rol (agregar, quitar, limpiar).
+    Esto asegura que si cambias los permisos de un rol, todos los usuarios
+    con ese rol se actualicen automáticamente sin necesidad de guardarlos manualmente.
+    
+    IMPORTANTE: Este signal se ejecuta DESPUÉS de que se guardan los cambios en la
+    relación ManyToMany, a diferencia de post_save que se ejecuta antes.
+    Solo procesa cuando se agregan, quitan o limpian permisos (no en pre_add, pre_remove, etc.).
+    
+    Args:
+        sender: Clase que envía el signal (Rol.permisos.through).
+        instance: Instancia del Rol modificado.
+        action: Acción realizada ('post_add', 'post_remove', 'post_clear', etc.).
+        **kwargs: Argumentos adicionales del signal.
+    """
     if action in ['post_add', 'post_remove', 'post_clear']:
         # Obtener todos los usuarios que tienen este rol
         usuarios_con_rol = UserProfile.objects.filter(rol=instance)

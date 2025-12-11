@@ -81,7 +81,11 @@
     
     /**
      * Verifica si un permiso es de tabla maestra.
-     * NO marca permisos de navegacion o dashboards como maestras.
+     * 
+     * NO marca permisos de navegación o dashboards como maestras.
+     * 
+     * @param {string} textoPermiso - Texto del permiso a verificar.
+     * @returns {boolean} True si es permiso de tabla maestra, False en caso contrario.
      */
     function esTablaMaestra(textoPermiso) {
         // Excluir permisos de navegacion y dashboards
@@ -106,7 +110,12 @@
     }
     
     /**
-     * Funcion principal que marca los permisos de tablas maestras.
+     * Función principal que marca los permisos de tablas maestras.
+     * 
+     * Busca todos los selects de permisos en el admin y agrega la etiqueta
+     * "(Maestra)" y estilos visuales a los permisos que pertenecen a tablas maestras.
+     * Se ejecuta automáticamente cuando se carga la página y cuando se detectan
+     * cambios en el DOM.
      */
     function marcarPermisosMaestros() {
         console.log('[Permisos] Iniciando marcado de permisos maestros...');

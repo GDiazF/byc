@@ -1,12 +1,20 @@
-// ============================================================================
-// JAVASCRIPT PARA LA PÁGINA DE NOTIFICACIONES
-// ============================================================================
-// Este archivo maneja la lógica JavaScript para la página de notificaciones,
-// incluyendo manejo de tabs, filtros, acciones de notificaciones, etc.
-// ============================================================================
+/**
+ * ============================================================================
+ * JAVASCRIPT PARA LA PÁGINA DE NOTIFICACIONES
+ * ============================================================================
+ * Este archivo maneja la lógica JavaScript para la página de notificaciones,
+ * incluyendo manejo de tabs, filtros, acciones de notificaciones (marcar como
+ * leída, archivar, desarchivar), y visualización de detalles en modales.
+ * ============================================================================
+ */
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Obtener token CSRF desde las cookies
+    /**
+     * Obtiene el valor de una cookie por su nombre.
+     * 
+     * @param {string} name - Nombre de la cookie.
+     * @returns {string|null} Valor de la cookie o null si no existe.
+     */
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -86,14 +94,24 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '/notificaciones/?archivada=true';
     };
     
-    // Función auxiliar para escapar HTML
+    /**
+     * Escapa caracteres HTML especiales para prevenir XSS.
+     * 
+     * @param {string} text - Texto a escapar.
+     * @returns {string} Texto escapado seguro para HTML.
+     */
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
     
-    // Función para mostrar detalles de la notificación en un modal
+    /**
+     * Muestra los detalles completos de una notificación en un modal.
+     * 
+     * @param {Object} notif - Objeto con los datos de la notificación
+     *                         (titulo, mensaje, fecha_creacion).
+     */
     function mostrarDetalleNotificacion(notif) {
         const modal = document.getElementById('modalDetalleNotificacion');
         const modalBody = document.getElementById('modalDetalleNotificacionBody');

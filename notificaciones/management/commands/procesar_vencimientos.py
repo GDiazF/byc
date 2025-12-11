@@ -13,6 +13,13 @@ from datetime import timedelta
 
 
 class Command(BaseCommand):
+    """
+    Management command para procesar vencimientos de documentos.
+    
+    Procesa documentos de personal y equipos que están próximos a vencer
+    y crea notificaciones automáticamente. Incluye un modo simulación para
+    ver qué se procesaría sin crear notificaciones.
+    """
     help = 'Procesa vencimientos de documentos y crea notificaciones'
 
     def add_arguments(self, parser):
@@ -23,6 +30,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """
+        Ejecuta el comando para procesar vencimientos de documentos.
+        
+        Args:
+            *args: Argumentos posicionales (no usados).
+            **options: Opciones del comando:
+                - simular (bool): Si es True, solo muestra qué se procesaría sin crear notificaciones.
+        """
         simular = options['simular']
         
         if simular:
@@ -50,7 +65,16 @@ class Command(BaseCommand):
             self.mostrar_simulacion(hoy)
     
     def mostrar_simulacion(self, hoy):
-        # Muestra qué documentos se procesarían sin crear notificaciones
+        """
+        Muestra qué documentos se procesarían sin crear notificaciones.
+        
+        Lista todos los documentos próximos a vencer agrupados por tipo,
+        mostrando los umbrales de notificación (45, 30, 20, 15, 10 días únicos
+        y 9-1 días críticos diarios).
+        
+        Args:
+            hoy (date): Fecha actual para calcular días restantes.
+        """
         from rrhh_personal.models import (
             LicenciaPorPersonal, LicenciaMedicaPorPersonal,
             LicenciaInternaPorPersonal, Certificacion, Examen

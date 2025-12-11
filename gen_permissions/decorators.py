@@ -18,23 +18,32 @@ from django.contrib.auth.decorators import login_required
 
 
 def permission_required_custom(permiso_codigo, raise_exception=True, is_ajax=False):
-    # Decorador para verificar permisos personalizados.
-    # Puede usarse para permisos de modelo (ej: 'app.view_model') o permisos de accion (ej: 'app.custom_action').
-    # Args:
-    #     permiso_codigo (str): El codigo del permiso a verificar (ej: 'rrhh_personal.desactivar_personal').
-    #     raise_exception (bool): Si es True, levanta PermissionDenied. Si es False, redirige a la pagina de login.
-    #     is_ajax (bool): Si es True, retorna JsonResponse con error 403 para peticiones AJAX.
-    # Returns:
-    #     function: Decorador que envuelve la vista
-    # Ejemplo:
-    #     @login_required
-    #     @permission_required_custom('rrhh_personal.view_personal')
-    #     def lista_personal(request):
-    #         ...
-    #     @login_required
-    #     @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
-    #     def toggle_personal(request):
-    #         return JsonResponse({'status': 'success'})
+    """
+    Decorador para verificar permisos personalizados en vistas basadas en funciones.
+    
+    Puede usarse para permisos de modelo (ej: 'app.view_model') o permisos de acción
+    (ej: 'app.custom_action'). Si el usuario no tiene el permiso, redirige con mensaje
+    o retorna JSON según el tipo de petición.
+    
+    Args:
+        permiso_codigo (str): El código del permiso a verificar (ej: 'rrhh_personal.desactivar_personal').
+        raise_exception (bool): Si es True, levanta PermissionDenied. Si es False, redirige a la página de login.
+        is_ajax (bool): Si es True, retorna JsonResponse con error 403 para peticiones AJAX.
+        
+    Returns:
+        function: Decorador que envuelve la vista.
+        
+    Ejemplo:
+        @login_required
+        @permission_required_custom('rrhh_personal.view_personal')
+        def lista_personal(request):
+            ...
+            
+        @login_required
+        @permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
+        def toggle_personal(request):
+            return JsonResponse({'status': 'success'})
+    """
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
@@ -72,35 +81,43 @@ def permission_required_custom(permiso_codigo, raise_exception=True, is_ajax=Fal
 
 
 def permission_required_multiple(*permisos_codigos, require_all=True, is_ajax=False):
-    # Decorador para verificar multiples permisos.
-    # Permite verificar que el usuario tenga uno o varios permisos.
-    # Args:
-    #     *permisos_codigos: Codigos de permisos a verificar
-    #     require_all (bool): Si True, requiere TODOS los permisos.
-    #                        Si False, requiere AL MENOS UNO de los permisos.
-    #                        Default: True
-    #     is_ajax (bool): Si es True, retorna JsonResponse con error 403 para peticiones AJAX.
-    #                    Default: False
-    # Returns:
-    #     function: Decorador que envuelve la vista
-    # Ejemplo:
-    #     # Requiere AMBOS permisos
-    #     @permission_required_multiple(
-    #         'rrhh_personal.view_personal',
-    #         'rrhh_personal.add_personal',
-    #         require_all=True
-    #     )
-    #     def crear_personal(request):
-    #         ...
-    #     # Requiere AL MENOS UNO de los permisos (para AJAX)
-    #     @permission_required_multiple(
-    #         'rrhh_personal.desactivar_personal',
-    #         'rrhh_personal.activar_personal',
-    #         require_all=False,
-    #         is_ajax=True
-    #     )
-    #     def toggle_personal(request):
-    #         return JsonResponse({'status': 'success'})
+    """
+    Decorador para verificar múltiples permisos en vistas basadas en funciones.
+    
+    Permite verificar que el usuario tenga uno o varios permisos. Útil cuando una
+    vista requiere múltiples permisos o cuando se acepta cualquiera de varios permisos.
+    
+    Args:
+        *permisos_codigos: Códigos de permisos a verificar.
+        require_all (bool): Si True, requiere TODOS los permisos.
+                          Si False, requiere AL MENOS UNO de los permisos.
+                          Default: True.
+        is_ajax (bool): Si es True, retorna JsonResponse con error 403 para peticiones AJAX.
+                       Default: False.
+        
+    Returns:
+        function: Decorador que envuelve la vista.
+        
+    Ejemplo:
+        # Requiere AMBOS permisos
+        @permission_required_multiple(
+            'rrhh_personal.view_personal',
+            'rrhh_personal.add_personal',
+            require_all=True
+        )
+        def crear_personal(request):
+            ...
+            
+        # Requiere AL MENOS UNO de los permisos (para AJAX)
+        @permission_required_multiple(
+            'rrhh_personal.desactivar_personal',
+            'rrhh_personal.activar_personal',
+            require_all=False,
+            is_ajax=True
+        )
+        def toggle_personal(request):
+            return JsonResponse({'status': 'success'})
+    """
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):

@@ -155,19 +155,30 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="{% static 'gen_settings/js/datePickerChile.js' %}"></script>
 <script>
-    // Configuración global
+    /**
+     * ============================================================================
+     * AUDITORÍA - JavaScript para gestión de eventos de auditoría
+     * ============================================================================
+     */
+    
+    // Configuración global - URL de la API de auditoría (inyectada desde Django)
     const API_AUDITORIA_URL = "{% url 'reportes_auditoria:api_auditoria' %}";
     
-    // Variables globales
-    let paginaActual = 1;
-    let porPagina = 25;
-    let filtros = {};
+    // Variables globales de estado
+    let paginaActual = 1;  // Página actual de la paginación
+    let porPagina = 25;    // Elementos por página
+    let filtros = {};       // Objeto con los filtros aplicados actualmente
     
     // Variable para almacenar todos los eventos actuales (para exportar)
     let eventosActuales = [];
+    
+    // Timeout para debounce de búsqueda en tiempo real
     let timeoutBusqueda = null;
     
-    // Inicializar cuando el DOM esté listo
+    /**
+     * Inicializa todos los event listeners cuando el DOM está listo.
+     * Configura los date pickers, botones de filtros, búsqueda y exportación.
+     */
     document.addEventListener('DOMContentLoaded', function() {
         inicializarDatePickersChile();
         // NO cargar eventos automáticamente - esperar a que se apliquen filtros
@@ -227,6 +238,11 @@
         });
     });
     
+    /**
+     * Aplica los filtros seleccionados en el formulario y recarga los eventos.
+     * Construye el objeto de filtros con los valores de los campos del formulario
+     * y llama a cargarEventos() para actualizar la tabla.
+     */
     function aplicarFiltros() {
         const tipoEntidadValue = document.getElementById('filtroTipoEntidad').value;
         const busquedaValue = document.getElementById('filtroBusqueda').value.trim();
@@ -261,6 +277,11 @@
         cargarEventos();
     }
     
+    /**
+     * Limpia todos los filtros del formulario y resetea la tabla.
+     * Restablece todos los campos de filtro a valores vacíos y muestra
+     * el mensaje inicial de "No hay eventos mostrados".
+     */
     function limpiarFiltros() {
         document.getElementById('filtroTipoEntidad').value = '';
         document.getElementById('filtroFechaDesde').value = '';
@@ -277,6 +298,10 @@
         mostrarMensajeVacio();
     }
     
+    /**
+     * Muestra el mensaje inicial cuando no hay eventos cargados.
+     * Se muestra cuando se limpian los filtros o cuando la página se carga por primera vez.
+     */
     function mostrarMensajeVacio() {
         const tbody = document.getElementById('tablaEventosBody');
         tbody.innerHTML = `
@@ -293,6 +318,14 @@
         document.getElementById('paginacion').innerHTML = '';
     }
     
+    /**
+     * Obtiene el valor de un campo de fecha y lo convierte a formato ISO (YYYY-MM-DD).
+     * Si el campo usa el date picker de Chile, usa su método getValue().
+     * Si no, convierte manualmente desde formato DD/MM/YYYY.
+     * 
+     * @param {string} inputId - ID del elemento input de fecha.
+     * @returns {string|null} Fecha en formato ISO o null si no hay valor.
+     */
     function obtenerFechaISO(inputId) {
         const input = document.getElementById(inputId);
         if (!input || !input.value) return null;
@@ -311,6 +344,11 @@
         return null;
     }
     
+    /**
+     * Carga los eventos de auditoría desde la API con los filtros actuales.
+     * Muestra un indicador de carga mientras se realiza la petición.
+     * Actualiza la tabla y la paginación con los resultados recibidos.
+     */
     function cargarEventos() {
         const tbody = document.getElementById('tablaEventosBody');
         tbody.innerHTML = `
@@ -387,6 +425,13 @@
             });
     }
     
+    /**
+     * Renderiza la lista de eventos en la tabla HTML.
+     * Crea filas de tabla con la información de cada evento, incluyendo badges
+     * de colores según el tipo de entidad y acción.
+     * 
+     * @param {Array} eventos - Array de objetos evento a renderizar.
+     */
     function renderizarEventos(eventos) {
         const tbody = document.getElementById('tablaEventosBody');
         
@@ -436,6 +481,13 @@
         tbody.innerHTML = html;
     }
     
+    /**
+     * Renderiza los controles de paginación en la parte inferior de la tabla.
+     * Muestra botones de anterior/siguiente y números de página con elipsis
+     * cuando hay muchas páginas.
+     * 
+     * @param {Object} pagination - Objeto con información de paginación (page, pages, has_next, has_previous).
+     */
     function renderizarPaginacion(pagination) {
         const ul = document.getElementById('paginacion');
         
@@ -476,19 +528,37 @@
         ul.innerHTML = html;
     }
     
+    /**
+     * Cambia a una página específica y recarga los eventos.
+     * 
+     * @param {number} pagina - Número de página a cargar.
+     */
     function cambiarPagina(pagina) {
         paginaActual = pagina;
         cargarEventos();
     }
     
+    /**
+     * Convierte un nombre de campo en formato snake_case a formato legible.
+     * Ejemplo: "fecha_inicio" -> "Fecha Inicio"
+     * 
+     * @param {string} key - Nombre del campo en snake_case.
+     * @returns {string} Nombre del campo formateado.
+     */
     function formatearNombreCampo(key) {
-        // Convertir snake_case a formato legible
         return key
             .replace(/_/g, ' ')
             .replace(/\b\w/g, l => l.toUpperCase())
             .trim();
     }
     
+    /**
+     * Formatea un valor para mostrarlo en el modal de detalles.
+     * Maneja diferentes tipos de datos: null, boolean, arrays, objetos, strings.
+     * 
+     * @param {*} valor - Valor a formatear.
+     * @returns {string} HTML formateado del valor.
+     */
     function formatearValor(valor) {
         if (valor === null || valor === undefined) {
             return '<span class="text-muted">No especificado</span>';
@@ -507,6 +577,14 @@
         return escapeHtml(String(valor));
     }
     
+    /**
+     * Formatea un objeto JSON de datos previos/nuevos para mostrarlo en el modal.
+     * Filtra campos técnicos y genera una tabla HTML con los datos.
+     * 
+     * @param {Object} datos - Objeto con los datos a formatear.
+     * @param {string} titulo - Título a mostrar sobre la tabla.
+     * @returns {string} HTML de la tabla formateada o cadena vacía si no hay datos.
+     */
     function formatearDatosJSON(datos, titulo) {
         if (!datos || typeof datos !== 'object') {
             return '';
@@ -549,6 +627,12 @@
         return html;
     }
     
+    /**
+     * Muestra los detalles de un evento desde una fila de la tabla.
+     * Extrae el evento del atributo data-evento de la fila y llama a mostrarDetalles().
+     * 
+     * @param {HTMLElement} row - Elemento tr de la tabla con el evento.
+     */
     function mostrarDetallesDesdeRow(row) {
         try {
             const eventoJSON = row.getAttribute('data-evento');
@@ -564,6 +648,12 @@
         }
     }
     
+    /**
+     * Muestra el modal con los detalles completos de un evento de auditoría.
+     * Incluye información básica del evento y los datos previos/nuevos si existen.
+     * 
+     * @param {Object} evento - Objeto con la información del evento.
+     */
     function mostrarDetalles(evento) {
         
         let detallesHTML = `
@@ -620,6 +710,12 @@
         new bootstrap.Modal(document.getElementById('modalDetalles')).show();
     }
     
+    /**
+     * Obtiene la clase CSS del badge según el tipo de entidad.
+     * 
+     * @param {string} tipo - Tipo de entidad (PERSONAL, DOCUMENTO, EQUIPO, FAENA, OT).
+     * @returns {string} Clase CSS del badge de Bootstrap.
+     */
     function obtenerColorTipoEntidad(tipo) {
         const colores = {
             'PERSONAL': 'bg-primary',
@@ -631,8 +727,14 @@
         return colores[tipo] || 'bg-secondary';
     }
     
+    /**
+     * Genera el HTML del badge de acción con el color apropiado según el tipo de acción.
+     * Las acciones de creación/activación son verdes, modificación azules, eliminación rojas.
+     * 
+     * @param {string} accion - Código de la acción (ej: "CREADO", "MODIFICADO", "ELIMINADO").
+     * @returns {string} HTML del badge con la acción formateada.
+     */
     function obtenerBadgeAccion(accion) {
-        // Mapear acciones a colores
         if (accion.includes('CREADO') || accion.includes('AGREGADO') || accion.includes('ACTIVADO')) {
             return '<span class="badge bg-success">' + accion.replace(/_/g, ' ') + '</span>';
         } else if (accion.includes('MODIFICADO') || accion.includes('CAMBIADO')) {
@@ -643,14 +745,24 @@
         return '<span class="badge bg-secondary">' + accion.replace(/_/g, ' ') + '</span>';
     }
     
+    /**
+     * Escapa caracteres HTML especiales para prevenir XSS.
+     * 
+     * @param {string} text - Texto a escapar.
+     * @returns {string} Texto escapado seguro para HTML.
+     */
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
     
+    /**
+     * Exporta los eventos de auditoría actuales a un archivo Excel.
+     * Requiere que haya filtros aplicados para evitar exportar demasiados datos.
+     * Obtiene todos los eventos (sin paginación) y los formatea para Excel usando la librería XLSX.
+     */
     async function exportarAExcel() {
-        // Verificar que haya filtros aplicados
         const tieneFiltros = Object.keys(filtros).length > 0 && 
                             (filtros.tipo_entidad?.length > 0 || 
                              filtros.fecha_desde || 
@@ -710,7 +822,13 @@
                 return;
             }
             
-            // Función para formatear datos JSON para Excel
+            /**
+             * Formatea datos JSON para incluirlos en una celda de Excel.
+             * Convierte objetos complejos a una cadena legible separada por " | ".
+             * 
+             * @param {Object} datos - Objeto con los datos a formatear.
+             * @returns {string} Cadena formateada para Excel o cadena vacía si no hay datos.
+             */
             function formatearDatosParaExcel(datos) {
                 if (!datos || typeof datos !== 'object') {
                     return '';

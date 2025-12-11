@@ -1,0 +1,105 @@
+/* ============================================================================
+   ESTILOS PARA EL PANEL DE VENCIMIENTOS DE DOCUMENTOS
+   ============================================================================
+   Este archivo contiene los estilos CSS para el panel de vencimientos,
+   incluyendo estilos para tablas, filtros, badges y colores de estado.
+   ============================================================================ */
+
+/* Estilos consistentes con el sistema */
+.table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.badge-estado {
+    font-size: 0.875rem;
+    padding: 0.35em 0.65em;
+    font-weight: 500;
+}
+
+.filtros-card {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.filtros-card .form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+.filtros-card .form-control,
+.filtros-card .form-select {
+    font-size: 0.875rem;
+}
+
+.btn-editar {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.tab-content {
+    padding-top: 1.5rem;
+}
+
+.nav-tabs {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.nav-tabs .nav-link {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #495057;
+    padding: 0.75rem 1rem;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    border-bottom-color: #0d6efd;
+    border-bottom-width: 3px;
+}
+
+.card-header h5 {
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.table {
+    font-size: 0.875rem;
+}
+
+.table thead th {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.75rem;
+}
+
+.table tbody td {
+    padding: 0.75rem;
+    vertical-align: middle;
+}
+
+/* Colores personalizados para badges */
+.badge.bg-warning.amarillo {
+    background-color: #ffc107 !important;  /* Amarillo */
+    color: #000;
+}
+
+.badge.bg-warning.naranja {
+    background-color: #fd7e14 !important;  /* Naranjo */
+    color: #fff;
+}
+
+/* Colores de filas */
+.table-warning.amarillo {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+.table-warning.naranja {
+    background-color: rgba(253, 126, 20, 0.1) !important;
+}
+

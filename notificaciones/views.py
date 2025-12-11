@@ -28,11 +28,24 @@ import time
 @login_required
 @require_http_methods(["GET"])
 def api_notificaciones(request):
-    # API para obtener las notificaciones del usuario actual.
-    # Parámetros opcionales:
-    #   - limit: Número máximo de notificaciones a retornar (default: 10)
-    #   - leida: Filtrar por estado de lectura (true/false)
-    #   - archivada: Filtrar por estado de archivado (true/false)
+    """
+    API para obtener las notificaciones del usuario actual.
+    
+    Esta función permite obtener las notificaciones del usuario autenticado
+    con filtros opcionales por estado de lectura y archivado.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET:
+            - limit (int): Número máximo de notificaciones a retornar (default: 10)
+            - leida (str): Filtrar por estado de lectura ('true'/'false')
+            - archivada (str): Filtrar por estado de archivado ('true'/'false')
+            
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - notificaciones (list): Lista de notificaciones formateadas
+            - total (int): Total de notificaciones que cumplen los filtros
+    """
     limit = int(request.GET.get('limit', 10))
     leida = request.GET.get('leida')
     archivada = request.GET.get('archivada')
@@ -73,7 +86,17 @@ def api_notificaciones(request):
 @login_required
 @require_http_methods(["GET"])
 def api_contar_notificaciones_no_leidas(request):
-    # API para obtener el conteo de notificaciones no leídas del usuario actual.
+    """
+    API para obtener el conteo de notificaciones no leídas del usuario actual.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP.
+        
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - count (int): Número de notificaciones no leídas
+    """
     count = contar_notificaciones_no_leidas(request.user)
     return JsonResponse({
         'success': True,
@@ -85,8 +108,23 @@ def api_contar_notificaciones_no_leidas(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_marcar_leida(request, notificacion_id):
-    # API para marcar una notificación como leída.
-    # Retorna el nuevo contador de notificaciones no leídas.
+    """
+    API para marcar una notificación como leída.
+    
+    Marca una notificación específica como leída y envía un evento SSE
+    para actualizar el contador en tiempo real.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP.
+        notificacion_id (int): ID de la notificación a marcar como leída.
+        
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - message (str): Mensaje descriptivo
+            - count (int): Nuevo contador de notificaciones no leídas
+            - error (str): Mensaje de error si success=False
+    """
     try:
         notificacion = Notificacion.objects.get(id=notificacion_id, usuario=request.user)
         
@@ -122,8 +160,22 @@ def api_marcar_leida(request, notificacion_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_marcar_todas_leidas(request):
-    # API para marcar todas las notificaciones del usuario como leídas.
-    # Retorna el nuevo contador (debería ser 0).
+    """
+    API para marcar todas las notificaciones del usuario como leídas.
+    
+    Marca todas las notificaciones no leídas y no archivadas del usuario
+    como leídas y envía un evento SSE para actualizar el contador en tiempo real.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP.
+        
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - message (str): Mensaje descriptivo
+            - count (int): Nuevo contador de notificaciones no leídas (debería ser 0)
+            - error (str): Mensaje de error si success=False
+    """
     try:
         Notificacion.objects.filter(usuario=request.user, leida=False, archivada=False).update(
             leida=True,
@@ -156,7 +208,21 @@ def api_marcar_todas_leidas(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_archivar(request, notificacion_id):
-    # API para archivar una notificación.
+    """
+    API para archivar una notificación.
+    
+    Archiva una notificación específica del usuario autenticado.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP.
+        notificacion_id (int): ID de la notificación a archivar.
+        
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - message (str): Mensaje descriptivo
+            - error (str): Mensaje de error si success=False
+    """
     try:
         notificacion = Notificacion.objects.get(id=notificacion_id, usuario=request.user)
         notificacion.archivar()
@@ -175,7 +241,21 @@ def api_archivar(request, notificacion_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_desarchivar(request, notificacion_id):
-    # API para desarchivar una notificación.
+    """
+    API para desarchivar una notificación.
+    
+    Desarchiva una notificación específica del usuario autenticado.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP.
+        notificacion_id (int): ID de la notificación a desarchivar.
+        
+    Returns:
+        JsonResponse: Respuesta JSON con:
+            - success (bool): Indica si la operación fue exitosa
+            - message (str): Mensaje descriptivo
+            - error (str): Mensaje de error si success=False
+    """
     try:
         notificacion = Notificacion.objects.get(id=notificacion_id, usuario=request.user)
         notificacion.desarchivar()
@@ -192,7 +272,23 @@ def api_desarchivar(request, notificacion_id):
 
 @login_required
 def ver_notificaciones(request):
-    # Vista para mostrar la página de notificaciones.
+    """
+    Vista para mostrar la página principal de notificaciones.
+    
+    Renderiza la página HTML con las notificaciones del usuario autenticado,
+    permitiendo filtrar por estado de lectura, archivado y categoría.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP con parámetros GET opcionales:
+            - leida (str): Filtrar por estado de lectura ('true'/'false')
+            - archivada (str): Filtrar por estado de archivado ('true'/'false')
+            - categoria (str): Filtrar por categoría de notificación
+            
+    Returns:
+        HttpResponse: Renderiza el template 'notificaciones/notificaciones.html' con:
+            - notificaciones: QuerySet de notificaciones filtradas
+            - total_no_leidas: Contador de notificaciones no leídas
+    """
     from django.shortcuts import render
     
     notificaciones = Notificacion.objects.filter(
@@ -232,14 +328,41 @@ def ver_notificaciones(request):
 @login_required
 @require_http_methods(["GET"])
 def sse_notificaciones(request):
-    # Vista Server-Sent Events (SSE) para notificaciones en tiempo real.
-    # Mantiene una conexión abierta con el cliente y envía eventos cuando
-    # hay notificaciones nuevas. La conexión se cierra automáticamente después
-    # de 5 minutos de inactividad por seguridad.
+    """
+    Vista Server-Sent Events (SSE) para notificaciones en tiempo real.
+    
+    Mantiene una conexión abierta con el cliente y envía eventos cuando
+    hay notificaciones nuevas. La conexión se cierra automáticamente después
+    de 5 minutos de inactividad por seguridad.
+    
+    Tipos de eventos enviados:
+    - 'connected': Evento inicial cuando se establece la conexión
+    - 'notification': Nueva notificación recibida
+    - 'count_update': Actualización del contador de notificaciones no leídas
+    - 'heartbeat': Mantiene la conexión viva (cada 30 segundos)
+    - 'timeout': Conexión cerrada por timeout
+    - 'error': Error en la conexión
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP del usuario autenticado.
+        
+    Returns:
+        StreamingHttpResponse: Respuesta streaming con content_type='text/event-stream'
+                                que mantiene la conexión abierta y envía eventos SSE.
+    """
     import queue
     
     def event_stream():
-        # Generador que envía eventos SSE al cliente.
+        """
+        Generador que envía eventos SSE al cliente.
+        
+        Esta función es un generador que mantiene la conexión SSE abierta,
+        envía eventos cuando hay notificaciones nuevas y mantiene la conexión
+        viva con heartbeats periódicos.
+        
+        Yields:
+            str: Mensajes SSE formateados según el protocolo Server-Sent Events.
+        """
         import logging
         logger = logging.getLogger(__name__)
         
