@@ -347,44 +347,80 @@ function filtrarEquiposLocalmente() {
     const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';  // ID de empresa (no se usa en filtro local)
     const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';  // Nombre de faena (no se usa en filtro local)
     
-    // Paso 2: Filtrar equipos localmente basándose en el texto de búsqueda
-    // Convertir término de búsqueda a minúsculas para comparación case-insensitive
-    const searchLower = search.toLowerCase();
+    // Paso 2: Validar que window.equipos esté disponible
+    if (!window.equipos || !Array.isArray(window.equipos)) {
+        console.error('window.equipos no está disponible o no es un array');
+        return;
+    }
     
-    // Paso 3: Filtrar equipos según criterios de búsqueda
+    // Paso 3: Filtrar equipos localmente basándose en el texto de búsqueda
+    // Convertir término de búsqueda a minúsculas y eliminar espacios en blanco
+    const searchTrimmed = search.trim();
+    const searchLower = searchTrimmed.toLowerCase();
+    
+    // Paso 4: Filtrar equipos según criterios de búsqueda
     equiposFiltrados = window.equipos.filter(equipo => {
-        // Paso 3.1: Búsqueda por nombre, código interno o modelo
-        // El equipo coincide si no hay búsqueda o si alguno de estos campos contiene el término
-        const matchBusqueda = !searchLower || 
-            (equipo.nombreEquipo && equipo.nombreEquipo.toLowerCase().includes(searchLower)) ||
-            (equipo.codigoInterno && equipo.codigoInterno.toLowerCase().includes(searchLower)) ||
-            (equipo.modeloEquipo && equipo.modeloEquipo.toLowerCase().includes(searchLower));
+        // Paso 4.1: Búsqueda por nombre, código interno o modelo
+        // Si no hay búsqueda, incluir todos los equipos
+        let matchBusqueda = true;
+        if (searchLower) {
+            // Si hay búsqueda, verificar si alguno de los campos contiene el término
+            const nombreMatch = equipo.nombreEquipo ? equipo.nombreEquipo.toLowerCase().includes(searchLower) : false;
+            const codigoMatch = equipo.codigoInterno ? equipo.codigoInterno.toLowerCase().includes(searchLower) : false;
+            const modeloMatch = equipo.modeloEquipo ? equipo.modeloEquipo.toLowerCase().includes(searchLower) : false;
+            matchBusqueda = nombreMatch || codigoMatch || modeloMatch;
+        }
         
-        // Paso 3.2: Filtro de empresa (si está seleccionado)
+        // Paso 4.2: Filtro de empresa (si está seleccionado)
         // El equipo coincide si no hay filtro de empresa o si su empresa coincide
         const matchEmpresa = !empresa || (equipo.empresa && equipo.empresa === empresa);
         
-        // Paso 3.3: Filtro de faena (si está seleccionado)
-        // Este filtro requiere buscar en las asignaciones a faenas
+        // Paso 4.3: Filtro de faena (si está seleccionado)
+        // Este filtro requiere buscar en las asignaciones a faenas que estén activas en el mes actual
         let matchFaena = true;  // Por defecto, todos los equipos coinciden
         if (faena) {
+            // Obtener rango de fechas del mes actual
+            const fechaInicioMes = window.fechaInicioMes ? new Date(window.fechaInicioMes) : null;
+            const fechaFinMes = window.fechaFinMes ? new Date(window.fechaFinMes) : null;
+            
             // Obtener asignaciones del equipo desde window.asignacionesFaena
-            const asignacionesEquipo = (window.asignacionesFaena || []).filter(asig => asig.equipo_id === equipo.equipo_id);
+            const asignacionesEquipo = (window.asignacionesFaena || []).filter(asig => {
+                // Filtrar solo asignaciones de este equipo
+                if (asig.equipo_id !== equipo.equipo_id) return false;
+                
+                // Verificar que la asignación esté activa en el mes actual
+                if (fechaInicioMes && fechaFinMes) {
+                    const fechaInicioAsig = asig.fecha_inicio ? new Date(asig.fecha_inicio.split('T')[0]) : null;
+                    const fechaFinAsig = asig.fecha_fin ? new Date(asig.fecha_fin.split('T')[0]) : null;
+                    
+                    // La asignación está activa si:
+                    // - Comienza antes o en el último día del mes Y
+                    // - Termina después o en el primer día del mes, o no tiene fecha fin
+                    if (fechaInicioAsig) {
+                        const comienzaAntesDelFin = fechaInicioAsig <= fechaFinMes;
+                        const terminaDespuesDelInicio = !fechaFinAsig || fechaFinAsig >= fechaInicioMes;
+                        return comienzaAntesDelFin && terminaDespuesDelInicio;
+                    }
+                }
+                return false;
+            });
+            
             if (faena === 'Sin asignar') {
-                // CASO: Buscar equipos sin asignaciones activas
-                matchFaena = asignacionesEquipo.length === 0;  // No tiene asignaciones
+                // CASO: Buscar equipos sin asignaciones activas en el mes actual
+                matchFaena = asignacionesEquipo.length === 0;  // No tiene asignaciones activas
             } else {
-                // CASO: Buscar equipos con asignación a la faena específica
-                matchFaena = asignacionesEquipo.some(asig => asig.faena_nombre === faena);  // Tiene asignación a esta faena
+                // CASO: Buscar equipos con asignación activa a la faena específica
+                matchFaena = asignacionesEquipo.some(asig => asig.faena_nombre === faena);  // Tiene asignación activa a esta faena
             }
         }
         
-        // Paso 3.4: El equipo se incluye si cumple todos los criterios
+        // Paso 4.4: El equipo se incluye si cumple todos los criterios
         return matchBusqueda && matchEmpresa && matchFaena;
     });
     
-    // Paso 4: Re-renderizar calendario con equipos filtrados
+    // Paso 5: Re-renderizar calendario con equipos filtrados
     // Esto actualiza la tabla sin recargar la página
+    console.log(`Filtrado: ${equiposFiltrados.length} de ${window.equipos.length} equipos`);  // Debug
     generarCalendarioMaquinarias();
 }
 

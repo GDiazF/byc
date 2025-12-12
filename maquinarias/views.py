@@ -4395,7 +4395,111 @@ def api_guardar_orden_trabajo(request):
                 cambios_registrados.append('fecha_fin')  # Marcar que se cambió la fecha de fin
                 ot.fecha_fin = None  # Eliminar fecha de fin de la OT
             
-            # Paso 9: Actualizar personal asignado a la orden
+            # Paso 9: Validar disponibilidad antes de actualizar personal o fechas
+            # Esta validación asegura que no se asignen equipos o mecánicos que ya están ocupados
+            equipo_id = ot.equipo_id.equipo_id  # ID del equipo de la OT
+            fecha_inicio_ot = ot.fecha_inicio  # Fecha de inicio de la OT
+            fecha_fin_nueva = data.get('fecha_fin')  # Nueva fecha de fin (si se proporciona)
+            personal_ids_nuevo = data.get('personal_asignado', [])  # Nuevo personal asignado
+            
+            # Solo validar si hay fecha de inicio y hay cambios en personal o fecha fin
+            if fecha_inicio_ot:
+                # Determinar fecha fin a usar para validación
+                fecha_fin_validacion = None
+                if fecha_fin_nueva:
+                    try:
+                        fecha_fin_validacion = datetime.strptime(fecha_fin_nueva, '%Y-%m-%d').date()
+                    except (ValueError, TypeError):
+                        pass
+                elif ot.fecha_fin:
+                    fecha_fin_validacion = ot.fecha_fin
+                
+                # Validar disponibilidad del equipo
+                from django.utils import timezone
+                from ope_calendario.models import AsignacionEquipoFaena
+                from datetime import timedelta
+                
+                # Verificar conflictos de equipo con otras OTs
+                ots_equipo_conflicto = OrdenTrabajo.objects.filter(
+                    equipo_id=equipo_id,
+                    fecha_inicio__isnull=False
+                ).exclude(
+                    estado_ot_id__nombre__iexact='FINALIZADA'
+                ).exclude(
+                    estado_ot_id__nombre__iexact='CANCELADA'
+                ).exclude(
+                    ot_id=ot_id  # Excluir la OT actual
+                )
+                
+                nueva_fin = fecha_fin_validacion if fecha_fin_validacion else timezone.now().date() + timedelta(days=365)
+                
+                # Acumular todos los conflictos antes de retornar
+                conflictos_equipo_edicion = []
+                conflictos_personal_edicion = []
+                
+                # Validar conflictos de equipo
+                for ot_conflicto in ots_equipo_conflicto:
+                    if ot_conflicto.fecha_inicio:
+                        ot_fin = ot_conflicto.fecha_fin if ot_conflicto.fecha_fin else timezone.now().date() + timedelta(days=365)
+                        if ot_conflicto.fecha_inicio <= nueva_fin and fecha_inicio_ot <= ot_fin:
+                            conflictos_equipo_edicion.append({
+                                'tipo': 'ot',
+                                'folio': ot_conflicto.folio,
+                                'fecha_inicio': ot_conflicto.fecha_inicio.strftime('%d/%m/%Y') if ot_conflicto.fecha_inicio else 'N/A',
+                                'fecha_fin': ot_conflicto.fecha_fin.strftime('%d/%m/%Y') if ot_conflicto.fecha_fin else 'Indefinida'
+                            })
+                
+                # Validar disponibilidad del personal asignado
+                if personal_ids_nuevo:
+                    from ope_calendario.models import AsignacionFaena
+                    from rrhh.models import Personal
+                    
+                    for personal_id in personal_ids_nuevo:
+                        # Verificar conflictos con otras OTs
+                        ots_personal_conflicto = OrdenTrabajo.objects.filter(
+                            personal_asignado__personal_id=personal_id,
+                            fecha_inicio__isnull=False
+                        ).exclude(
+                            estado_ot_id__nombre__iexact='FINALIZADA'
+                        ).exclude(
+                            estado_ot_id__nombre__iexact='CANCELADA'
+                        ).exclude(
+                            ot_id=ot_id  # Excluir la OT actual
+                        )
+                        
+                        for ot_conflicto in ots_personal_conflicto:
+                            if ot_conflicto.fecha_inicio:
+                                ot_fin = ot_conflicto.fecha_fin if ot_conflicto.fecha_fin else timezone.now().date() + timedelta(days=365)
+                                if ot_conflicto.fecha_inicio <= nueva_fin and fecha_inicio_ot <= ot_fin:
+                                    personal_obj = Personal.objects.filter(personal_id=personal_id).first()
+                                    nombre_personal = f"{personal_obj.nombre} {personal_obj.apepat}" if personal_obj else f"ID: {personal_id}"
+                                    conflictos_personal_edicion.append({
+                                        'personal_id': personal_id,
+                                        'personal_nombre': nombre_personal,
+                                        'tipo': 'ot',
+                                        'folio': ot_conflicto.folio,
+                                        'fecha_inicio': ot_conflicto.fecha_inicio.strftime('%d/%m/%Y') if ot_conflicto.fecha_inicio else 'N/A',
+                                        'fecha_fin': ot_conflicto.fecha_fin.strftime('%d/%m/%Y') if ot_conflicto.fecha_fin else 'Indefinida'
+                                    })
+                
+                # Si hay conflictos, retornar todos juntos
+                if conflictos_equipo_edicion or conflictos_personal_edicion:
+                    mensaje = 'No se puede guardar la orden de trabajo debido a conflictos de disponibilidad'
+                    if conflictos_equipo_edicion:
+                        mensaje += '. El equipo está asignado a otra OT'
+                    if conflictos_personal_edicion:
+                        mensaje += '. Uno o más mecánicos están asignados a otra OT'
+                    
+                    return JsonResponse({
+                        'success': False,
+                        'message': mensaje,
+                        'conflictos': {
+                            'equipo': conflictos_equipo_edicion,
+                            'personal': conflictos_personal_edicion
+                        }
+                    }, status=400)
+            
+            # Paso 10: Actualizar personal asignado a la orden
             # El personal asignado es una relación many-to-many que puede cambiar
             personal_ids = data.get('personal_asignado', [])  # Lista de IDs de personal desde los datos
             if personal_ids is not None:
@@ -4429,7 +4533,7 @@ def api_guardar_orden_trabajo(request):
                     )
                     cambios_registrados.append('personal_asignado')  # Marcar que se cambió el personal asignado
             
-            # Paso 10: Actualizar estados y fecha de fin en la orden
+            # Paso 11: Actualizar estados y fecha de fin en la orden
             # Estos son los campos principales que se pueden modificar en modo edición
             ot.estado_ot_id = estado_ot  # Actualizar estado OT
             ot.estado_equipo_id = estado_equipo  # Actualizar estado de equipo

@@ -1627,30 +1627,53 @@ function validarFechaFinEdicion() {
 
 // Función para validar disponibilidad de equipo y mecánico
 async function validarDisponibilidad() {
-    // Solo validar en modo creación
-    if (window.esEdicion) return;
-    
     const equipoSelect = document.getElementById('equipo_id');
-    const fechaInicioInput = document.getElementById('fecha_inicio');
-    const fechaFinInput = document.getElementById('fecha_fin');
     const validacionDiv = document.getElementById('validacionDisponibilidad');
     const alertDiv = document.getElementById('alertDisponibilidad');
     
-    if (!equipoSelect || !fechaInicioInput || !validacionDiv || !alertDiv) return;
+    if (!validacionDiv || !alertDiv) return;
     
-    const equipoId = equipoSelect.value;
-    const personalIds = personalSeleccionados;
-    
+    let equipoId = null;
     let fechaInicio = null;
     let fechaFin = null;
+    let otId = null;
     
-    if (typeof DatePickerChile !== 'undefined') {
-        fechaInicio = DatePickerChile.getValor('fecha_inicio');
-        fechaFin = DatePickerChile.getValor('fecha_fin');
+    if (window.esEdicion) {
+        // Modo edición: usar datos de la OT actual
+        otId = document.getElementById('ot_id')?.value || null;
+        if (window.otData) {
+            equipoId = window.otData.equipo_id || null;
+            fechaInicio = window.otData.fecha_inicio || null;
+            
+            // Obtener fecha_fin del formulario de edición
+            const fechaFinInput = document.getElementById('fecha_fin_edicion');
+            if (fechaFinInput) {
+                if (typeof DatePickerChile !== 'undefined') {
+                    fechaFin = DatePickerChile.getValor('fecha_fin_edicion');
+                } else {
+                    fechaFin = fechaFinInput.value || null;
+                }
+            }
+        }
     } else {
-        fechaInicio = fechaInicioInput.value || null;
-        fechaFin = fechaFinInput.value || null;
+        // Modo creación: usar datos del formulario
+        if (!equipoSelect) return;
+        
+        const fechaInicioInput = document.getElementById('fecha_inicio');
+        const fechaFinInput = document.getElementById('fecha_fin');
+        
+        equipoId = equipoSelect.value;
+        
+        if (typeof DatePickerChile !== 'undefined') {
+            fechaInicio = DatePickerChile.getValor('fecha_inicio');
+            fechaFin = DatePickerChile.getValor('fecha_fin');
+        } else {
+            if (fechaInicioInput) fechaInicio = fechaInicioInput.value || null;
+            if (fechaFinInput) fechaFin = fechaFinInput.value || null;
+        }
     }
+    
+    const personalIds = personalSeleccionados || [];
     
     // Si no hay fecha de inicio, no validar
     if (!fechaInicio) {
@@ -1668,25 +1691,32 @@ async function validarDisponibilidad() {
         fechaFin = `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
     
-    // Si no hay equipo seleccionado, no validar
+    // Si no hay equipo ni personal seleccionado, no validar
     if (!equipoId && personalIds.length === 0) {
         validacionDiv.style.display = 'none';
         return;
     }
     
     try {
+        const requestBody = {
+            equipo_id: equipoId || null,
+            personal_ids: personalIds,
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin || null
+        };
+        
+        // En modo edición, incluir ot_id para excluir la OT actual de la validación
+        if (otId) {
+            requestBody.ot_id = otId;
+        }
+        
         const response = await fetch(window.apiValidarDisponibilidad, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': window.csrfToken
             },
-            body: JSON.stringify({
-                equipo_id: equipoId || null,
-                personal_ids: personalIds,
-                fecha_inicio: fechaInicio,
-                fecha_fin: fechaFin || null
-            })
+            body: JSON.stringify(requestBody)
         });
         
         const data = await response.json();
@@ -1883,6 +1913,85 @@ async function guardarOrdenTrabajo(event) {
         formData.estados_pauta = estadosPauta;
         formData.estados_secciones = estadosSecciones;
         
+        // Validar disponibilidad antes de guardar en modo edición
+        if (window.otData && window.otData.equipo_id && window.otData.fecha_inicio) {
+            const equipoId = window.otData.equipo_id;
+            const fechaInicio = window.otData.fecha_inicio;
+            const fechaFinValidacion = fechaFin || null;
+            const otId = document.getElementById('ot_id').value;
+            
+            // Convertir fecha al formato YYYY-MM-DD si es necesario
+            let fechaInicioFormato = fechaInicio;
+            let fechaFinFormato = fechaFinValidacion;
+            
+            if (fechaInicio && fechaInicio.includes('/')) {
+                const parts = fechaInicio.split('/');
+                fechaInicioFormato = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            if (fechaFinValidacion && fechaFinValidacion.includes('/')) {
+                const parts = fechaFinValidacion.split('/');
+                fechaFinFormato = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            
+            try {
+                const validacionResponse = await fetch(window.apiValidarDisponibilidad, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': window.csrfToken
+                    },
+                    body: JSON.stringify({
+                        equipo_id: equipoId,
+                        personal_ids: personalSeleccionados || [],
+                        fecha_inicio: fechaInicioFormato,
+                        fecha_fin: fechaFinFormato || null,
+                        ot_id: otId
+                    })
+                });
+                
+                const validacionData = await validacionResponse.json();
+                
+                if (validacionData.success && !validacionData.disponible) {
+                    // Hay conflictos de disponibilidad
+                    const conflictos = validacionData.conflictos || {};
+                    const conflictosEquipo = conflictos.equipo || [];
+                    const conflictosPersonal = conflictos.personal || [];
+                    
+                    let mensajes = [];
+                    
+                    if (conflictosEquipo.length > 0) {
+                        conflictosEquipo.forEach(conflicto => {
+                            if (conflicto.tipo === 'faena') {
+                                mensajes.push(`El equipo está asignado a faena "${conflicto.faena}" del ${conflicto.fecha_inicio} al ${conflicto.fecha_fin}`);
+                            } else if (conflicto.tipo === 'ot') {
+                                mensajes.push(`El equipo está asignado a OT ${conflicto.folio} del ${conflicto.fecha_inicio} al ${conflicto.fecha_fin}`);
+                            }
+                        });
+                    }
+                    
+                    if (conflictosPersonal.length > 0) {
+                        conflictosPersonal.forEach(conflicto => {
+                            const nombrePersonal = conflicto.personal_nombre || `ID: ${conflicto.personal_id}`;
+                            if (conflicto.tipo === 'faena') {
+                                mensajes.push(`El mecánico "${nombrePersonal}" está asignado a faena "${conflicto.faena}" del ${conflicto.fecha_inicio} al ${conflicto.fecha_fin}`);
+                            } else if (conflicto.tipo === 'ot') {
+                                mensajes.push(`El mecánico "${nombrePersonal}" está asignado a OT ${conflicto.folio} del ${conflicto.fecha_inicio} al ${conflicto.fecha_fin}`);
+                            }
+                        });
+                    }
+                    
+                    if (mensajes.length > 0) {
+                        // Usar el mismo modal que en creación
+                        mostrarModalConflictos(validacionData.conflictos);
+                        return; // Detener el guardado
+                    }
+                }
+            } catch (error) {
+                console.error('Error al validar disponibilidad:', error);
+                // Continuar con el guardado si hay error en la validación
+            }
+        }
+        
         // Enviar solo actualización de estados
         fetch(window.apiGuardarOT, {
             method: 'POST',
@@ -1892,7 +2001,18 @@ async function guardarOrdenTrabajo(event) {
             },
             body: JSON.stringify(formData)
         })
-        .then(response => response.json())
+        .then(response => {
+            // Verificar si la respuesta es un error HTTP
+            if (!response.ok) {
+                // Si es un error 400, intentar parsear el JSON para obtener los conflictos
+                return response.json().then(data => {
+                    throw { isHttpError: true, data: data };
+                }).catch(() => {
+                    throw { isHttpError: true, data: { success: false, message: 'Error al actualizar la orden de trabajo' } };
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             console.log('Respuesta del servidor:', data);
             if (data.success) {
@@ -1917,12 +2037,25 @@ async function guardarOrdenTrabajo(event) {
                     window.location.replace('/maquinarias/ordenes-trabajo/');
                 }, 1500);
             } else {
-                alert('Error al actualizar: ' + (data.message || 'Error desconocido'));
+                // Mostrar error en modal si hay conflictos de disponibilidad
+                if (data.conflictos) {
+                    mostrarModalConflictos(data.conflictos);
+                } else {
+                    alert('Error al actualizar: ' + (data.message || 'Error desconocido'));
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error de conexión al actualizar');
+            // Si es un error HTTP con datos, mostrar el modal de conflictos
+            if (error.isHttpError && error.data && error.data.conflictos) {
+                mostrarModalConflictos(error.data.conflictos);
+            } else if (error.isHttpError && error.data) {
+                // Si hay mensaje pero no conflictos, mostrar alert
+                alert('Error al actualizar: ' + (error.data.message || 'Error desconocido'));
+            } else {
+                alert('Error de conexión al actualizar');
+            }
         });
         
         return;

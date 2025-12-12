@@ -696,7 +696,7 @@ def api_dashboard_operaciones(request):
         # Obtener detalles de equipos con anomalias (Operativo con anomalias)
         # Buscar todos los estados de equipo que contengan "anomalia" o "anomalia"
         estados_anomalias = EstadoEquipo.objects.filter(
-            Q(nombre__icontains='anomalia') | Q(nombre__icontains='anomalia')
+            Q(nombre__icontains='anomalia') | Q(nombre__icontains='anomalía')
         )
         
         if estados_anomalias.exists():
@@ -1221,7 +1221,7 @@ def api_dashboard_maquinarias(request):
         # Obtener detalles de equipos con anomalias (Operativo con anomalias)
         # Buscar todos los estados de equipo que contengan "anomalia" o "anomalia"
         estados_anomalias = EstadoEquipo.objects.filter(
-            Q(nombre__icontains='anomalia') | Q(nombre__icontains='anomalia')
+            Q(nombre__icontains='anomalia') | Q(nombre__icontains='anomalía')
         )
         
         if estados_anomalias.exists():
@@ -1306,6 +1306,19 @@ def api_dashboard_maquinarias(request):
                         'observaciones': ot.observaciones or 'Sin observaciones'
                     })
         
+        # Obtener detalles de equipos inactivos
+        equipos_inactivos_detalle = []
+        equipos_inactivos_query = Equipo.objects.filter(activo=False).order_by('nombreEquipo')
+        for equipo in equipos_inactivos_query:
+            equipos_inactivos_detalle.append({
+                'equipo': equipo.nombreEquipo,
+                'codigo': equipo.codigoInterno if hasattr(equipo, 'codigoInterno') and equipo.codigoInterno else 'N/A',
+                'empresa': equipo.empresa_id.nomFantasia if equipo.empresa_id else 'N/A',
+                'tipo': equipo.modeloEquipo_id.tipoEquipo_id.tipoEquipo if equipo.modeloEquipo_id and equipo.modeloEquipo_id.tipoEquipo_id else 'N/A',
+                'marca': equipo.modeloEquipo_id.marcaEquipo_id.marcaEquipo if equipo.modeloEquipo_id and equipo.modeloEquipo_id.marcaEquipo_id else 'N/A',
+                'modelo': equipo.modeloEquipo_id.modeloEquipo if equipo.modeloEquipo_id else 'N/A'
+            })
+        
         # Ranking de equipos mas intervenidos (mas OTs historicas)
         ranking_equipos_intervenidos = Equipo.objects.filter(
             activo=True
@@ -1338,6 +1351,7 @@ def api_dashboard_maquinarias(request):
                 'equipos_en_faena_detalle': equipos_en_faena_detalle,
                 'equipos_con_anomalias_detalle': equipos_con_anomalias_detalle,
                 'equipos_shutdown_detalle': equipos_shutdown_detalle,
+                'equipos_inactivos_detalle': equipos_inactivos_detalle,
                 'documentos_maquinarias_por_vencer': documentos_maquinarias_por_vencer,
                 'total_documentos_maquinarias_por_vencer': len(documentos_maquinarias_por_vencer),
                 'ranking_equipos_intervenidos': ranking_equipos_lista,

@@ -242,6 +242,11 @@ function showConfirm(message, title = 'Confirmar') {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📅 Inicializando calendario...');
     
+    // Inicializar filteredPersonal con todos los datos al cargar la página
+    if (calendarioData && calendarioData.personal) {
+        filteredPersonal = [...calendarioData.personal];
+    }
+    
     // NO tocar la leyenda de estados - dejar que el template HTML lo maneje
     
     // Generar calendario
@@ -356,9 +361,13 @@ function generateCalendar() {
     headerRow.innerHTML = headerHTML;
     
     // Generar filas (personal)
-    const tbody = document.getElementById('calendarBody');
-    filteredPersonal = calendarioData.personal || [];
+    // Usar filteredPersonal que ya fue filtrado por filtrarPersonalLocalmente()
+    // Solo inicializar si está vacío o no está definido (primera vez o después de recargar)
+    if (!filteredPersonal || filteredPersonal.length === 0) {
+        filteredPersonal = calendarioData.personal ? [...calendarioData.personal] : [];
+    }
     
+    const tbody = document.getElementById('calendarBody');
     let bodyHTML = '';
     
     filteredPersonal.forEach(persona => {
@@ -879,21 +888,31 @@ function setupFilters() {
  * Re-renderiza el calendario con el personal filtrado.
  */
 function filtrarPersonalLocalmente() {
+    // Validar que calendarioData.personal esté disponible
+    if (!calendarioData || !calendarioData.personal || !Array.isArray(calendarioData.personal)) {
+        console.error('calendarioData.personal no está disponible o no es un array');
+        return;
+    }
+    
     const search = document.getElementById('searchInput')?.value || '';
     const faena = document.getElementById('faenaFilter')?.value || '';
     const cargo = document.getElementById('cargoFilter')?.value || '';
     const empresa = document.getElementById('empresaFilter')?.value || '';
     
     // Filtrar personal localmente basándose en el texto de búsqueda
-    const searchLower = search.toLowerCase();
+    // Eliminar espacios en blanco y convertir a minúsculas
+    const searchTrimmed = search.trim();
+    const searchLower = searchTrimmed.toLowerCase();
     
     filteredPersonal = calendarioData.personal.filter(persona => {
         // Búsqueda por nombre completo o RUT
-        const nombreCompleto = `${persona.nombre} ${persona.apepat} ${persona.apemat}`.toLowerCase();
-        const rut = `${persona.rut}${persona.dvrut}`.toLowerCase();
-        const matchBusqueda = !searchLower || 
-            nombreCompleto.includes(searchLower) || 
-            rut.includes(searchLower);
+        // Si no hay búsqueda, incluir todos los registros
+        let matchBusqueda = true;
+        if (searchLower) {
+            const nombreCompleto = `${persona.nombre || ''} ${persona.apepat || ''} ${persona.apemat || ''}`.toLowerCase();
+            const rut = `${persona.rut || ''}${persona.dvrut || ''}`.toLowerCase();
+            matchBusqueda = nombreCompleto.includes(searchLower) || rut.includes(searchLower);
+        }
         
         // Filtro de faena (si está seleccionado)
         let matchFaena = true;

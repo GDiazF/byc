@@ -1287,10 +1287,10 @@ function renderizarDashboardMaquinarias(data, container) {
             'Disponibles': '#198754', // success
             'En Uso': '#0dcaf0', // info
             'En Faena': '#ffc107', // warning
-            'Inactivos': '#6c757d', // secondary
+            'Inactivos': '#8b0000', // dark red - color diferente para inactivos
             'Shutdown': '#dc3545', // danger
             'Operativo con anomalias': '#fd7e14', // warning variant
-            'Operativo con anomalias': '#fd7e14', // warning variant (con mayuscula)
+            'Operativo con anomalías': '#fd7e14', // warning variant (con tilde)
             'En Mantenimiento': '#fd7e14', // warning variant
             'En Reparacion': '#e83e8c', // pink
             'Fuera de Servicio': '#6610f2', // purple
@@ -1311,10 +1311,13 @@ function renderizarDashboardMaquinarias(data, container) {
                 }
             }
             // Si no se encuentra, usar un color por defecto basado en el nombre
+            if (estadoLower.includes('inactivo') || estadoLower.includes('inactivos')) {
+                return '#8b0000'; // dark red - color diferente para inactivos
+            }
             if (estadoLower.includes('shutdown') || estadoLower.includes('fuera')) {
                 return '#dc3545'; // danger
             }
-            if (estadoLower.includes('anomalia') || estadoLower.includes('mantenimiento')) {
+            if (estadoLower.includes('anomalia') || estadoLower.includes('anomalía') || estadoLower.includes('mantenimiento')) {
                 return '#fd7e14'; // warning
             }
             if (estadoLower.includes('Reparacion') || estadoLower.includes('reparacion')) {
@@ -1474,14 +1477,14 @@ function mostrarDetallesEquipos(estado, data) {
                 </div>
             </div>
         `;
-    } else if (estadoLower.includes('anomalia') || estadoLower.includes('anomalia')) {
+    } else if (estadoLower.includes('anomalia') || estadoLower.includes('anomalía')) {
         const detalles = data.equipos_con_anomalias_detalle || [];
         if (detalles.length === 0) {
-            alert(`No hay equipos con anomalias`);
+            alert(`No hay equipos operativos con anomalías`);
             return;
         }
         
-        titulo = 'Equipos Operativos con anomalias';
+        titulo = 'Equipos Operativos con Anomalías';
         modalHTML = `
             <div class="modal fade" id="modalDetallesEquipos" tabindex="-1" aria-labelledby="modalDetallesEquiposLabel" aria-hidden="true">
                 <div class="modal-dialog modal-xl">
@@ -1563,6 +1566,57 @@ function mostrarDetallesEquipos(estado, data) {
                                                 <td>${eq.fecha_inicio}</td>
                                                 <td>${eq.fecha_fin}</td>
                                                 <td>${eq.observaciones}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else if (estadoLower.includes('inactivo') || estadoLower.includes('inactivos')) {
+        const detalles = data.equipos_inactivos_detalle || [];
+        if (detalles.length === 0) {
+            alert(`No hay equipos inactivos`);
+            return;
+        }
+        
+        titulo = 'Equipos Inactivos';
+        modalHTML = `
+            <div class="modal fade" id="modalDetallesEquipos" tabindex="-1" aria-labelledby="modalDetallesEquiposLabel" aria-hidden="true">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header bg-dark text-white">
+                            <h5 class="modal-title" id="modalDetallesEquiposLabel">${titulo}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="table table-sm table-hover">
+                                    <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 10;">
+                                        <tr>
+                                            <th>Equipo</th>
+                                            <th>Código</th>
+                                            <th>Empresa</th>
+                                            <th>Tipo</th>
+                                            <th>Marca</th>
+                                            <th>Modelo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${detalles.map(eq => `
+                                            <tr>
+                                                <td>${eq.equipo}</td>
+                                                <td>${eq.codigo}</td>
+                                                <td>${eq.empresa}</td>
+                                                <td>${eq.tipo}</td>
+                                                <td>${eq.marca}</td>
+                                                <td>${eq.modelo}</td>
                                             </tr>
                                         `).join('')}
                                     </tbody>
