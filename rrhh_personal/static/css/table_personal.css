@@ -82,8 +82,8 @@ label.small {
 }
 
 .form-check-input:checked {
-    background-color: #198754;
-    border-color: #198754;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
 }
 
 /* Hover en filas */
@@ -95,10 +95,6 @@ label.small {
 .sortable {
     user-select: none;
     cursor: pointer;
-}
-
-.sortable:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .sortable i {

@@ -1213,6 +1213,30 @@ function updateRowById(type, id, data) {
     }
 }
 
+// Función helper para convertir fecha ISO a formato chileno con guiones (DD-MM-YYYY)
+function convertirFechaISOChilenoConGuiones(fechaISO) {
+    if (!fechaISO) return '';
+    
+    // Si ya está en formato chileno con guiones (DD-MM-YYYY), retornarlo tal cual
+    if (fechaISO.match(/^\d{2}-\d{2}-\d{4}$/)) {
+        return fechaISO;
+    }
+    
+    // Si está en formato ISO (YYYY-MM-DD), convertir a DD-MM-YYYY
+    if (fechaISO.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const partes = fechaISO.split('-');
+        const [anio, mes, dia] = partes;
+        return `${dia.padStart(2, '0')}-${mes.padStart(2, '0')}-${anio}`;
+    }
+    
+    // Si está en formato chileno con barras (DD/MM/YYYY), convertir a guiones
+    if (fechaISO.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+        return fechaISO.replace(/\//g, '-');
+    }
+    
+    return fechaISO;
+}
+
 // Función helper para calcular si un documento está vigente o vencido
 function calcularEstadoVigencia(fechaVencimiento) {
     if (!fechaVencimiento) return '<span class="badge bg-secondary">Sin fecha</span>';
@@ -1222,14 +1246,18 @@ function calcularEstadoVigencia(fechaVencimiento) {
     
     let vencimiento;
     
-    // Soportar múltiples formatos de fecha: DD/MM/YYYY o YYYY-MM-DD
+    // Soportar múltiples formatos de fecha: DD-MM-YYYY, DD/MM/YYYY o YYYY-MM-DD
     if (fechaVencimiento.includes('/')) {
         // Formato DD/MM/YYYY
         const [day, month, year] = fechaVencimiento.split('/').map(Number);
         vencimiento = new Date(year, month - 1, day);
-    } else {
-        // Formato YYYY-MM-DD
+    } else if (fechaVencimiento.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Formato YYYY-MM-DD (ISO)
         const [year, month, day] = fechaVencimiento.split('-').map(Number);
+        vencimiento = new Date(year, month - 1, day);
+    } else {
+        // Formato DD-MM-YYYY (chileno con guiones)
+        const [day, month, year] = fechaVencimiento.split('-').map(Number);
         vencimiento = new Date(year, month - 1, day);
     }
     
@@ -1241,6 +1269,30 @@ function calcularEstadoVigencia(fechaVencimiento) {
     } else {
         return '<span class="badge bg-danger">Vencida</span>';
     }
+}
+
+// Función helper para convertir fecha ISO a formato chileno con guiones (DD-MM-YYYY)
+function convertirFechaISOChilenoConGuiones(fechaISO) {
+    if (!fechaISO) return '';
+    
+    // Si ya está en formato chileno con guiones, retornarlo tal cual
+    if (fechaISO.match(/^\d{2}-\d{2}-\d{4}$/)) {
+        return fechaISO;
+    }
+    
+    // Si está en formato ISO (YYYY-MM-DD), convertir a DD-MM-YYYY
+    if (fechaISO.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const partes = fechaISO.split('-');
+        const [anio, mes, dia] = partes;
+        return `${dia.padStart(2, '0')}-${mes.padStart(2, '0')}-${anio}`;
+    }
+    
+    // Si está en formato chileno con barras (DD/MM/YYYY), convertir a guiones
+    if (fechaISO.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+        return fechaISO.replace(/\//g, '-');
+    }
+    
+    return fechaISO;
 }
 
 function createRowElement(type, data) {
@@ -1262,8 +1314,8 @@ function createRowElement(type, data) {
                     <i class="bi bi-card-text me-2"></i>
                     ${clasesBadges}
                 </td>
-                <td class="text-center">${data.fecha_emision ? window.DatePickerChile.convertirISOAChileno(data.fecha_emision) : ''}</td>
-                <td class="text-center">${data.fecha_vencimiento ? window.DatePickerChile.convertirISOAChileno(data.fecha_vencimiento) : ''}</td>
+                <td class="text-center">${data.fecha_emision ? convertirFechaISOChilenoConGuiones(data.fecha_emision) : ''}</td>
+                <td class="text-center">${data.fecha_vencimiento ? convertirFechaISOChilenoConGuiones(data.fecha_vencimiento) : ''}</td>
                 <td class="text-center">
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
@@ -1286,8 +1338,8 @@ function createRowElement(type, data) {
                 </td>
                 <td class="text-center">${data.numero || '-'}</td>
                 <td>${data.empresa || '-'}</td>
-                <td class="text-center">${data.fecha_emision ? window.DatePickerChile.convertirISOAChileno(data.fecha_emision) : ''}</td>
-                <td class="text-center">${data.fecha_vencimiento ? window.DatePickerChile.convertirISOAChileno(data.fecha_vencimiento) : ''}</td>
+                <td class="text-center">${data.fecha_emision ? convertirFechaISOChilenoConGuiones(data.fecha_emision) : ''}</td>
+                <td class="text-center">${data.fecha_vencimiento ? convertirFechaISOChilenoConGuiones(data.fecha_vencimiento) : ''}</td>
                 <td class="text-center">
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
@@ -1321,8 +1373,8 @@ function createRowElement(type, data) {
                     ${data.resultado && data.resultado !== '-' ? `<span class="badge ${resultadoBadgeClass}">${data.resultado}</span>` : '<span class="text-muted">-</span>'}
                 </td>
                 <td>${data.proveedor || ''}</td>
-                <td class="text-center">${data.fecha_emision ? window.DatePickerChile.convertirISOAChileno(data.fecha_emision) : ''}</td>
-                <td class="text-center">${data.fecha_vencimiento ? window.DatePickerChile.convertirISOAChileno(data.fecha_vencimiento) : ''}</td>
+                <td class="text-center">${data.fecha_emision ? convertirFechaISOChilenoConGuiones(data.fecha_emision) : ''}</td>
+                <td class="text-center">${data.fecha_vencimiento ? convertirFechaISOChilenoConGuiones(data.fecha_vencimiento) : ''}</td>
                 <td class="text-center">
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>
@@ -1344,8 +1396,8 @@ function createRowElement(type, data) {
                     <i class="bi bi-patch-check me-2"></i>${data.tipo || ''}
                 </td>
                 <td>${data.proveedor || ''}</td>
-                <td class="text-center">${data.fecha_emision ? window.DatePickerChile.convertirISOAChileno(data.fecha_emision) : ''}</td>
-                <td class="text-center">${data.fecha_vencimiento ? window.DatePickerChile.convertirISOAChileno(data.fecha_vencimiento) : ''}</td>
+                <td class="text-center">${data.fecha_emision ? convertirFechaISOChilenoConGuiones(data.fecha_emision) : ''}</td>
+                <td class="text-center">${data.fecha_vencimiento ? convertirFechaISOChilenoConGuiones(data.fecha_vencimiento) : ''}</td>
                 <td class="text-center">
                     ${calcularEstadoVigencia(data.fecha_vencimiento)}
                 </td>

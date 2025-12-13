@@ -8,6 +8,8 @@ let changeConfirmed = false;  // Flag que indica si el cambio fue confirmado
 let equiposSeleccionados = [];  // Array de objetos con información de equipos seleccionados para descarga
 // Formato: [{equipo_id, nombreEquipo, codigoInterno, tipoEquipo, marcaEquipo}, ...]
 let todosLosEquipos = [];  // Almacenar todos los equipos activos para búsqueda en el modal de selección
+let ordenActual = null;  // Columna actual por la cual se está ordenando
+let direccionOrden = 'asc';  // Dirección del ordenamiento ('asc' o 'desc')
 
 // Inicialización cuando el DOM está completamente cargado
 // Este evento asegura que todos los elementos HTML estén disponibles antes de ejecutar el código
@@ -23,6 +25,15 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('empresaFilter').addEventListener('change', cargarEquipos);  // Filtro por empresa
     document.getElementById('tipoFilter').addEventListener('change', cargarEquipos);  // Filtro por tipo de equipo
     document.getElementById('marcaFilter').addEventListener('change', cargarEquipos);  // Filtro por marca
+    
+    // Paso 2.1: Configurar event listeners para ordenamiento por columnas
+    // Los headers con clase 'sortable' permiten ordenar la tabla haciendo clic
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const columna = this.getAttribute('data-column');  // Obtener nombre de la columna desde atributo data
+            ordenarPor(columna, this);  // Ordenar por la columna seleccionada
+        });
+    });
     
     // Paso 3: Configurar el botón de confirmación del modal de desactivación
     // Cuando el usuario confirma la desactivación, se ejecuta esta función
@@ -158,7 +169,7 @@ function cargarEquipos() {
     const marca = document.getElementById('marcaFilter').value;  // Marca seleccionada
     
     // Paso 2: Construir parámetros de la petición
-    // Se incluyen los filtros, paginación y estado (siempre activos)
+    // Se incluyen los filtros, paginación, ordenamiento y estado (siempre activos)
     const params = new URLSearchParams({
         search: search,  // Término de búsqueda
         empresa: empresa,  // Filtro por empresa
@@ -168,6 +179,12 @@ function cargarEquipos() {
         page: paginaActual,  // Página actual
         page_size: tamanoPagina  // Tamaño de página
     });
+    
+    // Agregar parámetros de ordenamiento si hay una columna seleccionada
+    if (ordenActual) {
+        params.append('ordering', ordenActual);  // Columna por la cual ordenar
+        params.append('order_direction', direccionOrden);  // Dirección del ordenamiento
+    }
     
     // Paso 3: Realizar petición GET al endpoint de equipos con los parámetros
     fetch(`/maquinarias/api/equipos/?${params}`)
@@ -266,6 +283,41 @@ function renderizarEquipos(equipos) {
             </td>
         </tr>
     `).join('');  // Unir todos los strings HTML en uno solo
+}
+
+// Función para ordenar la tabla por una columna específica
+// Alterna entre orden ascendente y descendente si se hace clic en la misma columna
+// Actualiza los iconos visuales en los headers para indicar el ordenamiento actual
+// Parámetros:
+//   columna: Nombre de la columna por la cual ordenar
+//   headerElement: Elemento DOM del header que fue clickeado
+function ordenarPor(columna, headerElement) {
+    // Paso 1: Determinar la dirección del ordenamiento
+    // Si es la misma columna, cambiar dirección (asc <-> desc)
+    if (ordenActual === columna) {
+        direccionOrden = direccionOrden === 'asc' ? 'desc' : 'asc';  // Alternar dirección
+    } else {
+        // Si es una columna diferente, establecer como nueva columna y empezar con ascendente
+        ordenActual = columna;  // Actualizar columna actual
+        direccionOrden = 'asc';  // Empezar con orden ascendente
+    }
+    
+    // Paso 2: Actualizar iconos en todos los headers ordenables
+    // Resetear todos los iconos a estado neutro (flecha bidireccional)
+    document.querySelectorAll('.sortable i').forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up ms-1';  // Icono neutro
+    });
+    
+    // Paso 3: Actualizar icono del header clickeado según la dirección del ordenamiento
+    const icon = headerElement.querySelector('i');
+    if (icon) {
+        // Mostrar flecha hacia arriba para ascendente, hacia abajo para descendente
+        icon.className = direccionOrden === 'asc' ? 'bi bi-arrow-up ms-1' : 'bi bi-arrow-down ms-1';
+    }
+    
+    // Paso 4: Volver a la primera página y recargar equipos con el nuevo ordenamiento
+    paginaActual = 1;  // Volver a la primera página
+    cargarEquipos();  // Recargar equipos con el ordenamiento aplicado
 }
 
 // Función para renderizar los controles de paginación en la interfaz

@@ -658,6 +658,7 @@ def api_dashboard_operaciones(request):
         equipos_en_faena_detalle = []
         equipos_con_anomalias_detalle = []
         equipos_shutdown_detalle = []
+        equipos_inactivos_detalle = []
         
         for estado_nombre, cantidad in equipos_por_estado.items():
             estado_lower = estado_nombre.lower()
@@ -772,6 +773,18 @@ def api_dashboard_operaciones(request):
                         'fecha_fin': ot.fecha_fin.strftime('%d/%m/%Y') if ot.fecha_fin else 'Sin fecha fin',
                         'observaciones': ot.observaciones or 'Sin observaciones'
                     })
+        
+        # Obtener detalles de equipos inactivos
+        equipos_inactivos_query = Equipo.objects.filter(activo=False).order_by('nombreEquipo')
+        for equipo in equipos_inactivos_query:
+            equipos_inactivos_detalle.append({
+                'equipo': equipo.nombreEquipo,
+                'codigo': equipo.codigoInterno if hasattr(equipo, 'codigoInterno') and equipo.codigoInterno else 'N/A',
+                'empresa': equipo.empresa_id.nomFantasia if equipo.empresa_id else 'N/A',
+                'tipo': equipo.modeloEquipo_id.tipoEquipo_id.tipoEquipo if equipo.modeloEquipo_id and equipo.modeloEquipo_id.tipoEquipo_id else 'N/A',
+                'marca': equipo.modeloEquipo_id.marcaEquipo_id.marcaEquipo if equipo.modeloEquipo_id and equipo.modeloEquipo_id.marcaEquipo_id else 'N/A',
+                'modelo': equipo.modeloEquipo_id.modeloEquipo if equipo.modeloEquipo_id else 'N/A'
+            })
         
         # ========== DOCUMENTOS POR VENCER DE PERSONAL (30 dias) ==========
         documentos_personal_por_vencer = []
@@ -1008,6 +1021,7 @@ def api_dashboard_operaciones(request):
                 'equipos_en_faena_detalle': equipos_en_faena_detalle,
                 'equipos_con_anomalias_detalle': equipos_con_anomalias_detalle,
                 'equipos_shutdown_detalle': equipos_shutdown_detalle,
+                'equipos_inactivos_detalle': equipos_inactivos_detalle,
                 # Datos de faenas
                 'faenas_activas': faenas_activas,
                 'faenas_proximas': faenas_proximas,

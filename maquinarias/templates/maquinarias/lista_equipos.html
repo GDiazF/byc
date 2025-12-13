@@ -95,11 +95,21 @@
             <table class="table table-sm table-hover table-bordered rrhh-table" id="equiposTable">
                 <thead class="table-dark">
                     <tr>
-                        <th style="width: 18%;">Nombre Equipo</th>
-                        <th style="width: 15%;">Tipo</th>
-                        <th style="width: 15%;">Marca</th>
-                        <th style="width: 15%;">Modelo</th>
-                        <th style="width: 15%;">Empresa</th>
+                        <th class="sortable" data-column="nombre" style="width: 18%; cursor: pointer;">
+                            Nombre Equipo <i class="bi bi-arrow-down-up ms-1"></i>
+                        </th>
+                        <th class="sortable" data-column="tipo" style="width: 15%; cursor: pointer;">
+                            Tipo <i class="bi bi-arrow-down-up ms-1"></i>
+                        </th>
+                        <th class="sortable" data-column="marca" style="width: 15%; cursor: pointer;">
+                            Marca <i class="bi bi-arrow-down-up ms-1"></i>
+                        </th>
+                        <th class="sortable" data-column="modelo" style="width: 15%; cursor: pointer;">
+                            Modelo <i class="bi bi-arrow-down-up ms-1"></i>
+                        </th>
+                        <th class="sortable" data-column="empresa" style="width: 15%; cursor: pointer;">
+                            Empresa <i class="bi bi-arrow-down-up ms-1"></i>
+                        </th>
                         <th style="width: 10%;" class="text-center">Acciones</th>
                         <th style="width: 8%;" class="text-center">Estado</th>
                     </tr>

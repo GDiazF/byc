@@ -248,10 +248,12 @@ def api_listar_equipos(request):
         modelo_id = request.GET.get('modelo', '')  # ID de modelo para filtrar
         estado = request.GET.get('estado', 'activos')  # Estado: 'activos', 'inactivos' o 'todos'
         
-        # Paso 2: Obtener parámetros de paginación
+        # Paso 2: Obtener parámetros de paginación y ordenamiento
         # La paginación permite dividir los resultados en páginas para mejor rendimiento
         page = int(request.GET.get('page', 1))  # Número de página actual (por defecto 1)
         page_size = int(request.GET.get('page_size', 25))  # Cantidad de registros por página (por defecto 25)
+        ordering = request.GET.get('ordering', '')  # Columna por la cual ordenar
+        order_direction = request.GET.get('order_direction', 'asc')  # Dirección del ordenamiento ('asc' o 'desc')
         
         # Paso 3: Construir la consulta base con select_related para optimizar consultas
         # select_related evita consultas N+1 al traer las relaciones en una sola consulta SQL
@@ -296,8 +298,32 @@ def api_listar_equipos(request):
             )
         
         # Paso 7: Ordenar los resultados
-        # Ordenar primero por estado activo (activos primero), luego por tipo y código interno
-        equipos = equipos.order_by('-activo', 'modeloEquipo_id__tipoEquipo_id__tipoEquipo', 'codigoInterno')
+        # Si se especifica un ordenamiento personalizado, usarlo; si no, usar el ordenamiento por defecto
+        if ordering:
+            # Mapeo de nombres de columnas del frontend a campos del modelo Django
+            ordenamiento_map = {
+                'nombre': 'nombreEquipo',
+                'tipo': 'modeloEquipo_id__tipoEquipo_id__tipoEquipo',
+                'marca': 'modeloEquipo_id__marcaEquipo_id__marcaEquipo',
+                'modelo': 'modeloEquipo_id__modeloEquipo',
+                'empresa': 'empresa_id__nomFantasia'
+            }
+            
+            # Obtener el campo real del modelo
+            campo_ordenamiento = ordenamiento_map.get(ordering)
+            
+            if campo_ordenamiento:
+                # Aplicar prefijo '-' para orden descendente si es necesario
+                if order_direction == 'desc':
+                    campo_ordenamiento = '-' + campo_ordenamiento
+                # Ordenar por el campo especificado, manteniendo activos primero
+                equipos = equipos.order_by('-activo', campo_ordenamiento)
+            else:
+                # Si el campo no existe en el mapeo, usar ordenamiento por defecto
+                equipos = equipos.order_by('-activo', 'modeloEquipo_id__tipoEquipo_id__tipoEquipo', 'codigoInterno')
+        else:
+            # Ordenamiento por defecto: primero por estado activo (activos primero), luego por tipo y código interno
+            equipos = equipos.order_by('-activo', 'modeloEquipo_id__tipoEquipo_id__tipoEquipo', 'codigoInterno')
         
         # Paso 8: Aplicar paginación a los resultados filtrados
         # Dividir los resultados en páginas según el tamaño de página solicitado

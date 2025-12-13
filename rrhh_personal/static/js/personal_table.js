@@ -232,7 +232,7 @@ function renderizarTabla() {
         <tr>
             <td>${p.rut}</td>
             <td>
-                <span class="text-primary" style="cursor: pointer; text-decoration: underline;" 
+                <span class="text-primary" style="cursor: pointer;" 
                       onclick="mostrarInfoPersonal(${p.id})" 
                       title="Click para ver información completa">
                     ${p.nombre}

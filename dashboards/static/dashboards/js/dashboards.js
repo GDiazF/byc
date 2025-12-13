@@ -928,10 +928,10 @@ function renderizarDashboardOperaciones(data, container) {
         'Disponibles': '#198754', // success
         'En Uso': '#0dcaf0', // info
         'En Faena': '#ffc107', // warning
-        'Inactivos': '#6c757d', // secondary
+        'Inactivos': '#8b0000', // dark red - igual que maquinarias
         'Shutdown': '#dc3545', // danger
         'Operativo con anomalias': '#fd7e14', // warning variant
-        'Operativo con anomalias': '#fd7e14', // warning variant (con mayuscula)
+        'Operativo con anomalías': '#fd7e14', // warning variant (con tilde)
         'En Mantenimiento': '#fd7e14', // warning variant
         'En Reparacion': '#e83e8c', // pink
         'Fuera de Servicio': '#6610f2', // purple
@@ -952,10 +952,13 @@ function renderizarDashboardOperaciones(data, container) {
             }
         }
         // Si no se encuentra, usar un color por defecto basado en el nombre
+        if (estadoLower.includes('inactivo') || estadoLower.includes('inactivos')) {
+            return '#8b0000'; // dark red - igual que maquinarias
+        }
         if (estadoLower.includes('shutdown') || estadoLower.includes('fuera')) {
             return '#dc3545'; // danger
         }
-        if (estadoLower.includes('anomalia') || estadoLower.includes('mantenimiento')) {
+        if (estadoLower.includes('anomalia') || estadoLower.includes('anomalía') || estadoLower.includes('mantenimiento')) {
             return '#fd7e14'; // warning
         }
         if (estadoLower.includes('Reparacion') || estadoLower.includes('reparacion')) {

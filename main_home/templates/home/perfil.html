@@ -81,42 +81,6 @@
                         </div>
                     </div>
                     
-                    <!-- Estado de la Cuenta -->
-                    <div class="info-section">
-                        <div class="info-section-header">
-                            <i class="bi bi-shield-check"></i>
-                            <span>Estado de la Cuenta</span>
-                        </div>
-                        <div class="info-section-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <div class="info-label">Estado</div>
-                                        <div class="info-value">
-                                            {% if user.is_active %}
-                                                <span class="badge bg-success">Activo</span>
-                                            {% else %}
-                                                <span class="badge bg-danger">Inactivo</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <div class="info-label">Tipo de Usuario</div>
-                                        <div class="info-value">
-                                            {% if user.is_superuser %}
-                                                <span class="badge bg-warning text-dark">Superusuario</span>
-                                            {% else %}
-                                                <span class="badge bg-secondary">Usuario</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <!-- Actividad -->
                     <div class="info-section">
                         <div class="info-section-header">

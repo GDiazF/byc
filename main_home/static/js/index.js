@@ -35,14 +35,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const sidebarToggle = document.getElementById('sidebarToggle');
     const mainContent = document.getElementById('mainContent');
     
-    // Toggle sidebar
+    // Inicializar sidebar como colapsado por defecto
+    sidebar.classList.add('collapsed');
+    
+    // Variables para manejar hover en desktop
+    let hoverTimeout;
+    let isDesktop = window.innerWidth > 768;
+    
+    // Toggle sidebar - funciona en desktop y móvil
     sidebarToggle.addEventListener('click', function() {
-        sidebar.classList.toggle('collapsed');
-        mainContent.classList.toggle('expanded');
-        
-        // Para móviles
         if (window.innerWidth <= 768) {
+            // En móvil: toggle normal
             sidebar.classList.toggle('show');
+            sidebar.classList.toggle('collapsed');
+        } else {
+            // En desktop: abrir sidebar y mantenerlo abierto temporalmente
+            clearTimeout(hoverTimeout);
+            sidebar.classList.remove('collapsed');
+            sidebar.classList.add('hover-active');
+            // Mantener abierto por más tiempo después del click
+            hoverTimeout = setTimeout(function() {
+                if (!sidebar.classList.contains('show')) {
+                    sidebar.classList.add('collapsed');
+                    sidebar.classList.remove('hover-active');
+                }
+            }, 5000); // Mantener abierto 5 segundos después del click
+        }
+    });
+    
+    // Hover sobre el botón hamburguesa en desktop
+    sidebarToggle.addEventListener('mouseenter', function() {
+        if (isDesktop) {
+            clearTimeout(hoverTimeout);
+            sidebar.classList.remove('collapsed');
+            sidebar.classList.add('hover-active');
         }
     });
     
@@ -52,18 +78,74 @@ document.addEventListener('DOMContentLoaded', function() {
         navLinks.forEach(link => {
             link.addEventListener('click', () => {
                 sidebar.classList.remove('show');
+                sidebar.classList.add('collapsed');
             });
         });
     }
     
+    function handleDesktopHover(e) {
+        if (!isDesktop) return;
+        
+        // Si el mouse está dentro de los primeros 15px del borde izquierdo
+        // O si está sobre el botón hamburguesa (que está en el navbar)
+        const toggleButton = document.getElementById('sidebarToggle');
+        const toggleRect = toggleButton ? toggleButton.getBoundingClientRect() : null;
+        const isOverToggle = toggleRect && 
+                            e.clientX >= toggleRect.left && 
+                            e.clientX <= toggleRect.right &&
+                            e.clientY >= toggleRect.top && 
+                            e.clientY <= toggleRect.bottom;
+        
+        if (e.clientX <= 15 || isOverToggle) {
+            clearTimeout(hoverTimeout);
+            sidebar.classList.remove('collapsed');
+            sidebar.classList.add('hover-active');
+        } else if (e.clientX > 250 && e.clientY > 100) {
+            // Si el mouse está lejos del sidebar (y no está cerca del navbar), cerrarlo después de un delay
+            hoverTimeout = setTimeout(function() {
+                if (!sidebar.classList.contains('show')) {
+                    sidebar.classList.add('collapsed');
+                    sidebar.classList.remove('hover-active');
+                }
+            }, 150);
+        }
+    }
+    
+    // Detectar movimiento del mouse para abrir sidebar en desktop
+    document.addEventListener('mousemove', handleDesktopHover);
+    
+    // Mantener abierto cuando el mouse está sobre el sidebar
+    sidebar.addEventListener('mouseenter', function() {
+        if (!isDesktop) return;
+        clearTimeout(hoverTimeout);
+        sidebar.classList.remove('collapsed');
+        sidebar.classList.add('hover-active');
+    });
+    
+    sidebar.addEventListener('mouseleave', function() {
+        if (!isDesktop) return;
+        hoverTimeout = setTimeout(function() {
+            if (!sidebar.classList.contains('show')) {
+                sidebar.classList.add('collapsed');
+                sidebar.classList.remove('hover-active');
+            }
+        }, 150);
+    });
+    
     // Ajustar sidebar al cambiar tamaño de pantalla
     window.addEventListener('resize', function() {
-        if (window.innerWidth > 768) {
+        const wasDesktop = isDesktop;
+        isDesktop = window.innerWidth > 768;
+        
+        if (isDesktop) {
+            // En desktop, siempre colapsado (se abre con hover)
             sidebar.classList.remove('show');
-        } else {
-            if (!sidebar.classList.contains('collapsed')) {
-                sidebar.classList.add('show');
+            if (!sidebar.classList.contains('hover-active')) {
+                sidebar.classList.add('collapsed');
             }
+        } else {
+            // En móvil, remover hover-active
+            sidebar.classList.remove('hover-active');
         }
     });
 });

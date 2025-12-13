@@ -616,8 +616,8 @@ def add_license(request, personal_id):
                         'numero': '',  # Este modelo no tiene número
                         'municipalidad': '',  # Este modelo no tiene municipalidad
                         'clase': clase,
-                        'fecha_emision': licencia.fechaEmision.strftime('%d/%m/%Y'),
-                        'fecha_vencimiento': licencia.fechaVencimiento.strftime('%d/%m/%Y'),
+                        'fecha_emision': licencia.fechaEmision.strftime('%Y-%m-%d'),
+                        'fecha_vencimiento': licencia.fechaVencimiento.strftime('%Y-%m-%d'),
                         'documento': True if licencia.rutaDoc else False,
                         'documento_url': licencia.rutaDoc.url if licencia.rutaDoc else None
                     }
@@ -688,8 +688,8 @@ def add_exam(request, personal_id):
                         'tipo': examen.tipoEx_id.tipoExamen if examen.tipoEx_id else '',
                         'resultado': str(examen.resultadoEx_id) if examen.resultadoEx_id else '-',
                         'proveedor': str(examen.proveedor_id) if examen.proveedor_id else '',
-                        'fecha_emision': examen.fechaEmision.strftime('%d/%m/%Y'),
-                        'fecha_vencimiento': examen.fechaVencimiento.strftime('%d/%m/%Y'),
+                        'fecha_emision': examen.fechaEmision.strftime('%Y-%m-%d'),
+                        'fecha_vencimiento': examen.fechaVencimiento.strftime('%Y-%m-%d'),
                         'observacion': examen.observacion or '',
                         'documento': True if examen.rutaDoc else False,
                         'documento_url': examen.rutaDoc.url if examen.rutaDoc else None
@@ -808,8 +808,8 @@ def add_internal_license(request, personal_id):
                         'tipo': licencia.tipoLicenciaInterna_id.tipoLicenciaInterna if licencia.tipoLicenciaInterna_id else '',
                         'numero': licencia.numero_licencia or '-',
                         'empresa': licencia.empresa_emisora or '-',
-                        'fecha_emision': licencia.fechaEmision.strftime('%d/%m/%Y'),
-                        'fecha_vencimiento': licencia.fechaVencimiento.strftime('%d/%m/%Y'),
+                        'fecha_emision': licencia.fechaEmision.strftime('%Y-%m-%d'),
+                        'fecha_vencimiento': licencia.fechaVencimiento.strftime('%Y-%m-%d'),
                         'activo': licencia.esta_activa,
                         'observacion': licencia.observacion or '',
                         'documento': True if licencia.rutaDoc else False,
@@ -922,8 +922,8 @@ def edit_internal_license(request, license_id):
                             'tipo': license.tipoLicenciaInterna_id.tipoLicenciaInterna if license.tipoLicenciaInterna_id else '',
                             'numero': license.numero_licencia or '-',
                             'empresa': license.empresa_emisora or '-',
-                            'fecha_emision': license.fechaEmision.strftime('%d/%m/%Y'),
-                            'fecha_vencimiento': license.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'fecha_emision': license.fechaEmision.strftime('%Y-%m-%d'),
+                            'fecha_vencimiento': license.fechaVencimiento.strftime('%Y-%m-%d'),
                             'activo': license.esta_activa,
                             'observacion': license.observacion or '',
                             'documento': True if license.rutaDoc else False,
@@ -951,8 +951,8 @@ def edit_internal_license(request, license_id):
                             'tipo': license.tipoLicenciaInterna_id.tipoLicenciaInterna if license.tipoLicenciaInterna_id else '',
                             'numero': license.numero_licencia or '-',
                             'empresa': license.empresa_emisora or '-',
-                            'fecha_emision': license.fechaEmision.strftime('%d/%m/%Y'),
-                            'fecha_vencimiento': license.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'fecha_emision': license.fechaEmision.strftime('%Y-%m-%d'),
+                            'fecha_vencimiento': license.fechaVencimiento.strftime('%Y-%m-%d'),
                             'activo': license.esta_activa,
                             'observacion': license.observacion or '',
                             'documento': True if license.rutaDoc else False,
@@ -1531,8 +1531,8 @@ def save_certification(request, pk):
                     'id': certification.certif_id,
                     'tipo': certification.tipoCertificacion_id.tipoCertificacion if certification.tipoCertificacion_id else '',
                     'proveedor': str(certification.proveedor_id) if certification.proveedor_id else '',
-                    'fecha_emision': certification.fechaEmision.strftime('%d/%m/%Y'),
-                    'fecha_vencimiento': certification.fechaVencimiento.strftime('%d/%m/%Y'),
+                    'fecha_emision': certification.fechaEmision.strftime('%Y-%m-%d'),
+                    'fecha_vencimiento': certification.fechaVencimiento.strftime('%Y-%m-%d'),
                     'observacion': certification.observacion or '',
                     'documento': True if certification.rutaDoc else False,
                     'documento_url': certification.rutaDoc.url if certification.rutaDoc else None
@@ -2013,8 +2013,8 @@ def edit_license(request, license_id):
                             'numero': '',  # Este modelo no tiene número
                             'municipalidad': '',  # Este modelo no tiene municipalidad
                             'clase': clase,
-                            'fecha_emision': license.fechaEmision.strftime('%d/%m/%Y'),
-                            'fecha_vencimiento': license.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'fecha_emision': license.fechaEmision.strftime('%Y-%m-%d'),
+                            'fecha_vencimiento': license.fechaVencimiento.strftime('%Y-%m-%d'),
                             'documento': True if license.rutaDoc else False,
                             'documento_url': license.rutaDoc.url if license.rutaDoc else None
                         }
@@ -2044,8 +2044,8 @@ def edit_license(request, license_id):
                             'numero': '',  # Este modelo no tiene número
                             'municipalidad': '',  # Este modelo no tiene municipalidad
                             'clase': clase,
-                            'fecha_emision': license.fechaEmision.strftime('%d/%m/%Y'),
-                            'fecha_vencimiento': license.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'fecha_emision': license.fechaEmision.strftime('%Y-%m-%d'),
+                            'fecha_vencimiento': license.fechaVencimiento.strftime('%Y-%m-%d'),
                             'documento': True if license.rutaDoc else False,
                             'documento_url': license.rutaDoc.url if license.rutaDoc else None
                         }
@@ -2145,8 +2145,8 @@ def edit_certification(request, cert_id):
                             'id': cert.certif_id,
                             'tipo': cert.tipoCertificacion_id.tipoCertificacion if cert.tipoCertificacion_id else '',
                             'proveedor': str(cert.proveedor_id) if cert.proveedor_id else '',
-                            'fecha_emision': cert.fechaEmision.strftime('%d/%m/%Y'),
-                            'fecha_vencimiento': cert.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'fecha_emision': cert.fechaEmision.strftime('%Y-%m-%d'),
+                            'fecha_vencimiento': cert.fechaVencimiento.strftime('%Y-%m-%d'),
                             'observacion': cert.observacion or '',
                             'documento': True if cert.rutaDoc else False,
                             'documento_url': cert.rutaDoc.url if cert.rutaDoc else None
@@ -2173,8 +2173,8 @@ def edit_certification(request, cert_id):
                             'id': cert.certif_id,
                             'tipo': cert.tipoCertificacion_id.tipoCertificacion if cert.tipoCertificacion_id else '',
                             'proveedor': str(cert.proveedor_id) if cert.proveedor_id else '',
-                            'fecha_emision': cert.fechaEmision.strftime('%d/%m/%Y'),
-                            'fecha_vencimiento': cert.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'fecha_emision': cert.fechaEmision.strftime('%Y-%m-%d'),
+                            'fecha_vencimiento': cert.fechaVencimiento.strftime('%Y-%m-%d'),
                             'observacion': cert.observacion or '',
                             'documento': True if cert.rutaDoc else False,
                             'documento_url': cert.rutaDoc.url if cert.rutaDoc else None
@@ -2278,8 +2278,8 @@ def edit_exam(request, exam_id):
                             'tipo': exam.tipoEx_id.tipoExamen if exam.tipoEx_id else '',
                             'resultado': str(exam.resultadoEx_id) if exam.resultadoEx_id else '-',
                             'proveedor': str(exam.proveedor_id) if exam.proveedor_id else '',
-                            'fecha_emision': exam.fechaEmision.strftime('%d/%m/%Y'),
-                            'fecha_vencimiento': exam.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'fecha_emision': exam.fechaEmision.strftime('%Y-%m-%d'),
+                            'fecha_vencimiento': exam.fechaVencimiento.strftime('%Y-%m-%d'),
                             'observacion': exam.observacion or '',
                             'documento': True if exam.rutaDoc else False,
                             'documento_url': exam.rutaDoc.url if exam.rutaDoc else None
@@ -2307,8 +2307,8 @@ def edit_exam(request, exam_id):
                             'tipo': exam.tipoEx_id.tipoExamen if exam.tipoEx_id else '',
                             'resultado': str(exam.resultadoEx_id) if exam.resultadoEx_id else '-',
                             'proveedor': str(exam.proveedor_id) if exam.proveedor_id else '',
-                            'fecha_emision': exam.fechaEmision.strftime('%d/%m/%Y'),
-                            'fecha_vencimiento': exam.fechaVencimiento.strftime('%d/%m/%Y'),
+                            'fecha_emision': exam.fechaEmision.strftime('%Y-%m-%d'),
+                            'fecha_vencimiento': exam.fechaVencimiento.strftime('%Y-%m-%d'),
                             'observacion': exam.observacion or '',
                             'documento': True if exam.rutaDoc else False,
                             'documento_url': exam.rutaDoc.url if exam.rutaDoc else None

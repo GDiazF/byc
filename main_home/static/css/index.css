@@ -9,7 +9,7 @@ body {
 
 .main-content {
     position: relative;
-    margin-left: 250px;
+    margin-left: 0;
     min-height: calc(100vh - 56px);
     background-color: #ced3d8;
     transition: all 0.3s;
@@ -30,11 +30,25 @@ body {
     left: 0;
     z-index: 100;
     background-color: #212529;
-    transition: all 0.3s;
+    transition: transform 0.3s ease;
+    transform: translateX(-250px);
 }
 
+/* En desktop, el sidebar se abre cuando tiene la clase hover-active */
+@media (min-width: 769px) {
+    .sidebar.hover-active {
+        transform: translateX(0);
+    }
+}
+
+/* Sidebar colapsado explícitamente (para móvil) */
 .sidebar.collapsed {
     transform: translateX(-250px);
+}
+
+/* Sidebar abierto (para móvil cuando se clickea) */
+.sidebar.show {
+    transform: translateX(0);
 }
 
 /* Nav items */
@@ -123,6 +137,11 @@ body.loaded .content-loading {
    ============================================================================ */
 @media (max-width: 768px) {
     .sidebar {
+        transform: translateX(-250px);
+    }
+    
+    /* En móvil, desactivar el hover */
+    .sidebar:hover {
         transform: translateX(-250px);
     }
     
