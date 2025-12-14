@@ -5,8 +5,9 @@ from django.contrib.auth.models import User
 from datetime import datetime
 import os
 import re
-from django.core.files.storage import FileSystemStorage
+# from django.core.files.storage import FileSystemStorage  # Solo para desarrollo local
 from django.core.exceptions import ValidationError
+from rrhh_personal.storage import MediaS3Storage  # Para producción con S3
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db.models import Q, CheckConstraint
@@ -144,37 +145,64 @@ def mover_archivo_a_eliminados_maquinaria(archivo_field, equipo_id, nombre_docum
         return None  # Retornar None para indicar que hubo un error
 
 
-class OverwriteStorage(FileSystemStorage):
+# ============================================================================
+# CONFIGURACIÓN PARA DESARROLLO LOCAL (COMENTADO PARA AWS)
+# ============================================================================
+# class OverwriteStorage(FileSystemStorage):
+#     """
+#     Clase de almacenamiento personalizada para desarrollo local que sobrescribe archivos existentes.
+#     
+#     Esta clase extiende FileSystemStorage de Django y modifica el comportamiento para que,
+#     cuando se intenta guardar un archivo con un nombre que ya existe, se elimine el archivo
+#     anterior antes de guardar el nuevo. Esto es útil en desarrollo para evitar acumulación
+#     de archivos duplicados.
+#     
+#     IMPORTANTE: Esta clase solo debe usarse en desarrollo, no en producción.
+#     """
+#     def get_available_name(self, name, max_length=None):
+#         """
+#         Obtiene un nombre disponible para el archivo, eliminando el existente si hay uno.
+#         
+#         Este método se ejecuta automáticamente cuando Django intenta guardar un archivo.
+#         Si ya existe un archivo con ese nombre, lo elimina antes de retornar el nombre.
+#         
+#         Parámetros:
+#             name: Nombre del archivo a guardar
+#             max_length: Longitud máxima del nombre (no usado en esta implementación)
+#         
+#         Retorna:
+#             str: Nombre del archivo (el mismo que se recibió, después de eliminar el existente)
+#         """
+#         # Paso 1: Verificar si ya existe un archivo con ese nombre
+#         if self.exists(name):
+#             # Paso 2: Si existe, eliminarlo para permitir sobrescribir
+#             self.delete(name)
+#         
+#         # Paso 3: Retornar el nombre original (ahora disponible)
+#         return name
+
+# ============================================================================
+# CONFIGURACIÓN PARA PRODUCCIÓN EN NUBE (AWS S3)
+# ============================================================================
+class OverwriteStorage(MediaS3Storage):
     """
-    Clase de almacenamiento personalizada para desarrollo local que sobrescribe archivos existentes.
+    Clase de almacenamiento personalizada para producción que usa S3 y sobrescribe archivos existentes.
     
-    Esta clase extiende FileSystemStorage de Django y modifica el comportamiento para que,
-    cuando se intenta guardar un archivo con un nombre que ya existe, se elimine el archivo
-    anterior antes de guardar el nuevo. Esto es útil en desarrollo para evitar acumulación
-    de archivos duplicados.
-    
-    IMPORTANTE: Esta clase solo debe usarse en desarrollo, no en producción.
+    Esta clase extiende MediaS3Storage y permite sobrescribir archivos con el mismo nombre.
+    S3 naturalmente sobrescribe archivos con la misma clave, así que solo retornamos el nombre.
     """
     def get_available_name(self, name, max_length=None):
         """
-        Obtiene un nombre disponible para el archivo, eliminando el existente si hay uno.
-        
-        Este método se ejecuta automáticamente cuando Django intenta guardar un archivo.
-        Si ya existe un archivo con ese nombre, lo elimina antes de retornar el nombre.
+        Retorna el nombre del archivo (S3 sobrescribirá automáticamente si existe).
         
         Parámetros:
             name: Nombre del archivo a guardar
-            max_length: Longitud máxima del nombre (no usado en esta implementación)
+            max_length: Longitud máxima del nombre (no usado)
         
         Retorna:
-            str: Nombre del archivo (el mismo que se recibió, después de eliminar el existente)
+            str: Nombre del archivo (S3 sobrescribirá si existe)
         """
-        # Paso 1: Verificar si ya existe un archivo con ese nombre
-        if self.exists(name):
-            # Paso 2: Si existe, eliminarlo para permitir sobrescribir
-            self.delete(name)
-        
-        # Paso 3: Retornar el nombre original (ahora disponible)
+        # S3 naturalmente sobrescribe archivos con la misma clave
         return name
 
 class TipoEquipo(models.Model):

@@ -1,10 +1,10 @@
 from django.db import models
 from datetime import datetime, date
 import os
-from django.core.files.storage import FileSystemStorage
+# from django.core.files.storage import FileSystemStorage  # Solo para desarrollo local
 from gen_settings.models import Region, Comuna, Empresa
 from django.contrib.auth.models import User
-# from .storage import MediaS3Storage  # Solo para producción con S3
+from .storage import MediaS3Storage  # Para producción con S3
 
 # ============================================================================
 # FUNCIONES HELPER PARA GESTIÓN DE DOCUMENTOS
@@ -163,40 +163,41 @@ def mover_archivo_a_eliminados(archivo_field, personal_rut, nombre_documento):
 # ============================================================================
 # CLASE DE STORAGE PARA SOBREESCRIBIR ARCHIVOS
 # ============================================================================
-# CONFIGURACIÓN PARA DESARROLLO LOCAL
+# CONFIGURACIÓN PARA DESARROLLO LOCAL (COMENTADO PARA AWS)
 # ============================================================================
-class OverwriteStorage(FileSystemStorage):
-    """
-    Storage class para desarrollo local que sobrescribe archivos existentes.
-    Cuando se sube un archivo con el mismo nombre, elimina el anterior y lo reemplaza.
-    Esto evita la acumulación de archivos con nombres similares (archivo_1.pdf, archivo_2.pdf, etc.)
-    """
-    def get_available_name(self, name, max_length=None):
-        """
-        Obtiene un nombre disponible para el archivo, eliminando el existente si ya existe.
-        
-        Args:
-            name: Nombre del archivo
-            max_length: Longitud máxima permitida (no usado en esta implementación)
-            
-        Returns:
-            str: Nombre del archivo (el mismo, ya que se sobrescribe)
-        """
-        # Eliminar archivo existente si existe para permitir sobrescritura
-        if self.exists(name):
-            self.delete(name)
-        return name
-
-# ============================================================================
-# CONFIGURACIÓN PARA PRODUCCIÓN EN NUBE (COMENTADO)
-# ============================================================================
-# class OverwriteStorage(MediaS3Storage):
+# class OverwriteStorage(FileSystemStorage):
 #     """
-#     Storage class that uses S3 and overwrites existing files
+#     Storage class para desarrollo local que sobrescribe archivos existentes.
+#     Cuando se sube un archivo con el mismo nombre, elimina el anterior y lo reemplaza.
+#     Esto evita la acumulación de archivos con nombres similares (archivo_1.pdf, archivo_2.pdf, etc.)
 #     """
 #     def get_available_name(self, name, max_length=None):
-#         # S3 naturally overwrites files with the same key
+#         """
+#         Obtiene un nombre disponible para el archivo, eliminando el existente si ya existe.
+#         
+#         Args:
+#             name: Nombre del archivo
+#             max_length: Longitud máxima permitida (no usado en esta implementación)
+#             
+#         Returns:
+#             str: Nombre del archivo (el mismo, ya que se sobrescribe)
+#         """
+#         # Eliminar archivo existente si existe para permitir sobrescritura
+#         if self.exists(name):
+#             self.delete(name)
 #         return name
+
+# ============================================================================
+# CONFIGURACIÓN PARA PRODUCCIÓN EN NUBE (AWS S3)
+# ============================================================================
+class OverwriteStorage(MediaS3Storage):
+    """
+    Storage class that uses S3 and overwrites existing files.
+    S3 naturally overwrites files with the same key, so we just return the name.
+    """
+    def get_available_name(self, name, max_length=None):
+        # S3 naturally overwrites files with the same key
+        return name
 
 # ============================================================================
 # MODELOS DE DATOS PERSONALES BÁSICOS
