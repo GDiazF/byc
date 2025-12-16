@@ -1,0 +1,48 @@
+/* Estilos para calendario de maquinarias */
+
+/* Botones de navegación del calendario */
+.calendar-nav-buttons {
+    display: flex;
+    gap: 0.25rem;
+}
+
+/* Columna sticky con nombres de equipos - alineada a la izquierda */
+.calendar-table .sticky-col {
+    text-align: left !important;
+}
+
+/* Contenedor del nombre del equipo */
+.equipo-name-container {
+    padding: 4px 8px;
+}
+
+/* Información del equipo dentro del contenedor */
+.equipo-info {
+    text-align: left;
+}
+
+/* Estilos para tabla de documentación en modal (igual que rrhh-table) */
+#equipoModalBody .rrhh-table tbody td {
+    font-size: 0.85rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+#equipoModalBody .rrhh-table tbody td strong {
+    font-size: 0.9rem !important;
+}
+
+#equipoModalBody .rrhh-table thead th {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+#equipoModalBody .rrhh-table .badge {
+    font-size: 0.75rem !important;
+    padding: 0.25em 0.5em !important;
+}
+
+#equipoModalBody .rrhh-table .btn-sm {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.4rem !important;
+}
+

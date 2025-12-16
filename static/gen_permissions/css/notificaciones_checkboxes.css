@@ -1,0 +1,110 @@
+/**
+ * ============================================================================
+ * ESTILOS CSS PARA EL WIDGET DE CHECKBOXES DE NOTIFICACIONES
+ * ============================================================================
+ * Este archivo contiene estilos para el widget personalizado que muestra
+ * checkboxes de notificaciones agrupadas por categoría en el admin de roles.
+ * ============================================================================
+ */
+
+.notificaciones-checkboxes-widget {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    background-color: #f9f9f9;
+}
+
+.notificaciones-categoria {
+    margin-bottom: 20px;
+}
+
+.notificaciones-categoria:last-child {
+    margin-bottom: 0;
+}
+
+.categoria-header {
+    font-size: 14px;
+    font-weight: bold;
+    color: #417690;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #417690;
+}
+
+.notificaciones-list {
+    margin-left: 15px;
+}
+
+.notificacion-checkbox-item {
+    margin-bottom: 8px;
+    padding: 5px;
+    background-color: white;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.notificacion-checkbox-item:hover {
+    background-color: #f0f0f0;
+}
+
+.notificacion-checkbox-item label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin: 0;
+    font-weight: normal;
+}
+
+.notificacion-checkbox-item input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.notificacion-nombre {
+    font-weight: 500;
+    color: #333;
+    margin-right: 5px;
+}
+
+.notificacion-descripcion {
+    color: #666;
+    font-size: 0.9em;
+    flex-grow: 1;
+}
+
+.notificacion-prioridad {
+    margin-left: auto;
+    font-size: 0.75em;
+    padding: 2px 6px;
+}
+
+.badge-alta {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-media {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.badge-baja {
+    background-color: #28a745;
+    color: white;
+}
+
+/* Estilos para checkboxes seleccionados */
+.notificacion-checkbox-item input[type="checkbox"]:checked + .notificacion-nombre {
+    color: #417690;
+    font-weight: 600;
+}
+
+/* Estilos para el resumen de notificaciones seleccionadas */
+.notificaciones-resumen {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+}
+

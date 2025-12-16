@@ -1,0 +1,283 @@
+/* ============================================================================
+   ESTILOS PARA CALENDARIO MENSUAL DE PLANIFICACIÓN
+   ============================================================================ */
+
+/* Estandarizar títulos de cards (igual que RRHH) */
+.card-header h5,
+.card-header h5.mb-0 {
+    font-weight: 400 !important;
+    font-size: 1rem !important;
+    letter-spacing: normal !important;
+    margin: 0 !important;
+}
+
+/* Evitar que el spinner de la página padre oculte el calendario */
+body.loading .main-content .content-loading {
+    display: none !important;
+}
+
+/* Botones de navegación en el header del calendario */
+.calendar-nav-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+/* Tabla principal del calendario */
+.calendar-table {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+.calendar-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #212529 !important;
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+    padding: 8px 4px;
+    min-width: 35px;
+    white-space: nowrap;
+}
+
+/* Columna sticky para nombres de personal (se mantiene visible al hacer scroll horizontal) */
+.calendar-table .sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 11;
+    background-color: #212529 !important;
+    min-width: 220px;
+    max-width: 220px;
+    font-weight: 600;
+}
+
+.calendar-table tbody .sticky-col {
+    background-color: #f8f9fa !important;
+    color: #212529;
+    font-weight: 500;
+    cursor: default;
+    transition: background-color 0.2s;
+}
+
+/* Contenedor del nombre de personal con botones de acción */
+.personal-name-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.personal-info {
+    flex: 1;
+    text-align: left;
+    cursor: pointer;
+}
+
+.personal-info:hover {
+    color: #0d6efd;
+}
+
+.personal-actions {
+    display: flex;
+    gap: 3px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.calendar-table tbody tr:hover .personal-actions {
+    opacity: 1;
+}
+
+.btn-action {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-action:hover {
+    transform: scale(1.1);
+}
+
+.btn-info {
+    background-color: #0dcaf0;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #31d2f2;
+}
+
+.btn-assign {
+    background-color: #198754;
+    color: white;
+}
+
+.btn-assign:hover {
+    background-color: #20c997;
+}
+
+.btn-edit {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.btn-edit:hover {
+    background-color: #ffcd39;
+}
+
+.btn-view {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.btn-view:hover {
+    background-color: #0b5ed7;
+    color: white;
+}
+
+/* Celdas de días del calendario */
+.calendar-table td {
+    padding: 4px;
+    text-align: center;
+    vertical-align: middle;
+    min-width: 35px;
+    height: 35px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+/* Efecto hover en filas del calendario */
+.calendar-table tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.calendar-table tbody tr:hover .sticky-col {
+    background-color: rgba(13, 110, 253, 0.15) !important;
+}
+
+/* Estilo para celdas vacías (fuera del rango del mes) */
+.calendar-table td.empty-cell {
+    background-color: #f8f9fa;
+    cursor: default;
+}
+
+/* Estilos para días de fin de semana */
+.calendar-table th.weekend {
+    background-color: #495057 !important;
+}
+
+.calendar-table td.weekend {
+    background-color: #f1f3f5;
+}
+
+/* Estilo para resaltar el día actual */
+.calendar-table th.today {
+    background-color: #0d6efd !important;
+    font-weight: bold;
+}
+
+/* Celdas que muestran el estado del personal (con nombre corto del estado) */
+.estado-cell {
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 3px;
+    padding: 2px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Leyenda de estados del calendario (muestra todos los estados disponibles) */
+.status-legend-item {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 8px;
+    margin-bottom: 6px;
+    padding: 4px 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    background-color: #fafafa;
+    transition: all 0.2s ease;
+}
+
+.status-legend-item:hover {
+    background-color: #f0f0f0;
+    border-color: #d0d0d0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.status-legend-color {
+    min-width: 32px;
+    height: 28px;
+    padding: 0 4px;
+    border-radius: 4px;
+    margin-right: 6px;
+    border: 1px solid #dee2e6;
+}
+
+/* Estilos responsivos para dispositivos móviles */
+@media (max-width: 768px) {
+    .calendar-table {
+        font-size: 0.75rem;
+    }
+    
+    .calendar-table thead th,
+    .calendar-table td {
+        min-width: 30px;
+        padding: 2px;
+    }
+    
+    .calendar-table .sticky-col {
+        min-width: 150px;
+        max-width: 150px;
+        font-size: 0.75rem;
+    }
+    
+    .estado-cell {
+        font-size: 0.6rem;
+    }
+    
+    .personal-actions {
+        opacity: 1;
+    }
+    
+    .btn-action {
+        padding: 1px 4px;
+        font-size: 0.7rem;
+    }
+}
+
+/* Animación de fade-in para filas del calendario al cargar */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.calendar-table tbody tr {
+    animation: fadeIn 0.3s ease-in;
+}
+
+/* Ocultar filas que no coinciden con los filtros aplicados */
+.calendar-table tbody tr.filtered-out {
+    display: none;
+}
+
+/* Mejoras visuales para contenido de modales */
+.modal-body strong {
+    color: #495057;
+}
+
+.modal-body span {
+    color: #212529;
+    font-weight: 500;
+}
+

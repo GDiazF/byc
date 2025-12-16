@@ -1,0 +1,90 @@
+/* ============================================================================
+   ESTILOS PARA ASIGNAR PERSONAL A FAENA
+   ============================================================================ */
+
+/* Estandarizar títulos de cards (igual que RRHH) */
+.card-header h5 {
+    font-weight: 400 !important;
+    font-size: 1rem !important;
+    letter-spacing: normal !important;
+}
+
+/* Tamaño de fuente equilibrado en ambas tablas (disponibles y asignados) */
+#personalTableBody td,
+#tablaPersonalAsignadoBody td {
+    font-size: 0.85rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+#personalTableBody td strong,
+#tablaPersonalAsignadoBody td strong {
+    font-size: 0.9rem !important;
+}
+
+#personalTableBody th,
+#tablaPersonalAsignadoBody th,
+.table-sm th {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.6rem !important;
+}
+
+.table .badge {
+    font-size: 0.75rem !important;
+    padding: 0.25em 0.5em !important;
+}
+
+/* Checkbox más grande para mejor usabilidad */
+.personal-checkbox {
+    transform: scale(1.3) !important;
+    cursor: pointer;
+}
+
+/* Botones más pequeños para interfaz compacta */
+.btn-group-sm .btn,
+.btn-sm {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.4rem !important;
+}
+
+/* Inputs y selects de filtros más pequeños para ahorrar espacio */
+.input-group-sm .form-control,
+.form-select-sm {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+    height: auto !important;
+}
+
+/* Labels más pequeños */
+.form-label.small {
+    font-size: 0.7rem !important;
+}
+
+/* Textos secundarios más pequeños */
+.text-muted.small {
+    font-size: 0.7rem !important;
+}
+
+/* Mejorar espaciado de filas */
+.table-sm tbody tr {
+    height: auto !important;
+}
+
+/* Hacer el card de configuración más compacto */
+.card-body form .row {
+    margin-bottom: 0.5rem !important;
+}
+
+.card-body form .mb-3 {
+    margin-bottom: 0.5rem !important;
+}
+
+/* Columnas ordenables en las tablas (cursor pointer y efecto hover) */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+}
+
+.sortable:hover {
+    background-color: #495057 !important;
+}

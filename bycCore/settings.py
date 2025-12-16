@@ -29,12 +29,13 @@ SECRET_KEY = 'django-insecure-zxiwr5sw3xn%vu+bh47ucrprmj2c@ws#0%+x22if%gcqj16pbx
 # Para producción AWS: DEBUG = False
 DEBUG = False
 
-ALLOWED_HOSTS = ["44.204.66.223"]
+ALLOWED_HOSTS = ["98.94.227.236", "webapp.gruasbyc.cl"]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'storages',
     'ope_calendario',
     'main_login',
     'rrhh_personal',
@@ -214,12 +215,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Para produccion en servidor AWS
-STATIC_ROOT = '/home/ubuntu/byc/collectedstatic/'
+STATIC_ROOT = '/home/ec2-user/proyecto/byc/static/'
 
 # Directorios adicionales donde Django buscara archivos estaticos
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
+#STATICFILES_DIRS = [
+#    os.path.join(BASE_DIR, 'static'),
+#]
 
 # ============================================================================
 # CONFIGURACION DE ARCHIVOS MEDIA - DESARROLLO LOCAL (COMENTADO PARA AWS)
@@ -243,6 +244,12 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'byc-core-media-files-2025-12-13')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+
+
+# ESTO ES LO IMPORTANTE PARA QUE FUNCIONE EN PRIVADO:
+AWS_QUERYSTRING_AUTH = True      # Genera la firma temporal
+AWS_S3_SIGNATURE_VERSION = 's3v4' # Protocolo de firma actual
+AWS_S3_FILE_OVERWRITE = False    # Evita sobrescribir archivos con mismo nombre
 
 # Configuración de permisos y ACL
 AWS_DEFAULT_ACL = None  # Usar ACL del bucket por defecto
@@ -270,3 +277,7 @@ STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 # El scheduler se ejecuta en background y gestiona tareas periodicas
 SCHEDULER_AUTOSTART = True  # Iniciar automaticamente cuando Django arranca
 SCHEDULER_API_ENABLED = True  # Habilitar API REST para gestionar trabajos (opcional)
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://webapp.gruasbyc.cl',
+]

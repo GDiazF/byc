@@ -1,0 +1,57 @@
+/**
+ * ============================================================================
+ * ESTILOS CSS PARA EL ADMIN DE PERMISOS
+ * ============================================================================
+ * Este archivo contiene estilos para el admin de Django que permiten
+ * diferenciar visualmente los permisos de tablas maestras de los permisos
+ * de tablas principales. Los permisos de tablas maestras se muestran con
+ * color amarillo y etiqueta "(Maestra)".
+ * ============================================================================
+ */
+
+/* Estilo para permisos de tablas maestras en el widget filter_horizontal */
+.filtered-select-multiple option[data-maestra="true"],
+.filtered-select-multiple select option[data-maestra="true"],
+select option[data-maestra="true"],
+.selector select option[data-maestra="true"],
+.selector-available select option[data-maestra="true"],
+.selector-chosen select option[data-maestra="true"] {
+    color: #856404 !important;
+    font-weight: bold !important;
+    background-color: #fff3cd !important;
+}
+
+/* Estilo adicional para opciones que contienen "(Maestra)" en el texto */
+select option:contains("(Maestra)"),
+.selector select option:contains("(Maestra)") {
+    color: #856404 !important;
+    font-weight: bold !important;
+}
+
+/* Estilo para el texto "(Maestra)" en los permisos */
+.permiso-maestra {
+    color: #856404;
+    font-weight: bold;
+    font-style: italic;
+}
+
+/* Estilo para el contenedor de permisos maestros */
+.permisos-maestros {
+    border-left: 3px solid #ffc107;
+    padding-left: 10px;
+    margin-top: 10px;
+}
+
+/* Estilo para el titulo de seccion de permisos maestros */
+.permisos-maestros-titulo {
+    color: #856404;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* Estilo para la lista de permisos en el admin */
+.permisos-lista {
+    margin: 0;
+    padding-left: 20px;
+}
+

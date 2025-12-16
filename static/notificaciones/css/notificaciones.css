@@ -1,0 +1,46 @@
+/* ============================================================================
+   ESTILOS PARA LA PÁGINA DE NOTIFICACIONES
+   ============================================================================
+   Este archivo contiene los estilos CSS para la página de notificaciones,
+   incluyendo estilos para notificaciones no leídas, hover effects, etc.
+   ============================================================================ */
+
+/* Estilos para notificaciones no leídas */
+.notification-item.unread {
+    background-color: #e7f1ff;
+}
+
+.notification-item.unread:hover {
+    background-color: #d0e7ff;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa;
+}
+
+.notification-item {
+    transition: background-color 0.2s ease;
+}
+
+/* Estilos para labels ocultos (usados para alineación de formularios) */
+.form-label.hidden-label {
+    visibility: hidden;
+}
+
+/* Estilos para iconos grandes vacíos */
+.empty-icon-large {
+    font-size: 2rem;
+    color: #6c757d;
+}
+
+/* Estilos para filas clickeables */
+.notification-item-clickable {
+    cursor: pointer;
+}
+
+/* Estilos para mensajes en modal */
+.modal-message-text {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+

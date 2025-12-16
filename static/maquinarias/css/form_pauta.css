@@ -1,0 +1,33 @@
+/* Estilos para formulario de pauta de mantenimiento */
+
+/* Contenedor de cada item de la pauta */
+.item-pauta {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #f8f9fa;
+}
+
+/* Lista de tipos de reparación con scroll */
+.tipos-reparacion-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+/* Espaciado entre checkboxes de tipos de reparación */
+.tipo-checkbox {
+    margin-bottom: 5px;
+}
+
+/* Estilos para acordeones de pautas */
+#accordionPautas .accordion-button {
+    font-size: 0.875rem;
+}
+
+#accordionPautas .accordion-button strong {
+    font-weight: 600;
+}

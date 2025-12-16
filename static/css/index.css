@@ -1,0 +1,363 @@
+/* ============================================================================
+   LAYOUT GENERAL
+   ============================================================================ */
+body {
+    padding-top: 56px;
+    overflow-x: hidden;
+    font-family: "Barlow Semi Condensed", sans-serif;
+}
+
+.main-content {
+    position: relative;
+    margin-left: 0;
+    min-height: calc(100vh - 56px);
+    background-color: #ced3d8;
+    transition: all 0.3s;
+}
+
+.main-content.expanded {
+    margin-left: 0;
+}
+
+/* ============================================================================
+   SIDEBAR
+   ============================================================================ */
+.sidebar {
+    width: 250px;
+    min-height: calc(100vh - 56px);
+    position: fixed;
+    top: 56px;
+    left: 0;
+    z-index: 100;
+    background-color: #212529;
+    transition: transform 0.3s ease;
+    transform: translateX(-250px);
+}
+
+/* En desktop, el sidebar se abre cuando tiene la clase hover-active */
+@media (min-width: 769px) {
+    .sidebar.hover-active {
+        transform: translateX(0);
+    }
+}
+
+/* Sidebar colapsado explícitamente (para móvil) */
+.sidebar.collapsed {
+    transform: translateX(-250px);
+}
+
+/* Sidebar abierto (para móvil cuando se clickea) */
+.sidebar.show {
+    transform: translateX(0);
+}
+
+/* Nav items */
+.sidebar .nav-item {
+    margin-bottom: 0.15rem;
+}
+
+.sidebar .nav-item:first-child {
+    margin-top: 1rem;
+}
+
+/* Nav links */
+.sidebar .nav-link {
+    color: #adb5bd;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Submenús */
+.sidebar .collapse {
+    padding-top: 0.1rem;
+    padding-bottom: 0.1rem;
+}
+
+.sidebar .collapse .nav-link {
+    color: #adb5bd;
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
+}
+
+.sidebar .collapse .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Iconos de colapso */
+.nav-link[data-bs-toggle="collapse"]:after {
+    content: '\F282';
+    font-family: 'bootstrap-icons';
+    float: right;
+    transition: all 0.3s;
+}
+
+.nav-link[data-bs-toggle="collapse"].collapsed:after {
+    transform: rotate(-90deg);
+}
+
+/* ============================================================================
+   SPINNER DE CARGA
+   ============================================================================ */
+.content-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 1000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+    pointer-events: none;
+}
+
+body.loading .content-loading {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+}
+
+body.loaded .content-loading {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* ============================================================================
+   RESPONSIVE (MÓVIL)
+   ============================================================================ */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-250px);
+    }
+    
+    /* En móvil, desactivar el hover */
+    .sidebar:hover {
+        transform: translateX(-250px);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    /* Ajustar contenedor del navbar en móviles */
+    .navbar .container-fluid > div:first-child {
+        width: auto !important;
+        min-width: 60px;
+    }
+    
+    /* Estilos para el logo en el sidebar móvil */
+    .sidebar .d-md-none {
+        padding: 1rem 0.75rem;
+    }
+    
+    .sidebar .d-md-none a {
+        display: block;
+        text-align: center;
+    }
+}
+
+/* ============================================================================
+   ESTILOS PARA ELEMENTOS DEL NAVBAR DESACTIVADOS POR PERMISOS
+   ============================================================================ */
+.nav-link.disabled-permission {
+    color: #adb5bd !important;
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+    font-style: italic;
+}
+
+.nav-link.disabled-permission:hover {
+    color: #adb5bd !important;
+    background-color: transparent !important;
+}
+
+.nav-item.disabled-section {
+    opacity: 0.6;
+}
+
+.nav-link.disabled-permission i {
+    color: #adb5bd !important;
+    opacity: 0.6;
+}
+
+/* ============================================================================
+   ESTILOS PARA EL DROPDOWN DE USUARIO
+   ============================================================================ */
+#userDropdown .user-info-container {
+    transition: background-color 0.2s ease;
+}
+
+#userDropdown:hover .user-info-container {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================================================
+   ESTILOS PARA LA CAMPANITA DE NOTIFICACIONES
+   ============================================================================ */
+#notificationsDropdown {
+    transition: opacity 0.2s ease;
+}
+
+#notificationsDropdown:hover {
+    opacity: 0.8;
+}
+
+#notificationsBadge {
+    font-size: 0.65rem !important;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    line-height: 1 !important;
+    padding: 0 !important;
+}
+
+/* ============================================================================
+   ESTILOS PARA NAVBAR
+   ============================================================================ */
+.navbar-dark-custom {
+    background-color: #212529;
+}
+
+.navbar-container-left {
+    width: 250px;
+    min-width: 60px;
+}
+
+.navbar-brand-custom {
+    flex: 1;
+    justify-content: center;
+}
+
+.logo-container {
+    background-color: #ced3d8;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.logo-img {
+    height: 28px;
+    width: auto;
+}
+
+.navbar-nav-right {
+    margin-left: auto;
+    margin-right: 2rem;
+}
+
+.notifications-link {
+    padding: 0.5rem 0.5rem;
+}
+
+.notifications-icon {
+    font-size: 1.1rem;
+}
+
+.user-dropdown-link {
+    padding: 0.5rem 1rem;
+}
+
+.user-info-container {
+    padding: 0.2rem 0.4rem;
+    gap: 0.5rem;
+    border-radius: 0.375rem;
+}
+
+.user-name {
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.user-role-badge {
+    font-size: 0.6rem;
+    font-weight: 400;
+    padding: 0.1rem 0.3rem;
+}
+
+.user-chevron {
+    font-size: 0.65rem;
+    flex-shrink: 0;
+    margin-left: 0.2rem;
+}
+
+.dropdown-menu-notifications {
+    min-width: 300px;
+    max-width: 400px;
+}
+
+.dropdown-link-small {
+    font-size: 0.75rem;
+}
+
+.dropdown-text-muted {
+    font-size: 0.875rem;
+}
+
+.sidebar-logo-mobile {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo-link-mobile {
+    text-decoration: none;
+    display: inline-block;
+}
+
+.logo-container-mobile {
+    background-color: #ced3d8;
+    padding: 6px 12px;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.logo-img-mobile {
+    height: 32px;
+    width: auto;
+}
+
+.messages-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 400px;
+}
+
+.alert-message {
+    margin-bottom: 10px;
+}
+
+.modal-dialog-custom {
+    margin-top: 5rem;
+}
+
+.notifications-badge-position {
+    top: 0.05rem;
+    right: 0.1rem;
+    z-index: 10;
+}
+
+.user-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.user-info-gap {
+    gap: 0.1rem;
+}

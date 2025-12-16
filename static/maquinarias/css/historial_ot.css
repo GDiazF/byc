@@ -1,0 +1,24 @@
+/* Estilos para historial de orden de trabajo */
+
+/* Item del timeline del historial */
+.timeline-item {
+    position: relative;
+    padding-left: 30px;
+}
+
+/* Línea vertical del timeline */
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+/* Ocultar línea en el último item */
+.timeline-item:last-child::before {
+    display: none;
+}
+
