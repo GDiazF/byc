@@ -689,10 +689,12 @@ ON CONFLICT DO NOTHING;
 -- Tabla: maquinarias_estadoot
 
 INSERT INTO maquinarias_estadoot (nombre, descripcion, color, activo, orden) VALUES
+-- IMPORTANTE: Los nombres deben coincidir exactamente con lo que busca el código.
+-- El código busca 'Pendiente' (case-sensitive) y 'FINALIZADA'/'CANCELADA' (case-insensitive con iexact)
 ('Pendiente', 'Orden de trabajo pendiente de iniciar', 'secondary', TRUE, 1),
 ('En Proceso', 'Orden de trabajo en ejecución', 'primary', TRUE, 2),
-('Terminada', 'Orden de trabajo completada', 'success', TRUE, 3),
-('Cancelada', 'Orden de trabajo cancelada', 'danger', TRUE, 4)
+('FINALIZADA', 'Orden de trabajo completada', 'success', TRUE, 3),
+('CANCELADA', 'Orden de trabajo cancelada', 'danger', TRUE, 4)
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
