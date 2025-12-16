@@ -58,11 +58,11 @@ class MediaS3Storage(OverwriteS3Storage):
     Almacenamiento para archivos de media (subidas de usuarios) en S3.
     
     Configura el bucket, la ubicación y los permisos para archivos de media.
-    Los documentos se mantienen privados por defecto por seguridad.
+    Los documentos son públicos (lectura pública permitida) ya que el bucket S3 es público.
     """
     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
     location = 'media'  # Carpeta en el bucket S3 para archivos de media
-    default_acl = 'private'  # Mantener documentos privados
+    default_acl = 'public-read'  # Archivos públicos (lectura pública permitida)
     
     def __init__(self, *args, **kwargs):
         """

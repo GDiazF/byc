@@ -35,7 +35,7 @@ ALLOWED_HOSTS = ["98.94.227.236", "webapp.gruasbyc.cl"]
 # Application definition
 
 INSTALLED_APPS = [
-    'storages',
+    'storages',  # Necesario para S3 en producción (django-storages)
     'ope_calendario',
     'main_login',
     'rrhh_personal',
@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'notificaciones',  # App para sistema de notificaciones
     'vencimientos_documentos',  # App para gestion de vencimientos de documentos
     'django_apscheduler',  # Para tareas periodicas
-    'storages',  # Necesario para S3 en producción
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -235,39 +234,62 @@ STATIC_ROOT = '/home/ec2-user/proyecto/byc/static/'
 # DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 # ============================================================================
-# CONFIGURACION AWS S3 - PRODUCCION EN NUBE
+# CONFIGURACION AWS S3 - PRODUCCION EN NUBE (BUCKET PÚBLICO)
 # ============================================================================
-# AWS S3 Configuration
-# Las credenciales se pueden obtener de variables de entorno o configurar directamente
+# IMPORTANTE: Las credenciales deben configurarse como variables de entorno
+# para mayor seguridad. Nunca hardcodear credenciales en este archivo.
+# 
+# NOTA: El bucket S3 está configurado como PÚBLICO, por lo que los archivos
+# serán accesibles sin necesidad de URLs firmadas.
+# 
+# Para configurar variables de entorno en el servidor:
+# export AWS_ACCESS_KEY_ID="tu_access_key"
+# export AWS_SECRET_ACCESS_KEY="tu_secret_key"
+# export AWS_STORAGE_BUCKET_NAME="byc-core-media-files-2025-12-13"
+# export AWS_S3_REGION_NAME="us-east-1"
+
+# Credenciales de AWS (obtener desde variables de entorno)
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'byc-core-media-files-2025-12-13')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+
+# Configuración del dominio S3
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 
-
-# ESTO ES LO IMPORTANTE PARA QUE FUNCIONE EN PRIVADO:
-AWS_QUERYSTRING_AUTH = True      # Genera la firma temporal
-AWS_S3_SIGNATURE_VERSION = 's3v4' # Protocolo de firma actual
-AWS_S3_FILE_OVERWRITE = False    # Evita sobrescribir archivos con mismo nombre
-
-# Configuración de permisos y ACL
-AWS_DEFAULT_ACL = None  # Usar ACL del bucket por defecto
+# Configuración de seguridad y permisos (BUCKET PÚBLICO)
+AWS_S3_SIGNATURE_VERSION = 's3v4'  # Protocolo de firma actual
+AWS_DEFAULT_ACL = 'public-read'  # Archivos públicos (lectura pública permitida)
 AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',  # Cache de 24 horas
+    'CacheControl': 'max-age=86400',  # Cache de 24 horas para archivos
 }
 
-# Configuración de seguridad
-AWS_S3_FILE_OVERWRITE = False  # No sobrescribir archivos automáticamente (usamos storage personalizado)
-AWS_QUERYSTRING_AUTH = True  # Incluir autenticación en URLs para archivos privados
-AWS_QUERYSTRING_EXPIRE = 3600  # URLs firmadas expiran en 1 hora
+# Configuración de URLs (NO se usan URLs firmadas porque el bucket es público)
+AWS_QUERYSTRING_AUTH = False  # No generar URLs firmadas (archivos públicos)
+AWS_QUERYSTRING_EXPIRE = 3600  # No se usa, pero se mantiene por compatibilidad
 
-# Media files configuration for S3
-# Usar storage personalizado que permite sobrescribir archivos
+# Configuración de sobrescritura de archivos
+# NOTA: El storage personalizado MediaS3Storage maneja la sobrescritura
+AWS_S3_FILE_OVERWRITE = False  # No sobrescribir automáticamente (el storage personalizado lo maneja)
+
+# Media files configuration for S3 (BUCKET PÚBLICO)
+# Usar storage personalizado que permite sobrescribir archivos cuando sea necesario
+# Los archivos serán públicos y accesibles directamente sin URLs firmadas
 DEFAULT_FILE_STORAGE = 'rrhh_personal.storage.MediaS3Storage'
 MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
-# Static files configuration (mantener en el servidor)
+# Validación de credenciales AWS (solo en producción, no en desarrollo)
+if not DEBUG:
+    if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+        import warnings
+        warnings.warn(
+            'AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY no están configuradas. '
+            'Los archivos no se podrán subir a S3. Configura las variables de entorno.',
+            UserWarning
+        )
+
+# Static files configuration (mantener en el servidor local)
+# Los archivos estáticos (CSS, JS) se sirven desde el servidor, no desde S3
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # ============================================================================
