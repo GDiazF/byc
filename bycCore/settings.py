@@ -242,6 +242,23 @@ STATIC_ROOT = '/home/ec2-user/proyecto/byc/static/'
 # NOTA: El bucket S3 está configurado como PÚBLICO, por lo que los archivos
 # serán accesibles sin necesidad de URLs firmadas.
 # 
+# CONFIGURACIÓN DEL BUCKET EN AWS:
+# 1. Object Ownership debe estar en "Bucket owner enforced" (no permite ACLs)
+# 2. Para hacer el bucket público, usar una política de bucket como esta:
+#    {
+#        "Version": "2012-10-17",
+#        "Statement": [
+#            {
+#                "Sid": "PublicReadGetObject",
+#                "Effect": "Allow",
+#                "Principal": "*",
+#                "Action": "s3:GetObject",
+#                "Resource": "arn:aws:s3:::NOMBRE_BUCKET/*"
+#            }
+#        ]
+#    }
+# 3. Desactivar "Block public access" si es necesario
+# 
 # Para configurar variables de entorno en el servidor:
 # export AWS_ACCESS_KEY_ID="tu_access_key"
 # export AWS_SECRET_ACCESS_KEY="tu_secret_key"
@@ -258,8 +275,10 @@ AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 
 # Configuración de seguridad y permisos (BUCKET PÚBLICO)
+# NOTA: El bucket no permite ACLs (Object Ownership = Bucket owner enforced)
+# La publicidad se controla mediante políticas de bucket, no mediante ACLs
 AWS_S3_SIGNATURE_VERSION = 's3v4'  # Protocolo de firma actual
-AWS_DEFAULT_ACL = 'public-read'  # Archivos públicos (lectura pública permitida)
+AWS_DEFAULT_ACL = None  # No usar ACLs (el bucket no las permite)
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',  # Cache de 24 horas para archivos
 }

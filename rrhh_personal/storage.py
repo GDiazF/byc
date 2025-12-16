@@ -57,21 +57,23 @@ class MediaS3Storage(OverwriteS3Storage):
     """
     Almacenamiento para archivos de media (subidas de usuarios) en S3.
     
-    Configura el bucket, la ubicación y los permisos para archivos de media.
-    Los documentos son públicos (lectura pública permitida) ya que el bucket S3 es público.
+    Configura el bucket y la ubicación para archivos de media.
+    NOTA: El bucket no permite ACLs (Object Ownership = Bucket owner enforced).
+    La publicidad se controla mediante políticas de bucket en AWS, no mediante ACLs.
     """
     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
     location = 'media'  # Carpeta en el bucket S3 para archivos de media
-    default_acl = 'public-read'  # Archivos públicos (lectura pública permitida)
+    # No configurar default_acl porque el bucket no permite ACLs
     
     def __init__(self, *args, **kwargs):
         """
         Inicializa el almacenamiento de media con la configuración de S3.
         
-        Configura el nombre del bucket, la ubicación y los permisos ACL
-        antes de llamar al constructor de la clase padre.
+        Configura el nombre del bucket y la ubicación.
+        NO configura ACLs porque el bucket no las permite.
         """
         kwargs['bucket_name'] = self.bucket_name
         kwargs['location'] = self.location
-        kwargs['default_acl'] = self.default_acl
+        # No pasar default_acl porque el bucket no permite ACLs
+        # La publicidad se controla mediante políticas de bucket en AWS
         super().__init__(*args, **kwargs)
