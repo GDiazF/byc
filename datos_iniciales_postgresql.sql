@@ -470,9 +470,14 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- Tabla: "Cargo"
 -- NOTA: Ajustar depto_id según los IDs generados
+-- IMPORTANTE: Los cargos se insertan en MAYÚSCULAS para mantener consistencia.
+-- El backend usa cargo__iexact (case-insensitive) pero es mejor mantener
+-- consistencia. El cargo 'MECÁNICO' es crítico para el filtro de personal en OT.
 
 INSERT INTO "Cargo" (depto_id, cargo) VALUES
 -- Cargos para MAQUINARIAS (depto_id = 1)
+-- NOTA: 'MECÁNICO' debe estar exactamente así (mayúsculas y acento) para que
+-- el filtro de personal en las OT funcione correctamente
 ((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'MECÁNICO'),
 ((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'RIGGER'),
 ((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'MAESTRO MECÁNICO'),
