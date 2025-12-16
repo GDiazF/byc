@@ -63,6 +63,7 @@ class MediaS3Storage(OverwriteS3Storage):
     """
     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
     location = 'media'  # Carpeta en el bucket S3 para archivos de media
+    querystring_auth = False  # No usar URLs firmadas (bucket público)
     # No configurar default_acl porque el bucket no permite ACLs
     
     def __init__(self, *args, **kwargs):
@@ -74,6 +75,26 @@ class MediaS3Storage(OverwriteS3Storage):
         """
         kwargs['bucket_name'] = self.bucket_name
         kwargs['location'] = self.location
+        kwargs['querystring_auth'] = False  # Asegurar que no se usen URLs firmadas
         # No pasar default_acl porque el bucket no permite ACLs
         # La publicidad se controla mediante políticas de bucket en AWS
         super().__init__(*args, **kwargs)
+    
+    def url(self, name):
+        """
+        Genera una URL pública para el archivo sin autenticación.
+        
+        Como el bucket es público, no necesitamos URLs firmadas.
+        Genera una URL directa al objeto en S3.
+        
+        Args:
+            name: Nombre del archivo en S3 (ya incluye la ubicación si location está configurado)
+            
+        Returns:
+            str: URL pública del archivo
+        """
+        # El nombre ya incluye la ubicación (location) si está configurada
+        # Construir URL pública directa sin autenticación
+        # Formato: https://bucket.s3.region.amazonaws.com/ruta/archivo
+        url = f"https://{self.bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{name}"
+        return url

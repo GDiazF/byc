@@ -456,9 +456,9 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- 6. DEPARTAMENTOS DE EMPRESA
 -- ============================================================================
--- Tabla: "DeptoEmpresa"
+-- Tabla: rrhh_personal_deptoempresa (Django genera el nombre automáticamente)
 
-INSERT INTO "DeptoEmpresa" (depto) VALUES
+INSERT INTO rrhh_personal_deptoempresa (depto) VALUES
 ('MAQUINARIAS'),
 ('OPERACIONES'),
 ('ADMINISTRACIÓN'),
@@ -468,55 +468,55 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- 7. CARGOS
 -- ============================================================================
--- Tabla: "Cargo"
+-- Tabla: rrhh_personal_cargo (Django genera el nombre automáticamente)
 -- NOTA: Ajustar depto_id según los IDs generados
 -- IMPORTANTE: Los cargos se insertan en MAYÚSCULAS para mantener consistencia.
 -- El backend usa cargo__iexact (case-insensitive) pero es mejor mantener
 -- consistencia. El cargo 'MECÁNICO' es crítico para el filtro de personal en OT.
 
-INSERT INTO "Cargo" (depto_id, cargo) VALUES
+INSERT INTO rrhh_personal_cargo (depto_id, cargo) VALUES
 -- Cargos para MAQUINARIAS (depto_id = 1)
 -- NOTA: 'MECÁNICO' debe estar exactamente así (mayúsculas y acento) para que
 -- el filtro de personal en las OT funcione correctamente
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'MECÁNICO'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'RIGGER'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'MAESTRO MECÁNICO'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'TÉCNICO EN MANTENCIÓN'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'SUPERVISOR DE MAQUINARIAS'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'LUBRICADOR'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'SOLDADOR'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'ELECTRICISTA DE MAQUINARIA'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'MAQUINARIAS' LIMIT 1), 'AYUDANTE DE MECÁNICO'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'MAQUINARIAS' LIMIT 1), 'MECÁNICO'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'MAQUINARIAS' LIMIT 1), 'RIGGER'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'MAQUINARIAS' LIMIT 1), 'MAESTRO MECÁNICO'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'MAQUINARIAS' LIMIT 1), 'TÉCNICO EN MANTENCIÓN'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'MAQUINARIAS' LIMIT 1), 'SUPERVISOR DE MAQUINARIAS'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'MAQUINARIAS' LIMIT 1), 'LUBRICADOR'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'MAQUINARIAS' LIMIT 1), 'SOLDADOR'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'MAQUINARIAS' LIMIT 1), 'ELECTRICISTA DE MAQUINARIA'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'MAQUINARIAS' LIMIT 1), 'AYUDANTE DE MECÁNICO'),
 
 -- Cargos para OPERACIONES (depto_id = 2)
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR GRÚA'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR MANLIFT'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR CAMIÓN'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR RETROEXCAVADORA'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR CARGADOR FRONTAL'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR EXCAVADORA'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR BULLDOZER'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'SUPERVISOR DE OPERACIONES'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'COORDINADOR DE FAENA'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'PREVENCIONISTA DE RIESGOS'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'OPERACIONES' LIMIT 1), 'CAPATAZ'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR GRÚA'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR MANLIFT'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR CAMIÓN'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR RETROEXCAVADORA'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR CARGADOR FRONTAL'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR EXCAVADORA'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'OPERADOR BULLDOZER'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'SUPERVISOR DE OPERACIONES'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'COORDINADOR DE FAENA'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'PREVENCIONISTA DE RIESGOS'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'OPERACIONES' LIMIT 1), 'CAPATAZ'),
 
 -- Cargos para ADMINISTRACIÓN (depto_id = 3)
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'ADMINISTRACIÓN' LIMIT 1), 'ADMINISTRADOR'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'ADMINISTRACIÓN' LIMIT 1), 'CONTADOR'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'ADMINISTRACIÓN' LIMIT 1), 'SECRETARIA'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'ADMINISTRACIÓN' LIMIT 1), 'ADMINISTRADOR'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'ADMINISTRACIÓN' LIMIT 1), 'CONTADOR'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'ADMINISTRACIÓN' LIMIT 1), 'SECRETARIA'),
 
 -- Cargos para RRHH (depto_id = 4)
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'RRHH' LIMIT 1), 'JEFE DE RRHH'),
-((SELECT depto_id FROM "DeptoEmpresa" WHERE depto = 'RRHH' LIMIT 1), 'ANALISTA DE RRHH')
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'RRHH' LIMIT 1), 'JEFE DE RRHH'),
+((SELECT depto_id FROM rrhh_personal_deptoempresa WHERE depto = 'RRHH' LIMIT 1), 'ANALISTA DE RRHH')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
 -- 8. TIPOS DE AUSENTISMO
 -- ============================================================================
--- Tabla: "TipoAusentismo"
+-- Tabla: rrhh_personal_tipoausentismo (Django genera el nombre automáticamente)
 
-INSERT INTO "TipoAusentismo" (tipo) VALUES
+INSERT INTO rrhh_personal_tipoausentismo (tipo) VALUES
 ('LICENCIA MÉDICA'),
 ('VACACIONES'),
 ('PERMISO ADMINISTRATIVO'),
@@ -527,9 +527,9 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- 9. TIPOS DE EXÁMENES
 -- ============================================================================
--- Tabla: "TipoExamen"
+-- Tabla: rrhh_personal_tipoexamen (Django genera el nombre automáticamente)
 
-INSERT INTO "TipoExamen" ("tipoExamen") VALUES
+INSERT INTO rrhh_personal_tipoexamen ("tipoExamen") VALUES
 ('EXAMEN PREOCUPACIONAL'),
 ('EXAMEN OCUPACIONAL'),
 ('EXAMEN DE EGRESO'),
@@ -541,9 +541,9 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- 10. RESULTADOS DE EXÁMENES
 -- ============================================================================
--- Tabla: "ResultadoExamen"
+-- Tabla: rrhh_personal_resultadoexamen (Django genera el nombre automáticamente)
 
-INSERT INTO "ResultadoExamen" (resultado) VALUES
+INSERT INTO rrhh_personal_resultadoexamen (resultado) VALUES
 ('APTO'),
 ('APTO CON RESTRICCIONES'),
 ('NO APTO'),
@@ -553,9 +553,9 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- 11. TIPOS DE CERTIFICACIONES
 -- ============================================================================
--- Tabla: "TipoCertificacion"
+-- Tabla: rrhh_personal_tipocertificacion (Django genera el nombre automáticamente)
 
-INSERT INTO "TipoCertificacion" ("tipoCertificacion") VALUES
+INSERT INTO rrhh_personal_tipocertificacion ("tipoCertificacion") VALUES
 ('CERTIFICACIÓN DE GRÚA HORQUILLA'),
 ('CERTIFICACIÓN DE GRÚA TORRE'),
 ('CERTIFICACIÓN DE TRABAJO EN ALTURA'),
@@ -569,9 +569,9 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- 12. TIPOS DE LICENCIAS DE CONDUCIR
 -- ============================================================================
--- Tabla: "TipoLicencia"
+-- Tabla: rrhh_personal_tipolicencia (Django genera el nombre automáticamente)
 
-INSERT INTO "TipoLicencia" ("tipoLicencia") VALUES
+INSERT INTO rrhh_personal_tipolicencia ("tipoLicencia") VALUES
 ('CLASE A'),
 ('CLASE B'),
 ('CLASE C'),
@@ -583,9 +583,9 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- 13. TIPOS DE LICENCIAS MÉDICAS
 -- ============================================================================
--- Tabla: "TipoLicenciaMedica"
+-- Tabla: rrhh_personal_tipolicenciamedica (Django genera el nombre automáticamente)
 
-INSERT INTO "TipoLicenciaMedica" ("tipoLicenciaMedica") VALUES
+INSERT INTO rrhh_personal_tipolicenciamedica ("tipoLicenciaMedica") VALUES
 ('ENFERMEDAD COMÚN'),
 ('ACCIDENTE LABORAL'),
 ('ENFERMEDAD PROFESIONAL'),
@@ -781,12 +781,12 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- Tabla: maquinarias_tipodocumento
 
-INSERT INTO maquinarias_tipodocumento (nombre, descripcion, requiere_fecha_vencimiento, activo) VALUES
-('Revisión Técnica', 'Documento de revisión técnica del vehículo', TRUE, TRUE),
-('Seguro', 'Póliza de seguro del equipo', TRUE, TRUE),
-('Permiso de Circulación', 'Permiso de circulación vigente', TRUE, TRUE),
-('Certificado de Inspección', 'Certificado de inspección técnica', TRUE, TRUE),
-('Manual de Operación', 'Manual de operación del equipo', FALSE, TRUE)
+INSERT INTO maquinarias_tipodocumento (nombre, descripcion, requiere_fecha_vencimiento, activo, fecha_creacion, fecha_modificacion) VALUES
+('Revisión Técnica', 'Documento de revisión técnica del vehículo', TRUE, TRUE, NOW(), NOW()),
+('Seguro', 'Póliza de seguro del equipo', TRUE, TRUE, NOW(), NOW()),
+('Permiso de Circulación', 'Permiso de circulación vigente', TRUE, TRUE, NOW(), NOW()),
+('Certificado de Inspección', 'Certificado de inspección técnica', TRUE, TRUE, NOW(), NOW()),
+('Manual de Operación', 'Manual de operación del equipo', FALSE, TRUE, NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
@@ -818,21 +818,22 @@ ON CONFLICT DO NOTHING;
 -- 28. UNIDADES DE MEDIDA
 -- ============================================================================
 -- Tabla: gen_settings_unidadmedida
+-- NOTA: Los campos son 'codigo' y 'descripcion', no 'nombre' y 'simbolo'
 
-INSERT INTO gen_settings_unidadmedida (nombre, simbolo) VALUES
-('Litros', 'L'),
-('Kilogramos', 'kg'),
-('Metros', 'm'),
-('Unidades', 'un'),
-('Horas', 'hrs')
+INSERT INTO gen_settings_unidadmedida (codigo, descripcion) VALUES
+('L', 'Litros'),
+('kg', 'Kilogramos'),
+('m', 'Metros'),
+('un', 'Unidades'),
+('hrs', 'Horas')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
 -- 29. TIPOS DE CLASIFICACIÓN DE PROVEEDORES
 -- ============================================================================
--- Tabla: "TipoClasificacion"
+-- Tabla: rrhh_personal_tipoclasificacion (Django genera el nombre automáticamente)
 
-INSERT INTO "TipoClasificacion" (tipo) VALUES
+INSERT INTO rrhh_personal_tipoclasificacion (tipo) VALUES
 ('Clínica'),
 ('Laboratorio'),
 ('Centro de Exámenes'),
