@@ -149,15 +149,31 @@ body.loading .main-content .content-loading {
     height: 35px;
     cursor: pointer;
     transition: background-color 0.2s;
+    position: relative;
+    background-color: inherit; /* Heredar el color de fondo para evitar transparencia */
 }
 
 /* Efecto hover en filas del calendario */
+.calendar-table tbody tr {
+    position: relative;
+    z-index: 1;
+}
+
 .calendar-table tbody tr:hover {
     background-color: rgba(13, 110, 253, 0.1);
+    z-index: 2; /* Asegurar que la fila en hover esté por encima */
+    isolation: isolate; /* Crear un nuevo contexto de apilamiento */
 }
 
 .calendar-table tbody tr:hover .sticky-col {
     background-color: rgba(13, 110, 253, 0.15) !important;
+    z-index: 12; /* Mayor que el z-index del sticky-col normal (11) */
+}
+
+/* Asegurar que las celdas de la fila en hover también tengan z-index */
+.calendar-table tbody tr:hover td {
+    position: relative;
+    z-index: 2;
 }
 
 /* Estilo para celdas vacías (fuera del rango del mes) */
