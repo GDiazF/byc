@@ -266,34 +266,7 @@ body.loaded .content-loading {
 }
 
 .notifications-icon {
-    font-size: 1.1rem !important;
-}
-
-/* ============================================================================
-   PROTECCIÓN DEL NAVBAR CONTRA ESTILOS DE FORMULARIOS
-   ============================================================================ */
-.navbar .nav-link,
-.navbar .btn,
-.navbar .bi,
-.navbar .badge {
-    font-size: inherit !important;
-    padding: inherit !important;
-    font-weight: inherit !important;
-    letter-spacing: inherit !important;
-    border-radius: inherit !important;
-    transform: none !important;
-    box-shadow: none !important;
-}
-
-.navbar .notifications-icon {
-    font-size: 1.1rem !important;
-}
-
-.navbar .user-info-container,
-.navbar .user-name,
-.navbar .user-role {
-    font-size: inherit !important;
-    padding: inherit !important;
+    font-size: 1.1rem;
 }
 
 .user-dropdown-link {
