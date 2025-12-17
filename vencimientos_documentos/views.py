@@ -12,7 +12,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from datetime import date, timedelta
 from gen_permissions.decorators import permission_required_custom
 
@@ -151,13 +151,44 @@ def _obtener_documentos_personal(request):
                 Q(dvrut__icontains=buscar)
             )
         
-        # Cargar personal con todos sus documentos relacionados usando prefetch_related
-        # Esto evita N+1 queries y carga todo en queries eficientes
+        # Calcular fecha límite para filtrar documentos
+        fecha_limite = hoy + timedelta(days=45)
+        
+        # OPTIMIZADO: Usar Prefetch con querysets filtrados para cargar solo documentos próximos a vencer
+        # Esto evita cargar todos los documentos y solo trae los que realmente necesitamos
         personal_list = list(personal_query.select_related('region_id', 'comuna_id').prefetch_related(
-            'licenciaporpersonal_set__tipos',
-            'licenciainternaporpersonal_set__tipoLicenciaInterna_id',
-            'certificacion_set__tipoCertificacion_id',
-            'examen_set__tipoEx_id'
+            Prefetch(
+                'licenciaporpersonal_set',
+                queryset=LicenciaPorPersonal.objects.filter(
+                    fechaVencimiento__isnull=False,
+                    fechaVencimiento__lte=fecha_limite
+                ).select_related('personal_id').prefetch_related('tipos'),
+                to_attr='licencias_vencimientos'
+            ),
+            Prefetch(
+                'licenciainternaporpersonal_set',
+                queryset=LicenciaInternaPorPersonal.objects.filter(
+                    fechaVencimiento__isnull=False,
+                    fechaVencimiento__lte=fecha_limite
+                ).select_related('personal_id', 'tipoLicenciaInterna_id'),
+                to_attr='licencias_internas_vencimientos'
+            ),
+            Prefetch(
+                'certificacion_set',
+                queryset=Certificacion.objects.filter(
+                    fechaVencimiento__isnull=False,
+                    fechaVencimiento__lte=fecha_limite
+                ).select_related('personal_id', 'tipoCertificacion_id'),
+                to_attr='certificaciones_vencimientos'
+            ),
+            Prefetch(
+                'examen_set',
+                queryset=Examen.objects.filter(
+                    fechaVencimiento__isnull=False,
+                    fechaVencimiento__lte=fecha_limite
+                ).select_related('personal_id', 'tipoEx_id'),
+                to_attr='examenes_vencimientos'
+            )
         ))
         
         if not personal_list:
@@ -198,9 +229,9 @@ def _obtener_documentos_personal(request):
                     })
     
     # 2. Licencias de conducir (múltiples por personal)
-    # Ya están precargadas con prefetch_related
+    # Ya están precargadas y filtradas con Prefetch
     for personal in personal_list:
-        for licencia in personal.licenciaporpersonal_set.all():
+        for licencia in getattr(personal, 'licencias_vencimientos', []):
             if not licencia.fechaVencimiento:
                 continue
             try:
@@ -236,9 +267,9 @@ def _obtener_documentos_personal(request):
                 continue
     
     # 3. Licencias internas (múltiples por personal)
-    # Ya están precargadas con prefetch_related
+    # Ya están precargadas y filtradas con Prefetch
     for personal in personal_list:
-        for licencia in personal.licenciainternaporpersonal_set.all():
+        for licencia in getattr(personal, 'licencias_internas_vencimientos', []):
             if not licencia.fechaVencimiento:
                 continue
             estado = calcular_estado_vencimiento(licencia.fechaVencimiento)
@@ -270,9 +301,9 @@ def _obtener_documentos_personal(request):
     # porque es normal que venzan. Solo se notifica su creación (ver signals.py)
     
     # 5. Certificaciones (múltiples por personal)
-    # Ya están precargadas con prefetch_related
+    # Ya están precargadas y filtradas con Prefetch
     for personal in personal_list:
-        for cert in personal.certificacion_set.all():
+        for cert in getattr(personal, 'certificaciones_vencimientos', []):
             if not cert.fechaVencimiento:
                 continue
             estado = calcular_estado_vencimiento(cert.fechaVencimiento)
@@ -301,9 +332,9 @@ def _obtener_documentos_personal(request):
                     })
     
     # 6. Exámenes (múltiples por personal)
-    # Ya están precargadas con prefetch_related
+    # Ya están precargadas y filtradas con Prefetch
     for personal in personal_list:
-        for examen in personal.examen_set.all():
+        for examen in getattr(personal, 'examenes_vencimientos', []):
             if not examen.fechaVencimiento:
                 continue
             estado = calcular_estado_vencimiento(examen.fechaVencimiento)
@@ -431,18 +462,28 @@ def _obtener_documentos_maquinarias(request):
             Q(patente__icontains=buscar)
         )
     
-    # Cargar equipos con todos sus documentos relacionados usando prefetch_related
-    # Esto evita N+1 queries y carga todo en queries eficientes
+    # Calcular fecha límite para filtrar documentos
+    fecha_limite = hoy + timedelta(days=45)
+    
+    # OPTIMIZADO: Usar Prefetch con queryset filtrado para cargar solo documentos próximos a vencer
+    # Esto evita cargar todos los documentos y solo trae los que realmente necesitamos
     equipos_list = list(equipos_query.select_related('empresa_id', 'modeloEquipo_id').prefetch_related(
-        'documentos__tipo_documento_id'
+        Prefetch(
+            'documentos',
+            queryset=DocumentoMaquinaria.objects.filter(
+                fecha_vencimiento__isnull=False,
+                fecha_vencimiento__lte=fecha_limite
+            ).select_related('tipo_documento_id'),
+            to_attr='documentos_vencimientos'
+        )
     ))
     
     if not equipos_list:
         return documentos
     
-    # Obtener todos los documentos de los equipos (ya precargados)
+    # Obtener todos los documentos de los equipos (ya precargados y filtrados)
     for equipo in equipos_list:
-        for doc in equipo.documentos.all():
+        for doc in getattr(equipo, 'documentos_vencimientos', []):
             # Solo mostrar documentos con fecha de vencimiento
             if not doc.fecha_vencimiento:
                 continue
