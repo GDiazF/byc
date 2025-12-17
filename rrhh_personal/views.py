@@ -818,10 +818,14 @@ def delete_exam(request, exam_id):
     if request.method == 'DELETE':
         try:
             exam = get_object_or_404(Examen, examen_id=exam_id)
+            # Establecer el usuario actual para que la señal pueda registrarlo en el historial
             exam._current_user = request.user
             exam.delete()
             return JsonResponse({'status': 'success', 'message': 'Examen eliminado exitosamente'})
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al eliminar examen: {str(e)}", exc_info=True)
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
@@ -841,9 +845,14 @@ def delete_license(request, license_id):
     if request.method == 'DELETE':
         try:
             license = get_object_or_404(LicenciaPorPersonal, licenciaPorPersonal_id=license_id)
+            # Establecer el usuario actual para que la señal pueda registrarlo en el historial
+            license._current_user = request.user
             license.delete()
             return JsonResponse({'status': 'success', 'message': 'Licencia eliminada exitosamente'})
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al eliminar licencia: {str(e)}", exc_info=True)
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
@@ -1078,9 +1087,14 @@ def delete_internal_license(request, license_id):
         try:
             from .models import LicenciaInternaPorPersonal
             license = get_object_or_404(LicenciaInternaPorPersonal, licenciaInterna_id=license_id)
+            # Establecer el usuario actual para que la señal pueda registrarlo en el historial
+            license._current_user = request.user
             license.delete()
             return JsonResponse({'status': 'success', 'message': 'Licencia interna eliminada exitosamente'})
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al eliminar licencia interna: {str(e)}", exc_info=True)
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
@@ -1685,6 +1699,7 @@ def delete_certification(request, pk, certification_id):
     """
     try:
         certification = get_object_or_404(Certificacion, certif_id=certification_id, personal_id__personal_id=pk)
+        # Establecer el usuario actual para que la señal pueda registrarlo en el historial
         certification._current_user = request.user
         certification.delete()
         return JsonResponse({
@@ -1692,6 +1707,9 @@ def delete_certification(request, pk, certification_id):
             'message': 'Certificación eliminada exitosamente'
         })
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error al eliminar certificación: {str(e)}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': str(e)

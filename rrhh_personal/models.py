@@ -98,8 +98,9 @@ def obtener_ruta_documento(instance, filename):
 
 def mover_archivo_a_eliminados(archivo_field, personal_rut, nombre_documento):
     """
-    Mueve un archivo a la carpeta de eliminados en lugar de eliminarlo físicamente.
+    Copia un archivo a la carpeta de eliminados en lugar de eliminarlo físicamente.
     Esto permite mantener un historial de documentos eliminados para auditoría.
+    Funciona tanto con S3 como con sistema de archivos local.
     Estructura: Documentacion_Eliminada/RUT/nombre_documento.pdf
     
     Args:
@@ -108,56 +109,62 @@ def mover_archivo_a_eliminados(archivo_field, personal_rut, nombre_documento):
         nombre_documento: Nombre descriptivo del documento (ej: "Curriculum Vitae")
     
     Returns:
-        str: Ruta relativa del archivo movido, o None si hubo error
+        str: Ruta relativa del archivo copiado, o None si hubo error
     """
     # Validar que el campo tenga un archivo
     if not archivo_field or not archivo_field.name:
         return None
     
     try:
+        from django.core.files.storage import default_storage
         from django.conf import settings
-        import shutil
+        import logging
+        logger = logging.getLogger(__name__)
         
-        # Obtener la ruta completa del archivo original
-        archivo_original_path = archivo_field.path
-        if not os.path.exists(archivo_original_path):
+        archivo_ruta_original = archivo_field.name
+        logger.info(f"Copiando archivo a eliminados. Ruta original: {archivo_ruta_original}, RUT: {personal_rut}, Nombre: {nombre_documento}")
+        
+        # Verificar que el archivo existe en el storage (S3 o local)
+        if not default_storage.exists(archivo_ruta_original):
+            logger.warning(f"El archivo no existe en el storage: {archivo_ruta_original}")
             return None
         
         # Crear nombre de archivo limpio (sin caracteres especiales)
         # Formato: RUT_nombre_documento.pdf
         nombre_limpio = nombre_documento.lower().replace(' ', '_').replace('/', '_')
         # Obtener extensión del archivo original
-        extension = os.path.splitext(archivo_field.name)[1]
+        extension = os.path.splitext(archivo_ruta_original)[1]
         nombre_archivo_final = f"{personal_rut}_{nombre_limpio}{extension}"
         
-        # Crear carpeta de eliminados si no existe
-        # Ruta destino: Documentacion_Eliminada/RUT/nombre_documento.pdf
-        carpeta_eliminados = os.path.join(settings.MEDIA_ROOT, 'Documentacion_Eliminada', str(personal_rut))
-        os.makedirs(carpeta_eliminados, exist_ok=True)
+        # Construir ruta relativa de destino (MediaS3Storage agregará 'media/' automáticamente)
+        # La estructura final será: media/Documentacion_Eliminada/RUT/nombre_archivo
+        ruta_relativa_destino = os.path.join('Documentacion_Eliminada', str(personal_rut), nombre_archivo_final)
+        logger.info(f"Ruta de destino para archivo eliminado: {ruta_relativa_destino}")
         
-        ruta_destino = os.path.join(carpeta_eliminados, nombre_archivo_final)
-        
-        # Si ya existe un archivo con ese nombre, agregar timestamp para evitar conflictos
-        if os.path.exists(ruta_destino):
+        # Manejar archivos duplicados
+        if default_storage.exists(ruta_relativa_destino):
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             nombre_base, ext = os.path.splitext(nombre_archivo_final)
             nombre_archivo_final = f"{nombre_base}_{timestamp}{ext}"
-            ruta_destino = os.path.join(carpeta_eliminados, nombre_archivo_final)
+            ruta_relativa_destino = os.path.join('Documentacion_Eliminada', str(personal_rut), nombre_archivo_final)
+            logger.info(f"Archivo duplicado detectado, usando nombre con timestamp: {ruta_relativa_destino}")
         
-        # Mover el archivo físicamente a la carpeta de eliminados
-        shutil.move(archivo_original_path, ruta_destino)
+        # Copiar el archivo desde su ubicación original a la carpeta de eliminados
+        # MediaS3Storage automáticamente agregará el prefijo 'media/' a la ruta
+        logger.info(f"Copiando archivo desde {archivo_ruta_original} a {ruta_relativa_destino}")
+        with default_storage.open(archivo_ruta_original, 'rb') as source_file:
+            ruta_guardada = default_storage.save(ruta_relativa_destino, source_file)
+            logger.info(f"Archivo copiado exitosamente a: {ruta_guardada}")
         
-        # Retornar ruta relativa para guardar en historial
-        ruta_relativa = os.path.join('Documentacion_Eliminada', str(personal_rut), nombre_archivo_final)
-        return ruta_relativa
+        # Retornar ruta relativa para guardar en el historial
+        # La ruta retornada será relativa (sin el prefijo 'media/') para que sea consistente
+        return ruta_relativa_destino
         
     except Exception as e:
-        # Si falla el movimiento, intentar eliminar normalmente como fallback
-        print(f"Error al mover archivo a eliminados: {str(e)}")
-        try:
-            archivo_field.delete(save=False)
-        except:
-            pass
+        # Manejo de errores: si falla la copia, registrar el error pero continuar
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error al copiar archivo a eliminados: {str(e)}", exc_info=True)
         return None
 
 # ============================================================================
