@@ -1166,11 +1166,11 @@ function quitarPersonalSeleccionado(personalId) {
 // ITEMS DE SECCIONES (Para cuando NO es pauta o es correctivo)
 // ============================================================================
 
-// Agregar item de sección (solo en modo creación)
+// Agregar item de sección (permitido en creación y edición)
 function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], estadoInicial = null) {
+    // Permitir agregar en edición, pero validar que no esté finalizada
     if (window.esEdicion) {
-        alert('No se pueden agregar items en modo edición');
-        return;
+        // La validación de estado finalizada se hace en el backend
     }
     const container = document.getElementById('itemsSeccionesContainer');
     const noItemsMessage = document.getElementById('noItemsMessage');
@@ -1913,6 +1913,19 @@ async function guardarOrdenTrabajo(event) {
         formData.estados_pauta = estadosPauta;
         formData.estados_secciones = estadosSecciones;
         
+        // Recolectar items de secciones manuales si NO es pauta (preventivo sin pauta o correctivo)
+        // Esto permite editar secciones en modo edición
+        const correspondePautaSi = document.getElementById('corresponde_pauta_si');
+        const esPauta = correspondePautaSi && correspondePautaSi.checked;
+        const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');
+        const tipoMantenimientoNombre = tipoMantenimientoSelect ? tipoMantenimientoSelect.options[tipoMantenimientoSelect.selectedIndex]?.textContent?.toLowerCase() || '' : '';
+        const esPreventivo = tipoMantenimientoNombre.includes('preventivo');
+        
+        // Si NO es pauta (preventivo sin pauta o correctivo), recolectar items_secciones
+        if (!esPauta || (esPreventivo && !esPauta) || tipoMantenimientoNombre.includes('correctivo')) {
+            formData.items_secciones = recolectarItemsSecciones();
+        }
+        
         // Validar disponibilidad antes de guardar en modo edición
         if (window.otData && window.otData.equipo_id && window.otData.fecha_inicio) {
             const equipoId = window.otData.equipo_id;
@@ -2252,19 +2265,26 @@ function recolectarItemsSecciones() {
     const items = [];
     const itemsSecciones = document.querySelectorAll('.item-seccion');
     
-    // Obtener estado PENDIENTE por defecto (siempre se usa en creación)
+    // Obtener estado PENDIENTE por defecto (para creación)
     const estadoPendiente = window.estadosOT.find(e => e.nombre.toLowerCase() === 'pendiente');
     const estadoPendienteId = estadoPendiente ? estadoPendiente.estadoOT_id : null;
     
     itemsSecciones.forEach(itemDiv => {
         const seccionSelect = itemDiv.querySelector('.seccion-select');
         const checkboxes = itemDiv.querySelectorAll('.tipo-reparacion-checkbox:checked');
+        const estadoSelect = itemDiv.querySelector('.estado-seccion-select');
         
         if (seccionSelect.value && checkboxes.length > 0) {
+            // En edición, usar el estado seleccionado; en creación, usar Pendiente
+            let estadoSeccionId = estadoPendienteId;
+            if (window.esEdicion && estadoSelect && estadoSelect.value) {
+                estadoSeccionId = parseInt(estadoSelect.value);
+            }
+            
             items.push({
                 seccion_id: parseInt(seccionSelect.value),
                 tipos_reparacion_ids: Array.from(checkboxes).map(cb => parseInt(cb.value)),
-                estado_seccion_id: estadoPendienteId  // Siempre PENDIENTE en creación
+                estado_seccion_id: estadoSeccionId
             });
         }
     });
