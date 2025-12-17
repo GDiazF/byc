@@ -168,6 +168,69 @@ body.loaded .content-loading {
         display: block;
         text-align: center;
     }
+    
+    /* Ajustar navbar derecho en móviles */
+    .navbar-nav-right {
+        margin-left: auto;
+        margin-right: 0.5rem !important; /* Reducir margen derecho */
+        gap: 0.25rem; /* Espacio entre elementos */
+    }
+    
+    /* Reducir tamaño del dropdown de usuario en móviles */
+    .user-info-container {
+        padding: 0.15rem 0.3rem !important;
+        gap: 0.3rem !important;
+    }
+    
+    .user-name {
+        font-size: 0.7rem !important;
+        max-width: 80px; /* Limitar ancho del nombre */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .user-role-badge {
+        font-size: 0.55rem !important;
+        padding: 0.05rem 0.25rem !important;
+        max-width: 70px; /* Limitar ancho del rol */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .user-icon {
+        font-size: 1.1rem !important;
+    }
+    
+    .user-chevron {
+        font-size: 0.6rem !important;
+        margin-left: 0.1rem !important;
+    }
+    
+    /* Ajustar dropdown de notificaciones en móviles */
+    .dropdown-menu-notifications {
+        min-width: calc(100vw - 2rem) !important;
+        max-width: calc(100vw - 2rem) !important;
+        right: 0 !important;
+        left: auto !important;
+        transform: translateX(0) !important;
+    }
+    
+    /* Asegurar que el dropdown no se salga de la pantalla */
+    .dropdown-menu-end {
+        right: 0 !important;
+        left: auto !important;
+    }
+    
+    /* Ajustar padding de notificaciones en móviles */
+    .notifications-link {
+        padding: 0.5rem 0.4rem !important;
+    }
+    
+    .user-dropdown-link {
+        padding: 0.5rem 0.5rem !important;
+    }
 }
 
 /* ============================================================================
