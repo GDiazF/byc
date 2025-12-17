@@ -71,10 +71,11 @@ def obtener_ruta_documento_maquinaria(instance, filename):
 
 def mover_archivo_a_eliminados_maquinaria(archivo_field, equipo_id, nombre_documento):
     """
-    Mueve un archivo de maquinaria a la carpeta de eliminados en lugar de eliminarlo físicamente.
+    Copia un archivo de maquinaria a la carpeta de eliminados en lugar de eliminarlo físicamente.
     
     Esta función preserva los archivos eliminados en una carpeta especial para poder recuperarlos
     si es necesario. Los archivos se organizan por equipo para facilitar su gestión.
+    Funciona tanto con S3 como con sistema de archivos local.
     
     Estructura de carpetas: Documentacion_Eliminada_Maquinarias/EQUIPO_ID/EQUIPO_ID_nombre_documento.pdf
     
@@ -84,7 +85,7 @@ def mover_archivo_a_eliminados_maquinaria(archivo_field, equipo_id, nombre_docum
         nombre_documento: Nombre descriptivo del documento (ej: "Permiso de Circulación")
     
     Returns:
-        str: Ruta relativa del archivo movido (desde MEDIA_ROOT), o None si hubo error
+        str: Ruta relativa del archivo copiado (desde MEDIA_ROOT o S3), o None si hubo error
     """
     # Paso 1: Validar que el archivo existe y tiene un nombre
     # Si no hay archivo o nombre, no hay nada que mover
@@ -92,56 +93,47 @@ def mover_archivo_a_eliminados_maquinaria(archivo_field, equipo_id, nombre_docum
         return None
     
     try:
+        from django.core.files.storage import default_storage
         from django.conf import settings
-        import shutil
         
-        # Paso 2: Obtener la ruta completa del archivo original
-        # archivo_field.path devuelve la ruta absoluta del archivo en el sistema de archivos
-        archivo_original_path = archivo_field.path
-        if not os.path.exists(archivo_original_path):
-            # Si el archivo no existe físicamente, retornar None
+        # Paso 2: Verificar que el archivo existe en el storage (S3 o local)
+        if not default_storage.exists(archivo_field.name):
+            # Si el archivo no existe, retornar None
             return None
         
-        # Paso 3: Crear nombre de archivo limpio y seguro para el sistema de archivos
+        # Paso 3: Crear nombre de archivo limpio y seguro
         # Se normaliza el nombre del documento eliminando caracteres especiales que podrían causar problemas
         # Formato final: EQUIPO_ID_nombre_documento.pdf
         nombre_limpio = nombre_documento.lower().replace(' ', '_').replace('/', '_')  # Normalizar nombre
         extension = os.path.splitext(archivo_field.name)[1]  # Obtener extensión del archivo original (.pdf)
         nombre_archivo_final = f"{equipo_id}_{nombre_limpio}{extension}"  # Nombre completo del archivo
         
-        # Paso 4: Crear la carpeta de destino si no existe
-        # La estructura es: MEDIA_ROOT/Documentacion_Eliminada_Maquinarias/EQUIPO_ID/
-        carpeta_eliminados = os.path.join(settings.MEDIA_ROOT, 'Documentacion_Eliminada_Maquinarias', str(equipo_id))
-        os.makedirs(carpeta_eliminados, exist_ok=True)  # Crear carpeta si no existe (exist_ok evita error si ya existe)
+        # Paso 4: Construir ruta relativa de destino
+        # La estructura es: Documentacion_Eliminada_Maquinarias/EQUIPO_ID/nombre_archivo
+        ruta_relativa_destino = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), nombre_archivo_final)
         
-        # Paso 5: Construir ruta completa de destino
-        ruta_destino = os.path.join(carpeta_eliminados, nombre_archivo_final)
-        
-        # Paso 6: Manejar caso de archivo duplicado
+        # Paso 5: Manejar caso de archivo duplicado
         # Si ya existe un archivo con ese nombre, agregar timestamp para evitar sobrescritura
-        if os.path.exists(ruta_destino):
+        if default_storage.exists(ruta_relativa_destino):
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")  # Timestamp en formato YYYYMMDDHHMMSS
             nombre_base, ext = os.path.splitext(nombre_archivo_final)  # Separar nombre y extensión
             nombre_archivo_final = f"{nombre_base}_{timestamp}{ext}"  # Agregar timestamp al nombre
-            ruta_destino = os.path.join(carpeta_eliminados, nombre_archivo_final)  # Actualizar ruta destino
+            ruta_relativa_destino = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), nombre_archivo_final)  # Actualizar ruta destino
         
-        # Paso 7: Mover el archivo físicamente de la ubicación original a la carpeta de eliminados
-        # shutil.move() mueve el archivo (no copia), por lo que desaparece de su ubicación original
-        shutil.move(archivo_original_path, ruta_destino)
+        # Paso 6: Copiar el archivo desde la ubicación original a la carpeta de eliminados
+        # Usar el storage para que funcione tanto con S3 como con sistema de archivos local
+        with default_storage.open(archivo_field.name, 'rb') as source_file:
+            default_storage.save(ruta_relativa_destino, source_file)
         
-        # Paso 8: Retornar ruta relativa (desde MEDIA_ROOT) para guardar en el historial
-        # Esta ruta se usa para referencia en la base de datos sin incluir la ruta absoluta del servidor
-        ruta_relativa = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), nombre_archivo_final)
-        return ruta_relativa
+        # Paso 7: Retornar ruta relativa para guardar en el historial
+        # Esta ruta se usa para referencia en la base de datos
+        return ruta_relativa_destino
         
     except Exception as e:
-        # Manejo de errores: si falla el movimiento, intentar eliminar normalmente
-        # Esto asegura que el archivo no quede huérfano si hay un error
-        print(f"Error al mover archivo a eliminados: {str(e)}")
-        try:
-            archivo_field.delete(save=False)  # Eliminar archivo sin guardar cambios en el modelo
-        except:
-            pass  # Si falla la eliminación también, continuar sin hacer nada más
+        # Manejo de errores: si falla la copia, registrar el error pero continuar
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error al copiar archivo a eliminados: {str(e)}")
         return None  # Retornar None para indicar que hubo un error
 
 
