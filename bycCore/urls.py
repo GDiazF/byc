@@ -10,6 +10,9 @@ from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 
+# Importar vistas de diagnóstico (TODO: Eliminar después del diagnóstico)
+from main_home.views import test_speed, test_database, test_s3
+
 # Configuracion de rutas URL principales
 urlpatterns = [
     # Panel de administracion de Django
@@ -29,6 +32,11 @@ urlpatterns = [
     path('dashboards/', include('dashboards.urls')),  # Dashboards y metricas
     path('notificaciones/', include('notificaciones.urls')),  # Sistema de notificaciones
     path('vencimientos/', include('vencimientos_documentos.urls')),  # Vencimientos de documentos
+    
+    # Rutas de diagnóstico (TODO: Eliminar después del diagnóstico)
+    path('test-speed/', test_speed, name='test_speed'),
+    path('test-database/', test_database, name='test_database'),
+    path('test-s3/', test_s3, name='test_s3'),
 ]
 
 # En modo DEBUG, servir archivos media desde el sistema de archivos
