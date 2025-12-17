@@ -148,4 +148,44 @@ document.addEventListener('DOMContentLoaded', function() {
             sidebar.classList.remove('hover-active');
         }
     });
+    
+    // Ajustar posicionamiento de dropdowns en móviles
+    function ajustarDropdownsMovil() {
+        if (window.innerWidth <= 768) {
+            const notificationDropdown = document.querySelector('.dropdown-menu-notifications');
+            const userDropdown = document.querySelector('#userDropdown + .dropdown-menu');
+            
+            // Ajustar dropdown de notificaciones
+            if (notificationDropdown) {
+                const toggle = document.getElementById('notificationsDropdown');
+                if (toggle) {
+                    const rect = toggle.getBoundingClientRect();
+                    notificationDropdown.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+                    notificationDropdown.style.left = '0.5rem';
+                    notificationDropdown.style.right = 'auto';
+                    notificationDropdown.style.width = 'calc(100vw - 1rem)';
+                }
+            }
+            
+            // Ajustar dropdown de usuario
+            if (userDropdown) {
+                const toggle = document.getElementById('userDropdown');
+                if (toggle) {
+                    const rect = toggle.getBoundingClientRect();
+                    userDropdown.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+                    userDropdown.style.left = '0.5rem';
+                    userDropdown.style.right = 'auto';
+                    userDropdown.style.width = 'calc(100vw - 1rem)';
+                }
+            }
+        }
+    }
+    
+    // Ajustar dropdowns cuando se abren
+    document.addEventListener('shown.bs.dropdown', function(e) {
+        ajustarDropdownsMovil();
+    });
+    
+    // Ajustar dropdowns al redimensionar
+    window.addEventListener('resize', ajustarDropdownsMovil);
 });
