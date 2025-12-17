@@ -199,7 +199,7 @@ function renderizarHistorialPorTipo(tipoDocumento, containerId) {
     if (historialFiltrado.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4 text-muted">
+                <td colspan="5" class="text-center py-4 text-muted">
                     <i class="bi bi-folder-x fs-1"></i>
                     <p class="mt-2">No hay registros en el historial</p>
                 </td>
@@ -212,7 +212,6 @@ function renderizarHistorialPorTipo(tipoDocumento, containerId) {
     historialFiltrado.forEach(item => {
         const fechaHora = formatearFechaHora(item.fecha_hora);
         const accionBadge = obtenerBadgeAccion(item.accion);
-        const archivoHtml = obtenerHtmlArchivo(item);
         
         html += `
             <tr>
@@ -221,7 +220,6 @@ function renderizarHistorialPorTipo(tipoDocumento, containerId) {
                 <td>${fechaHora}</td>
                 <td>${escapeHtml(item.usuario_nombre || item.usuario || 'Sistema')}</td>
                 <td>${escapeHtml(item.descripcion || '-')}</td>
-                <td class="text-center">${archivoHtml}</td>
             </tr>
         `;
     });
@@ -290,12 +288,13 @@ function escapeHtml(text) {
 /**
  * Obtiene el HTML para mostrar el archivo del historial.
  * 
- * Solo muestra el archivo si el documento fue eliminado.
- * Para documentos creados/modificados, el archivo está disponible en la tabla principal.
+ * NOTA: Esta función ya no se utiliza, la columna de archivo fue eliminada.
+ * Se mantiene comentada por si se necesita en el futuro.
  * 
  * @param {Object} item - Item del historial
  * @returns {string} HTML del botón para ver el archivo o "-" si no aplica
  */
+/*
 function obtenerHtmlArchivo(item) {
     // Solo mostrar el archivo si el documento fue ELIMINADO
     // Si fue creado/agregado/modificado, el archivo está disponible en la tabla principal
@@ -327,4 +326,5 @@ function obtenerHtmlArchivo(item) {
     
     return '<span class="text-muted">-</span>';
 }
+*/
 
