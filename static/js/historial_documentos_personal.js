@@ -307,7 +307,7 @@ function obtenerHtmlArchivo(item) {
     if (item.archivo_url) {
         return `
             <a href="${escapeHtml(item.archivo_url)}" target="_blank" class="btn btn-sm btn-primary" title="Ver documento eliminado">
-                <i class="bi bi-eye"></i>
+                <i class="bi bi-eye"></i> Ver
             </a>
         `;
     }
@@ -320,7 +320,7 @@ function obtenerHtmlArchivo(item) {
         const nombreArchivo = item.archivo_ruta.split(/[/\\]/).pop();
         return `
             <a href="${escapeHtml(archivoUrl)}" target="_blank" class="btn btn-sm btn-primary" title="Ver documento eliminado: ${escapeHtml(nombreArchivo)}">
-                <i class="bi bi-eye"></i>
+                <i class="bi bi-eye"></i> Ver
             </a>
         `;
     }

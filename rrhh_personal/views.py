@@ -95,13 +95,24 @@ def obtener_url_archivo_historial(evento, personal):
     try:
         from django.conf import settings
         
-        # Si el archivo está en la carpeta de eliminados, construir URL directamente
-        if evento.archivo_ruta.startswith('Documentacion_Eliminada/'):
-            ruta_completa = os.path.join(settings.MEDIA_ROOT, evento.archivo_ruta)
-            if os.path.exists(ruta_completa):
-                # Construir URL relativa desde MEDIA_URL
-                url_relativa = evento.archivo_ruta.replace('\\', '/')
-                return os.path.join(settings.MEDIA_URL.rstrip('/'), url_relativa).replace('\\', '/')
+        # Si el archivo está en la carpeta de eliminados, construir URL usando default_storage (funciona con S3 y local)
+        if evento.archivo_ruta and evento.archivo_ruta.startswith('Documentacion_Eliminada/'):
+            from django.core.files.storage import default_storage
+            # Verificar que el archivo existe en el storage (S3 o local)
+            if default_storage.exists(evento.archivo_ruta):
+                # Obtener la URL del archivo usando el storage (funciona con S3 y local)
+                try:
+                    # Si es S3, usar el método url() del storage
+                    if hasattr(default_storage, 'url'):
+                        return default_storage.url(evento.archivo_ruta)
+                    # Si es local, construir URL relativa desde MEDIA_URL
+                    else:
+                        url_relativa = evento.archivo_ruta.replace('\\', '/')
+                        return os.path.join(settings.MEDIA_URL.rstrip('/'), url_relativa).replace('\\', '/')
+                except Exception as e:
+                    # Fallback: construir URL relativa
+                    url_relativa = evento.archivo_ruta.replace('\\', '/')
+                    return os.path.join(settings.MEDIA_URL.rstrip('/'), url_relativa).replace('\\', '/')
         
         # Para documentos personales, verificar si está en el campo actual del modelo Personal
         if evento.campo_documento:
@@ -1276,7 +1287,7 @@ def delete_personal_document(request, personal_id):
                     'message': 'Campo de documento inválido'
                 }, status=400)
             
-            # Mover el archivo a carpeta de eliminados en lugar de eliminarlo
+            # Copiar el archivo a carpeta de eliminados ANTES de eliminarlo del modelo
             field = getattr(personal, document_field)
             if field:
                 archivo_ruta_original = field.name  # Guardar ruta original
@@ -1297,24 +1308,44 @@ def delete_personal_document(request, personal_id):
                 }
                 nombre_doc = nombres_documentos.get(document_field, document_field)
                 
-                # Mover archivo a carpeta de eliminados
-                from .models import mover_archivo_a_eliminados
-                archivo_ruta_eliminado = mover_archivo_a_eliminados(
-                    field, 
-                    personal.rut, 
-                    nombre_doc
-                )
+                # Copiar archivo a carpeta de eliminados usando default_storage (funciona con S3 y local)
+                from django.core.files.storage import default_storage
+                import logging
+                logger = logging.getLogger(__name__)
                 
-                # Limpiar el campo del modelo
-                setattr(personal, document_field, None)
+                archivo_ruta_eliminado = None
+                try:
+                    # Verificar que el archivo existe en el storage
+                    if default_storage.exists(archivo_ruta_original):
+                        # Crear nombre de archivo limpio
+                        nombre_limpio = nombre_doc.lower().replace(' ', '_').replace('/', '_')
+                        extension = os.path.splitext(archivo_ruta_original)[1]
+                        nombre_archivo_final = f"{personal.rut}_{nombre_limpio}{extension}"
+                        
+                        # Construir ruta relativa de destino (MediaS3Storage agregará 'media/' automáticamente)
+                        ruta_relativa_destino = os.path.join('Documentacion_Eliminada', str(personal.rut), nombre_archivo_final)
+                        
+                        # Manejar archivos duplicados
+                        if default_storage.exists(ruta_relativa_destino):
+                            from datetime import datetime
+                            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                            nombre_base, ext = os.path.splitext(nombre_archivo_final)
+                            nombre_archivo_final = f"{nombre_base}_{timestamp}{ext}"
+                            ruta_relativa_destino = os.path.join('Documentacion_Eliminada', str(personal.rut), nombre_archivo_final)
+                        
+                        # Copiar el archivo desde su ubicación original a la carpeta de eliminados
+                        logger.info(f"Copiando archivo desde {archivo_ruta_original} a {ruta_relativa_destino}")
+                        with default_storage.open(archivo_ruta_original, 'rb') as source_file:
+                            ruta_guardada = default_storage.save(ruta_relativa_destino, source_file)
+                            archivo_ruta_eliminado = ruta_relativa_destino  # Guardar ruta relativa para el historial
+                            logger.info(f"Archivo copiado exitosamente a: {ruta_guardada}")
+                    else:
+                        logger.warning(f"El archivo no existe en el storage: {archivo_ruta_original}")
+                except Exception as e:
+                    logger.error(f"Error al copiar archivo a eliminados: {str(e)}", exc_info=True)
+                    # Continuar aunque falle la copia, el archivo original se mantendrá
                 
-                # Si es el carnet, también eliminar la fecha de vencimiento
-                if document_field == 'fotocopia_carnet':
-                    personal.fecha_vencimiento_carnet = None
-                
-                personal.save()
-                
-                # Registrar en historial con la nueva ruta del archivo eliminado
+                # Registrar en historial ANTES de eliminar el campo (para mantener referencia al archivo)
                 from .models import HistorialDocumentoPersonal
                 archivo_ruta_historial = archivo_ruta_eliminado if archivo_ruta_eliminado else archivo_ruta_original
                 
@@ -1329,6 +1360,17 @@ def delete_personal_document(request, personal_id):
                     archivo_ruta=archivo_ruta_historial,
                     datos_previos={'archivo': archivo_ruta_original, 'archivo_eliminado': archivo_ruta_historial}
                 )
+                
+                # IMPORTANTE: NO eliminar el archivo del bucket, solo limpiar la referencia en el modelo
+                # El archivo permanecerá en el bucket en la carpeta de eliminados para poder visualizarlo desde el historial
+                # Limpiar el campo del modelo (esto NO elimina el archivo físico si ya fue copiado)
+                setattr(personal, document_field, None)
+                
+                # Si es el carnet, también eliminar la fecha de vencimiento
+                if document_field == 'fotocopia_carnet':
+                    personal.fecha_vencimiento_carnet = None
+                
+                personal.save()
                 
                 return JsonResponse({
                     'status': 'success',
