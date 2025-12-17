@@ -28,16 +28,23 @@ Conéctate a tu EC2 y ejecuta:
 cd /home/ec2-user/proyecto/byc
 git pull origin main
 source venv/bin/activate
-sudo systemctl restart byccore.service
+
+# Recargar Gunicorn (elige UNA opción):
+
+# Opción A: Recarga rápida sin interrupciones (RECOMENDADA)
+pkill -HUP gunicorn
+
+# O Opción B: Reinicio completo del servicio (si tienes systemd)
+# sudo systemctl restart byccore.service
 ```
 
-Verifica que el servicio esté corriendo:
+Verifica que Gunicorn esté corriendo:
 
 ```bash
-sudo systemctl status byccore.service
+ps aux | grep gunicorn
 ```
 
-Deberías ver `active (running)` en verde.
+Deberías ver varios procesos de Gunicorn activos.
 
 ---
 
@@ -117,8 +124,81 @@ Y en la EC2:
 ```bash
 cd /home/ec2-user/proyecto/byc
 git pull origin main
+pkill -HUP gunicorn
+```
+
+---
+
+## 🔧 SOLUCIONES SEGÚN DIAGNÓSTICO
+
+### Si el error es `InvalidAccessKeyId` en S3:
+
+**CAUSA:** Credenciales de AWS Academy expiradas (común en cuentas de estudiante).
+
+**SOLUCIÓN 1: Actualizar credenciales AWS Academy**
+
+1. Ve a AWS Academy → Learner Lab
+2. Click en "AWS Details"
+3. Click en "Show" en AWS CLI credentials
+4. Copia las 3 variables:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+   - `AWS_SESSION_TOKEN`
+
+5. En la EC2, edita el archivo de environment:
+
+```bash
+sudo nano /etc/systemd/system/byccore.service
+```
+
+Busca la sección `[Service]` y actualiza/agrega:
+
+```ini
+Environment="AWS_ACCESS_KEY_ID=tu_nuevo_access_key"
+Environment="AWS_SECRET_ACCESS_KEY=tu_nuevo_secret_key"
+Environment="AWS_SESSION_TOKEN=tu_nuevo_session_token"
+```
+
+Guarda (`Ctrl+O`, Enter, `Ctrl+X`) y reinicia:
+
+```bash
+sudo systemctl daemon-reload
 sudo systemctl restart byccore.service
 ```
+
+**SOLUCIÓN 2: Usar IAM Role en lugar de credenciales** (MEJOR, pero requiere configuración)
+
+Si puedes configurar un IAM Role en tu cuenta AWS Academy:
+1. Crear rol con permisos S3
+2. Asignarlo a la instancia EC2
+3. Eliminar las variables de entorno de credenciales
+
+**SOLUCIÓN 3: Deshabilitar verificación S3 temporalmente**
+
+En `settings_aws_optimized.py`:
+
+```python
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_FILE_OVERWRITE = False
+AWS_S3_VERIFY = False  # Ya está así
+```
+
+Y agregar:
+
+```python
+# Desactivar verificación de existencia de archivos
+AWS_S3_USE_THREADS = False
+```
+
+---
+
+## 📊 RESULTADOS ESPERADOS DESPUÉS DE LA CORRECCIÓN
+
+| Test | Esperado |
+|------|----------|
+| test-speed | < 50ms |
+| test-database | < 200ms |
+| test-s3 | < 500ms (sin error) |
 
 ---
 
