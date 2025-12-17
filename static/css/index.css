@@ -28,7 +28,7 @@ body {
     position: fixed;
     top: 56px;
     left: 0;
-    z-index: 100;
+    z-index: 1050; /* Mayor que elementos sticky de Bootstrap (1020) y tablas */
     background-color: #212529;
     transition: transform 0.3s ease;
     transform: translateX(-250px);

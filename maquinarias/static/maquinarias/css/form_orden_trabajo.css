@@ -65,6 +65,13 @@
     overflow-y: auto;
 }
 
+/* Asegurar que el thead sticky no quede por encima del sidebar */
+.personal-table-responsive thead.sticky-top {
+    z-index: 50 !important; /* Menor que el sidebar (z-index: 100) */
+    position: sticky;
+    top: 0;
+}
+
 /* Personal selected container */
 .personal-selected-container {
     display: none;
