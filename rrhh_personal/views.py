@@ -95,24 +95,63 @@ def obtener_url_archivo_historial(evento, personal):
     try:
         from django.conf import settings
         
+        from django.core.files.storage import default_storage
+        
         # Si el archivo está en la carpeta de eliminados, construir URL usando default_storage (funciona con S3 y local)
         if evento.archivo_ruta and evento.archivo_ruta.startswith('Documentacion_Eliminada/'):
-            from django.core.files.storage import default_storage
             # Verificar que el archivo existe en el storage (S3 o local)
             if default_storage.exists(evento.archivo_ruta):
                 # Obtener la URL del archivo usando el storage (funciona con S3 y local)
                 try:
-                    # Si es S3, usar el método url() del storage
-                    if hasattr(default_storage, 'url'):
-                        return default_storage.url(evento.archivo_ruta)
-                    # Si es local, construir URL relativa desde MEDIA_URL
-                    else:
-                        url_relativa = evento.archivo_ruta.replace('\\', '/')
-                        return os.path.join(settings.MEDIA_URL.rstrip('/'), url_relativa).replace('\\', '/')
+                    # Usar el método url() del storage (funciona tanto con S3 como con local)
+                    return default_storage.url(evento.archivo_ruta)
                 except Exception as e:
                     # Fallback: construir URL relativa
                     url_relativa = evento.archivo_ruta.replace('\\', '/')
                     return os.path.join(settings.MEDIA_URL.rstrip('/'), url_relativa).replace('\\', '/')
+        
+        # Si el archivo_ruta no empieza con Documentacion_Eliminada/, intentar construir URL desde la ruta original
+        # Esto puede pasar si el archivo no se copió correctamente a eliminados pero se guardó la ruta original
+        # O si el archivo original todavía existe en su ubicación original
+        if evento.archivo_ruta:
+            try:
+                import logging
+                logger = logging.getLogger(__name__)
+                
+                # Intentar obtener URL usando default_storage (funciona con S3 y local)
+                # Primero verificar si el archivo existe en el storage con la ruta exacta
+                if default_storage.exists(evento.archivo_ruta):
+                    url_generada = default_storage.url(evento.archivo_ruta)
+                    logger.info(f"URL generada para {evento.archivo_ruta}: {url_generada}")
+                    return url_generada
+                
+                # Si no existe, puede ser que la ruta no incluya el prefijo 'media/'
+                # Intentar agregar el prefijo si es necesario (para archivos en S3)
+                if not evento.archivo_ruta.startswith('media/'):
+                    ruta_con_media = f"media/{evento.archivo_ruta}"
+                    if default_storage.exists(ruta_con_media):
+                        url_generada = default_storage.url(ruta_con_media)
+                        logger.info(f"URL generada para {ruta_con_media}: {url_generada}")
+                        return url_generada
+                
+                # Si aún no existe, intentar construir URL manualmente usando MEDIA_URL
+                # Esto es útil para archivos que fueron eliminados pero aún están en el bucket
+                url_relativa = evento.archivo_ruta.replace('\\', '/')
+                if not url_relativa.startswith('media/'):
+                    url_relativa = f"media/{url_relativa}"
+                url_completa = f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}"
+                logger.info(f"URL construida manualmente para {evento.archivo_ruta}: {url_completa}")
+                return url_completa
+                
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error al obtener URL del archivo {evento.archivo_ruta}: {str(e)}", exc_info=True)
+                # Fallback: construir URL relativa básica
+                url_relativa = evento.archivo_ruta.replace('\\', '/')
+                if not url_relativa.startswith('media/'):
+                    url_relativa = f"media/{url_relativa}"
+                return f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}"
         
         # Para documentos personales, verificar si está en el campo actual del modelo Personal
         if evento.campo_documento:
