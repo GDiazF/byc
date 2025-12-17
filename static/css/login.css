@@ -112,10 +112,21 @@ body {
     padding: 0.5rem 0.75rem;
     cursor: pointer;
     transition: background-color 0.15s ease-in-out;
+    min-width: 44px; /* Tamaño mínimo táctil recomendado para móviles */
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent; /* Eliminar highlight azul en móviles */
+    touch-action: manipulation; /* Mejorar respuesta táctil */
 }
 
 .password-toggle:hover {
     background-color: #f8f9fa;
+}
+
+.password-toggle:active {
+    background-color: #e9ecef;
 }
 
 .password-toggle:focus {
@@ -126,6 +137,7 @@ body {
 .password-toggle i {
     color: #6c757d;
     font-size: 1.1rem;
+    pointer-events: none; /* Evitar que el ícono interfiera con el clic */
 }
 
 .input-group .form-control:not(:last-child) {
@@ -301,5 +313,16 @@ body {
     
     .login-header img {
         height: 50px;
+    }
+    
+    /* Aumentar área táctil del botón de contraseña en móviles */
+    .password-toggle {
+        padding: 0.75rem 1rem;
+        min-width: 48px;
+        min-height: 48px;
+    }
+    
+    .password-toggle i {
+        font-size: 1.25rem;
     }
 }

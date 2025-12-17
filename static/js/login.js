@@ -20,8 +20,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const togglePasswordIcon = document.getElementById('togglePasswordIcon');
     
     if (togglePassword && passwordInput && togglePasswordIcon) {
-        togglePassword.addEventListener('click', function(e) {
-            e.preventDefault();
+        // Función para alternar la visibilidad de la contraseña
+        function togglePasswordVisibility(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             
             // Alternar tipo de input entre password y text
             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -37,6 +41,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 togglePasswordIcon.classList.add('bi-eye');
                 togglePassword.setAttribute('aria-label', 'Mostrar contraseña');
             }
+        }
+        
+        // Agregar múltiples eventos para compatibilidad móvil y desktop
+        togglePassword.addEventListener('click', togglePasswordVisibility);
+        togglePassword.addEventListener('touchend', function(e) {
+            // Prevenir el doble evento (click después de touchend)
+            e.preventDefault();
+            togglePasswordVisibility(e);
         });
     }
 });
