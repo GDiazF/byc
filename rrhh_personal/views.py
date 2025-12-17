@@ -154,48 +154,86 @@ def obtener_url_archivo_historial(evento, personal):
                 return f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}"
         
         # Para documentos personales, verificar si está en el campo actual del modelo Personal
-        if evento.campo_documento:
+        # Solo si el archivo NO está en Documentacion_Eliminada (porque si está ahí, ya lo procesamos arriba)
+        if evento.campo_documento and not (evento.archivo_ruta and evento.archivo_ruta.startswith('Documentacion_Eliminada/')):
             campo_actual = getattr(personal, evento.campo_documento, None)
             if campo_actual and campo_actual.name == evento.archivo_ruta:
-                return campo_actual.url
+                try:
+                    return campo_actual.url
+                except Exception:
+                    pass
         
         # Para otros tipos de documentos (licencias, certificaciones, exámenes)
         # Buscar en los modelos correspondientes usando archivo_ruta
-        if evento.tipo_documento == 'LICENCIA_CONDUCIR':
-            from .models import LicenciaPorPersonal
-            licencia = LicenciaPorPersonal.objects.filter(
-                personal_id=personal,
-                rutaDoc__isnull=False
-            ).exclude(rutaDoc='').first()
-            if licencia and licencia.rutaDoc.name == evento.archivo_ruta:
-                return licencia.rutaDoc.url
+        # Solo si el archivo NO está en Documentacion_Eliminada (porque si está ahí, ya lo procesamos arriba)
+        if not (evento.archivo_ruta and evento.archivo_ruta.startswith('Documentacion_Eliminada/')):
+            if evento.tipo_documento == 'LICENCIA_CONDUCIR':
+                from .models import LicenciaPorPersonal
+                licencia = LicenciaPorPersonal.objects.filter(
+                    personal_id=personal,
+                    rutaDoc__isnull=False
+                ).exclude(rutaDoc='').first()
+                if licencia and licencia.rutaDoc.name == evento.archivo_ruta:
+                    try:
+                        return licencia.rutaDoc.url
+                    except Exception:
+                        pass
+            
+            elif evento.tipo_documento == 'LICENCIA_INTERNA':
+                from .models import LicenciaInternaPorPersonal
+                licencia = LicenciaInternaPorPersonal.objects.filter(
+                    personal_id=personal,
+                    rutaDoc__isnull=False
+                ).exclude(rutaDoc='').first()
+                if licencia and licencia.rutaDoc.name == evento.archivo_ruta:
+                    try:
+                        return licencia.rutaDoc.url
+                    except Exception:
+                        pass
+            
+            elif evento.tipo_documento == 'CERTIFICACION':
+                from .models import Certificacion
+                cert = Certificacion.objects.filter(
+                    personal_id=personal,
+                    rutaDoc__isnull=False
+                ).exclude(rutaDoc='').first()
+                if cert and cert.rutaDoc.name == evento.archivo_ruta:
+                    try:
+                        return cert.rutaDoc.url
+                    except Exception:
+                        pass
+            
+            elif evento.tipo_documento == 'EXAMEN':
+                from .models import Examen
+                examen = Examen.objects.filter(
+                    personal_id=personal,
+                    rutaDoc__isnull=False
+                ).exclude(rutaDoc='').first()
+                if examen and examen.rutaDoc.name == evento.archivo_ruta:
+                    try:
+                        return examen.rutaDoc.url
+                    except Exception:
+                        pass
         
-        elif evento.tipo_documento == 'LICENCIA_INTERNA':
-            from .models import LicenciaInternaPorPersonal
-            licencia = LicenciaInternaPorPersonal.objects.filter(
-                personal_id=personal,
-                rutaDoc__isnull=False
-            ).exclude(rutaDoc='').first()
-            if licencia and licencia.rutaDoc.name == evento.archivo_ruta:
-                return licencia.rutaDoc.url
-        
-        elif evento.tipo_documento == 'CERTIFICACION':
-            from .models import Certificacion
-            cert = Certificacion.objects.filter(
-                personal_id=personal,
-                rutaDoc__isnull=False
-            ).exclude(rutaDoc='').first()
-            if cert and cert.rutaDoc.name == evento.archivo_ruta:
-                return cert.rutaDoc.url
-        
-        elif evento.tipo_documento == 'EXAMEN':
-            from .models import Examen
-            examen = Examen.objects.filter(
-                personal_id=personal,
-                rutaDoc__isnull=False
-            ).exclude(rutaDoc='').first()
-            if examen and examen.rutaDoc.name == evento.archivo_ruta:
-                return examen.rutaDoc.url
+        # Si llegamos aquí y todavía tenemos archivo_ruta, significa que el archivo fue eliminado
+        # pero no está en Documentacion_Eliminada o no se encontró en los modelos
+        # En este caso, intentar construir la URL usando la misma lógica que arriba
+        if evento.archivo_ruta:
+            try:
+                import logging
+                logger = logging.getLogger(__name__)
+                
+                # Intentar construir URL manualmente usando MEDIA_URL
+                url_relativa = evento.archivo_ruta.replace('\\', '/')
+                if not url_relativa.startswith('media/'):
+                    url_relativa = f"media/{url_relativa}"
+                url_completa = f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}"
+                logger.info(f"URL construida manualmente para archivo eliminado {evento.tipo_documento}: {url_completa}")
+                return url_completa
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error al construir URL para archivo eliminado {evento.tipo_documento}: {str(e)}", exc_info=True)
         
         # Si no se encuentra, el archivo fue eliminado o reemplazado
         return None
