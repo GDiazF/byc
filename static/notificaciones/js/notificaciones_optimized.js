@@ -226,18 +226,12 @@
      * Inicialización al cargar la página.
      */
     function inicializar() {
-        // Solo cargar el contador inicialmente (sin notificaciones)
+        // Cargar contador Y notificaciones al inicio (sin lazy loading)
         actualizarContadorDesdeServidor();
+        cargarNotificaciones();
         
-        // Lazy loading: Cargar notificaciones solo cuando se abre el dropdown
-        const dropdown = document.getElementById('notificationsDropdown');
-        if (dropdown) {
-            dropdown.addEventListener('click', function() {
-                if (!notificacionesCargadas) {
-                    cargarNotificaciones();
-                }
-            });
-        }
+        // Marcar como cargadas
+        notificacionesCargadas = true;
         
         // Botón de marcar todas como leídas
         const btnMarcarTodas = document.getElementById('btnMarcarTodasLeidasDropdown');
