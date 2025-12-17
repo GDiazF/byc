@@ -19,6 +19,77 @@ if (typeof permisos === 'undefined') {
 }
 
 // ============================================================================
+// FUNCIONES HELPER
+// ============================================================================
+
+/**
+ * Maneja la respuesta de una petición AJAX y muestra errores si es necesario.
+ * Si handleAjaxResponse no está definido globalmente (de notificaciones.js),
+ * se define aquí como fallback.
+ */
+if (typeof handleAjaxResponse === 'undefined') {
+    async function handleAjaxResponse(response) {
+        // Intentar parsear la respuesta como JSON
+        let data;
+        const contentType = response.headers.get('content-type');
+        const isJson = contentType && contentType.includes('application/json');
+        
+        if (isJson) {
+            try {
+                data = await response.json();
+            } catch (e) {
+                // Si falla el parseo JSON, crear un objeto de error genérico
+                data = {
+                    status: 'error',
+                    success: false,
+                    message: `Error ${response.status}: ${response.statusText}`
+                };
+            }
+        } else {
+            // Si no es JSON, crear un objeto de error genérico
+            data = {
+                status: 'error',
+                success: false,
+                message: `Error ${response.status}: ${response.statusText}`
+            };
+        }
+        
+        // Si la respuesta no es exitosa, mostrar error
+        if (!response.ok) {
+            // Errores de permisos (403)
+            if (response.status === 403) {
+                const message = data.message || data.error || 'No tiene permiso para realizar esta acción';
+                if (typeof showNotification === 'function') {
+                    showNotification(message, 'error', 6000);
+                } else {
+                    alert(message);
+                }
+            }
+            // Errores de autenticación (401)
+            else if (response.status === 401) {
+                const message = data.message || 'Su sesión ha expirado. Por favor, inicie sesión nuevamente.';
+                if (typeof showNotification === 'function') {
+                    showNotification(message, 'warning', 6000);
+                } else {
+                    alert(message);
+                }
+            }
+            // Otros errores
+            else {
+                const message = data.message || data.error || `Error ${response.status}: ${response.statusText}`;
+                if (typeof showNotification === 'function') {
+                    showNotification(message, 'error', 5000);
+                } else {
+                    alert(message);
+                }
+            }
+        }
+        
+        return data;
+    }
+}
+
+// ============================================================================
 // INICIALIZACIÓN
 // ============================================================================
 
