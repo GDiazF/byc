@@ -1480,61 +1480,24 @@ function cargarDatosEdicion() {
             // Cargar secciones de la pauta
             cargarSeccionesPauta(data.pauta_id);
         } else if (data.items_secciones && data.items_secciones.length > 0) {
-            // Cargar items de secciones manuales
+            // Cargar items de secciones manuales usando el template para permitir edición
             const container = document.getElementById('itemsSeccionesContainer');
+            const noItemsMessage = document.getElementById('noItemsMessage');
             if (container) {
                 container.innerHTML = '';
+                if (noItemsMessage) {
+                    noItemsMessage.style.display = 'none';
+                }
+                
+                // Ocultar mensaje de "no hay items"
+                
                 data.items_secciones.forEach((item, index) => {
-                    // Buscar nombre de sección
-                    let seccionNombre = 'Sección';
-                    if (window.secciones && window.secciones.length > 0) {
-                        const seccion = window.secciones.find(s => s.seccion_id == item.seccion_id);
-                        if (seccion) {
-                            seccionNombre = seccion.nombre;
-                        }
-                    }
-                    
-                    // Buscar nombres de tipos de reparación
-                    let tiposReparacionNombres = [];
-                    if (window.tiposReparacion && window.tiposReparacion.length > 0 && item.tipos_reparacion_ids) {
-                        tiposReparacionNombres = item.tipos_reparacion_ids.map(id => {
-                            const tipo = window.tiposReparacion.find(t => t.tipoReparacion_id == id);
-                            return tipo ? tipo.nombre : '';
-                        }).filter(n => n);
-                    }
-                    
-                    // Crear elemento para mostrar la sección con selector de estado
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'card mb-2';
-                    
-                    itemDiv.innerHTML = `
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="mb-0">
-                                    <i class="bi bi-diagram-3 me-2"></i>${seccionNombre}
-                                </h6>
-                                <select class="form-select form-select-sm estado-seccion-select" 
-                                        style="width: auto;" 
-                                        data-seccion-id="${item.seccion_id}"
-                                        data-item-id="${item.itemSeccionOT_id || ''}">
-                                    <option value="">Seleccione estado...</option>
-                                    ${window.estadosOT.map(estado => 
-                                        `<option value="${estado.estadoOT_id}" ${estado.estadoOT_id == item.estado_seccion_id ? 'selected' : ''}>${estado.nombre}</option>`
-                                    ).join('')}
-                                </select>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted d-block mb-1">Tipos de Reparación:</small>
-                                ${tiposReparacionNombres.length > 0 ? 
-                                    `<ul class="mb-0 ps-3" style="font-size: 0.875rem;">
-                                        ${tiposReparacionNombres.map(nombre => `<li>${nombre}</li>`).join('')}
-                                    </ul>` : 
-                                    '<span class="text-muted small">No hay tipos de reparación asignados</span>'
-                                }
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(itemDiv);
+                    // Usar la función agregarItemSeccion con los datos precargados
+                    agregarItemSeccion(
+                        item.seccion_id,
+                        item.tipos_reparacion_ids || [],
+                        item.estado_seccion_id || null
+                    );
                 });
             }
         }
@@ -2054,7 +2017,7 @@ async function guardarOrdenTrabajo(event) {
                 if (data.conflictos) {
                     mostrarModalConflictos(data.conflictos);
                 } else {
-                    alert('Error al actualizar: ' + (data.message || 'Error desconocido'));
+                    mostrarNotificacion('Error al actualizar: ' + (data.message || 'Error desconocido'), 'error');
                 }
             }
         })
@@ -2064,10 +2027,10 @@ async function guardarOrdenTrabajo(event) {
             if (error.isHttpError && error.data && error.data.conflictos) {
                 mostrarModalConflictos(error.data.conflictos);
             } else if (error.isHttpError && error.data) {
-                // Si hay mensaje pero no conflictos, mostrar alert
-                alert('Error al actualizar: ' + (error.data.message || 'Error desconocido'));
+                // Si hay mensaje pero no conflictos, mostrar notificación
+                mostrarNotificacion('Error al actualizar: ' + (error.data.message || 'Error desconocido'), 'error');
             } else {
-                alert('Error de conexión al actualizar');
+                mostrarNotificacion('Error de conexión al actualizar', 'error');
             }
         });
         
@@ -2079,12 +2042,12 @@ async function guardarOrdenTrabajo(event) {
     const tipoMantenimientoId = document.getElementById('tipo_mantenimiento_id').value;
     
     if (!equipoId) {
-        alert('Debe seleccionar un equipo');
+        mostrarNotificacion('Debe seleccionar un equipo', 'error');
         return;
     }
     
     if (!tipoMantenimientoId) {
-        alert('Debe seleccionar un tipo de mantenimiento');
+        mostrarNotificacion('Debe seleccionar un tipo de mantenimiento', 'error');
         return;
     }
     
@@ -2112,7 +2075,7 @@ async function guardarOrdenTrabajo(event) {
         const fechaInicioDate = new Date(fechaInicio);
         const fechaFinDate = new Date(fechaFin);
         if (fechaFinDate < fechaInicioDate) {
-            alert('La fecha de fin no puede ser anterior a la fecha de inicio');
+            mostrarNotificacion('La fecha de fin no puede ser anterior a la fecha de inicio', 'error');
             return;
         }
     }
@@ -2207,11 +2170,35 @@ async function guardarOrdenTrabajo(event) {
             formData.estados_pauta = estadosPauta;
         } else {
             // Recolectar items de secciones manuales
-            formData.items_secciones = recolectarItemsSecciones();
+            const itemsSecciones = recolectarItemsSecciones();
+            // Validar que haya al menos una sección con tipos de reparación
+            if (!itemsSecciones || itemsSecciones.length === 0) {
+                mostrarNotificacion('Debe asignar al menos una sección con al menos un tipo de reparación', 'error');
+                return;
+            }
+            // Validar que cada sección tenga tipos de reparación
+            const itemsInvalidos = itemsSecciones.filter(item => !item.tipos_reparacion_ids || item.tipos_reparacion_ids.length === 0);
+            if (itemsInvalidos.length > 0) {
+                mostrarNotificacion('Todas las secciones deben tener al menos un tipo de reparación asignado', 'error');
+                return;
+            }
+            formData.items_secciones = itemsSecciones;
         }
     } else {
         // Correctivo - recolectar items de secciones
-        formData.items_secciones = recolectarItemsSecciones();
+        const itemsSecciones = recolectarItemsSecciones();
+        // Validar que haya al menos una sección con tipos de reparación
+        if (!itemsSecciones || itemsSecciones.length === 0) {
+            mostrarNotificacion('Debe asignar al menos una sección con al menos un tipo de reparación', 'error');
+            return;
+        }
+        // Validar que cada sección tenga tipos de reparación
+        const itemsInvalidos = itemsSecciones.filter(item => !item.tipos_reparacion_ids || item.tipos_reparacion_ids.length === 0);
+        if (itemsInvalidos.length > 0) {
+            mostrarNotificacion('Todas las secciones deben tener al menos un tipo de reparación asignado', 'error');
+            return;
+        }
+        formData.items_secciones = itemsSecciones;
     }
     
     // Enviar datos
@@ -2232,32 +2219,48 @@ async function guardarOrdenTrabajo(event) {
                 window.location.replace('/maquinarias/ordenes-trabajo/');
             }, 1500);
         } else {
-            alert('Error al guardar: ' + data.message);
+            mostrarNotificacion('Error al guardar: ' + (data.message || 'Error desconocido'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error de conexión al guardar');
+        mostrarNotificacion('Error de conexión al guardar', 'error');
     });
 }
 
 // Función auxiliar para mostrar notificaciones
 function mostrarNotificacion(mensaje, tipo) {
-    // Crear elemento de notificación
-    const notificacion = document.createElement('div');
-    notificacion.className = `alert alert-${tipo === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
-    notificacion.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    notificacion.innerHTML = `
+    // Obtener o crear el contenedor de mensajes
+    let container = document.querySelector('.messages-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'messages-container';
+        container.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;';
+        document.body.appendChild(container);
+    }
+    
+    // Determinar clases CSS e icono según el tipo de notificación
+    const alertClass = tipo === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = tipo === 'success' ? 'check-circle' : 'exclamation-triangle';
+    
+    // Crear el elemento de alerta con el mensaje
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show alert-permanent`;
+    alertDiv.setAttribute('role', 'alert');
+    alertDiv.style.marginBottom = '10px';
+    alertDiv.innerHTML = `
+        <i class="bi bi-${icon} me-2"></i>
         ${mensaje}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     
-    document.body.appendChild(notificacion);
+    // Agregar la notificación al contenedor
+    container.appendChild(alertDiv);
     
-    // Auto-remover después de 3 segundos
+    // Configurar eliminación automática después de 5 segundos
     setTimeout(() => {
-        notificacion.remove();
-    }, 3000);
+        alertDiv.remove();
+    }, 5000);
 }
 
 // Recolectar items de secciones
