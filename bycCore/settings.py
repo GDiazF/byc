@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-zxiwr5sw3xn%vu+bh47ucrprmj2c@ws#0%+x22if%gcqj16pbx
 # SECURITY WARNING: don't run with debug turned on in production!
 # Para desarrollo local: DEBUG = True
 # Para producción AWS: DEBUG = False
-DEBUG = True  # Cambiar a False en producción
+DEBUG = False  # ⚡ PRODUCCIÓN: False para mejor rendimiento y seguridad
 
 # Para desarrollo local, incluir localhost y 127.0.0.1
 # Para producción, solo incluir el dominio y IP del servidor
@@ -92,77 +92,91 @@ WSGI_APPLICATION = 'bycCore.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Base de datos SQLite para desarrollo local (portable)
+# ============================================================================
+# PRODUCCIÓN: PostgreSQL en AWS RDS con optimizaciones
+# ============================================================================
 DATABASES = {
-     "default": {
-         "ENGINE": "django.db.backends.sqlite3",
-         "NAME": BASE_DIR / "db.sqlite3",
-     }
- }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "bycCore",
+        "USER": "postgres",
+        "PASSWORD": "Admin12345###",
+        "HOST": "byccore-db.cjscic8mi81f.us-east-1.rds.amazonaws.com",
+        "PORT": "5432",
+        "OPTIONS": {
+            "connect_timeout": 10,
+            "options": "-c statement_timeout=30000",  # 30 segundos timeout
+        },
+        # ⚡ OPTIMIZACIÓN: Conexiones persistentes (reutiliza conexiones)
+        "CONN_MAX_AGE": 600,  # Mantener conexiones por 10 minutos
+        "CONN_HEALTH_CHECKS": True,  # Verificar salud de conexiones
+    }
+}
 
-# Base de datos PostgreSQL local para desarrollo (BACKUP)
+# Base de datos SQLite para desarrollo local (DESCOMENTAR para desarrollo)
 # DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": "bycCoreDB",
-#         "USER": "postgres",
-#         "PASSWORD": "123456",  # Ajusta segun tu configuracion local
-#         "HOST": "localhost",
-#         "PORT": "5432",
-#     }
-# }
+#      "default": {
+#          "ENGINE": "django.db.backends.sqlite3",
+#          "NAME": BASE_DIR / "db.sqlite3",
+#      }
+#  }
 
-# Base de datos PostgreSQL en AWS RDS Multi-AZ (para producción)
-#DATABASES = {
-#    "default": {
-#        "ENGINE": "django.db.backends.postgresql",
-#        "NAME": "bycCore",
-#        "USER": "postgres",
-#        "PASSWORD": "Admin12345###",
-#        "HOST": "byccore-db.cjscic8mi81f.us-east-1.rds.amazonaws.com",
-#        "PORT": "5432",
-#        "OPTIONS": {
-#            "connect_timeout": 10,
-#        },
-#    }
-#}
-
-# Cache configuration
-# Configuracion de cache para optimizar rendimiento del calendario y notificaciones
+# ============================================================================
+# CACHE - OPTIMIZADO PARA PRODUCCIÓN CON GUNICORN
+# ============================================================================
+# DatabaseCache es mejor que LocMemCache cuando tienes múltiples workers de Gunicorn
+# porque el caché se comparte entre todos los workers
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'byc-cache',
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache_table',  # Tabla en la BD
         'OPTIONS': {
-            'MAX_ENTRIES': 1000,  # Maximo 1000 entradas en cache
+            'MAX_ENTRIES': 5000,  # Más entradas para producción
+            'CULL_FREQUENCY': 4,  # Eliminar 25% cuando está lleno
         }
     }
 }
 
-# Para produccion con multiples instancias, se recomienda usar Memcached o Redis:
+# NOTA: Debes crear la tabla de caché ejecutando:
+# python manage.py createcachetable
+
+# Para desarrollo local con un solo proceso, usar LocMemCache:
 # CACHES = {
 #     'default': {
-#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-#         'LOCATION': 'redis://127.0.0.1:6379/1',
+#         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+#         'LOCATION': 'byc-cache',
+#         'OPTIONS': {
+#             'MAX_ENTRIES': 1000,
+#         }
 #     }
 # }
 
+# ============================================================================
+# SESIONES - OPTIMIZADO PARA PRODUCCIÓN
+# ============================================================================
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'  # Caché + BD
+SESSION_CACHE_ALIAS = 'default'
+SESSION_COOKIE_AGE = 43200  # 12 horas
+SESSION_COOKIE_SECURE = False  # Cambiar a True si tienes HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_SAVE_EVERY_REQUEST = False  # Solo guardar si se modifica
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
 
 # ============================================================================
-# PASSWORD HASHERS - OPTIMIZADO PARA DESARROLLO LOCAL
+# PASSWORD HASHERS - PRODUCCIÓN
 # ============================================================================
-# En desarrollo usamos MD5 que es MUCHO mas rapido (solo para desarrollo!)
-# Para produccion, comentar esta seccion y usar el PBKDF2 por defecto
 PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.MD5PasswordHasher',  # Rapido para desarrollo
-    'django.contrib.auth.hashers.PBKDF2PasswordHasher',  # Fallback para contrasenas existentes
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',  # Principal
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',  # Fallback
+    'django.contrib.auth.hashers.MD5PasswordHasher',  # Para contraseñas antiguas
 ]
 
-# Para PRODUCCION, usar esto en su lugar (comentar lo de arriba):
+# Para DESARROLLO LOCAL (más rápido), comentar lo de arriba y descomentar:
 # PASSWORD_HASHERS = [
-#     'django.contrib.auth.hashers.Argon2PasswordHasher',  # Mas seguro que PBKDF2
-#     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
-#     'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+#     'django.contrib.auth.hashers.MD5PasswordHasher',  # Rápido para desarrollo
+#     'django.contrib.auth.hashers.PBKDF2PasswordHasher',  # Fallback
 # ]
 
 # Password validation
@@ -212,11 +226,11 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Para desarrollo local
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+# ⚡ PRODUCCIÓN: Archivos estáticos recolectados aquí
+STATIC_ROOT = '/home/ec2-user/proyecto/byc/staticfiles/'
 
-# Para produccion en servidor AWS (comentar para desarrollo local)
-# STATIC_ROOT = '/home/ec2-user/proyecto/byc/static/'
+# Para desarrollo local (descomentar):
+# STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Directorios adicionales donde Django buscara archivos estaticos
 STATICFILES_DIRS = [
@@ -224,13 +238,15 @@ STATICFILES_DIRS = [
 ]
 
 # ============================================================================
-# CONFIGURACION DE ARCHIVOS MEDIA - DESARROLLO LOCAL
+# CONFIGURACION DE ARCHIVOS MEDIA - PRODUCCIÓN CON S3
 # ============================================================================
-# Para desarrollo local, usar sistema de archivos local
-# Para producción, comentar esto y usar S3 (más abajo)
-MEDIA_ROOT = os.path.join(BASE_DIR, 'Documentacion_Personal')
-MEDIA_URL = '/media/'
-DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# Para producción, usar S3
+# Para desarrollo local, descomentar la configuración de abajo y comentar S3
+
+# Desarrollo local (descomentar para usar):
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'Documentacion_Personal')
+# MEDIA_URL = '/media/'
+# DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 # ============================================================================
 # CONFIGURACION AWS S3 - PRODUCCION EN NUBE (BUCKET PÚBLICO)
@@ -269,8 +285,9 @@ DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 # Credenciales de AWS (obtener desde variables de entorno)
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'byc-core-media-files-2025-12-13')
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+AWS_SESSION_TOKEN = os.environ.get('AWS_SESSION_TOKEN', '')  # Para AWS Academy
+AWS_STORAGE_BUCKET_NAME = 'byc-core-media-files-2025-12-13'  # Nombre correcto del bucket
+AWS_S3_REGION_NAME = 'us-east-1'
 
 # Configuración del dominio S3
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
@@ -295,9 +312,9 @@ AWS_S3_FILE_OVERWRITE = False  # No sobrescribir automáticamente (el storage pe
 # Media files configuration for S3 (BUCKET PÚBLICO)
 # Usar storage personalizado que permite sobrescribir archivos cuando sea necesario
 # Los archivos serán públicos y accesibles directamente sin URLs firmadas
-# COMENTAR PARA DESARROLLO LOCAL - Descomentar solo en producción
-# DEFAULT_FILE_STORAGE = 'rrhh_personal.storage.MediaS3Storage'
-# MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+# ⚡ PRODUCCIÓN: Usando S3 para archivos media
+DEFAULT_FILE_STORAGE = 'rrhh_personal.storage.MediaS3Storage'
+MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/'
 
 # Validación de credenciales AWS (solo en producción, no en desarrollo)
 if not DEBUG:

@@ -12,5 +12,5 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bycCore.settings_aws_optimized')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bycCore.settings')
 application = get_wsgi_application()
