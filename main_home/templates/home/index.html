@@ -39,7 +39,8 @@
             
             <!-- Navbar superior derecha -->
             <ul class="navbar-nav d-flex align-items-center navbar-nav-right">
-                <!-- Campanita de notificaciones (OPTIMIZADA) -->
+                <!-- NOTIFICACIONES DESACTIVADAS TEMPORALMENTE -->
+                <!-- 
                 <li class="nav-item dropdown">
                     <a class="nav-link position-relative notifications-link" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-bell text-white notifications-icon"></i>
@@ -60,6 +61,7 @@
                         </li>
                     </ul>
                 </li>
+                -->
                 
                 <!-- Dropdown de usuario -->
                 <li class="nav-item dropdown">
@@ -347,8 +349,9 @@
           <!-- Date Picker Chileno - Global -->
           <script src="{% static 'js/datePickerChile.js' %}"></script>
           
-          <!-- ⚡ NOTIFICACIONES OPTIMIZADAS (Sin SSE, carga al inicio, Polling cada 60s) -->
-          <script src="{% static 'notificaciones/js/notificaciones_optimized.js' %}"></script>
+          <!-- ⚠️ NOTIFICACIONES DESACTIVADAS TEMPORALMENTE -->
+          <!-- Reactivar cuando se haga correctamente el deployment con collectstatic -->
+          <!-- <script src="{% static 'notificaciones/js/notificaciones_optimized.js' %}"></script> -->
            
            {% block extrajs %}{% endblock %}
 </body>
