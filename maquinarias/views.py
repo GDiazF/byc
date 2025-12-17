@@ -4563,6 +4563,73 @@ def api_guardar_orden_trabajo(request):
             # Estos son los campos principales que se pueden modificar en modo edición
             ot.estado_ot_id = estado_ot  # Actualizar estado OT
             ot.estado_equipo_id = estado_equipo  # Actualizar estado de equipo
+            
+            # Paso 11.1: Permitir cambiar la pauta en modo edición (si se proporciona)
+            pauta_id_nueva = data.get('pauta_id')
+            if pauta_id_nueva:
+                try:
+                    pauta_nueva = get_object_or_404(PautaMantenimientoPreventivo, pauta_id=pauta_id_nueva)
+                    pauta_anterior = ot.pauta_id
+                    
+                    # Solo actualizar si cambió la pauta
+                    if pauta_anterior != pauta_nueva:
+                        # Eliminar items de secciones antiguos de la pauta anterior
+                        ItemSeccionOT.objects.filter(ot_id=ot).delete()
+                        
+                        # Actualizar la pauta
+                        ot.pauta_id = pauta_nueva
+                        ot.corresponde_pauta = True
+                        
+                        # Registrar cambio en historial
+                        HistorialOT.registrar(
+                            ot=ot,
+                            accion='PAUTA_CAMBIADA',
+                            descripcion=f"Pauta de mantenimiento cambiada de '{pauta_anterior.nombre if pauta_anterior else 'Ninguna'}' a '{pauta_nueva.nombre}'",
+                            usuario=request.user if request.user.is_authenticated else None,
+                            datos_previos={
+                                'pauta_id': pauta_anterior.pauta_id if pauta_anterior else None,
+                                'pauta_nombre': pauta_anterior.nombre if pauta_anterior else None
+                            },
+                            datos_nuevos={
+                                'pauta_id': pauta_nueva.pauta_id,
+                                'pauta_nombre': pauta_nueva.nombre
+                            }
+                        )
+                        
+                        # Crear nuevos items de secciones desde la nueva pauta
+                        items_pauta_nueva = ItemPauta.objects.filter(pauta_id=pauta_nueva).prefetch_related('tipos_reparacion')
+                        estado_pendiente = EstadoOT.objects.filter(nombre='Pendiente').first()
+                        if not estado_pendiente:
+                            estado_pendiente = EstadoOT.objects.filter(activo=True).first()
+                        
+                        for item_pauta in items_pauta_nueva:
+                            item_seccion = ItemSeccionOT.objects.create(
+                                ot_id=ot,
+                                seccion_id=item_pauta.seccion_id,
+                                estado_seccion_id=estado_pendiente
+                            )
+                            item_seccion.tipos_reparacion.set(item_pauta.tipos_reparacion.all())
+                            
+                            # Registrar agregado de sección en historial
+                            tipos_nombres = list(item_seccion.tipos_reparacion.values_list('nombre', flat=True))
+                            HistorialOT.registrar(
+                                ot=ot,
+                                accion='SECCION_AGREGADA',
+                                descripcion=f"Sección '{item_pauta.seccion_id.nombre}' agregada desde nueva pauta. Tipos de reparación: {', '.join(tipos_nombres) if tipos_nombres else 'Ninguno'}. Estado: {estado_pendiente.nombre}",
+                                usuario=request.user if request.user.is_authenticated else None,
+                                datos_previos=None,
+                                datos_nuevos={
+                                    'seccion_id': item_pauta.seccion_id.seccion_id,
+                                    'seccion_nombre': item_pauta.seccion_id.nombre,
+                                    'tipos_reparacion_ids': list(item_seccion.tipos_reparacion.values_list('tipoReparacion_id', flat=True)),
+                                    'tipos_reparacion_nombres': tipos_nombres,
+                                    'estado_seccion_id': estado_pendiente.estadoOT_id,
+                                    'estado_seccion_nombre': estado_pendiente.nombre
+                                }
+                            )
+                except PautaMantenimientoPreventivo.DoesNotExist:
+                    pass  # Si la pauta no existe, ignorar
+            
             ot.save()  # Guardar cambios en la base de datos
             
             # Actualizar estados de secciones si se enviaron
@@ -4570,7 +4637,7 @@ def api_guardar_orden_trabajo(request):
             estados_secciones = data.get('estados_secciones', [])
             
             # Actualizar estados de pauta (los estados se guardan en ItemSeccionOT, no en ItemPauta)
-            if estados_pauta:
+            if estados_pauta and ot.pauta_id:
                 for estado_data in estados_pauta:
                     item_pauta_id = estado_data.get('itemPauta_id')
                     seccion_id = estado_data.get('seccion_id')

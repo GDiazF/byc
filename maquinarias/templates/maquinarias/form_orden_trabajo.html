@@ -346,6 +346,16 @@
                     <span>Secciones de la Pauta</span>
                 </div>
                 <div class="form-section-body">
+                    <!-- Select de pauta (permitir cambiar en modo edición) -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-12">
+                            <label for="pauta_id_edicion" class="form-label">Pauta de Mantenimiento</label>
+                            <select class="form-select" id="pauta_id_edicion">
+                                <option value="">Seleccione una pauta...</option>
+                            </select>
+                            <small class="text-muted">Puede cambiar la pauta para actualizar las secciones</small>
+                        </div>
+                    </div>
                     <div id="seccionesPautaContainer">
                         <div id="seccionesPautaList">
                             <!-- Se llena dinámicamente desde JavaScript -->

@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
         correspondePautaNo.addEventListener('change', cambiarCorrespondePauta);
     }
     
-    // Event listener para select de pauta
+    // Event listener para select de pauta (modo creación)
     const pautaSelect = document.getElementById('pauta_id');
     if (pautaSelect) {
         pautaSelect.addEventListener('change', function(e) {
@@ -137,6 +137,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Si no hay pauta seleccionada, ocultar secciones
                 const seccionesPautaContainer = document.querySelector('#seccionPreventivo #seccionesPautaContainer') || 
                                                  document.getElementById('seccionesPautaContainer');
+                if (seccionesPautaContainer) {
+                    seccionesPautaContainer.style.display = 'none';
+                    seccionesPautaContainer.classList.add('hidden-section');
+                }
+            }
+        });
+    }
+    
+    // Event listener para select de pauta en modo edición
+    const pautaSelectEdicion = document.getElementById('pauta_id_edicion');
+    if (pautaSelectEdicion) {
+        pautaSelectEdicion.addEventListener('change', function(e) {
+            const pautaId = e.target.value;
+            if (pautaId) {
+                console.log('Pauta seleccionada en edición:', pautaId);
+                cargarSeccionesPauta(pautaId);
+            } else {
+                // Si no hay pauta seleccionada, ocultar secciones
+                const seccionesPautaContainer = document.getElementById('seccionesPautaContainer');
                 if (seccionesPautaContainer) {
                     seccionesPautaContainer.style.display = 'none';
                     seccionesPautaContainer.classList.add('hidden-section');
@@ -695,8 +714,8 @@ function cambiarCorrespondePauta() {
 }
 
 // Cargar pautas por modelo
-function cargarPautasPorModelo(modeloId) {
-    const pautaSelect = document.getElementById('pauta_id');
+function cargarPautasPorModelo(modeloId, selectElement = null) {
+    const pautaSelect = selectElement || document.getElementById('pauta_id');
     
     if (!modeloId) {
         pautaSelect.innerHTML = '<option value="">Seleccione un equipo primero...</option>';
@@ -774,10 +793,11 @@ function cargarSeccionesPauta(pautaIdParam = null) {
         }
     }
     
-    // Si aún no tenemos pautaId, intentar obtenerlo del select
+    // Si aún no tenemos pautaId, intentar obtenerlo del select (creación o edición)
     if (!pautaId) {
         const pautaSelect = document.getElementById('pauta_id');
-        pautaId = pautaSelect?.value;
+        const pautaSelectEdicion = document.getElementById('pauta_id_edicion');
+        pautaId = pautaSelect?.value || pautaSelectEdicion?.value;
     }
     
     // Buscar el contenedor - puede estar en diferentes lugares según el modo
@@ -1478,6 +1498,16 @@ function cargarDatosEdicion() {
         
         if (data.corresponde_pauta && data.pauta_id) {
             // Cargar secciones de la pauta
+            // También cargar pautas disponibles en el select de edición
+            const pautaSelectEdicion = document.getElementById('pauta_id_edicion');
+            if (pautaSelectEdicion && data.modelo_id) {
+                // Cargar pautas disponibles para el modelo
+                cargarPautasPorModelo(data.modelo_id, pautaSelectEdicion);
+                // Preseleccionar la pauta actual después de cargar
+                setTimeout(() => {
+                    pautaSelectEdicion.value = data.pauta_id;
+                }, 500);
+            }
             cargarSeccionesPauta(data.pauta_id);
         } else if (data.items_secciones && data.items_secciones.length > 0) {
             // Cargar items de secciones manuales usando el template para permitir edición
@@ -1876,16 +1906,25 @@ async function guardarOrdenTrabajo(event) {
         formData.estados_pauta = estadosPauta;
         formData.estados_secciones = estadosSecciones;
         
+        // En modo edición, verificar si se cambió la pauta
+        const pautaSelectEdicion = document.getElementById('pauta_id_edicion');
+        if (pautaSelectEdicion && pautaSelectEdicion.value) {
+            formData.pauta_id = pautaSelectEdicion.value;
+            formData.corresponde_pauta = true;
+        }
+        
         // Recolectar items de secciones manuales si NO es pauta (preventivo sin pauta o correctivo)
         // Esto permite editar secciones en modo edición
         const correspondePautaSi = document.getElementById('corresponde_pauta_si');
         const esPauta = correspondePautaSi && correspondePautaSi.checked;
+        // En modo edición, verificar si hay pauta seleccionada
+        const tienePautaEnEdicion = pautaSelectEdicion && pautaSelectEdicion.value;
         const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');
         const tipoMantenimientoNombre = tipoMantenimientoSelect ? tipoMantenimientoSelect.options[tipoMantenimientoSelect.selectedIndex]?.textContent?.toLowerCase() || '' : '';
         const esPreventivo = tipoMantenimientoNombre.includes('preventivo');
         
         // Si NO es pauta (preventivo sin pauta o correctivo), recolectar items_secciones
-        if (!esPauta || (esPreventivo && !esPauta) || tipoMantenimientoNombre.includes('correctivo')) {
+        if ((!esPauta && !tienePautaEnEdicion) || (esPreventivo && !esPauta && !tienePautaEnEdicion) || tipoMantenimientoNombre.includes('correctivo')) {
             formData.items_secciones = recolectarItemsSecciones();
         }
         
