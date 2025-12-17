@@ -51,6 +51,22 @@
             </div>
         {% endif %}
         
+        <!-- Mostrar errores de campos individuales -->
+        {% if form.errors %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Errores en el formulario:</strong>
+                <ul class="mb-0 mt-2">
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endif %}
+        
         <form method="post" class="needs-validation" novalidate id="ausentismoForm">
             {% csrf_token %}
             <div class="row">

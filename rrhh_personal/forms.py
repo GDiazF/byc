@@ -505,9 +505,10 @@ class AusentismoForm(forms.ModelForm):
     )
     
     # Campo adicional solo para mostrar la fecha de fin (no se guardará)
-    fechafin_display = forms.DateField(
+    # Este campo NO se incluye en el POST, solo es para mostrar
+    fechafin_display = forms.CharField(
         required=False,
-        widget=forms.DateInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'id': 'id_fechafin'}),
+        widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'id': 'id_fechafin'}),
         label='Fecha de Fin (Calculada)'
     )
     
@@ -544,6 +545,11 @@ class AusentismoForm(forms.ModelForm):
             if self.instance.fechafin:
                 # Formatear fecha en formato chileno DD/MM/YYYY para mostrar al usuario
                 self.fields['fechafin_display'].initial = self.instance.fechafin.strftime('%d/%m/%Y')
+        
+        # Excluir fechafin_display del procesamiento del formulario (solo es visual)
+        # Esto evita que Django intente procesarlo como campo de fecha
+        if 'fechafin_display' in self.fields:
+            self.fields['fechafin_display'].widget.attrs['name'] = ''  # Sin name, no se envía en POST
     
     def clean_dias_ausentismo(self):
         """

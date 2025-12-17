@@ -1751,7 +1751,7 @@ def listar_ausentismos_personal(request, personal_id):
 
 
 @login_required
-@permission_required_custom('rrhh_personal.change_personal', is_ajax=True)
+@permission_required_custom('rrhh_personal.change_personal', is_ajax=False)
 def crear_ausentismo(request, personal_id):
     """
     Vista para crear un nuevo ausentismo.
