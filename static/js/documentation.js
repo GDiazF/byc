@@ -1031,11 +1031,12 @@ async function deleteDocument(type, id, confirmModal) {
     // Las URLs deben ser configuradas desde el template
     // Para certificaciones, la URL tiene dos parámetros: personal_id y certification_id
     // El template tiene: {% url "delete_certification" personal.personal_id 0 %}
-    // Necesitamos reemplazar solo el último 0 (certification_id), no el personal_id
+    // La URL generada será: /users/personal/107/delete_certification/0/
+    // Necesitamos reemplazar solo el último /0/ con el id de la certificación
     let certificationUrl = null;
-    if (window.DELETE_CERTIFICATION_URL && window.PERSONAL_ID) {
-        // Reemplazar solo el último 0 con el id de la certificación
-        certificationUrl = window.DELETE_CERTIFICATION_URL.replace(/0$/, id);
+    if (window.DELETE_CERTIFICATION_URL) {
+        // Reemplazar /0/ al final con /id/
+        certificationUrl = window.DELETE_CERTIFICATION_URL.replace(/\/0\/$/, `/${id}/`);
     }
     
     const urls = {

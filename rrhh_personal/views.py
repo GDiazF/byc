@@ -99,16 +99,40 @@ def obtener_url_archivo_historial(evento, personal):
         
         # Si el archivo está en la carpeta de eliminados, construir URL usando default_storage (funciona con S3 y local)
         if evento.archivo_ruta and evento.archivo_ruta.startswith('Documentacion_Eliminada/'):
+            import logging
+            logger = logging.getLogger(__name__)
+            
             # Verificar que el archivo existe en el storage (S3 o local)
+            # Primero intentar con la ruta exacta
             if default_storage.exists(evento.archivo_ruta):
-                # Obtener la URL del archivo usando el storage (funciona con S3 y local)
                 try:
                     # Usar el método url() del storage (funciona tanto con S3 como con local)
-                    return default_storage.url(evento.archivo_ruta)
+                    url_generada = default_storage.url(evento.archivo_ruta)
+                    logger.info(f"URL generada para archivo eliminado (ruta exacta): {url_generada}")
+                    return url_generada
                 except Exception as e:
-                    # Fallback: construir URL relativa
-                    url_relativa = evento.archivo_ruta.replace('\\', '/')
-                    return os.path.join(settings.MEDIA_URL.rstrip('/'), url_relativa).replace('\\', '/')
+                    logger.error(f"Error al generar URL con ruta exacta: {str(e)}", exc_info=True)
+            
+            # Si no existe con la ruta exacta, intentar agregar el prefijo 'media/' si no lo tiene
+            # Esto es necesario porque MediaS3Storage espera rutas relativas sin 'media/'
+            # pero el método url() debería agregarlo automáticamente
+            ruta_con_media = f"media/{evento.archivo_ruta}" if not evento.archivo_ruta.startswith('media/') else evento.archivo_ruta
+            if default_storage.exists(ruta_con_media):
+                try:
+                    url_generada = default_storage.url(ruta_con_media)
+                    logger.info(f"URL generada para archivo eliminado (con media/): {url_generada}")
+                    return url_generada
+                except Exception as e:
+                    logger.error(f"Error al generar URL con media/: {str(e)}", exc_info=True)
+            
+            # Fallback: construir URL manualmente usando MEDIA_URL
+            # Esto asegura que siempre tengamos una URL válida
+            url_relativa = evento.archivo_ruta.replace('\\', '/')
+            if not url_relativa.startswith('media/'):
+                url_relativa = f"media/{url_relativa}"
+            url_completa = f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}"
+            logger.info(f"URL construida manualmente para archivo eliminado: {url_completa}")
+            return url_completa
         
         # Si el archivo_ruta no empieza con Documentacion_Eliminada/, intentar construir URL desde la ruta original
         # Esto puede pasar si el archivo no se copió correctamente a eliminados pero se guardó la ruta original
