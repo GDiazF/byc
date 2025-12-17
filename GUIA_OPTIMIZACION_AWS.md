@@ -82,8 +82,8 @@ Agrega las variables de entorno de AWS:
 
 ```ini
 [Service]
-Environment="AWS_ACCESS_KEY_ID=tu_access_key_aqui"
-Environment="AWS_SECRET_ACCESS_KEY=tu_secret_key_aqui"
+Environment="AWS_ACCESS_KEY_ID=ASIAU6GDYO34JL5X2JAU"
+Environment="AWS_SECRET_ACCESS_KEY=TDGb5HMOJuNn6NSeoT0jRrLSWPgpp25g6Q/QZgr8"
 Environment="DJANGO_SETTINGS_MODULE=bycCore.settings_aws_optimized"
 ```
 
