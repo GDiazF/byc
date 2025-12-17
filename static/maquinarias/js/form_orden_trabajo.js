@@ -1950,6 +1950,20 @@ async function guardarOrdenTrabajo(event) {
             formData.corresponde_pauta = true;
         }
         
+        // En modo edición, SIEMPRE recolectar items_secciones si hay items agregados manualmente
+        // Esto permite agregar/modificar/eliminar secciones incluso si la OT tiene pauta
+        // Buscar items de secciones en cualquier contenedor (puede estar oculto si hay pauta)
+        const itemsSecciones = document.querySelectorAll('.item-seccion');
+        if (itemsSecciones.length > 0) {
+            // Hay items de secciones manuales, recolectarlos
+            formData.items_secciones = recolectarItemsSecciones();
+            console.log('Items de secciones recolectados en edición:', formData.items_secciones);
+        } else {
+            // Si no hay items de secciones manuales, enviar array vacío para que el backend procese correctamente
+            // Esto es importante para distinguir entre "no se enviaron" (None) y "se enviaron vacíos" ([])
+            formData.items_secciones = [];
+        }
+        
         // Validar disponibilidad antes de guardar en modo edición
         if (window.otData && window.otData.equipo_id && window.otData.fecha_inicio) {
             const equipoId = window.otData.equipo_id;
@@ -2289,19 +2303,26 @@ function recolectarItemsSecciones() {
     const items = [];
     const itemsSecciones = document.querySelectorAll('.item-seccion');
     
-    // Obtener estado PENDIENTE por defecto (siempre se usa en creación)
+    // Obtener estado PENDIENTE por defecto (para creación)
     const estadoPendiente = window.estadosOT.find(e => e.nombre.toLowerCase() === 'pendiente');
     const estadoPendienteId = estadoPendiente ? estadoPendiente.estadoOT_id : null;
     
     itemsSecciones.forEach(itemDiv => {
         const seccionSelect = itemDiv.querySelector('.seccion-select');
         const checkboxes = itemDiv.querySelectorAll('.tipo-reparacion-checkbox:checked');
+        const estadoSelect = itemDiv.querySelector('.estado-seccion-select'); // Get the state select
         
         if (seccionSelect.value && checkboxes.length > 0) {
+            let estadoSeccionId = estadoPendienteId;
+            // En modo edición, usar el estado seleccionado si existe
+            if (window.esEdicion && estadoSelect && estadoSelect.value) {
+                estadoSeccionId = parseInt(estadoSelect.value);
+            }
+            
             items.push({
                 seccion_id: parseInt(seccionSelect.value),
                 tipos_reparacion_ids: Array.from(checkboxes).map(cb => parseInt(cb.value)),
-                estado_seccion_id: estadoPendienteId  // Siempre PENDIENTE en creación
+                estado_seccion_id: estadoSeccionId
             });
         }
     });
