@@ -650,20 +650,15 @@ class Examen(models.Model):
     
     def delete(self, *args, **kwargs):
         """
-        Sobrescribe el método delete para eliminar físicamente el archivo del examen
-        antes de eliminar el registro de la base de datos.
-        También elimina la carpeta si queda vacía.
+        Sobrescribe el método delete.
+        
+        NOTA: El archivo físico NO se elimina aquí porque la señal pre_delete
+        ya lo copia a la carpeta de eliminados antes de que se ejecute este método.
+        El archivo original se eliminará automáticamente cuando se elimine el registro
+        del modelo (si está en S3) o permanecerá en eliminados (si se copió correctamente).
         """
-        if self.rutaDoc:
-            file_path = self.rutaDoc.path
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-            
-            # Intentar eliminar la carpeta Examenes si está vacía
-            exam_folder = os.path.dirname(file_path)
-            if os.path.exists(exam_folder) and not os.listdir(exam_folder):
-                os.rmdir(exam_folder)
-                
+        # La señal pre_delete ya maneja la copia del archivo a eliminados
+        # Solo eliminamos el registro de la base de datos
         super().delete(*args, **kwargs)
 
 
@@ -703,20 +698,15 @@ class Certificacion(models.Model):
 
     def delete(self, *args, **kwargs):
         """
-        Sobrescribe el método delete para eliminar físicamente el archivo de la certificación
-        antes de eliminar el registro de la base de datos.
-        También elimina la carpeta si queda vacía.
+        Sobrescribe el método delete.
+        
+        NOTA: El archivo físico NO se elimina aquí porque la señal pre_delete
+        ya lo copia a la carpeta de eliminados antes de que se ejecute este método.
+        El archivo original se eliminará automáticamente cuando se elimine el registro
+        del modelo (si está en S3) o permanecerá en eliminados (si se copió correctamente).
         """
-        if self.rutaDoc:
-            file_path = self.rutaDoc.path
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-            
-            # Intentar eliminar la carpeta Certificaciones si está vacía
-            cert_folder = os.path.dirname(file_path)
-            if os.path.exists(cert_folder) and not os.listdir(cert_folder):
-                os.rmdir(cert_folder)
-                
+        # La señal pre_delete ya maneja la copia del archivo a eliminados
+        # Solo eliminamos el registro de la base de datos
         super().delete(*args, **kwargs)
 
 
@@ -755,21 +745,15 @@ class LicenciaPorPersonal(models.Model):
 
     def delete(self, *args, **kwargs):
         """
-        Sobrescribe el método delete para eliminar físicamente el archivo de la licencia
-        antes de eliminar el registro de la base de datos.
-        También elimina la carpeta si queda vacía.
+        Sobrescribe el método delete.
+        
+        NOTA: El archivo físico NO se elimina aquí porque la señal pre_delete
+        ya lo copia a la carpeta de eliminados antes de que se ejecute este método.
+        El archivo original se eliminará automáticamente cuando se elimine el registro
+        del modelo (si está en S3) o permanecerá en eliminados (si se copió correctamente).
         """
-        # Guardar la ruta del archivo antes de eliminar el registro
-        if self.rutaDoc:
-            file_path = self.rutaDoc.path
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-            
-            # Intentar eliminar la carpeta Licencias si está vacía
-            license_folder = os.path.dirname(file_path)
-            if os.path.exists(license_folder) and not os.listdir(license_folder):
-                os.rmdir(license_folder)
-                
+        # La señal pre_delete ya maneja la copia del archivo a eliminados
+        # Solo eliminamos el registro de la base de datos
         super().delete(*args, **kwargs)
 
 
@@ -930,27 +914,15 @@ class LicenciaInternaPorPersonal(models.Model):
     
     def delete(self, *args, **kwargs):
         """
-        Sobrescribe el método delete para eliminar físicamente el archivo de la licencia interna
-        antes de eliminar el registro de la base de datos.
-        También elimina la carpeta si queda vacía.
+        Sobrescribe el método delete.
+        
+        NOTA: El archivo físico NO se elimina aquí porque la señal pre_delete
+        ya lo copia a la carpeta de eliminados antes de que se ejecute este método.
+        El archivo original se eliminará automáticamente cuando se elimine el registro
+        del modelo (si está en S3) o permanecerá en eliminados (si se copió correctamente).
         """
-        # Guardar la ruta del archivo antes de eliminar el registro
-        if self.rutaDoc:
-            try:
-                file_path = self.rutaDoc.path
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-                    print(f"Archivo eliminado: {file_path}")
-                
-                # Intentar eliminar la carpeta si está vacía
-                license_folder = os.path.dirname(file_path)
-                if os.path.exists(license_folder) and not os.listdir(license_folder):
-                    os.rmdir(license_folder)
-                    print(f"Carpeta vacía eliminada: {license_folder}")
-                    
-            except Exception as e:
-                print(f"Error al eliminar archivo de licencia interna: {e}")
-                
+        # La señal pre_delete ya maneja la copia del archivo a eliminados
+        # Solo eliminamos el registro de la base de datos
         super().delete(*args, **kwargs)
 
 

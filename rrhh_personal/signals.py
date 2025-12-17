@@ -367,9 +367,10 @@ def registrar_eliminacion_licencia_conducir(sender, instance, **kwargs):
     tipos_str = ", ".join([t.tipoLicencia for t in instance.tipos.all()])
     nombre_doc = f"Licencia de Conducir - Tipos: {tipos_str}"
     
-    # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    # Copiar archivo a carpeta de eliminados antes de eliminar el registro
     # Esto permite mantener un historial de documentos eliminados
     archivo_ruta_historial = None
+    archivo_ruta_original = instance.rutaDoc.name if instance.rutaDoc else None
     if instance.rutaDoc and instance.rutaDoc.name:
         from .models import mover_archivo_a_eliminados
         archivo_ruta_historial = mover_archivo_a_eliminados(
@@ -377,9 +378,15 @@ def registrar_eliminacion_licencia_conducir(sender, instance, **kwargs):
             instance.personal_id.rut,
             nombre_doc
         )
-        # Si no se pudo mover, usar la ruta original como fallback
+        # IMPORTANTE: Solo usar la ruta de eliminados si se copió exitosamente
+        # Si falla, usar None para que la función obtener_url_archivo_historial
+        # intente construir la URL desde la ruta original
         if not archivo_ruta_historial:
-            archivo_ruta_historial = instance.rutaDoc.name
+            archivo_ruta_historial = None  # No usar ruta original, dejar que se construya la URL
+    
+    # Guardar la ruta original en datos_previos para referencia
+    # Si archivo_ruta_historial es None, guardar la ruta original para que obtener_url_archivo_historial pueda construir la URL
+    archivo_ruta_para_historial = archivo_ruta_historial if archivo_ruta_historial else archivo_ruta_original
     
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
@@ -388,11 +395,13 @@ def registrar_eliminacion_licencia_conducir(sender, instance, **kwargs):
         nombre_documento=nombre_doc,
         descripcion=f"Licencia de conducir eliminada",
         usuario=usuario,
-        archivo_ruta=archivo_ruta_historial,
+        archivo_ruta=archivo_ruta_para_historial,
         datos_previos={
             'tipos': [t.tipoLicencia for t in instance.tipos.all()],
             'fecha_emision': instance.fechaEmision.isoformat() if instance.fechaEmision else None,
             'fecha_vencimiento': instance.fechaVencimiento.isoformat() if instance.fechaVencimiento else None,
+            'archivo_original': archivo_ruta_original,
+            'archivo_eliminado': archivo_ruta_historial,
         }
     )
 
@@ -542,9 +551,10 @@ def registrar_eliminacion_licencia_interna(sender, instance, **kwargs):
     # Construir nombre descriptivo del documento
     nombre_doc = f"Licencia Interna - {instance.tipoLicenciaInterna_id.tipoLicenciaInterna if instance.tipoLicenciaInterna_id else 'N/A'}"
     
-    # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    # Copiar archivo a carpeta de eliminados antes de eliminar el registro
     # Esto permite mantener un historial de documentos eliminados
     archivo_ruta_historial = None
+    archivo_ruta_original = instance.rutaDoc.name if instance.rutaDoc else None
     if instance.rutaDoc and instance.rutaDoc.name:
         from .models import mover_archivo_a_eliminados
         archivo_ruta_historial = mover_archivo_a_eliminados(
@@ -552,9 +562,15 @@ def registrar_eliminacion_licencia_interna(sender, instance, **kwargs):
             instance.personal_id.rut,
             nombre_doc
         )
-        # Si no se pudo mover, usar la ruta original como fallback
+        # IMPORTANTE: Solo usar la ruta de eliminados si se copió exitosamente
+        # Si falla, usar None para que la función obtener_url_archivo_historial
+        # intente construir la URL desde la ruta original
         if not archivo_ruta_historial:
-            archivo_ruta_historial = instance.rutaDoc.name
+            archivo_ruta_historial = None  # No usar ruta original, dejar que se construya la URL
+    
+    # Guardar la ruta original en datos_previos para referencia
+    # Si archivo_ruta_historial es None, guardar la ruta original para que obtener_url_archivo_historial pueda construir la URL
+    archivo_ruta_para_historial = archivo_ruta_historial if archivo_ruta_historial else archivo_ruta_original
     
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
@@ -563,7 +579,11 @@ def registrar_eliminacion_licencia_interna(sender, instance, **kwargs):
         nombre_documento=nombre_doc,
         descripcion=f"Licencia interna eliminada",
         usuario=usuario,
-        archivo_ruta=archivo_ruta_historial,
+        archivo_ruta=archivo_ruta_para_historial,
+        datos_previos={
+            'archivo_original': archivo_ruta_original,
+            'archivo_eliminado': archivo_ruta_historial,
+        }
     )
 
 
@@ -634,9 +654,10 @@ def registrar_eliminacion_certificacion(sender, instance, **kwargs):
     # Construir nombre descriptivo del documento
     nombre_doc = f"Certificación - {instance.tipoCertificacion_id.tipoCertificacion if instance.tipoCertificacion_id else 'N/A'}"
     
-    # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    # Copiar archivo a carpeta de eliminados antes de eliminar el registro
     # Esto permite mantener un historial de documentos eliminados
     archivo_ruta_historial = None
+    archivo_ruta_original = instance.rutaDoc.name if instance.rutaDoc else None
     if instance.rutaDoc and instance.rutaDoc.name:
         from .models import mover_archivo_a_eliminados
         archivo_ruta_historial = mover_archivo_a_eliminados(
@@ -644,9 +665,15 @@ def registrar_eliminacion_certificacion(sender, instance, **kwargs):
             instance.personal_id.rut,
             nombre_doc
         )
-        # Si no se pudo mover, usar la ruta original como fallback
+        # IMPORTANTE: Solo usar la ruta de eliminados si se copió exitosamente
+        # Si falla, usar None para que la función obtener_url_archivo_historial
+        # intente construir la URL desde la ruta original
         if not archivo_ruta_historial:
-            archivo_ruta_historial = instance.rutaDoc.name
+            archivo_ruta_historial = None  # No usar ruta original, dejar que se construya la URL
+    
+    # Guardar la ruta original en datos_previos para referencia
+    # Si archivo_ruta_historial es None, guardar la ruta original para que obtener_url_archivo_historial pueda construir la URL
+    archivo_ruta_para_historial = archivo_ruta_historial if archivo_ruta_historial else archivo_ruta_original
     
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
@@ -655,7 +682,11 @@ def registrar_eliminacion_certificacion(sender, instance, **kwargs):
         nombre_documento=nombre_doc,
         descripcion=f"Certificación eliminada",
         usuario=usuario,
-        archivo_ruta=archivo_ruta_historial,
+        archivo_ruta=archivo_ruta_para_historial,
+        datos_previos={
+            'archivo_original': archivo_ruta_original,
+            'archivo_eliminado': archivo_ruta_historial,
+        }
     )
 
 
@@ -726,9 +757,10 @@ def registrar_eliminacion_examen(sender, instance, **kwargs):
     # Construir nombre descriptivo del documento
     nombre_doc = f"Examen - {instance.tipoEx_id.tipoExamen if instance.tipoEx_id else 'N/A'}"
     
-    # Mover archivo a carpeta de eliminados antes de eliminar el registro
+    # Copiar archivo a carpeta de eliminados antes de eliminar el registro
     # Esto permite mantener un historial de documentos eliminados
     archivo_ruta_historial = None
+    archivo_ruta_original = instance.rutaDoc.name if instance.rutaDoc else None
     if instance.rutaDoc and instance.rutaDoc.name:
         from .models import mover_archivo_a_eliminados
         archivo_ruta_historial = mover_archivo_a_eliminados(
@@ -736,9 +768,15 @@ def registrar_eliminacion_examen(sender, instance, **kwargs):
             instance.personal_id.rut,
             nombre_doc
         )
-        # Si no se pudo mover, usar la ruta original como fallback
+        # IMPORTANTE: Solo usar la ruta de eliminados si se copió exitosamente
+        # Si falla, usar None para que la función obtener_url_archivo_historial
+        # intente construir la URL desde la ruta original
         if not archivo_ruta_historial:
-            archivo_ruta_historial = instance.rutaDoc.name
+            archivo_ruta_historial = None  # No usar ruta original, dejar que se construya la URL
+    
+    # Guardar la ruta original en datos_previos para referencia
+    # Si archivo_ruta_historial es None, guardar la ruta original para que obtener_url_archivo_historial pueda construir la URL
+    archivo_ruta_para_historial = archivo_ruta_historial if archivo_ruta_historial else archivo_ruta_original
     
     HistorialDocumentoPersonal.registrar(
         personal=instance.personal_id,
@@ -747,6 +785,10 @@ def registrar_eliminacion_examen(sender, instance, **kwargs):
         nombre_documento=nombre_doc,
         descripcion=f"Examen eliminado",
         usuario=usuario,
-        archivo_ruta=archivo_ruta_historial,
+        archivo_ruta=archivo_ruta_para_historial,
+        datos_previos={
+            'archivo_original': archivo_ruta_original,
+            'archivo_eliminado': archivo_ruta_historial,
+        }
     )
 

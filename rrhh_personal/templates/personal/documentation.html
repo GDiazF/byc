@@ -17,6 +17,7 @@ window.DELETE_LICENSE_URL = '{% url "delete_license" 0 %}';
 window.DELETE_INTERNAL_LICENSE_URL = '{% url "delete_internal_license" 0 %}';
 window.DELETE_EXAM_URL = '{% url "delete_exam" 0 %}';
 window.DELETE_CERTIFICATION_URL = '{% url "delete_certification" personal.personal_id 0 %}';
+window.PERSONAL_ID = {{ personal.personal_id|safe }};
 window.DELETE_PERSONAL_DOCUMENT_URL = '{% url "delete_personal_document" personal.personal_id %}';
 window.HISTORIAL_DOCUMENTOS_URL = '{% url "api_historial_documentos_personal" personal.personal_id %}';
 // Permisos para historial
