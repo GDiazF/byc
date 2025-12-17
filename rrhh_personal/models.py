@@ -642,7 +642,7 @@ class Examen(models.Model):
     proveedor_id = models.ForeignKey(Proveedor, on_delete=models.CASCADE, db_column='proveedor_id', null=False, blank=False)
     fechaEmision = models.DateField(null=False, blank=False)
     fechaVencimiento = models.DateField(null=False, blank=False)
-    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, null=False, blank=False)
+    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=MediaS3Storage(), null=False, blank=False)
     observacion = models.TextField(max_length=250, null=True, blank=True)
 
     def __str__(self):
@@ -690,7 +690,7 @@ class Certificacion(models.Model):
     personal_id = models.ForeignKey(Personal, on_delete=models.CASCADE, db_column='personal_id', null=False, blank=False) 
     fechaEmision = models.DateField(null=False, blank=False)
     fechaVencimiento = models.DateField(null=False, blank=False)
-    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, null=False, blank=False)
+    rutaDoc = models.FileField(upload_to=obtener_ruta_documento, storage=MediaS3Storage(), null=False, blank=False)
     observacion = models.TextField(max_length=250, null=True, blank=True)
 
     def __str__(self):
