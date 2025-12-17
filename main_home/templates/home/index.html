@@ -347,8 +347,26 @@
           <!-- Date Picker Chileno - Global -->
           <script src="{% static 'js/datePickerChile.js' %}"></script>
           
-          <!-- ⚡ NOTIFICACIONES OPTIMIZADAS -->
-          <script src="{% static 'notificaciones/js/notificaciones_optimized.js' %}"></script>
+          <!-- ⚡ NOTIFICACIONES OPTIMIZADAS (carga asíncrona, no bloquea si falla) -->
+          <script>
+          // Cargar script de notificaciones optimizado de forma asíncrona
+          // Si el archivo no existe, la campanita seguirá visible pero sin funcionalidad
+          (function() {
+              const script = document.createElement('script');
+              script.src = '{% static "notificaciones/js/notificaciones_optimized.js" %}';
+              script.async = true;
+              script.defer = true;
+              script.onerror = function() {
+                  // Si falla, solo ocultar el badge pero mantener la campanita visible
+                  const badge = document.getElementById('notificationsBadge');
+                  if (badge) {
+                      badge.style.display = 'none';
+                  }
+                  console.warn('⚠️ Script de notificaciones optimizado no disponible. La campanita está visible pero sin funcionalidad. Ejecuta: python manage.py collectstatic');
+              };
+              document.head.appendChild(script);
+          })();
+          </script>
            
            {% block extrajs %}{% endblock %}
 </body>
