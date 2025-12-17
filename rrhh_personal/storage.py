@@ -88,13 +88,23 @@ class MediaS3Storage(OverwriteS3Storage):
         Genera una URL directa al objeto en S3.
         
         Args:
-            name: Nombre del archivo en S3 (ya incluye la ubicación si location está configurado)
+            name: Nombre del archivo en S3 (sin el prefijo location)
             
         Returns:
-            str: URL pública del archivo
+            str: URL pública del archivo con el prefijo location incluido
         """
-        # El nombre ya incluye la ubicación (location) si está configurada
+        # Asegurar que el location esté incluido en la URL
+        # El método padre de S3Boto3Storage ya maneja esto, pero lo hacemos explícito
+        if self.location:
+            # Si hay location configurado, asegurarse de que esté en la ruta
+            if not name.startswith(self.location + '/'):
+                full_path = f"{self.location}/{name}"
+            else:
+                full_path = name
+        else:
+            full_path = name
+        
         # Construir URL pública directa sin autenticación
-        # Formato: https://bucket.s3.region.amazonaws.com/ruta/archivo
-        url = f"https://{self.bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{name}"
+        # Formato: https://bucket.s3.region.amazonaws.com/location/ruta/archivo
+        url = f"https://{self.bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{full_path}"
         return url
