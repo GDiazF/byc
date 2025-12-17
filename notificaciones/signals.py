@@ -451,6 +451,18 @@ def notificar_asignacion_personal_faena(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Notificacion)
 def enviar_evento_sse_notificacion(sender, instance, created, **kwargs):
     """
+    Signal que se ejecuta cuando se crea o modifica una notificación.
+    
+    - Invalida el caché del contador de notificaciones del usuario
+    - Envía evento SSE al usuario para actualizar en tiempo real
+    
+    """
+    # ⚡ INVALIDAR CACHÉ del contador de notificaciones
+    from django.core.cache import cache
+    cache_key = f'notif_count_user_{instance.usuario.id}'
+    cache.delete(cache_key)
+    
+    """
     Signal que envía un evento SSE cuando se crea una nueva notificación.
     
     Cuando se crea una nueva notificación, envía un evento Server-Sent Events

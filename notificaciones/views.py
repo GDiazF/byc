@@ -89,6 +89,9 @@ def api_contar_notificaciones_no_leidas(request):
     """
     API para obtener el conteo de notificaciones no leídas del usuario actual.
     
+    Usa caché para evitar consultas repetidas a la base de datos.
+    El caché se invalida automáticamente cuando se crean/modifican notificaciones.
+    
     Args:
         request (HttpRequest): Objeto de solicitud HTTP.
         
@@ -97,7 +100,19 @@ def api_contar_notificaciones_no_leidas(request):
             - success (bool): Indica si la operación fue exitosa
             - count (int): Número de notificaciones no leídas
     """
-    count = contar_notificaciones_no_leidas(request.user)
+    from django.core.cache import cache
+    
+    # Clave de caché única por usuario
+    cache_key = f'notif_count_user_{request.user.id}'
+    
+    # Intentar obtener del caché primero
+    count = cache.get(cache_key)
+    
+    if count is None:
+        # Si no está en caché, calcular y guardar por 30 segundos
+        count = contar_notificaciones_no_leidas(request.user)
+        cache.set(cache_key, count, 30)  # Caché de 30 segundos
+    
     return JsonResponse({
         'success': True,
         'count': count
