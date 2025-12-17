@@ -1094,12 +1094,21 @@ def api_eliminar_documento_maquinaria(request, documento_id):
         # Esto asegura que el archivo esté disponible para copiar al historial
         archivo_ruta_eliminado = None
         if documento.archivo and documento.archivo.name:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Eliminando documento. Archivo original: {documento.archivo.name}, Equipo: {equipo_id}, Tipo: {nombre_documento}")
+            
             from .models import mover_archivo_a_eliminados_maquinaria
             archivo_ruta_eliminado = mover_archivo_a_eliminados_maquinaria(
                 documento.archivo,  # Campo FileField del documento
                 equipo_id,  # ID del equipo para organizar en carpetas
                 nombre_documento  # Nombre del documento para el nombre del archivo
             )
+            
+            if archivo_ruta_eliminado:
+                logger.info(f"Archivo copiado a eliminados exitosamente: {archivo_ruta_eliminado}")
+            else:
+                logger.warning(f"No se pudo copiar el archivo a eliminados. Archivo: {documento.archivo.name}")
         
         # Paso 4: Crear registro en el historial con los datos del documento eliminado
         # El historial mantiene un registro de todos los documentos eliminados

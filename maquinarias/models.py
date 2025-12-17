@@ -95,22 +95,30 @@ def mover_archivo_a_eliminados_maquinaria(archivo_field, equipo_id, nombre_docum
     try:
         from django.core.files.storage import default_storage
         from django.conf import settings
+        import logging
+        logger = logging.getLogger(__name__)
         
         # Paso 2: Verificar que el archivo existe en el storage (S3 o local)
-        if not default_storage.exists(archivo_field.name):
-            # Si el archivo no existe, retornar None
+        # El archivo_field.name ya incluye el prefijo 'media/' si se guardó con MediaS3Storage
+        archivo_ruta_original = archivo_field.name
+        logger.info(f"Intentando copiar archivo a eliminados. Ruta original: {archivo_ruta_original}")
+        
+        if not default_storage.exists(archivo_ruta_original):
+            logger.warning(f"El archivo no existe en el storage: {archivo_ruta_original}")
             return None
         
         # Paso 3: Crear nombre de archivo limpio y seguro
         # Se normaliza el nombre del documento eliminando caracteres especiales que podrían causar problemas
         # Formato final: EQUIPO_ID_nombre_documento.pdf
         nombre_limpio = nombre_documento.lower().replace(' ', '_').replace('/', '_')  # Normalizar nombre
-        extension = os.path.splitext(archivo_field.name)[1]  # Obtener extensión del archivo original (.pdf)
+        extension = os.path.splitext(archivo_ruta_original)[1]  # Obtener extensión del archivo original (.pdf)
         nombre_archivo_final = f"{equipo_id}_{nombre_limpio}{extension}"  # Nombre completo del archivo
         
         # Paso 4: Construir ruta relativa de destino
-        # La estructura es: Documentacion_Eliminada_Maquinarias/EQUIPO_ID/nombre_archivo
+        # IMPORTANTE: Como MediaS3Storage tiene location='media', todas las rutas se prefijan con 'media/'
+        # La estructura final será: media/Documentacion_Eliminada_Maquinarias/EQUIPO_ID/nombre_archivo
         ruta_relativa_destino = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), nombre_archivo_final)
+        logger.info(f"Ruta de destino para archivo eliminado: {ruta_relativa_destino}")
         
         # Paso 5: Manejar caso de archivo duplicado
         # Si ya existe un archivo con ese nombre, agregar timestamp para evitar sobrescritura
@@ -119,21 +127,26 @@ def mover_archivo_a_eliminados_maquinaria(archivo_field, equipo_id, nombre_docum
             nombre_base, ext = os.path.splitext(nombre_archivo_final)  # Separar nombre y extensión
             nombre_archivo_final = f"{nombre_base}_{timestamp}{ext}"  # Agregar timestamp al nombre
             ruta_relativa_destino = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), nombre_archivo_final)  # Actualizar ruta destino
+            logger.info(f"Archivo duplicado detectado, usando nombre con timestamp: {ruta_relativa_destino}")
         
         # Paso 6: Copiar el archivo desde la ubicación original a la carpeta de eliminados
         # Usar el storage para que funcione tanto con S3 como con sistema de archivos local
-        with default_storage.open(archivo_field.name, 'rb') as source_file:
-            default_storage.save(ruta_relativa_destino, source_file)
+        # MediaS3Storage automáticamente agregará el prefijo 'media/' a la ruta
+        logger.info(f"Copiando archivo desde {archivo_ruta_original} a {ruta_relativa_destino}")
+        with default_storage.open(archivo_ruta_original, 'rb') as source_file:
+            ruta_guardada = default_storage.save(ruta_relativa_destino, source_file)
+            logger.info(f"Archivo copiado exitosamente a: {ruta_guardada}")
         
         # Paso 7: Retornar ruta relativa para guardar en el historial
         # Esta ruta se usa para referencia en la base de datos
+        # La ruta retornada será relativa (sin el prefijo 'media/') para que sea consistente
         return ruta_relativa_destino
         
     except Exception as e:
         # Manejo de errores: si falla la copia, registrar el error pero continuar
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f"Error al copiar archivo a eliminados: {str(e)}")
+        logger.error(f"Error al copiar archivo a eliminados: {str(e)}", exc_info=True)
         return None  # Retornar None para indicar que hubo un error
 
 
