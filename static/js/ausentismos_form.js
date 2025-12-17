@@ -11,10 +11,21 @@ $(document).ready(function() {
         console.log('Calculando fecha fin:', {fechaInicio, diasAusentismo});
         
         if (fechaInicio && diasAusentismo && diasAusentismo > 0) {
-            // Convertir fecha inicio a objeto Date (desde formato YYYY-MM-DD)
-            const fecha = new Date(fechaInicio);
+            // Parsear fecha manualmente para evitar problemas de zona horaria
+            // El formato puede ser YYYY-MM-DD o DD/MM/YYYY
+            let fecha;
+            if (fechaInicio.includes('/')) {
+                // Formato DD/MM/YYYY
+                const partes = fechaInicio.split('/');
+                fecha = new Date(parseInt(partes[2]), parseInt(partes[1]) - 1, parseInt(partes[0]));
+            } else {
+                // Formato YYYY-MM-DD
+                const partes = fechaInicio.split('-');
+                fecha = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+            }
             
             // Agregar días (restar 1 porque incluye el día de inicio)
+            // Ejemplo: Si inicia el 17/12/2025 y son 1 día, termina el 17/12/2025
             fecha.setDate(fecha.getDate() + diasAusentismo - 1);
             
             // Formatear fecha en formato chileno DD/MM/YYYY
