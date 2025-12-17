@@ -143,9 +143,9 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 # PASSWORD HASHERS - PRODUCCIÓN
 # ============================================================================
 PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.Argon2PasswordHasher',  # Más seguro
-    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',  # Por defecto de Django
     'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.MD5PasswordHasher',  # Para compatibilidad con dev
 ]
 
 # Password validation
