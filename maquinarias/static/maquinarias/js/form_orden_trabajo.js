@@ -2017,7 +2017,7 @@ async function guardarOrdenTrabajo(event) {
                 if (data.conflictos) {
                     mostrarModalConflictos(data.conflictos);
                 } else {
-                    mostrarNotificacion('Error al actualizar: ' + (data.message || 'Error desconocido'), 'error');
+                    alert('Error al actualizar: ' + (data.message || 'Error desconocido'));
                 }
             }
         })
@@ -2027,10 +2027,10 @@ async function guardarOrdenTrabajo(event) {
             if (error.isHttpError && error.data && error.data.conflictos) {
                 mostrarModalConflictos(error.data.conflictos);
             } else if (error.isHttpError && error.data) {
-                // Si hay mensaje pero no conflictos, mostrar notificación
-                mostrarNotificacion('Error al actualizar: ' + (error.data.message || 'Error desconocido'), 'error');
+                // Si hay mensaje pero no conflictos, mostrar alert
+                alert('Error al actualizar: ' + (error.data.message || 'Error desconocido'));
             } else {
-                mostrarNotificacion('Error de conexión al actualizar', 'error');
+                alert('Error de conexión al actualizar');
             }
         });
         
@@ -2042,12 +2042,12 @@ async function guardarOrdenTrabajo(event) {
     const tipoMantenimientoId = document.getElementById('tipo_mantenimiento_id').value;
     
     if (!equipoId) {
-        mostrarNotificacion('Debe seleccionar un equipo', 'error');
+        alert('Debe seleccionar un equipo');
         return;
     }
     
     if (!tipoMantenimientoId) {
-        mostrarNotificacion('Debe seleccionar un tipo de mantenimiento', 'error');
+        alert('Debe seleccionar un tipo de mantenimiento');
         return;
     }
     
@@ -2075,7 +2075,7 @@ async function guardarOrdenTrabajo(event) {
         const fechaInicioDate = new Date(fechaInicio);
         const fechaFinDate = new Date(fechaFin);
         if (fechaFinDate < fechaInicioDate) {
-            mostrarNotificacion('La fecha de fin no puede ser anterior a la fecha de inicio', 'error');
+            alert('La fecha de fin no puede ser anterior a la fecha de inicio');
             return;
         }
     }
@@ -2173,13 +2173,13 @@ async function guardarOrdenTrabajo(event) {
             const itemsSecciones = recolectarItemsSecciones();
             // Validar que haya al menos una sección con tipos de reparación
             if (!itemsSecciones || itemsSecciones.length === 0) {
-                mostrarNotificacion('Debe asignar al menos una sección con al menos un tipo de reparación', 'error');
+                alert('Debe asignar al menos una sección con al menos un tipo de reparación');
                 return;
             }
             // Validar que cada sección tenga tipos de reparación
             const itemsInvalidos = itemsSecciones.filter(item => !item.tipos_reparacion_ids || item.tipos_reparacion_ids.length === 0);
             if (itemsInvalidos.length > 0) {
-                mostrarNotificacion('Todas las secciones deben tener al menos un tipo de reparación asignado', 'error');
+                alert('Todas las secciones deben tener al menos un tipo de reparación asignado');
                 return;
             }
             formData.items_secciones = itemsSecciones;
@@ -2189,13 +2189,13 @@ async function guardarOrdenTrabajo(event) {
         const itemsSecciones = recolectarItemsSecciones();
         // Validar que haya al menos una sección con tipos de reparación
         if (!itemsSecciones || itemsSecciones.length === 0) {
-            mostrarNotificacion('Debe asignar al menos una sección con al menos un tipo de reparación', 'error');
+            alert('Debe asignar al menos una sección con al menos un tipo de reparación');
             return;
         }
         // Validar que cada sección tenga tipos de reparación
         const itemsInvalidos = itemsSecciones.filter(item => !item.tipos_reparacion_ids || item.tipos_reparacion_ids.length === 0);
         if (itemsInvalidos.length > 0) {
-            mostrarNotificacion('Todas las secciones deben tener al menos un tipo de reparación asignado', 'error');
+            alert('Todas las secciones deben tener al menos un tipo de reparación asignado');
             return;
         }
         formData.items_secciones = itemsSecciones;
@@ -2219,12 +2219,12 @@ async function guardarOrdenTrabajo(event) {
                 window.location.replace('/maquinarias/ordenes-trabajo/');
             }, 1500);
         } else {
-            mostrarNotificacion('Error al guardar: ' + (data.message || 'Error desconocido'), 'error');
+            alert('Error al guardar: ' + (data.message || 'Error desconocido'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        mostrarNotificacion('Error de conexión al guardar', 'error');
+        alert('Error de conexión al guardar');
     });
 }
 
