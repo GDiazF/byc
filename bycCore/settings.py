@@ -27,9 +27,11 @@ SECRET_KEY = 'django-insecure-zxiwr5sw3xn%vu+bh47ucrprmj2c@ws#0%+x22if%gcqj16pbx
 # SECURITY WARNING: don't run with debug turned on in production!
 # Para desarrollo local: DEBUG = True
 # Para producción AWS: DEBUG = False
-DEBUG = False
+DEBUG = True  # Cambiar a False en producción
 
-ALLOWED_HOSTS = ["98.94.227.236", "webapp.gruasbyc.cl"]
+# Para desarrollo local, incluir localhost y 127.0.0.1
+# Para producción, solo incluir el dominio y IP del servidor
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "98.94.227.236", "webapp.gruasbyc.cl"]
 
 
 # Application definition
@@ -91,12 +93,12 @@ WSGI_APPLICATION = 'bycCore.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Base de datos SQLite para desarrollo local (portable)
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
+DATABASES = {
+     "default": {
+         "ENGINE": "django.db.backends.sqlite3",
+         "NAME": BASE_DIR / "db.sqlite3",
+     }
+ }
 
 # Base de datos PostgreSQL local para desarrollo (BACKUP)
 # DATABASES = {
@@ -111,19 +113,19 @@ WSGI_APPLICATION = 'bycCore.wsgi.application'
 # }
 
 # Base de datos PostgreSQL en AWS RDS Multi-AZ (para producción)
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "bycCore",
-        "USER": "postgres",
-        "PASSWORD": "Admin12345###",
-        "HOST": "byccore-db.cjscic8mi81f.us-east-1.rds.amazonaws.com",
-        "PORT": "5432",
-        "OPTIONS": {
-            "connect_timeout": 10,
-        },
-    }
-}
+#DATABASES = {
+#    "default": {
+#        "ENGINE": "django.db.backends.postgresql",
+#        "NAME": "bycCore",
+#        "USER": "postgres",
+#        "PASSWORD": "Admin12345###",
+#        "HOST": "byccore-db.cjscic8mi81f.us-east-1.rds.amazonaws.com",
+#        "PORT": "5432",
+#        "OPTIONS": {
+#            "connect_timeout": 10,
+#        },
+#    }
+#}
 
 # Cache configuration
 # Configuracion de cache para optimizar rendimiento del calendario y notificaciones
@@ -211,31 +213,30 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Para desarrollo local
-# STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Para produccion en servidor AWS
-STATIC_ROOT = '/home/ec2-user/proyecto/byc/static/'
+# Para produccion en servidor AWS (comentar para desarrollo local)
+# STATIC_ROOT = '/home/ec2-user/proyecto/byc/static/'
 
 # Directorios adicionales donde Django buscara archivos estaticos
-#STATICFILES_DIRS = [
-#    os.path.join(BASE_DIR, 'static'),
-#]
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 # ============================================================================
-# CONFIGURACION DE ARCHIVOS MEDIA - DESARROLLO LOCAL (COMENTADO PARA AWS)
+# CONFIGURACION DE ARCHIVOS MEDIA - DESARROLLO LOCAL
 # ============================================================================
-# Directorio raiz donde se almacenaran todos los archivos subidos (LOCAL)
-# MEDIA_ROOT = os.path.join(BASE_DIR, 'Documentacion_Personal')
-
-# URL para acceder a los archivos subidos (LOCAL)
-# MEDIA_URL = '/media/'
-
-# Storage backend por defecto (LOCAL)
-# DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# Para desarrollo local, usar sistema de archivos local
+# Para producción, comentar esto y usar S3 (más abajo)
+MEDIA_ROOT = os.path.join(BASE_DIR, 'Documentacion_Personal')
+MEDIA_URL = '/media/'
+DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 # ============================================================================
 # CONFIGURACION AWS S3 - PRODUCCION EN NUBE (BUCKET PÚBLICO)
 # ============================================================================
+# IMPORTANTE: Para desarrollo local, comentar toda esta sección S3
+# y usar la configuración de archivos locales de arriba
 # IMPORTANTE: Las credenciales deben configurarse como variables de entorno
 # para mayor seguridad. Nunca hardcodear credenciales en este archivo.
 # 
@@ -294,8 +295,9 @@ AWS_S3_FILE_OVERWRITE = False  # No sobrescribir automáticamente (el storage pe
 # Media files configuration for S3 (BUCKET PÚBLICO)
 # Usar storage personalizado que permite sobrescribir archivos cuando sea necesario
 # Los archivos serán públicos y accesibles directamente sin URLs firmadas
-DEFAULT_FILE_STORAGE = 'rrhh_personal.storage.MediaS3Storage'
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+# COMENTAR PARA DESARROLLO LOCAL - Descomentar solo en producción
+# DEFAULT_FILE_STORAGE = 'rrhh_personal.storage.MediaS3Storage'
+# MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
 # Validación de credenciales AWS (solo en producción, no en desarrollo)
 if not DEBUG:
@@ -320,5 +322,7 @@ SCHEDULER_AUTOSTART = True  # Iniciar automaticamente cuando Django arranca
 SCHEDULER_API_ENABLED = True  # Habilitar API REST para gestionar trabajos (opcional)
 
 CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
     'https://webapp.gruasbyc.cl',
 ]

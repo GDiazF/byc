@@ -22,9 +22,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-zxiwr5sw3xn%vu+bh47ucrprmj2c@ws#0%+x22if%gcqj16pbx'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["webapp.gruasbyc.cl","98.94.227.236"]
 
 
 # Application definition
@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     'main_home',
     'maquinarias',
     'gen_settings',
-    # 'storages',  # Solo para produccion con S3
+    'storages',  # Solo para produccion con S3
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -82,10 +82,10 @@ WSGI_APPLICATION = 'bycCore.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "bycCoreDB",
+        "NAME": "bycCore",
         "USER": "postgres",
-        "PASSWORD": "123456",  # Ajusta segun tu Configuracion local
-        "HOST": "localhost",
+        "PASSWORD": "Admin12345###",  # Ajusta segun tu Configuracion local
+        "HOST": "byccore-db.cjscic8mi81f.us-east-1.rds.amazonaws.com",
         "PORT": "5432",
     }
 }
@@ -145,9 +145,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-cl'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Santiago'
 
 USE_I18N = True
 
@@ -168,7 +168,7 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Para desarrollo local
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Para produccion en servidor
 # STATIC_ROOT = '/home/ubuntu/byc/collectedstatic/'
@@ -193,20 +193,21 @@ DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 # ============================================================================
 # Configuracion AWS S3 - produccion EN NUBE (COMENTADO PARA DESARROLLO)
 # ============================================================================
-# AWS S3 Configuration
-# AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-# AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-# AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'byc-documentos-bucket')
-# AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
-# AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-# AWS_DEFAULT_ACL = None
-# AWS_S3_OBJECT_PARAMETERS = {
-#     'CacheControl': 'max-age=86400',
-# }
+
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'byc-documentos-bucket')
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_FILE_OVERWRITE = False
+
+
+
+CSRF_TRUSTED_ORIGINS = ['https://webapp.gruasbyc.cl', 'https://98.94.227.236']
 
 # Media files configuration for S3
-# DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-# MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
 
 # Static files configuration (mantener en el servidor)
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
