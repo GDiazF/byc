@@ -181,7 +181,7 @@ USE_TZ = True
 # STATIC FILES
 # ============================================================================
 STATIC_URL = '/static/'
-STATIC_ROOT = '/home/ec2-user/byc/staticfiles/'  # Ajustar según tu configuración
+STATIC_ROOT = '/home/ec2-user/proyecto/byc/staticfiles/'  # Ajustar según tu configuración
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
@@ -253,7 +253,7 @@ LOGGING = {
         'file': {
             'level': 'WARNING',
             'class': 'logging.handlers.RotatingFileHandler',
-            'filename': '/home/ec2-user/byc/logs/django.log',  # Ajustar ruta
+            'filename': '/home/ec2-user/proyecto/byc/logs/django.log',  # Ajustar ruta
             'maxBytes': 1024 * 1024 * 15,  # 15MB
             'backupCount': 10,
             'formatter': 'verbose',
