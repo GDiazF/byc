@@ -106,7 +106,7 @@ body {
 
 /* Botón de mostrar/ocultar contraseña */
 .password-toggle {
-    background-color: #212529;
+    background-color: #ffffff;
     border: 1px solid #212529;
     border-left: none;
     padding: 0.5rem 0.75rem;
@@ -115,7 +115,7 @@ body {
 }
 
 .password-toggle:hover {
-    background-color: #343a40;
+    background-color: #f8f9fa;
 }
 
 .password-toggle:focus {
@@ -124,7 +124,7 @@ body {
 }
 
 .password-toggle i {
-    color: #ffffff;
+    color: #6c757d;
     font-size: 1.1rem;
 }
 
