@@ -70,6 +70,8 @@ body {
 /* Input groups */
 .input-group {
     position: relative;
+    display: flex;
+    align-items: stretch; /* Asegurar que todos los elementos tengan la misma altura */
 }
 
 .input-group-text {
@@ -109,16 +111,19 @@ body {
     background-color: #ffffff;
     border: 1px solid #212529;
     border-left: none;
-    padding: 0.5rem 0.75rem;
+    padding: 0;
     cursor: pointer;
     transition: background-color 0.15s ease-in-out;
-    min-width: 44px; /* Tamaño mínimo táctil recomendado para móviles */
-    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
     -webkit-tap-highlight-color: transparent; /* Eliminar highlight azul en móviles */
     touch-action: manipulation; /* Mejorar respuesta táctil */
+    height: 100%; /* Asegurar que tenga la misma altura que el input */
+    line-height: 1; /* Evitar que el line-height afecte la altura */
+    min-width: 44px; /* Tamaño mínimo táctil recomendado para móviles */
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
 }
 
 .password-toggle:hover {
@@ -317,9 +322,9 @@ body {
     
     /* Aumentar área táctil del botón de contraseña en móviles */
     .password-toggle {
-        padding: 0.75rem 1rem;
-        min-width: 48px;
-        min-height: 48px;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        min-width: 48px; /* Solo ancho mínimo, la altura se ajusta automáticamente */
     }
     
     .password-toggle i {
