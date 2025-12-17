@@ -39,7 +39,8 @@
             
             <!-- Navbar superior derecha -->
             <ul class="navbar-nav d-flex align-items-center navbar-nav-right">
-                <!-- Campanita de notificaciones -->
+                <!-- Campanita de notificaciones - DESACTIVADA TEMPORALMENTE -->
+                <!-- 
                 <li class="nav-item dropdown">
                     <a class="nav-link position-relative notifications-link" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-bell text-white notifications-icon"></i>
@@ -60,6 +61,7 @@
                         </li>
                     </ul>
                 </li>
+                -->
                 
                 <!-- Dropdown de usuario -->
                 <li class="nav-item dropdown">
@@ -339,16 +341,19 @@
            
            <!-- Bootstrap JS Bundle with Popper -->
            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
-           <!-- Manejo global de errores de permisos (debe cargarse antes de otros scripts AJAX) -->
-           <script src="{% static 'gen_permissions/js/handle_permissions.js' %}"></script>
-           <!-- Sistema de Notificaciones Global -->
-           <script src="{% static 'js/notificaciones.js' %}"></script>
-           <!-- Custom JS -->
-           <script src="{% static 'js/index.js' %}"></script>
-           <!-- Date Picker Chileno - Global -->
-           <script src="{% static 'js/datePickerChile.js' %}"></script>
-           <!-- Notificaciones -->
-           <script src="{% static 'notificaciones/js/notificaciones.js' %}"></script>
+          <!-- Manejo global de errores de permisos (debe cargarse antes de otros scripts AJAX) -->
+          <script src="{% static 'gen_permissions/js/handle_permissions.js' %}"></script>
+          
+          <!-- ⚠️ NOTIFICACIONES DESACTIVADAS TEMPORALMENTE PARA PRUEBAS DE RENDIMIENTO -->
+          <!-- <script src="{% static 'js/notificaciones.js' %}"></script> -->
+          
+          <!-- Custom JS -->
+          <script src="{% static 'js/index.js' %}"></script>
+          <!-- Date Picker Chileno - Global -->
+          <script src="{% static 'js/datePickerChile.js' %}"></script>
+          
+          <!-- ⚠️ NOTIFICACIONES DESACTIVADAS TEMPORALMENTE PARA PRUEBAS DE RENDIMIENTO -->
+          <!-- <script src="{% static 'notificaciones/js/notificaciones.js' %}"></script> -->
            
            {% block extrajs %}{% endblock %}
 </body>
