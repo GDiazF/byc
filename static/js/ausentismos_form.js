@@ -5,39 +5,59 @@ $(document).ready(function() {
     
     // Función para calcular la fecha de fin basándose en fecha inicio + días
     function calcularFechaFin() {
-        const fechaInicio = $('#id_fechaini').val();
+        // Obtener el valor del input hidden (formato ISO YYYY-MM-DD)
+        // El date picker guarda el valor real en el input hidden con el mismo ID
+        const fechaInicioInput = document.getElementById('id_fechaini');
+        let fechaInicio = '';
+        
+        // Si es un input hidden (del date picker), obtener su valor directamente
+        if (fechaInicioInput && fechaInicioInput.type === 'hidden') {
+            fechaInicio = fechaInicioInput.value;
+        } else {
+            // Si no es hidden, obtener el valor normalmente
+            fechaInicio = $('#id_fechaini').val();
+        }
+        
         const diasAusentismo = parseInt($('#id_dias_ausentismo').val());
         
-        console.log('Calculando fecha fin:', {fechaInicio, diasAusentismo});
+        console.log('Calculando fecha fin:', {fechaInicio, diasAusentismo, inputType: fechaInicioInput ? fechaInicioInput.type : 'unknown'});
         
         if (fechaInicio && diasAusentismo && diasAusentismo > 0) {
-            // Parsear fecha manualmente para evitar problemas de zona horaria
-            // El formato puede ser YYYY-MM-DD o DD/MM/YYYY
-            let fecha;
-            if (fechaInicio.includes('/')) {
-                // Formato DD/MM/YYYY
-                const partes = fechaInicio.split('/');
-                fecha = new Date(parseInt(partes[2]), parseInt(partes[1]) - 1, parseInt(partes[0]));
-            } else {
-                // Formato YYYY-MM-DD
-                const partes = fechaInicio.split('-');
-                fecha = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+            // El date picker siempre guarda en formato ISO (YYYY-MM-DD)
+            // Parsear manualmente para evitar problemas de zona horaria
+            const partes = fechaInicio.split('-');
+            
+            if (partes.length === 3) {
+                const año = parseInt(partes[0]);
+                const mes = parseInt(partes[1]) - 1; // Los meses en Date son 0-indexados
+                const dia = parseInt(partes[2]);
+                
+                // Crear fecha usando constructor local (evita problemas de zona horaria)
+                const fecha = new Date(año, mes, dia);
+                
+                // Agregar días (restar 1 porque incluye el día de inicio)
+                // Ejemplo: Si inicia el 17/12/2025 y son 1 día, termina el 17/12/2025
+                fecha.setDate(fecha.getDate() + diasAusentismo - 1);
+                
+                // Formatear fecha en formato chileno DD/MM/YYYY
+                const day = String(fecha.getDate()).padStart(2, '0');
+                const month = String(fecha.getMonth() + 1).padStart(2, '0');
+                const year = fecha.getFullYear();
+                const fechaFinFormateada = `${day}/${month}/${year}`;
+                
+                // También calcular en formato ISO para el input hidden
+                const fechaFinISO = `${year}-${month}-${day}`;
+                
+                console.log('Fecha fin calculada:', {
+                    formatoChileno: fechaFinFormateada,
+                    formatoISO: fechaFinISO,
+                    fechaObjeto: fecha
+                });
+                
+                // Establecer la fecha de fin en el campo readonly (formato chileno DD/MM/YYYY)
+                // El campo fechafin_display es readonly y muestra formato chileno
+                $('#id_fechafin').val(fechaFinFormateada);
             }
-            
-            // Agregar días (restar 1 porque incluye el día de inicio)
-            // Ejemplo: Si inicia el 17/12/2025 y son 1 día, termina el 17/12/2025
-            fecha.setDate(fecha.getDate() + diasAusentismo - 1);
-            
-            // Formatear fecha en formato chileno DD/MM/YYYY
-            const day = String(fecha.getDate()).padStart(2, '0');
-            const month = String(fecha.getMonth() + 1).padStart(2, '0');
-            const year = fecha.getFullYear();
-            const fechaFinFormateada = `${day}/${month}/${year}`;
-            
-            console.log('Fecha fin calculada (formato chileno):', fechaFinFormateada);
-            
-            // Establecer la fecha de fin en el campo con formato chileno
-            $('#id_fechafin').val(fechaFinFormateada);
         } else {
             $('#id_fechafin').val('');
         }
