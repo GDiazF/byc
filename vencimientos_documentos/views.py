@@ -108,6 +108,9 @@ def _obtener_documentos_personal(request):
     (<= 45 días), incluyendo carnet, licencias de conducir, licencias internas,
     certificaciones y exámenes. Aplica filtros según los parámetros GET de la request.
     
+    OPTIMIZADO: Filtra directamente en la base de datos en lugar de cargar todos los datos
+    y filtrar en Python, mejorando significativamente el rendimiento.
+    
     Args:
         request (HttpRequest): Objeto de solicitud HTTP con parámetros GET opcionales:
             - estado (str): Filtro por estado ('todos', 'vencidos', 'por_vencer', 'vigentes')
@@ -126,6 +129,7 @@ def _obtener_documentos_personal(request):
     
     try:
         hoy = date.today()
+        fecha_limite = hoy + timedelta(days=45)  # Fecha límite: hoy + 45 días
         
         # Obtener filtros de la request
         filtro_estado = request.GET.get('estado', 'todos')
@@ -147,10 +151,15 @@ def _obtener_documentos_personal(request):
                 Q(dvrut__icontains=buscar)
             )
         
-        personal_list = list(personal_query.select_related('region_id', 'comuna_id'))
+        # Obtener solo los IDs del personal para optimizar las queries siguientes
+        personal_ids = list(personal_query.values_list('personal_id', flat=True))
         
-        if not personal_list:
+        if not personal_ids:
             return documentos
+        
+        # Obtener personal con relaciones necesarias solo para los que tienen documentos
+        personal_dict = {p.personal_id: p for p in personal_query.select_related('region_id', 'comuna_id')}
+        
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
@@ -158,16 +167,20 @@ def _obtener_documentos_personal(request):
         raise
     
     # 1. Documentos directos del modelo Personal (con fecha de vencimiento)
-    for personal in personal_list:
-        # Carnet con fecha de vencimiento
-        if personal.fecha_vencimiento_carnet:
-            estado = calcular_estado_vencimiento(personal.fecha_vencimiento_carnet)
-            
-            # Solo mostrar si tiene <= 45 días restantes
-            if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
-                # Aplicar filtros
-                if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'CARNET'):
-                    documentos.append({
+    # OPTIMIZADO: Filtrar por fecha directamente en la base de datos
+    personales_con_carnet = Personal.objects.filter(
+        personal_id__in=personal_ids,
+        fecha_vencimiento_carnet__isnull=False,
+        fecha_vencimiento_carnet__lte=fecha_limite
+    ).select_related('region_id', 'comuna_id')
+    
+    for personal in personales_con_carnet:
+        estado = calcular_estado_vencimiento(personal.fecha_vencimiento_carnet)
+        
+        # Aplicar filtros (ya filtrado por fecha en DB, pero verificamos días restantes)
+        if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
+            if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'CARNET'):
+                documentos.append({
                     'tipo': 'DOCUMENTO_PERSONAL',
                     'tipo_nombre': 'Carnet',
                     'nombre': 'Fotocopia Carnet',
@@ -184,22 +197,25 @@ def _obtener_documentos_personal(request):
                     'texto_estado': estado['texto'],
                     'identificador': f"carnet_{personal.personal_id}",
                     'url_editar': f"/rrhh/personal/{personal.personal_id}/documentation/"
-                    })
+                })
     
     # 2. Licencias de conducir (múltiples por personal)
+    # OPTIMIZADO: Filtrar por fecha directamente en la base de datos
     licencias_conducir = LicenciaPorPersonal.objects.filter(
-        personal_id__in=[p.personal_id for p in personal_list]
+        personal_id__in=personal_ids,
+        fechaVencimiento__isnull=False,
+        fechaVencimiento__lte=fecha_limite
     ).select_related('personal_id').prefetch_related('tipos')
     
     for licencia in licencias_conducir:
-        if not licencia.fechaVencimiento or not licencia.personal_id:
+        if not licencia.personal_id:
             continue
         try:
             estado = calcular_estado_vencimiento(licencia.fechaVencimiento)
             tipos_list = list(licencia.tipos.all())
             tipos_str = ", ".join([t.tipoLicencia for t in tipos_list]) if tipos_list else ""
         
-            # Solo mostrar si tiene <= 45 días restantes
+            # Aplicar filtros (ya filtrado por fecha en DB)
             if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
                 if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'LICENCIA_CONDUCIR'):
                     documentos.append({
@@ -227,105 +243,114 @@ def _obtener_documentos_personal(request):
             continue
     
     # 3. Licencias internas (múltiples por personal)
+    # OPTIMIZADO: Filtrar por fecha directamente en la base de datos
     licencias_internas = LicenciaInternaPorPersonal.objects.filter(
-        personal_id__in=[p.personal_id for p in personal_list]
+        personal_id__in=personal_ids,
+        fechaVencimiento__isnull=False,
+        fechaVencimiento__lte=fecha_limite
     ).select_related('personal_id', 'tipoLicenciaInterna_id')
     
     for licencia in licencias_internas:
-        if not licencia.fechaVencimiento or not licencia.personal_id:
+        if not licencia.personal_id:
             continue
         estado = calcular_estado_vencimiento(licencia.fechaVencimiento)
         tipo_nombre = licencia.tipoLicenciaInterna_id.tipoLicenciaInterna if licencia.tipoLicenciaInterna_id else 'N/A'
         
-        # Solo mostrar si tiene <= 45 días restantes
+        # Aplicar filtros (ya filtrado por fecha en DB)
         if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
             if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'LICENCIA_INTERNA'):
                 documentos.append({
-                'tipo': 'LICENCIA_INTERNA',
-                'tipo_nombre': 'Licencia Interna',
-                'nombre': f'Licencia Interna: {tipo_nombre}',
-                'personal_id': licencia.personal_id.personal_id,
-                'personal_nombre': f"{licencia.personal_id.nombre} {licencia.personal_id.apepat} {licencia.personal_id.apemat or ''}".strip(),
-                'personal_rut': f"{licencia.personal_id.rut}-{licencia.personal_id.dvrut}",
-                'fecha_vencimiento': licencia.fechaVencimiento.strftime('%d/%m/%Y'),
-                'fecha_vencimiento_iso': licencia.fechaVencimiento.isoformat(),
-                'dias_restantes': estado['dias_restantes'],
-                'estado': estado['estado'],
-                'color': estado['color'],
-                'badge_class': estado['badge_class'],
-                'icono': estado['icono'],
-                'texto_estado': estado['texto'],
-                'identificador': f"licencia_interna_{licencia.licenciaInterna_id}",
-                'url_editar': f"/rrhh/personal/{licencia.personal_id.personal_id}/documentation/"
+                    'tipo': 'LICENCIA_INTERNA',
+                    'tipo_nombre': 'Licencia Interna',
+                    'nombre': f'Licencia Interna: {tipo_nombre}',
+                    'personal_id': licencia.personal_id.personal_id,
+                    'personal_nombre': f"{licencia.personal_id.nombre} {licencia.personal_id.apepat} {licencia.personal_id.apemat or ''}".strip(),
+                    'personal_rut': f"{licencia.personal_id.rut}-{licencia.personal_id.dvrut}",
+                    'fecha_vencimiento': licencia.fechaVencimiento.strftime('%d/%m/%Y'),
+                    'fecha_vencimiento_iso': licencia.fechaVencimiento.isoformat(),
+                    'dias_restantes': estado['dias_restantes'],
+                    'estado': estado['estado'],
+                    'color': estado['color'],
+                    'badge_class': estado['badge_class'],
+                    'icono': estado['icono'],
+                    'texto_estado': estado['texto'],
+                    'identificador': f"licencia_interna_{licencia.licenciaInterna_id}",
+                    'url_editar': f"/rrhh/personal/{licencia.personal_id.personal_id}/documentation/"
                 })
     
     # NOTA: Las licencias médicas NO se muestran en vencimientos
     # porque es normal que venzan. Solo se notifica su creación (ver signals.py)
     
     # 5. Certificaciones (múltiples por personal)
+    # OPTIMIZADO: Filtrar por fecha directamente en la base de datos
     certificaciones = Certificacion.objects.filter(
-        personal_id__in=[p.personal_id for p in personal_list]
+        personal_id__in=personal_ids,
+        fechaVencimiento__isnull=False,
+        fechaVencimiento__lte=fecha_limite
     ).select_related('personal_id', 'tipoCertificacion_id')
     
     for cert in certificaciones:
-        if not cert.fechaVencimiento or not cert.personal_id:
+        if not cert.personal_id:
             continue
         estado = calcular_estado_vencimiento(cert.fechaVencimiento)
         tipo_nombre = cert.tipoCertificacion_id.tipoCertificacion if cert.tipoCertificacion_id else 'N/A'
         
-        # Solo mostrar si tiene <= 45 días restantes
+        # Aplicar filtros (ya filtrado por fecha en DB)
         if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
             if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'CERTIFICACION'):
                 documentos.append({
-                'tipo': 'CERTIFICACION',
-                'tipo_nombre': 'Certificación',
-                'nombre': f'Certificación: {tipo_nombre}',
-                'personal_id': cert.personal_id.personal_id,
-                'personal_nombre': f"{cert.personal_id.nombre} {cert.personal_id.apepat} {cert.personal_id.apemat or ''}".strip(),
-                'personal_rut': f"{cert.personal_id.rut}-{cert.personal_id.dvrut}",
-                'fecha_vencimiento': cert.fechaVencimiento.strftime('%d/%m/%Y'),
-                'fecha_vencimiento_iso': cert.fechaVencimiento.isoformat(),
-                'dias_restantes': estado['dias_restantes'],
-                'estado': estado['estado'],
-                'color': estado['color'],
-                'badge_class': estado['badge_class'],
-                'icono': estado['icono'],
-                'texto_estado': estado['texto'],
-                'identificador': f"certificacion_{cert.certif_id}",
-                'url_editar': f"/rrhh/personal/{cert.personal_id.personal_id}/documentation/"
+                    'tipo': 'CERTIFICACION',
+                    'tipo_nombre': 'Certificación',
+                    'nombre': f'Certificación: {tipo_nombre}',
+                    'personal_id': cert.personal_id.personal_id,
+                    'personal_nombre': f"{cert.personal_id.nombre} {cert.personal_id.apepat} {cert.personal_id.apemat or ''}".strip(),
+                    'personal_rut': f"{cert.personal_id.rut}-{cert.personal_id.dvrut}",
+                    'fecha_vencimiento': cert.fechaVencimiento.strftime('%d/%m/%Y'),
+                    'fecha_vencimiento_iso': cert.fechaVencimiento.isoformat(),
+                    'dias_restantes': estado['dias_restantes'],
+                    'estado': estado['estado'],
+                    'color': estado['color'],
+                    'badge_class': estado['badge_class'],
+                    'icono': estado['icono'],
+                    'texto_estado': estado['texto'],
+                    'identificador': f"certificacion_{cert.certif_id}",
+                    'url_editar': f"/rrhh/personal/{cert.personal_id.personal_id}/documentation/"
                 })
     
     # 6. Exámenes (múltiples por personal)
+    # OPTIMIZADO: Filtrar por fecha directamente en la base de datos
     examenes = Examen.objects.filter(
-        personal_id__in=[p.personal_id for p in personal_list]
+        personal_id__in=personal_ids,
+        fechaVencimiento__isnull=False,
+        fechaVencimiento__lte=fecha_limite
     ).select_related('personal_id', 'tipoEx_id')
     
     for examen in examenes:
-        if not examen.fechaVencimiento or not examen.personal_id:
+        if not examen.personal_id:
             continue
         estado = calcular_estado_vencimiento(examen.fechaVencimiento)
         tipo_nombre = examen.tipoEx_id.tipoExamen if examen.tipoEx_id else 'N/A'
         
-        # Solo mostrar si tiene <= 45 días restantes
+        # Aplicar filtros (ya filtrado por fecha en DB)
         if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
             if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'EXAMEN'):
                 documentos.append({
-                'tipo': 'EXAMEN',
-                'tipo_nombre': 'Examen',
-                'nombre': f'Examen: {tipo_nombre}',
-                'personal_id': examen.personal_id.personal_id,
-                'personal_nombre': f"{examen.personal_id.nombre} {examen.personal_id.apepat} {examen.personal_id.apemat or ''}".strip(),
-                'personal_rut': f"{examen.personal_id.rut}-{examen.personal_id.dvrut}",
-                'fecha_vencimiento': examen.fechaVencimiento.strftime('%d/%m/%Y'),
-                'fecha_vencimiento_iso': examen.fechaVencimiento.isoformat(),
-                'dias_restantes': estado['dias_restantes'],
-                'estado': estado['estado'],
-                'color': estado['color'],
-                'badge_class': estado['badge_class'],
-                'icono': estado['icono'],
-                'texto_estado': estado['texto'],
-                'identificador': f"examen_{examen.examen_id}",
-                'url_editar': f"/rrhh/personal/{examen.personal_id.personal_id}/documentation/"
+                    'tipo': 'EXAMEN',
+                    'tipo_nombre': 'Examen',
+                    'nombre': f'Examen: {tipo_nombre}',
+                    'personal_id': examen.personal_id.personal_id,
+                    'personal_nombre': f"{examen.personal_id.nombre} {examen.personal_id.apepat} {examen.personal_id.apemat or ''}".strip(),
+                    'personal_rut': f"{examen.personal_id.rut}-{examen.personal_id.dvrut}",
+                    'fecha_vencimiento': examen.fechaVencimiento.strftime('%d/%m/%Y'),
+                    'fecha_vencimiento_iso': examen.fechaVencimiento.isoformat(),
+                    'dias_restantes': estado['dias_restantes'],
+                    'estado': estado['estado'],
+                    'color': estado['color'],
+                    'badge_class': estado['badge_class'],
+                    'icono': estado['icono'],
+                    'texto_estado': estado['texto'],
+                    'identificador': f"examen_{examen.examen_id}",
+                    'url_editar': f"/rrhh/personal/{examen.personal_id.personal_id}/documentation/"
                 })
     
     # Ordenar por días restantes (más críticos primero, luego por fecha)
@@ -387,6 +412,9 @@ def _obtener_documentos_maquinarias(request):
     Obtiene todos los documentos de equipos activos que están próximos a vencer
     (<= 45 días). Aplica filtros según los parámetros GET de la request.
     
+    OPTIMIZADO: Filtra directamente en la base de datos en lugar de cargar todos los datos
+    y filtrar en Python, mejorando significativamente el rendimiento.
+    
     Args:
         request (HttpRequest): Objeto de solicitud HTTP con parámetros GET opcionales:
             - estado (str): Filtro por estado ('todos', 'vencidos', 'por_vencer', 'vigentes')
@@ -403,6 +431,7 @@ def _obtener_documentos_maquinarias(request):
               identificador, url_editar.
     """
     hoy = date.today()
+    fecha_limite = hoy + timedelta(days=45)  # Fecha límite: hoy + 45 días
     
     # Obtener filtros de la request
     filtro_estado = request.GET.get('estado', 'todos')
@@ -424,44 +453,44 @@ def _obtener_documentos_maquinarias(request):
             Q(patente__icontains=buscar)
         )
     
-    equipos_list = list(equipos_query.select_related('empresa_id', 'modeloEquipo_id'))
+    # Obtener solo los IDs de los equipos para optimizar las queries siguientes
+    equipos_ids = list(equipos_query.values_list('equipo_id', flat=True))
     
-    if not equipos_list:
+    if not equipos_ids:
         return documentos
     
-    # Obtener todos los documentos de los equipos
+    # OPTIMIZADO: Filtrar documentos por fecha directamente en la base de datos
+    # Solo obtener documentos que vencen en los próximos 45 días
     documentos_maquinarias = DocumentoMaquinaria.objects.filter(
-        equipo_id__in=[e.equipo_id for e in equipos_list]
+        equipo_id__in=equipos_ids,
+        fecha_vencimiento__isnull=False,
+        fecha_vencimiento__lte=fecha_limite
     ).select_related('equipo_id', 'tipo_documento_id')
     
     for doc in documentos_maquinarias:
-        # Solo mostrar documentos con fecha de vencimiento
-        if not doc.fecha_vencimiento:
-            continue
-            
         estado = calcular_estado_vencimiento(doc.fecha_vencimiento)
         
-        # Solo mostrar si tiene <= 45 días restantes
+        # Aplicar filtros (ya filtrado por fecha en DB, pero verificamos días restantes)
         if estado['dias_restantes'] is not None and estado['dias_restantes'] <= 45:
             if aplicar_filtros_documento(estado, filtro_estado, filtro_tipo, filtro_dias, 'DOCUMENTO_MAQUINARIA'):
                 documentos.append({
-                'tipo': 'DOCUMENTO_MAQUINARIA',
-                'tipo_nombre': 'Documento de Maquinaria',
-                'nombre': doc.tipo_documento_id.nombre,
-                'equipo_id': doc.equipo_id.equipo_id,
-                'equipo_nombre': doc.equipo_id.nombreEquipo,
-                'equipo_codigo': doc.equipo_id.codigoInterno,
-                'equipo_patente': doc.equipo_id.patente or '',
-                'fecha_vencimiento': doc.fecha_vencimiento.strftime('%d/%m/%Y') if doc.fecha_vencimiento else None,
-                'fecha_vencimiento_iso': doc.fecha_vencimiento.isoformat() if doc.fecha_vencimiento else None,
-                'dias_restantes': estado['dias_restantes'],
-                'estado': estado['estado'],
-                'color': estado['color'],
-                'badge_class': estado['badge_class'],
-                'icono': estado['icono'],
-                'texto_estado': estado['texto'],
-                'identificador': f"doc_maquinaria_{doc.documento_id}",
-                'url_editar': f"/maquinarias/equipos/{doc.equipo_id.equipo_id}/documentacion/"
+                    'tipo': 'DOCUMENTO_MAQUINARIA',
+                    'tipo_nombre': 'Documento de Maquinaria',
+                    'nombre': doc.tipo_documento_id.nombre,
+                    'equipo_id': doc.equipo_id.equipo_id,
+                    'equipo_nombre': doc.equipo_id.nombreEquipo,
+                    'equipo_codigo': doc.equipo_id.codigoInterno,
+                    'equipo_patente': doc.equipo_id.patente or '',
+                    'fecha_vencimiento': doc.fecha_vencimiento.strftime('%d/%m/%Y') if doc.fecha_vencimiento else None,
+                    'fecha_vencimiento_iso': doc.fecha_vencimiento.isoformat() if doc.fecha_vencimiento else None,
+                    'dias_restantes': estado['dias_restantes'],
+                    'estado': estado['estado'],
+                    'color': estado['color'],
+                    'badge_class': estado['badge_class'],
+                    'icono': estado['icono'],
+                    'texto_estado': estado['texto'],
+                    'identificador': f"doc_maquinaria_{doc.documento_id}",
+                    'url_editar': f"/maquinarias/equipos/{doc.equipo_id.equipo_id}/documentacion/"
                 })
     
     # Ordenar por días restantes (más críticos primero)
