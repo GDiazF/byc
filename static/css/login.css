@@ -79,6 +79,9 @@ body {
     border: 1px solid #212529;
     border-right: none;
     padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0; /* No reducir el tamaño del ícono */
 }
 
 .input-group-text i {
@@ -92,6 +95,7 @@ body {
     background-color: #ffffff;
     font-size: 14px;
     color: #495057;
+    flex: 1; /* Permitir que el input ocupe el espacio disponible */
 }
 
 .input-group .form-control:focus {
@@ -119,11 +123,12 @@ body {
     justify-content: center;
     -webkit-tap-highlight-color: transparent; /* Eliminar highlight azul en móviles */
     touch-action: manipulation; /* Mejorar respuesta táctil */
-    height: 100%; /* Asegurar que tenga la misma altura que el input */
+    align-self: stretch; /* Estirarse para igualar la altura del input */
     line-height: 1; /* Evitar que el line-height afecte la altura */
     min-width: 44px; /* Tamaño mínimo táctil recomendado para móviles */
     padding-left: 0.75rem;
     padding-right: 0.75rem;
+    flex-shrink: 0; /* No reducir el tamaño del botón */
 }
 
 .password-toggle:hover {
