@@ -342,8 +342,4 @@ STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 SCHEDULER_AUTOSTART = True  # Iniciar automaticamente cuando Django arranca
 SCHEDULER_API_ENABLED = True  # Habilitar API REST para gestionar trabajos (opcional)
 
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-    'https://webapp.gruasbyc.cl',
-]
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
