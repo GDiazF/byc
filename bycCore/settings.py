@@ -12,26 +12,30 @@
 # ============================================================================
 
 from pathlib import Path
+from dotenv import load_dotenv
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zxiwr5sw3xn%vu+bh47ucrprmj2c@ws#0%+x22if%gcqj16pbx'
+SECRET_KEY = os.getenv('SECRET_KEY')
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Para desarrollo local: DEBUG = True
 # Para producción AWS: DEBUG = False
-DEBUG = False  # ⚡ PRODUCCIÓN: False para mejor rendimiento y seguridad
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Para desarrollo local, incluir localhost y 127.0.0.1
 # Para producción, solo incluir el dominio y IP del servidor
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "98.94.227.236", "webapp.gruasbyc.cl"]
+
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -93,16 +97,16 @@ WSGI_APPLICATION = 'bycCore.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # ============================================================================
-# PRODUCCIÓN: PostgreSQL en AWS RDS con optimizaciones
+# PRODUCCIÓN: PostgreSQL en AWS RDS (Configuración Dinámica)
 # ============================================================================
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "bycCore",
-        "USER": "postgres",
-        "PASSWORD": "Admin12345###",
-        "HOST": "byccore-db.cjscic8mi81f.us-east-1.rds.amazonaws.com",
-        "PORT": "5432",
+        "NAME": os.getenv('DB_NAME'),
+        "USER": os.getenv('DB_USER'),
+        "PASSWORD": os.getenv('DB_PASSWORD'),
+        "HOST": os.getenv('DB_HOST'),
+        "PORT": os.getenv('DB_PORT', '5432'),
         "OPTIONS": {
             "connect_timeout": 10,
             "options": "-c statement_timeout=30000",  # 30 segundos timeout
