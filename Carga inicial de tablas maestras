@@ -3553,6 +3553,29 @@ INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odome
 INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('19', 'MFDM80', NULL, NULL, NULL, 'AH19 - MFDM80', TRUE, 1, 7);
 INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('20', 'WNBM65', NULL, NULL, NULL, 'TV20 - WNBM65', TRUE, 2, 17);
 
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('47', NULL, NULL, NULL, NULL, 'RPF47', TRUE, 2, 20);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('02', 'CCGO24', NULL, NULL, NULL, 'FG02 - CCGO24', TRUE, 2, 9);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('03', 'GSFU49', NULL, NULL, NULL, 'SR03 - GSFU49', TRUE, 2, 12);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('13', NULL, NULL, NULL, NULL, 'FGL13', TRUE, 1, 10);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('06', 'FLSV65', NULL, NULL, NULL, 'CRP06 - FLSV65', TRUE, 1, 21);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('32', 'JYRB94', NULL, NULL, NULL, 'CRR32 - JYRB94', TRUE, 2, 21);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('50', 'QKJJ36', NULL, NULL, NULL, 'AHU50 - QKJJ36', TRUE, 1, 8);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('08', 'TIXA09', NULL, NULL, NULL, 'AH08 - TIXA09', TRUE, 1, 7);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('09', 'TXEE38', NULL, NULL, NULL, 'TV09 - TXEE38', TRUE, 1, 17);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('10', NULL, NULL, NULL, NULL, 'CP10', TRUE, 2, 15);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('11', 'KSSJ67', NULL, NULL, NULL, 'FG11 - KSSJ67', TRUE, 1, 9);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('12', 'AMTG76', NULL, NULL, NULL, 'CR12 - AMTG76', TRUE, 1, 22);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('13', 'GMKT49', NULL, NULL, NULL, 'CR13 - GMKT49', TRUE, 1, 21);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('71', 'TUCC58', NULL, NULL, NULL, 'GHQ71 - TUCC58', TRUE, 2, 5);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('35', 'ZEEJ72', NULL, NULL, NULL, 'CRC35 - ZEEJ72', TRUE, 1, 22);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('23', NULL, NULL, NULL, NULL, 'CPL23', TRUE, 1, 16);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('17', 'EEFI83', NULL, NULL, NULL, 'FG17 - EEFI83', TRUE, 2, 10);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('50', NULL, NULL, NULL, NULL, 'CRC50', TRUE, 1, 21);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('19', 'MFDM80', NULL, NULL, NULL, 'AH19 - MFDM80', TRUE, 1, 7);
+INSERT INTO public.maquinarias_equipo("codigoInterno", patente, horometro, odometro, "horometroSuperEstructural", "nombreEquipo", activo, empresa_id, "modeloEquipo_id")VALUES ('20', 'WNBM65', NULL, NULL, NULL, 'TV20 - WNBM65', TRUE, 2, 17);
+
+
+
 DO $$
 DECLARE
     _table_name text;
@@ -3605,3 +3628,4 @@ BEGIN
     END LOOP;
 
 END $$;
+
