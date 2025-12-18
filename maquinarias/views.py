@@ -4710,20 +4710,20 @@ def api_guardar_orden_trabajo(request):
                         except (ItemPauta.DoesNotExist, EstadoOT.DoesNotExist):
                             pass
             
-            # Paso 12: Editar secciones manuales (solo si NO es pauta o es preventivo sin pauta)
-            # Permitir agregar, modificar y eliminar secciones, pero no si están finalizadas
+            # Paso 12: En modo edición, NO se permiten agregar/modificar/eliminar secciones
+            # Solo se pueden cambiar los estados de las secciones existentes (manejado en estados_secciones)
             items_secciones_nuevos = data.get('items_secciones', None)  # None = no se enviaron, [] = se enviaron vacíos
             
-            # Solo procesar si se enviaron items_secciones Y tiene elementos (modo edición de secciones manuales)
-            # IMPORTANTE: 
-            # - Si items_secciones_nuevos es None: no se enviaron, no procesar (solo se cambió estado con estados_secciones)
-            # - Si items_secciones_nuevos es []: se enviaron vacíos, no procesar (no eliminar todas las secciones)
-            # - Si items_secciones_nuevos tiene elementos: procesar normalmente (agregar/modificar/eliminar)
-            if items_secciones_nuevos is not None and len(items_secciones_nuevos) > 0:
+            # En modo edición, NO procesar items_secciones (las secciones no se pueden modificar)
+            # Solo se procesan cambios de estado a través de estados_secciones (línea 4897)
+            # Si se envía items_secciones en modo edición, ignorarlo completamente
+            # El código de procesamiento de secciones solo se ejecuta en modo creación (cuando no es edición)
+            if not es_edicion and items_secciones_nuevos is not None and len(items_secciones_nuevos) > 0:
+                # MODO CREACIÓN: Procesar items_secciones normalmente
                 # Obtener estado "Finalizada" para validación
                 estado_finalizada = EstadoOT.objects.filter(nombre__iexact='Finalizada').first()
                 
-                # Obtener items actuales de la OT
+                # Obtener items actuales de la OT (en creación, normalmente estará vacío)
                 items_secciones_actuales = ItemSeccionOT.objects.filter(ot_id=ot).prefetch_related('tipos_reparacion', 'seccion_id', 'estado_seccion_id')
                 
                 # Crear diccionarios para comparación

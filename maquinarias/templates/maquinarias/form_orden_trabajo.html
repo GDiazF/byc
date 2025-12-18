@@ -370,15 +370,14 @@
                     <span>Secciones y Tipos de Reparación</span>
                 </div>
                 <div class="form-section-body">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Modo Edición:</strong> No se pueden agregar o eliminar secciones. Solo puede cambiar el estado de las secciones existentes.
+                    </div>
                     <div id="itemsSeccionesContainer">
-                        <p class="text-muted small" id="noItemsMessage">No hay items agregados. Haga clic en "Agregar Item" para comenzar.</p>
+                        <p class="text-muted small" id="noItemsMessage">No hay items agregados.</p>
                     </div>
-                    
-                    <div class="mt-3 text-center">
-                        <button type="button" class="btn btn-primary btn-sm" id="btnAgregarItemSeccion">
-                            <i class="bi bi-plus-circle me-1"></i>Agregar Item
-                        </button>
-                    </div>
+                    <!-- Botón de agregar oculto en modo edición -->
                 </div>
             </div>
             {% endif %}
@@ -558,7 +557,7 @@
                     <option value="{{ estado.estadoOT_id }}">{{ estado.nombre }}</option>
                     {% endfor %}
                 </select>
-                <button type="button" class="btn btn-danger btn-sm btnEliminarItemSeccion">
+                <button type="button" class="btn btn-danger btn-sm btnEliminarItemSeccion" style="display: none;">
                     <i class="bi bi-trash-fill"></i> Eliminar
                 </button>
             </div>

@@ -164,10 +164,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Event listener para botón agregar item sección
+    // Event listener para botón agregar item sección (solo en modo creación)
     const btnAgregarItemSeccion = document.getElementById('btnAgregarItemSeccion');
     if (btnAgregarItemSeccion) {
-        btnAgregarItemSeccion.addEventListener('click', agregarItemSeccion);
+        // Ocultar botón en modo edición
+        if (window.esEdicion) {
+            btnAgregarItemSeccion.style.display = 'none';
+        } else {
+            btnAgregarItemSeccion.addEventListener('click', agregarItemSeccion);
+        }
     }
     
     // Event listener para botón agregar observación
@@ -1186,11 +1191,12 @@ function quitarPersonalSeleccionado(personalId) {
 // ITEMS DE SECCIONES (Para cuando NO es pauta o es correctivo)
 // ============================================================================
 
-// Agregar item de sección (permitido en creación y edición)
+// Agregar item de sección (solo permitido en creación, NO en edición)
 function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], estadoInicial = null) {
-    // Permitir agregar en edición, pero validar que no esté finalizada
-    if (window.esEdicion) {
-        // La validación de estado finalizada se hace en el backend
+    // En modo edición, solo permitir cargar secciones existentes, NO agregar nuevas
+    if (window.esEdicion && !seccionIdInicial) {
+        alert('No se pueden agregar nuevas secciones en modo edición. Solo puede cambiar el estado de las secciones existentes.');
+        return;
     }
     const container = document.getElementById('itemsSeccionesContainer');
     const noItemsMessage = document.getElementById('noItemsMessage');
@@ -1243,15 +1249,39 @@ function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], est
         const seccionSelect = itemAgregado.querySelector('.seccion-select');
         seccionSelect.value = seccionIdInicial;
         
+        // En modo edición, deshabilitar select de sección y checkboxes (solo se puede cambiar el estado)
+        if (window.esEdicion) {
+            seccionSelect.disabled = true;
+            seccionSelect.classList.add('bg-light');
+            
+            // Ocultar botón eliminar
+            const btnEliminar = itemAgregado.querySelector('.btnEliminarItemSeccion');
+            if (btnEliminar) {
+                btnEliminar.style.display = 'none';
+            }
+        }
+        
         console.log('Agregando item con sección inicial:', {
             seccionIdInicial: seccionIdInicial,
             tiposIdsIniciales: tiposIdsIniciales,
-            estadoInicial: estadoInicial
+            estadoInicial: estadoInicial,
+            esEdicion: window.esEdicion
         });
         
         // Cargar tipos de reparación y pre-seleccionar
         const tiposContainer = itemAgregado.querySelector('.tipos-reparacion-list');
         cargarTiposReparacionParaSeccion(seccionIdInicial, tiposContainer, tiposIdsIniciales);
+        
+        // En modo edición, deshabilitar checkboxes después de cargarlos
+        if (window.esEdicion) {
+            setTimeout(() => {
+                const checkboxes = tiposContainer.querySelectorAll('.tipo-reparacion-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.disabled = true;
+                    checkbox.parentElement.classList.add('text-muted');
+                });
+            }, 100);
+        }
         
         // Verificar después de un pequeño delay que los checkboxes se marcaron correctamente
         setTimeout(() => {
@@ -1992,68 +2022,13 @@ async function guardarOrdenTrabajo(event) {
             formData.corresponde_pauta = true;
         }
         
-        // En modo edición, SIEMPRE recolectar items_secciones si hay items de secciones manuales en el DOM
-        // Esto asegura que las secciones no se eliminen cuando solo se cambia el estado
-        const itemsSeccionesManuales = document.querySelectorAll('.item-seccion');
-        if (window.esEdicion && itemsSeccionesManuales.length > 0) {
-            // Verificar si realmente hay secciones manuales (no de pauta)
-            // Las secciones de pauta tienen la clase 'estado-pauta-select', las manuales tienen 'estado-seccion-select'
-            const tieneSeccionesManuales = Array.from(itemsSeccionesManuales).some(item => {
-                return item.querySelector('.estado-seccion-select') !== null;
-            });
-            
-            if (tieneSeccionesManuales) {
-                formData.items_secciones = recolectarItemsSecciones();
-                
-                // Mostrar información detallada en consola
-                const totalItemsEnDOM = document.querySelectorAll('.item-seccion').length;
-                const totalItemsRecolectados = formData.items_secciones.length;
-                
-                console.log('=== RESUMEN DE RECOLECCIÓN DE SECCIONES ===');
-                console.log('Total items en DOM:', totalItemsEnDOM);
-                console.log('Total items recolectados:', totalItemsRecolectados);
-                console.log('Items recolectados (detalle):', JSON.stringify(formData.items_secciones, null, 2));
-                
-                // Verificar cada item en el DOM
-                document.querySelectorAll('.item-seccion').forEach((itemDiv, index) => {
-                    const seccionSelect = itemDiv.querySelector('.seccion-select');
-                    const checkboxes = itemDiv.querySelectorAll('.tipo-reparacion-checkbox:checked');
-                    const seccionNombre = seccionSelect ? seccionSelect.options[seccionSelect.selectedIndex]?.text : 'SIN SECCIÓN';
-                    console.log(`Item ${index + 1} en DOM:`, {
-                        seccion: seccionNombre,
-                        seccion_id: seccionSelect ? seccionSelect.value : 'NO',
-                        checkboxes_marcados: checkboxes.length,
-                        incluido_en_recoleccion: formData.items_secciones.some(item => item.seccion_id == (seccionSelect ? seccionSelect.value : null))
-                    });
-                });
-                
-                if (totalItemsRecolectados === 0) {
-                    alert(`ADVERTENCIA: No se recolectaron items de secciones.\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nLas secciones existentes podrían eliminarse.\n\nRevisa la consola para más detalles.`);
-                    return; // Detener el guardado para evitar pérdida de datos
-                } else if (totalItemsEnDOM !== totalItemsRecolectados) {
-                    const seccionesNombres = formData.items_secciones.map(item => {
-                        // Buscar el select que tiene este valor seleccionado
-                        const seccionSelect = Array.from(document.querySelectorAll('.seccion-select')).find(sel => sel.value == item.seccion_id);
-                        const nombre = seccionSelect ? seccionSelect.options[seccionSelect.selectedIndex]?.text : `ID: ${item.seccion_id}`;
-                        return nombre;
-                    }).join(', ');
-                    
-                    const seccionesNoIncluidas = [];
-                    document.querySelectorAll('.item-seccion').forEach((itemDiv) => {
-                        const seccionSelect = itemDiv.querySelector('.seccion-select');
-                        if (seccionSelect && seccionSelect.value) {
-                            const seccionId = parseInt(seccionSelect.value);
-                            if (!formData.items_secciones.some(item => item.seccion_id === seccionId)) {
-                                const nombre = seccionSelect.options[seccionSelect.selectedIndex]?.text;
-                                seccionesNoIncluidas.push(nombre);
-                            }
-                        }
-                    });
-                    
-                    alert(`ADVERTENCIA: No todas las secciones se recolectaron correctamente.\n\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nSecciones que se enviarán: ${seccionesNombres}\n\nSecciones NO incluidas: ${seccionesNoIncluidas.join(', ') || 'Ninguna'}\n\nRevisa la consola para más detalles.\n\n¿Desea continuar de todas formas?`);
-                    // No detener automáticamente, pero advertir al usuario
-                }
-            }
+        // En modo edición, NO enviar items_secciones (solo se pueden cambiar estados, no agregar/modificar/eliminar secciones)
+        // Los cambios de estado se manejan a través de estados_secciones
+        if (window.esEdicion) {
+            // NO recolectar items_secciones en modo edición
+            // Solo se procesan cambios de estado a través de estados_secciones
+            // No incluir items_secciones en formData para que el backend no procese cambios en secciones
+            console.log('Modo edición: No se enviarán items_secciones. Solo se procesarán cambios de estado.');
         } else if (!window.esEdicion) {
             // En modo creación, recolectar según el tipo de mantenimiento
             const correspondePautaSi = document.getElementById('corresponde_pauta_si');
