@@ -4891,61 +4891,85 @@ def api_guardar_orden_trabajo(request):
             
             # Actualizar estados de secciones manuales (compatibilidad con código anterior)
             if estados_secciones:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Procesando {len(estados_secciones)} estados de secciones para OT {ot.ot_id}")
+                
                 # Obtener todos los items de secciones de la OT
                 items_secciones_ot = ItemSeccionOT.objects.filter(ot_id=ot).select_related('seccion_id', 'estado_seccion_id')
+                logger.info(f"Items de secciones encontrados en OT: {items_secciones_ot.count()}")
                 
                 # Mapear estados por sección_id
                 for estado_data in estados_secciones:
                     seccion_id = estado_data.get('seccion_id')
                     estado_seccion_id = estado_data.get('estado_seccion_id')
+                    logger.info(f"Procesando estado: seccion_id={seccion_id}, estado_seccion_id={estado_seccion_id}")
+                    
                     if seccion_id and estado_seccion_id:
                         try:
                             # Convertir a entero si viene como string
                             seccion_id = int(seccion_id) if isinstance(seccion_id, str) else seccion_id
                             estado_seccion_id = int(estado_seccion_id) if isinstance(estado_seccion_id, str) else estado_seccion_id
+                            logger.info(f"Valores convertidos: seccion_id={seccion_id} (type: {type(seccion_id)}), estado_seccion_id={estado_seccion_id} (type: {type(estado_seccion_id)})")
                             
                             estado_seccion = EstadoOT.objects.get(estadoOT_id=estado_seccion_id)
+                            logger.info(f"EstadoOT obtenido: {estado_seccion.nombre} (ID: {estado_seccion.estadoOT_id})")
+                            
                             # Actualizar el item de sección específico
                             # Usar seccion_id__seccion_id porque seccion_id es una ForeignKey, no un entero
                             item_ot = items_secciones_ot.filter(seccion_id__seccion_id=seccion_id).first()
+                            logger.info(f"ItemSeccionOT encontrado: {item_ot is not None}")
+                            
                             if item_ot:
+                                logger.info(f"ItemSeccionOT: ot_id={item_ot.ot_id.ot_id}, seccion_id={item_ot.seccion_id.seccion_id}, estado_actual={item_ot.estado_seccion_id.nombre if item_ot.estado_seccion_id else 'None'}")
+                                
                                 # Obtener estado anterior para comparar
                                 estado_seccion_anterior = item_ot.estado_seccion_id
                                 
                                 # Registrar cambio si el estado cambió
                                 if estado_seccion_anterior != estado_seccion:
-                                    HistorialOT.registrar(
-                                        ot=ot,
-                                        accion='ESTADO_SECCION_CAMBIADO',
-                                        descripcion=f"Estado de sección '{item_ot.seccion_id.nombre}' cambiado de '{estado_seccion_anterior.nombre if estado_seccion_anterior else 'Sin estado'}' a '{estado_seccion.nombre}'",
-                                        usuario=request.user if request.user.is_authenticated else None,
-                                        datos_previos={
-                                            'seccion_id': item_ot.seccion_id.seccion_id,
-                                            'seccion_nombre': item_ot.seccion_id.nombre,
-                                            'estado_seccion_id': estado_seccion_anterior.estadoOT_id if estado_seccion_anterior else None,
-                                            'estado_seccion_nombre': estado_seccion_anterior.nombre if estado_seccion_anterior else None
-                                        },
-                                        datos_nuevos={
-                                            'seccion_id': item_ot.seccion_id.seccion_id,
-                                            'seccion_nombre': item_ot.seccion_id.nombre,
-                                            'estado_seccion_id': estado_seccion.estadoOT_id,
-                                            'estado_seccion_nombre': estado_seccion.nombre
-                                        }
-                                    )
+                                    logger.info(f"Estado cambió de {estado_seccion_anterior.nombre if estado_seccion_anterior else 'None'} a {estado_seccion.nombre}")
+                                    try:
+                                        HistorialOT.registrar(
+                                            ot=ot,
+                                            accion='ESTADO_SECCION_CAMBIADO',
+                                            descripcion=f"Estado de sección '{item_ot.seccion_id.nombre}' cambiado de '{estado_seccion_anterior.nombre if estado_seccion_anterior else 'Sin estado'}' a '{estado_seccion.nombre}'",
+                                            usuario=request.user if request.user.is_authenticated else None,
+                                            datos_previos={
+                                                'seccion_id': item_ot.seccion_id.seccion_id,
+                                                'seccion_nombre': item_ot.seccion_id.nombre,
+                                                'estado_seccion_id': estado_seccion_anterior.estadoOT_id if estado_seccion_anterior else None,
+                                                'estado_seccion_nombre': estado_seccion_anterior.nombre if estado_seccion_anterior else None
+                                            },
+                                            datos_nuevos={
+                                                'seccion_id': item_ot.seccion_id.seccion_id,
+                                                'seccion_nombre': item_ot.seccion_id.nombre,
+                                                'estado_seccion_id': estado_seccion.estadoOT_id,
+                                                'estado_seccion_nombre': estado_seccion.nombre
+                                            }
+                                        )
+                                        logger.info("Historial registrado exitosamente")
+                                    except Exception as hist_error:
+                                        logger.error(f"Error al registrar historial: {str(hist_error)}")
+                                        raise
                                 
+                                logger.info(f"Actualizando estado de ItemSeccionOT {item_ot.itemSeccionOT_id}")
                                 item_ot.estado_seccion_id = estado_seccion
                                 item_ot.save()
+                                logger.info(f"ItemSeccionOT guardado exitosamente")
                             else:
                                 # Si no se encuentra el item, registrar un warning pero no fallar
-                                import logging
-                                logger = logging.getLogger(__name__)
                                 logger.warning(f"No se encontró ItemSeccionOT para seccion_id={seccion_id} en OT {ot.ot_id}")
+                                # Listar los items disponibles para debugging
+                                available_items = list(items_secciones_ot.values_list('seccion_id__seccion_id', flat=True))
+                                logger.warning(f"Items disponibles: {available_items}")
                         except (EstadoOT.DoesNotExist, ValueError, TypeError) as e:
                             # Registrar el error pero continuar con las demás secciones
-                            import logging
-                            logger = logging.getLogger(__name__)
-                            logger.error(f"Error al actualizar estado de sección {seccion_id}: {str(e)}")
-                            pass
+                            logger.error(f"Error al actualizar estado de sección {seccion_id}: {str(e)}", exc_info=True)
+                            raise  # Re-lanzar para que se capture en el except general
+                        except Exception as e:
+                            logger.error(f"Error inesperado al actualizar estado de sección {seccion_id}: {str(e)}", exc_info=True)
+                            raise  # Re-lanzar para que se capture en el except general
             
             return JsonResponse({
                 'success': True,
