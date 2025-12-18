@@ -6,7 +6,7 @@ DECLARE
     statements text;
 BEGIN 
     -- Genera una sola sentencia TRUNCATE con todas las tablas concatenadas
-    SELECT 'TRUNCATE TABLE ' || string_agg(quote_ident(tablename), ', ') || ';'
+    SELECT 'TRUNCATE TABLE ' || string_agg(quote_ident(tablename), ', ') ||
     INTO statements
     FROM pg_tables
     WHERE schemaname = 'public'; -- Cambia 'public' si usas otro esquema
@@ -3846,4 +3846,5 @@ BEGIN
             END IF;
         END IF;
     END LOOP;
+
 END $$;
