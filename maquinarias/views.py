@@ -4345,10 +4345,9 @@ def api_guardar_orden_trabajo(request):
         
         if ot_id:
             # MODO EDICIÓN: Actualizar una orden de trabajo existente
-            try:
-                # Paso 2: Obtener la orden existente desde la base de datos
-                # Si no existe, se retorna un error 404 automáticamente
-                ot = get_object_or_404(OrdenTrabajo, ot_id=ot_id)
+            # Paso 2: Obtener la orden existente desde la base de datos
+            # Si no existe, se retorna un error 404 automáticamente
+            ot = get_object_or_404(OrdenTrabajo, ot_id=ot_id)
             
             # Paso 3: Guardar estados anteriores para comparación y registro en historial
             # Estos valores se usan para detectar cambios y registrar en el historial
@@ -4733,182 +4732,8 @@ def api_guardar_orden_trabajo(request):
             
             # Paso 12: En modo edición, NO se permiten agregar/modificar/eliminar secciones
             # Solo se pueden cambiar los estados de las secciones existentes (manejado en estados_secciones)
-            items_secciones_nuevos = data.get('items_secciones', None)  # None = no se enviaron, [] = se enviaron vacíos
-            
             # En modo edición, NO procesar items_secciones (las secciones no se pueden modificar)
-            # Solo se procesan cambios de estado a través de estados_secciones (línea 4897)
-            # Si se envía items_secciones en modo edición, ignorarlo completamente
-            # El código de procesamiento de secciones solo se ejecuta en modo creación (cuando no es edición)
-            if not es_edicion and items_secciones_nuevos is not None and len(items_secciones_nuevos) > 0:
-                # MODO CREACIÓN: Procesar items_secciones normalmente
-                # Obtener estado "Finalizada" para validación
-                estado_finalizada = EstadoOT.objects.filter(nombre__iexact='Finalizada').first()
-                
-                # Obtener items actuales de la OT (en creación, normalmente estará vacío)
-                items_secciones_actuales = ItemSeccionOT.objects.filter(ot_id=ot).prefetch_related('tipos_reparacion', 'seccion_id', 'estado_seccion_id')
-                
-                # Crear diccionarios para comparación
-                items_actuales_dict = {item.seccion_id.seccion_id: item for item in items_secciones_actuales}
-                items_nuevos_dict = {}
-                
-                # Validar y preparar items nuevos
-                for item_data in items_secciones_nuevos:
-                    seccion_id = item_data.get('seccion_id')
-                    tipos_reparacion_ids = item_data.get('tipos_reparacion_ids', [])
-                    estado_seccion_id = item_data.get('estado_seccion_id')
-                    
-                    if seccion_id and tipos_reparacion_ids and len(tipos_reparacion_ids) > 0:
-                        # Validar que la sección actual no esté finalizada (si existe)
-                        if seccion_id in items_actuales_dict:
-                            item_actual = items_actuales_dict[seccion_id]
-                            if estado_finalizada and item_actual.estado_seccion_id == estado_finalizada:
-                                return JsonResponse({
-                                    'success': False,
-                                    'message': f'No se puede modificar la sección "{item_actual.seccion_id.nombre}" porque está finalizada'
-                                }, status=400)
-                        
-                        items_nuevos_dict[seccion_id] = {
-                            'tipos_reparacion_ids': tipos_reparacion_ids,
-                            'estado_seccion_id': estado_seccion_id
-                        }
-                
-                # Identificar secciones a eliminar (están en actuales pero no en nuevos)
-                secciones_a_eliminar = set(items_actuales_dict.keys()) - set(items_nuevos_dict.keys())
-                
-                # Validar que las secciones a eliminar no estén finalizadas
-                for seccion_id_eliminar in secciones_a_eliminar:
-                    item_eliminar = items_actuales_dict[seccion_id_eliminar]
-                    if estado_finalizada and item_eliminar.estado_seccion_id == estado_finalizada:
-                        return JsonResponse({
-                            'success': False,
-                            'message': f'No se puede eliminar la sección "{item_eliminar.seccion_id.nombre}" porque está finalizada'
-                        }, status=400)
-                
-                # Eliminar secciones que ya no están en la lista nueva
-                for seccion_id_eliminar in secciones_a_eliminar:
-                    item_eliminar = items_actuales_dict[seccion_id_eliminar]
-                    # Registrar eliminación en historial
-                    tipos_eliminar = list(item_eliminar.tipos_reparacion.values_list('nombre', flat=True))
-                    HistorialOT.registrar(
-                        ot=ot,
-                        accion='SECCION_ELIMINADA',
-                        descripcion=f"Sección '{item_eliminar.seccion_id.nombre}' eliminada. Tipos de reparación: {', '.join(tipos_eliminar) if tipos_eliminar else 'Ninguno'}",
-                        usuario=request.user if request.user.is_authenticated else None,
-                        datos_previos={
-                            'seccion_id': item_eliminar.seccion_id.seccion_id,
-                            'seccion_nombre': item_eliminar.seccion_id.nombre,
-                            'tipos_reparacion_ids': list(item_eliminar.tipos_reparacion.values_list('tipoReparacion_id', flat=True)),
-                            'tipos_reparacion_nombres': tipos_eliminar,
-                            'estado_seccion_id': item_eliminar.estado_seccion_id.estadoOT_id if item_eliminar.estado_seccion_id else None,
-                            'estado_seccion_nombre': item_eliminar.estado_seccion_id.nombre if item_eliminar.estado_seccion_id else None
-                        },
-                        datos_nuevos=None
-                    )
-                    item_eliminar.delete()
-                
-                # Obtener estado por defecto (Pendiente)
-                estado_pendiente = EstadoOT.objects.filter(nombre='Pendiente').first()
-                if not estado_pendiente:
-                    estado_pendiente = EstadoOT.objects.filter(activo=True).first()
-                
-                # Procesar secciones nuevas y modificadas
-                for seccion_id, item_data in items_nuevos_dict.items():
-                    tipos_reparacion_ids = item_data['tipos_reparacion_ids']
-                    estado_seccion_id = item_data['estado_seccion_id']
-                    
-                    # Obtener estado de sección
-                    if estado_seccion_id:
-                        try:
-                            estado_seccion = EstadoOT.objects.get(estadoOT_id=estado_seccion_id)
-                        except EstadoOT.DoesNotExist:
-                            estado_seccion = estado_pendiente
-                    else:
-                        estado_seccion = estado_pendiente
-                    
-                    if seccion_id in items_actuales_dict:
-                        # MODIFICAR sección existente
-                        item_actual = items_actuales_dict[seccion_id]
-                        tipos_anteriores = set(item_actual.tipos_reparacion.values_list('tipoReparacion_id', flat=True))
-                        tipos_nuevos = set(tipos_reparacion_ids)
-                        estado_anterior = item_actual.estado_seccion_id
-                        
-                        # Verificar si hubo cambios
-                        tipos_cambiaron = tipos_anteriores != tipos_nuevos
-                        estado_cambio = estado_anterior != estado_seccion
-                        
-                        if tipos_cambiaron or estado_cambio:
-                            # Actualizar tipos de reparación
-                            item_actual.tipos_reparacion.set(tipos_reparacion_ids)
-                            
-                            # Actualizar estado
-                            item_actual.estado_seccion_id = estado_seccion
-                            item_actual.save()
-                            
-                            # Registrar cambio en historial
-                            tipos_anteriores_nombres = list(TipoReparacion.objects.filter(
-                                tipoReparacion_id__in=tipos_anteriores
-                            ).values_list('nombre', flat=True))
-                            tipos_nuevos_nombres = list(TipoReparacion.objects.filter(
-                                tipoReparacion_id__in=tipos_nuevos
-                            ).values_list('nombre', flat=True))
-                            
-                            cambios_descripcion = []
-                            if tipos_cambiaron:
-                                cambios_descripcion.append(f"Tipos de reparación: {', '.join(tipos_anteriores_nombres) if tipos_anteriores_nombres else 'Ninguno'} → {', '.join(tipos_nuevos_nombres) if tipos_nuevos_nombres else 'Ninguno'}")
-                            if estado_cambio:
-                                cambios_descripcion.append(f"Estado: {estado_anterior.nombre if estado_anterior else 'Sin estado'} → {estado_seccion.nombre}")
-                            
-                            HistorialOT.registrar(
-                                ot=ot,
-                                accion='SECCION_MODIFICADA',
-                                descripcion=f"Sección '{item_actual.seccion_id.nombre}' modificada. {' | '.join(cambios_descripcion)}",
-                                usuario=request.user if request.user.is_authenticated else None,
-                                datos_previos={
-                                    'seccion_id': item_actual.seccion_id.seccion_id,
-                                    'seccion_nombre': item_actual.seccion_id.nombre,
-                                    'tipos_reparacion_ids': list(tipos_anteriores),
-                                    'tipos_reparacion_nombres': tipos_anteriores_nombres,
-                                    'estado_seccion_id': estado_anterior.estadoOT_id if estado_anterior else None,
-                                    'estado_seccion_nombre': estado_anterior.nombre if estado_anterior else None
-                                },
-                                datos_nuevos={
-                                    'seccion_id': item_actual.seccion_id.seccion_id,
-                                    'seccion_nombre': item_actual.seccion_id.nombre,
-                                    'tipos_reparacion_ids': list(tipos_nuevos),
-                                    'tipos_reparacion_nombres': tipos_nuevos_nombres,
-                                    'estado_seccion_id': estado_seccion.estadoOT_id,
-                                    'estado_seccion_nombre': estado_seccion.nombre
-                                }
-                            )
-                    else:
-                        # AGREGAR nueva sección
-                        from maquinarias.models import Seccion
-                        seccion = get_object_or_404(Seccion, seccion_id=seccion_id)
-                        
-                        item_nuevo = ItemSeccionOT.objects.create(
-                            ot_id=ot,
-                            seccion_id=seccion,
-                            estado_seccion_id=estado_seccion
-                        )
-                        item_nuevo.tipos_reparacion.set(tipos_reparacion_ids)
-                        
-                        # Registrar agregado en historial
-                        tipos_nombres = list(item_nuevo.tipos_reparacion.values_list('nombre', flat=True))
-                        HistorialOT.registrar(
-                            ot=ot,
-                            accion='SECCION_AGREGADA',
-                            descripcion=f"Sección '{seccion.nombre}' agregada. Tipos de reparación: {', '.join(tipos_nombres) if tipos_nombres else 'Ninguno'}. Estado: {estado_seccion.nombre}",
-                            usuario=request.user if request.user.is_authenticated else None,
-                            datos_previos=None,
-                            datos_nuevos={
-                                'seccion_id': seccion.seccion_id,
-                                'seccion_nombre': seccion.nombre,
-                                'tipos_reparacion_ids': tipos_reparacion_ids,
-                                'tipos_reparacion_nombres': tipos_nombres,
-                                'estado_seccion_id': estado_seccion.estadoOT_id,
-                                'estado_seccion_nombre': estado_seccion.nombre
-                            }
-                        )
+            # Solo se procesan cambios de estado a través de estados_secciones
             
             # Actualizar estados de secciones manuales (compatibilidad con código anterior)
             if estados_secciones:
@@ -4994,22 +4819,12 @@ def api_guardar_orden_trabajo(request):
                             # No re-lanzar, continuar con las demás secciones para no fallar toda la operación
                             continue
             
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Estados actualizados exitosamente',
-                    'ot_id': ot.ot_id,
-                    'folio': ot.folio
-                })
-            except Exception as e:
-                # Capturar cualquier error en modo edición y retornar con traceback completo
-                import traceback
-                error_traceback = traceback.format_exc()
-                logger.error(f"Error en modo edición de OT {ot_id}: {str(e)}")
-                logger.error(f"Traceback completo:\n{error_traceback}")
-                return JsonResponse({
-                    'success': False,
-                    'message': f'Error al actualizar la orden de trabajo: {str(e)}'
-                }, status=500)
+            return JsonResponse({
+                'success': True,
+                'message': 'Orden de trabajo actualizada exitosamente',
+                'ot_id': ot.ot_id,
+                'folio': ot.folio
+            })
         
         # MODO CREACIÓN: Crear una nueva orden de trabajo
         # Paso 11: Validaciones básicas de campos requeridos
