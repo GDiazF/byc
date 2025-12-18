@@ -4215,78 +4215,11 @@ def api_validar_disponibilidad_ot(request):
                         })
         
         # Paso 8: Validar disponibilidad del personal (mecánicos)
-        # Se verifica si cada mecánico tiene conflictos con asignaciones de faenas u otras OTs
-        for personal_id in personal_ids:
-            # Paso 8.1: Verificar asignaciones de faenas del personal que se solapan con el rango de fechas
-            # Buscar asignaciones activas que se solapan con el rango de fechas de la nueva OT
-            asignaciones_faena_personal = AsignacionFaena.objects.filter(
-                personal_id=personal_id,  # Filtrar por personal específico
-                activo=True  # Solo asignaciones activas
-            ).filter(
-                Q(fecha_inicio__lte=fecha_fin_date if fecha_fin_date else timezone.now().date()) &  # La asignación comienza antes o en la fecha fin
-                (Q(fecha_fin__gte=fecha_inicio_date) | Q(fecha_fin__isnull=True))  # La asignación termina después o en la fecha inicio, o es indefinida
-            )
-            
-            # Paso 8.2: Agregar conflictos de asignaciones de faenas encontradas
-            for asignacion in asignaciones_faena_personal:
-                # Obtener nombre completo del personal para mostrar en el conflicto
-                personal_obj = asignacion.personal
-                nombre_personal = f"{personal_obj.nombre} {personal_obj.apepat}"
-                
-                conflictos['personal'].append({
-                    'personal_id': personal_id,  # ID del personal con conflicto
-                    'personal_nombre': nombre_personal,  # Nombre completo del personal
-                    'tipo': 'faena',  # Tipo de conflicto: asignación a faena
-                    'faena': asignacion.faena.nombre,  # Nombre de la faena
-                    'fecha_inicio': asignacion.fecha_inicio.strftime('%d/%m/%Y'),  # Fecha de inicio formateada
-                    'fecha_fin': asignacion.fecha_fin.strftime('%d/%m/%Y') if asignacion.fecha_fin else 'Indefinida'  # Fecha de fin formateada o "Indefinida"
-                })
-            
-            # Paso 8.3: Verificar OTs activas del personal que se solapan con el rango de fechas
-            # Buscar OTs que no estén finalizadas ni canceladas y que tengan fecha de inicio
-            ots_personal = OrdenTrabajo.objects.filter(
-                personal_asignado__personal_id=personal_id,  # Filtrar por personal asignado (relación many-to-many)
-                fecha_inicio__isnull=False  # Solo OTs con fecha de inicio definida
-            ).exclude(
-                estado_ot_id__nombre__iexact='FINALIZADA'  # Excluir OTs finalizadas
-            ).exclude(
-                estado_ot_id__nombre__iexact='CANCELADA'  # Excluir OTs canceladas
-            )
-            
-            # Paso 8.4: Si es edición, excluir la OT actual de la validación
-            # Esto evita que la OT se detecte como conflicto consigo misma
-            if ot_id:
-                ots_personal = ots_personal.exclude(ot_id=ot_id)
-            
-            # Paso 8.5: Verificar solapamiento de fechas con otras OTs activas
-            for ot in ots_personal:
-                if ot.fecha_inicio:
-                    # Paso 8.5.1: Determinar fecha de fin de la OT existente
-                    # Si no tiene fecha de fin, se considera indefinida (365 días desde hoy)
-                    ot_fin = ot.fecha_fin if ot.fecha_fin else timezone.now().date() + timedelta(days=365)
-                    
-                    # Paso 8.5.2: Determinar fecha de fin de la nueva OT
-                    # Si no tiene fecha de fin, se considera indefinida (365 días desde hoy)
-                    nueva_fin = fecha_fin_date if fecha_fin_date else timezone.now().date() + timedelta(days=365)
-                    
-                    # Paso 8.5.3: Verificar si hay solapamiento de fechas
-                    # Hay solapamiento si: ot_inicio <= nueva_fin AND nueva_inicio <= ot_fin
-                    # Esto significa que los rangos de fechas se superponen
-                    if ot.fecha_inicio <= nueva_fin and fecha_inicio_date <= ot_fin:
-                        # Obtener nombre completo del personal para mostrar en el conflicto
-                        personal_obj = Personal.objects.filter(personal_id=personal_id).first()
-                        nombre_personal = f"{personal_obj.nombre} {personal_obj.apepat}" if personal_obj else f"ID: {personal_id}"
-                        
-                        conflictos['personal'].append({
-                            'personal_id': personal_id,  # ID del personal con conflicto
-                            'personal_nombre': nombre_personal,  # Nombre completo del personal
-                            'tipo': 'ot',  # Tipo de conflicto: otra orden de trabajo
-                            'folio': ot.folio,  # Folio de la OT conflictiva
-                            'fecha_inicio': ot.fecha_inicio.strftime('%d/%m/%Y') if ot.fecha_inicio else 'N/A',  # Fecha de inicio formateada
-                            'fecha_fin': ot.fecha_fin.strftime('%d/%m/%Y') if ot.fecha_fin else 'Indefinida'  # Fecha de fin formateada o "Indefinida"
-                        })
+        # NOTA: Los mecánicos pueden ser asignados a múltiples OTs independientemente de las fechas
+        # Por lo tanto, NO se validan conflictos de personal con otras OTs o faenas
+        # Solo se valida disponibilidad del equipo
         
-        disponible = len(conflictos['equipo']) == 0 and len(conflictos['personal']) == 0
+        disponible = len(conflictos['equipo']) == 0
         
         return JsonResponse({
             'success': True,
@@ -4505,7 +4438,6 @@ def api_guardar_orden_trabajo(request):
                 
                 # Acumular todos los conflictos antes de retornar
                 conflictos_equipo_edicion = []
-                conflictos_personal_edicion = []
                 
                 # Validar conflictos de equipo
                 for ot_conflicto in ots_equipo_conflicto:
@@ -4519,53 +4451,18 @@ def api_guardar_orden_trabajo(request):
                                 'fecha_fin': ot_conflicto.fecha_fin.strftime('%d/%m/%Y') if ot_conflicto.fecha_fin else 'Indefinida'
                             })
                 
-                # Validar disponibilidad del personal asignado
-                if personal_ids_nuevo:
-                    from ope_calendario.models import AsignacionFaena
-                    # Personal ya está importado al inicio del archivo desde rrhh_personal.models
-                    
-                    for personal_id in personal_ids_nuevo:
-                        # Verificar conflictos con otras OTs
-                        ots_personal_conflicto = OrdenTrabajo.objects.filter(
-                            personal_asignado__personal_id=personal_id,
-                            fecha_inicio__isnull=False
-                        ).exclude(
-                            estado_ot_id__nombre__iexact='FINALIZADA'
-                        ).exclude(
-                            estado_ot_id__nombre__iexact='CANCELADA'
-                        ).exclude(
-                            ot_id=ot_id  # Excluir la OT actual
-                        )
-                        
-                        for ot_conflicto in ots_personal_conflicto:
-                            if ot_conflicto.fecha_inicio:
-                                ot_fin = ot_conflicto.fecha_fin if ot_conflicto.fecha_fin else timezone.now().date() + timedelta(days=365)
-                                if ot_conflicto.fecha_inicio <= nueva_fin and fecha_inicio_ot <= ot_fin:
-                                    personal_obj = Personal.objects.filter(personal_id=personal_id).first()
-                                    nombre_personal = f"{personal_obj.nombre} {personal_obj.apepat}" if personal_obj else f"ID: {personal_id}"
-                                    conflictos_personal_edicion.append({
-                                        'personal_id': personal_id,
-                                        'personal_nombre': nombre_personal,
-                                        'tipo': 'ot',
-                                        'folio': ot_conflicto.folio,
-                                        'fecha_inicio': ot_conflicto.fecha_inicio.strftime('%d/%m/%Y') if ot_conflicto.fecha_inicio else 'N/A',
-                                        'fecha_fin': ot_conflicto.fecha_fin.strftime('%d/%m/%Y') if ot_conflicto.fecha_fin else 'Indefinida'
-                                    })
+                # NOTA: Los mecánicos pueden ser asignados a múltiples OTs independientemente de las fechas
+                # Por lo tanto, NO se validan conflictos de personal con otras OTs
                 
-                # Si hay conflictos, retornar todos juntos
-                if conflictos_equipo_edicion or conflictos_personal_edicion:
-                    mensaje = 'No se puede guardar la orden de trabajo debido a conflictos de disponibilidad'
-                    if conflictos_equipo_edicion:
-                        mensaje += '. El equipo está asignado a otra OT'
-                    if conflictos_personal_edicion:
-                        mensaje += '. Uno o más mecánicos están asignados a otra OT'
+                # Si hay conflictos de equipo, retornar error
+                if conflictos_equipo_edicion:
+                    mensaje = 'No se puede guardar la orden de trabajo debido a conflictos de disponibilidad. El equipo está asignado a otra OT'
                     
                     return JsonResponse({
                         'success': False,
                         'message': mensaje,
                         'conflictos': {
-                            'equipo': conflictos_equipo_edicion,
-                            'personal': conflictos_personal_edicion
+                            'equipo': conflictos_equipo_edicion
                         }
                     }, status=400)
             
