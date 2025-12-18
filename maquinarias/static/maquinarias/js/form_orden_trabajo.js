@@ -1275,8 +1275,25 @@ function cargarTiposReparacionParaSeccion(seccionId, container, tiposIdsPreselec
         return;
     }
     
+    // Convertir todos los IDs a números para comparación correcta
+    const tiposIdsPreseleccionadosNumeros = tiposIdsPreseleccionados.map(id => parseInt(id));
+    
+    console.log('Cargando tipos de reparación para sección:', {
+        seccionId: seccionId,
+        tiposIdsPreseleccionados: tiposIdsPreseleccionados,
+        tiposIdsPreseleccionadosNumeros: tiposIdsPreseleccionadosNumeros,
+        tiposFiltrados: tiposFiltrados.length
+    });
+    
     container.innerHTML = '<div class="row g-2">' + tiposFiltrados.map(tipo => {
-        const checked = tiposIdsPreseleccionados.includes(tipo.tipoReparacion_id) ? 'checked' : '';
+        // Comparar como números para evitar problemas de tipo
+        const tipoIdNumero = parseInt(tipo.tipoReparacion_id);
+        const checked = tiposIdsPreseleccionadosNumeros.includes(tipoIdNumero) ? 'checked' : '';
+        
+        if (checked) {
+            console.log(`Marcando checkbox para tipo: ${tipo.nombre} (ID: ${tipoIdNumero})`);
+        }
+        
         return `
             <div class="col-md-6">
                 <div class="form-check">
@@ -1289,6 +1306,18 @@ function cargarTiposReparacionParaSeccion(seccionId, container, tiposIdsPreselec
             </div>
         `;
     }).join('') + '</div>';
+    
+    // Verificar que los checkboxes se marcaron correctamente
+    setTimeout(() => {
+        const checkboxesMarcados = container.querySelectorAll('.tipo-reparacion-checkbox:checked');
+        console.log(`Checkboxes marcados después de cargar: ${checkboxesMarcados.length} de ${tiposFiltrados.length}`);
+        if (checkboxesMarcados.length !== tiposIdsPreseleccionadosNumeros.length) {
+            console.warn('ADVERTENCIA: No todos los checkboxes se marcaron correctamente', {
+                esperados: tiposIdsPreseleccionadosNumeros.length,
+                marcados: checkboxesMarcados.length
+            });
+        }
+    }, 100);
 }
 
 // Eliminar item de sección
@@ -1931,6 +1960,25 @@ async function guardarOrdenTrabajo(event) {
             if (tieneSeccionesManuales) {
                 formData.items_secciones = recolectarItemsSecciones();
                 console.log('Items de secciones recolectados en edición:', formData.items_secciones);
+                
+                // Mostrar información de depuración antes de enviar
+                const totalItemsEnDOM = document.querySelectorAll('.item-seccion').length;
+                const totalItemsRecolectados = formData.items_secciones.length;
+                
+                if (totalItemsRecolectados === 0) {
+                    alert(`ADVERTENCIA: No se recolectaron items de secciones.\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nLas secciones existentes podrían eliminarse.`);
+                    return; // Detener el guardado para evitar pérdida de datos
+                } else if (totalItemsEnDOM !== totalItemsRecolectados) {
+                    const seccionesNombres = formData.items_secciones.map(item => {
+                        // Buscar el select que tiene este valor seleccionado
+                        const seccionSelect = Array.from(document.querySelectorAll('.seccion-select')).find(sel => sel.value == item.seccion_id);
+                        const nombre = seccionSelect ? seccionSelect.options[seccionSelect.selectedIndex]?.text : `ID: ${item.seccion_id}`;
+                        return nombre;
+                    }).join(', ');
+                    
+                    alert(`ADVERTENCIA: No todas las secciones se recolectaron correctamente.\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nSecciones que se enviarán: ${seccionesNombres}\n\n¿Desea continuar?`);
+                    // No detener, pero advertir al usuario
+                }
             }
         } else if (!window.esEdicion) {
             // En modo creación, recolectar según el tipo de mantenimiento
