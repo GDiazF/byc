@@ -164,10 +164,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Event listener para botón agregar item sección
+    // Event listener para botón agregar item sección (solo en modo creación)
     const btnAgregarItemSeccion = document.getElementById('btnAgregarItemSeccion');
     if (btnAgregarItemSeccion) {
-        btnAgregarItemSeccion.addEventListener('click', agregarItemSeccion);
+        // Ocultar botón en modo edición
+        if (window.esEdicion) {
+            btnAgregarItemSeccion.style.display = 'none';
+        } else {
+            btnAgregarItemSeccion.addEventListener('click', agregarItemSeccion);
+        }
     }
     
     // Event listener para botón agregar observación
@@ -1186,11 +1191,12 @@ function quitarPersonalSeleccionado(personalId) {
 // ITEMS DE SECCIONES (Para cuando NO es pauta o es correctivo)
 // ============================================================================
 
-// Agregar item de sección (permitido en creación y edición)
+// Agregar item de sección (solo permitido en creación, NO en edición)
 function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], estadoInicial = null) {
-    // Permitir agregar en edición, pero validar que no esté finalizada
-    if (window.esEdicion) {
-        // La validación de estado finalizada se hace en el backend
+    // En modo edición, solo permitir cargar secciones existentes, NO agregar nuevas
+    if (window.esEdicion && !seccionIdInicial) {
+        // No mostrar alert, simplemente retornar sin hacer nada
+        return;
     }
     const container = document.getElementById('itemsSeccionesContainer');
     const noItemsMessage = document.getElementById('noItemsMessage');
@@ -1226,6 +1232,11 @@ function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], est
     // Preseleccionar estado "Pendiente" por defecto si no se proporciona uno inicial
     const estadoSelect = itemAgregado.querySelector('.estado-seccion-select');
     if (estadoSelect && window.estadosOT) {
+        // Establecer data-seccion-id en el select de estado para poder recolectarlo después
+        if (seccionIdInicial) {
+            estadoSelect.dataset.seccionId = seccionIdInicial;
+        }
+        
         if (estadoInicial) {
             // Si se proporciona un estado inicial, usarlo
             estadoSelect.value = estadoInicial;
@@ -1243,15 +1254,39 @@ function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], est
         const seccionSelect = itemAgregado.querySelector('.seccion-select');
         seccionSelect.value = seccionIdInicial;
         
+        // En modo edición, deshabilitar select de sección y checkboxes (solo se puede cambiar el estado)
+        if (window.esEdicion) {
+            seccionSelect.disabled = true;
+            seccionSelect.classList.add('bg-light');
+            
+            // Ocultar botón eliminar
+            const btnEliminar = itemAgregado.querySelector('.btnEliminarItemSeccion');
+            if (btnEliminar) {
+                btnEliminar.style.display = 'none';
+            }
+        }
+        
         console.log('Agregando item con sección inicial:', {
             seccionIdInicial: seccionIdInicial,
             tiposIdsIniciales: tiposIdsIniciales,
-            estadoInicial: estadoInicial
+            estadoInicial: estadoInicial,
+            esEdicion: window.esEdicion
         });
         
         // Cargar tipos de reparación y pre-seleccionar
         const tiposContainer = itemAgregado.querySelector('.tipos-reparacion-list');
         cargarTiposReparacionParaSeccion(seccionIdInicial, tiposContainer, tiposIdsIniciales);
+        
+        // En modo edición, deshabilitar checkboxes después de cargarlos
+        if (window.esEdicion) {
+            setTimeout(() => {
+                const checkboxes = tiposContainer.querySelectorAll('.tipo-reparacion-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.disabled = true;
+                    checkbox.parentElement.classList.add('text-muted');
+                });
+            }, 100);
+        }
         
         // Verificar después de un pequeño delay que los checkboxes se marcaron correctamente
         setTimeout(() => {
@@ -1562,7 +1597,7 @@ function cargarDatosEdicion() {
             }
             cargarSeccionesPauta(data.pauta_id);
         } else if (data.items_secciones && data.items_secciones.length > 0) {
-            // Cargar items de secciones manuales usando el template para permitir edición
+            // Cargar items de secciones manuales - crear HTML directamente para mostrar secciones con selector de estado
             const container = document.getElementById('itemsSeccionesContainer');
             const noItemsMessage = document.getElementById('noItemsMessage');
             if (container) {
@@ -1571,20 +1606,56 @@ function cargarDatosEdicion() {
                     noItemsMessage.style.display = 'none';
                 }
                 
-                // Ocultar mensaje de "no hay items"
+                console.log('Cargando secciones existentes en modo edición:', data.items_secciones.length);
                 
                 data.items_secciones.forEach((item, index) => {
-                    console.log(`Cargando sección existente ${index + 1}:`, {
-                        seccion_id: item.seccion_id,
-                        tipos_reparacion_ids: item.tipos_reparacion_ids,
-                        estado_seccion_id: item.estado_seccion_id
-                    });
-                    // Usar la función agregarItemSeccion con los datos precargados
-                    agregarItemSeccion(
-                        item.seccion_id,
-                        item.tipos_reparacion_ids || [],
-                        item.estado_seccion_id || null
-                    );
+                    // Obtener el nombre de la sección desde window.secciones
+                    const seccion = window.secciones.find(s => s.seccion_id === item.seccion_id);
+                    const seccionNombre = seccion ? seccion.nombre : `Sección ID: ${item.seccion_id}`;
+                    
+                    // Obtener los nombres de los tipos de reparación desde window.tiposReparacion
+                    const tiposReparacionNombres = [];
+                    if (item.tipos_reparacion_ids && Array.isArray(item.tipos_reparacion_ids)) {
+                        item.tipos_reparacion_ids.forEach(tipoId => {
+                            const tipo = window.tiposReparacion.find(t => t.tipoReparacion_id === tipoId);
+                            if (tipo) {
+                                tiposReparacionNombres.push(tipo.nombre);
+                            }
+                        });
+                    }
+                    
+                    // Crear elemento para mostrar la sección con selector de estado
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'card mb-2';
+                    
+                    itemDiv.innerHTML = `
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-diagram-3 me-2"></i>${seccionNombre}
+                                </h6>
+                                <select class="form-select form-select-sm estado-seccion-select" 
+                                        style="width: auto;" 
+                                        data-seccion-id="${item.seccion_id}"
+                                        data-item-id="${item.itemSeccionOT_id || ''}">
+                                    <option value="">Seleccione estado...</option>
+                                    ${window.estadosOT.map(estado => 
+                                        `<option value="${estado.estadoOT_id}" ${estado.estadoOT_id == item.estado_seccion_id ? 'selected' : ''}>${estado.nombre}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted d-block mb-1">Tipos de Reparación:</small>
+                                ${tiposReparacionNombres.length > 0 ? 
+                                    `<ul class="mb-0 ps-3" style="font-size: 0.875rem;">
+                                        ${tiposReparacionNombres.map(nombre => `<li>${nombre}</li>`).join('')}
+                                    </ul>` : 
+                                    '<span class="text-muted small">No hay tipos de reparación asignados</span>'
+                                }
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(itemDiv);
                 });
             }
         }
@@ -1953,12 +2024,29 @@ async function guardarOrdenTrabajo(event) {
         const estadosSecciones = [];
         document.querySelectorAll('.estado-seccion-select').forEach(select => {
             if (select.value && select.dataset.seccionId) {
+                const seccionId = parseInt(select.dataset.seccionId);
+                const estadoSeccionId = parseInt(select.value);
+                console.log('Recolectando estado de sección:', {
+                    seccion_id: seccionId,
+                    estado_seccion_id: estadoSeccionId,
+                    data_seccion_id: select.dataset.seccionId,
+                    select_value: select.value
+                });
                 estadosSecciones.push({
-                    seccion_id: parseInt(select.dataset.seccionId),
-                    estado_seccion_id: parseInt(select.value)
+                    seccion_id: seccionId,
+                    estado_seccion_id: estadoSeccionId
+                });
+            } else {
+                console.warn('Select de estado sin seccion_id o value:', {
+                    hasValue: !!select.value,
+                    hasSeccionId: !!select.dataset.seccionId,
+                    seccionId: select.dataset.seccionId,
+                    value: select.value
                 });
             }
         });
+        
+        console.log('Estados de secciones recolectados:', estadosSecciones);
         
         formData.estados_pauta = estadosPauta;
         formData.estados_secciones = estadosSecciones;
@@ -1970,68 +2058,13 @@ async function guardarOrdenTrabajo(event) {
             formData.corresponde_pauta = true;
         }
         
-        // En modo edición, SIEMPRE recolectar items_secciones si hay items de secciones manuales en el DOM
-        // Esto asegura que las secciones no se eliminen cuando solo se cambia el estado
-        const itemsSeccionesManuales = document.querySelectorAll('.item-seccion');
-        if (window.esEdicion && itemsSeccionesManuales.length > 0) {
-            // Verificar si realmente hay secciones manuales (no de pauta)
-            // Las secciones de pauta tienen la clase 'estado-pauta-select', las manuales tienen 'estado-seccion-select'
-            const tieneSeccionesManuales = Array.from(itemsSeccionesManuales).some(item => {
-                return item.querySelector('.estado-seccion-select') !== null;
-            });
-            
-            if (tieneSeccionesManuales) {
-                formData.items_secciones = recolectarItemsSecciones();
-                
-                // Mostrar información detallada en consola
-                const totalItemsEnDOM = document.querySelectorAll('.item-seccion').length;
-                const totalItemsRecolectados = formData.items_secciones.length;
-                
-                console.log('=== RESUMEN DE RECOLECCIÓN DE SECCIONES ===');
-                console.log('Total items en DOM:', totalItemsEnDOM);
-                console.log('Total items recolectados:', totalItemsRecolectados);
-                console.log('Items recolectados (detalle):', JSON.stringify(formData.items_secciones, null, 2));
-                
-                // Verificar cada item en el DOM
-                document.querySelectorAll('.item-seccion').forEach((itemDiv, index) => {
-                    const seccionSelect = itemDiv.querySelector('.seccion-select');
-                    const checkboxes = itemDiv.querySelectorAll('.tipo-reparacion-checkbox:checked');
-                    const seccionNombre = seccionSelect ? seccionSelect.options[seccionSelect.selectedIndex]?.text : 'SIN SECCIÓN';
-                    console.log(`Item ${index + 1} en DOM:`, {
-                        seccion: seccionNombre,
-                        seccion_id: seccionSelect ? seccionSelect.value : 'NO',
-                        checkboxes_marcados: checkboxes.length,
-                        incluido_en_recoleccion: formData.items_secciones.some(item => item.seccion_id == (seccionSelect ? seccionSelect.value : null))
-                    });
-                });
-                
-                if (totalItemsRecolectados === 0) {
-                    alert(`ADVERTENCIA: No se recolectaron items de secciones.\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nLas secciones existentes podrían eliminarse.\n\nRevisa la consola para más detalles.`);
-                    return; // Detener el guardado para evitar pérdida de datos
-                } else if (totalItemsEnDOM !== totalItemsRecolectados) {
-                    const seccionesNombres = formData.items_secciones.map(item => {
-                        // Buscar el select que tiene este valor seleccionado
-                        const seccionSelect = Array.from(document.querySelectorAll('.seccion-select')).find(sel => sel.value == item.seccion_id);
-                        const nombre = seccionSelect ? seccionSelect.options[seccionSelect.selectedIndex]?.text : `ID: ${item.seccion_id}`;
-                        return nombre;
-                    }).join(', ');
-                    
-                    const seccionesNoIncluidas = [];
-                    document.querySelectorAll('.item-seccion').forEach((itemDiv) => {
-                        const seccionSelect = itemDiv.querySelector('.seccion-select');
-                        if (seccionSelect && seccionSelect.value) {
-                            const seccionId = parseInt(seccionSelect.value);
-                            if (!formData.items_secciones.some(item => item.seccion_id === seccionId)) {
-                                const nombre = seccionSelect.options[seccionSelect.selectedIndex]?.text;
-                                seccionesNoIncluidas.push(nombre);
-                            }
-                        }
-                    });
-                    
-                    alert(`ADVERTENCIA: No todas las secciones se recolectaron correctamente.\n\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nSecciones que se enviarán: ${seccionesNombres}\n\nSecciones NO incluidas: ${seccionesNoIncluidas.join(', ') || 'Ninguna'}\n\nRevisa la consola para más detalles.\n\n¿Desea continuar de todas formas?`);
-                    // No detener automáticamente, pero advertir al usuario
-                }
-            }
+        // En modo edición, NO enviar items_secciones (solo se pueden cambiar estados, no agregar/modificar/eliminar secciones)
+        // Los cambios de estado se manejan a través de estados_secciones
+        if (window.esEdicion) {
+            // NO recolectar items_secciones en modo edición
+            // Solo se procesan cambios de estado a través de estados_secciones
+            // No incluir items_secciones en formData para que el backend no procese cambios en secciones
+            console.log('Modo edición: No se enviarán items_secciones. Solo se procesarán cambios de estado.');
         } else if (!window.esEdicion) {
             // En modo creación, recolectar según el tipo de mantenimiento
             const correspondePautaSi = document.getElementById('corresponde_pauta_si');
