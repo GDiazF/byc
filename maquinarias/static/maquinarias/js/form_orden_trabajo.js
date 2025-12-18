@@ -1522,6 +1522,11 @@ function cargarDatosEdicion() {
                 // Ocultar mensaje de "no hay items"
                 
                 data.items_secciones.forEach((item, index) => {
+                    console.log(`Cargando sección existente ${index + 1}:`, {
+                        seccion_id: item.seccion_id,
+                        tipos_reparacion_ids: item.tipos_reparacion_ids,
+                        estado_seccion_id: item.estado_seccion_id
+                    });
                     // Usar la función agregarItemSeccion con los datos precargados
                     agregarItemSeccion(
                         item.seccion_id,
@@ -2320,30 +2325,57 @@ function recolectarItemsSecciones() {
     const items = [];
     const itemsSecciones = document.querySelectorAll('.item-seccion');
     
+    console.log('Recolectando items de secciones. Total encontrados:', itemsSecciones.length);
+    
     // Obtener estado PENDIENTE por defecto (para creación)
     const estadoPendiente = window.estadosOT.find(e => e.nombre.toLowerCase() === 'pendiente');
     const estadoPendienteId = estadoPendiente ? estadoPendiente.estadoOT_id : null;
     
-    itemsSecciones.forEach(itemDiv => {
+    itemsSecciones.forEach((itemDiv, index) => {
         const seccionSelect = itemDiv.querySelector('.seccion-select');
         const checkboxes = itemDiv.querySelectorAll('.tipo-reparacion-checkbox:checked');
         const estadoSelect = itemDiv.querySelector('.estado-seccion-select');
         
-        if (seccionSelect.value && checkboxes.length > 0) {
-            // En edición, usar el estado seleccionado; en creación, usar Pendiente
-            let estadoSeccionId = estadoPendienteId;
-            if (window.esEdicion && estadoSelect && estadoSelect.value) {
-                estadoSeccionId = parseInt(estadoSelect.value);
-            }
-            
-            items.push({
-                seccion_id: parseInt(seccionSelect.value),
-                tipos_reparacion_ids: Array.from(checkboxes).map(cb => parseInt(cb.value)),
-                estado_seccion_id: estadoSeccionId
-            });
+        console.log(`Item ${index + 1}:`, {
+            seccion_id: seccionSelect ? seccionSelect.value : 'NO SELECT',
+            checkboxes_count: checkboxes.length,
+            estado: estadoSelect ? estadoSelect.value : 'NO SELECT'
+        });
+        
+        // Validar que tenga sección seleccionada
+        if (!seccionSelect || !seccionSelect.value) {
+            console.warn(`Item ${index + 1} NO incluido: No tiene sección seleccionada`);
+            return; // Continuar con el siguiente item
         }
+        
+        // Validar que tenga al menos un tipo de reparación marcado
+        if (checkboxes.length === 0) {
+            console.warn(`Item ${index + 1} NO incluido: Sección "${seccionSelect.options[seccionSelect.selectedIndex]?.text}" no tiene tipos de reparación marcados`);
+            // En modo edición, esto podría ser un problema - las secciones existentes deberían tener tipos marcados
+            // Pero no vamos a incluirlas si no tienen tipos marcados para evitar errores en el backend
+            return; // Continuar con el siguiente item
+        }
+        
+        // En edición, usar el estado seleccionado; en creación, usar Pendiente
+        let estadoSeccionId = estadoPendienteId;
+        if (window.esEdicion && estadoSelect && estadoSelect.value) {
+            estadoSeccionId = parseInt(estadoSelect.value);
+        }
+        
+        items.push({
+            seccion_id: parseInt(seccionSelect.value),
+            tipos_reparacion_ids: Array.from(checkboxes).map(cb => parseInt(cb.value)),
+            estado_seccion_id: estadoSeccionId
+        });
+        
+        console.log(`Item ${index + 1} incluido correctamente:`, {
+            seccion_id: parseInt(seccionSelect.value),
+            tipos_count: checkboxes.length,
+            estado_id: estadoSeccionId
+        });
     });
     
+    console.log('Items recolectados:', items);
     return items;
 }
 
