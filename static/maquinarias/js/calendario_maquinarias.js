@@ -87,11 +87,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const empresaFilterMaquinarias = document.getElementById('empresaFilterMaquinarias');  // Filtro de empresa
     const faenaFilterMaquinarias = document.getElementById('faenaFilterMaquinarias');  // Filtro de faena
     
-    // Paso 2.1: Filtro de búsqueda: filtrar localmente sin recargar página (como tabla de personal)
-    // Filtrado instantáneo sin bloqueos
+    // Paso 2.1: Filtro de búsqueda: usar debounce y recargar página con todos los datos cuando hay texto
+    // Esto permite que el filtro funcione sobre todos los registros, no solo los de la página actual
     if (searchInputMaquinarias) {
+        let searchTimeout;
         searchInputMaquinarias.addEventListener('input', function() {
-            filtrarEquiposLocalmente();
+            const searchValue = this.value.trim();
+            // Limpiar timeout anterior si existe
+            clearTimeout(searchTimeout);
+            // Esperar 500ms después de que el usuario deje de escribir
+            searchTimeout = setTimeout(function() {
+                // Si hay texto, recargar con page_size grande para cargar todos los datos filtrados
+                // Si está vacío, recargar con paginación normal
+                aplicarFiltrosMaquinarias();
+            }, 500);
+        });
+        // También aplicar filtros al presionar Enter
+        searchInputMaquinarias.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                aplicarFiltrosMaquinarias();
+            }
         });
     }
     
@@ -439,10 +455,13 @@ function aplicarFiltrosMaquinarias() {
     // Crear objeto URL desde la URL actual para modificar parámetros
     const url = new URL(window.location.href);
     
-    // Paso 3: Mantener parámetros de fecha y paginación existentes
+    // Paso 3: Mantener parámetros de fecha
     const year = url.searchParams.get('year') || window.currentYear;  // Año actual o de la URL
     const month = url.searchParams.get('month') || window.currentMonth;  // Mes actual o de la URL
-    const pageSize = url.searchParams.get('page_size') || window.pageSize || '25';  // Tamaño de página
+    
+    // Si hay filtro de búsqueda, usar page_size grande para cargar todos los datos filtrados
+    // Si no hay filtro de búsqueda, usar page_size normal (25 por defecto)
+    const pageSize = search.trim() ? '10000' : (url.searchParams.get('page_size') || window.pageSize || '25');
     
     // Limpiar y reconstruir todos los parámetros (resetear página a 1 al aplicar filtros)
     url.search = '';

@@ -3041,21 +3041,21 @@ def calendario_maquinarias(request):
     faena_filter = request.GET.get('faena', '')  # Filtro por nombre de faena o "sin asignar"
     search_query = request.GET.get('search', '')  # Término de búsqueda
     
-    # Paso 5: Si no hay filtros de búsqueda activos, cargar TODOS los datos sin paginación
-    # Esto permite que el filtro local funcione sobre todos los datos, igual que la tabla de personal
-    # Si hay filtros de búsqueda activos, usar paginación normal
-    if not search_query and not empresa_filter and not tipo_filter and not faena_filter:
-        # Cargar todos los datos sin paginación para filtrado local
+    # Paso 5: Si hay filtro de búsqueda activo, cargar TODOS los datos filtrados sin paginación
+    # Esto permite que el filtro local funcione sobre todos los datos filtrados
+    # Si no hay filtro de búsqueda, usar paginación normal (25 registros por defecto)
+    if search_query and search_query.strip():
+        # Cargar todos los datos filtrados por búsqueda sin paginación para filtrado local
         calendario_data = obtener_calendario_maquinarias_optimizado(
-            year, month, '', '', '', '', 1, 10000  # page_size muy grande para obtener todos
+            year, month, empresa_filter, tipo_filter, faena_filter, search_query, 1, 10000  # page_size muy grande para obtener todos
         )
         # Actualizar total_equipos y page_size para reflejar que se cargaron todos
         total_equipos = calendario_data['total_equipos']
-        page_size = total_equipos  # Mostrar todos en una "página"
+        page_size = total_equipos if total_equipos > 0 else 25  # Mostrar todos en una "página"
         total_pages = 1
         current_page = 1
     else:
-        # Usar paginación normal cuando hay filtros activos
+        # Usar paginación normal cuando no hay filtro de búsqueda
         calendario_data = obtener_calendario_maquinarias_optimizado(
             year, month, empresa_filter, tipo_filter, faena_filter, search_query, page, page_size
         )

@@ -864,11 +864,27 @@ function setupFilters() {
     const cargoFilter = document.getElementById('cargoFilter');
     const empresaFilter = document.getElementById('empresaFilter');
     
-    // Filtro de búsqueda: filtrar localmente sin recargar página (como tabla de personal)
-    // Filtrado instantáneo sin bloqueos
+    // Filtro de búsqueda: usar debounce y recargar página con todos los datos cuando hay texto
+    // Esto permite que el filtro funcione sobre todos los registros, no solo los de la página actual
     if (searchInput) {
+        let searchTimeout;
         searchInput.addEventListener('input', function() {
-            filtrarPersonalLocalmente();
+            const searchValue = this.value.trim();
+            // Limpiar timeout anterior si existe
+            clearTimeout(searchTimeout);
+            // Esperar 500ms después de que el usuario deje de escribir
+            searchTimeout = setTimeout(function() {
+                // Si hay texto, recargar con page_size grande para cargar todos los datos filtrados
+                // Si está vacío, recargar con paginación normal
+                applyFiltersWithReload();
+            }, 500);
+        });
+        // También aplicar filtros al presionar Enter
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                applyFiltersWithReload();
+            }
         });
     }
     
@@ -957,10 +973,13 @@ function applyFiltersWithReload() {
     // Construir URL con parámetros
     const url = new URL(window.location.href);
     
-    // Mantener year, month y page_size
+    // Mantener year, month
     const currentYear = url.searchParams.get('year') || new Date().getFullYear();
     const currentMonth = url.searchParams.get('month') || (new Date().getMonth() + 1);
-    const pageSize = url.searchParams.get('page_size') || '10';
+    
+    // Si hay filtro de búsqueda, usar page_size grande para cargar todos los datos filtrados
+    // Si no hay filtro de búsqueda, usar page_size normal (10 por defecto)
+    const pageSize = searchValue ? '10000' : (url.searchParams.get('page_size') || '10');
     
     // Limpiar y reconstruir todos los parámetros
     url.search = '';

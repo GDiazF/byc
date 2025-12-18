@@ -81,26 +81,27 @@ def calendario_mensual(request):
     empresa_filter = request.GET.get('empresa', '')  # Filtrar por empresa
     search_query = request.GET.get('search', '')  # Búsqueda por nombre o RUT
     
-    # Paso 5: Si no hay filtros de búsqueda activos, cargar TODOS los datos sin paginación
-    # Esto permite que el filtro local funcione sobre todos los datos, igual que la tabla de personal
-    # Si hay filtros de búsqueda activos, usar paginación normal
-    if not search_query and not faena_filter and not cargo_filter and not empresa_filter:
-        # Cargar todos los datos sin paginación para filtrado local
+    # Paso 5: Si hay filtro de búsqueda activo, cargar TODOS los datos filtrados sin paginación
+    # Esto permite que el filtro local funcione sobre todos los datos filtrados
+    # Si no hay filtro de búsqueda, usar paginación normal (10 registros por defecto)
+    if search_query and search_query.strip():
+        # Cargar todos los datos filtrados por búsqueda sin paginación para filtrado local
         calendario_data = obtener_calendario_mensual(
-            year, month, '', '', '', '', 1, 10000  # page_size muy grande para obtener todos
+            year, month, faena_filter, cargo_filter, empresa_filter, search_query, 1, 10000  # page_size muy grande para obtener todos
         )
         # Actualizar total_personal y page_size para reflejar que se cargaron todos
         total_personal = calendario_data['total_personal']
-        page_size = total_personal  # Mostrar todos en una "página"
+        page_size = total_personal if total_personal > 0 else 10  # Mostrar todos en una "página"
         total_pages = 1
         current_page = 1
     else:
-        # Usar paginación normal cuando hay filtros activos
+        # Usar paginación normal cuando no hay filtro de búsqueda
         calendario_data = obtener_calendario_mensual(
             year, month, faena_filter, cargo_filter, empresa_filter, search_query, page, page_size
         )
         total_personal = calendario_data['total_personal']
-        total_pages = calendario_data['total_pages']
+        # Calcular total_pages manualmente ya que obtener_calendario_mensual no lo retorna
+        total_pages = (total_personal + page_size - 1) // page_size if total_personal > 0 else 1
         current_page = page
     
     # Obtener rango de fechas del mes para filtrar asignaciones
