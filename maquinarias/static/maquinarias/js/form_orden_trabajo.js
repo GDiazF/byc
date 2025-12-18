@@ -1913,19 +1913,32 @@ async function guardarOrdenTrabajo(event) {
             formData.corresponde_pauta = true;
         }
         
-        // Recolectar items de secciones manuales si NO es pauta (preventivo sin pauta o correctivo)
-        // Esto permite editar secciones en modo edición
-        const correspondePautaSi = document.getElementById('corresponde_pauta_si');
-        const esPauta = correspondePautaSi && correspondePautaSi.checked;
-        // En modo edición, verificar si hay pauta seleccionada
-        const tienePautaEnEdicion = pautaSelectEdicion && pautaSelectEdicion.value;
-        const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');
-        const tipoMantenimientoNombre = tipoMantenimientoSelect ? tipoMantenimientoSelect.options[tipoMantenimientoSelect.selectedIndex]?.textContent?.toLowerCase() || '' : '';
-        const esPreventivo = tipoMantenimientoNombre.includes('preventivo');
-        
-        // Si NO es pauta (preventivo sin pauta o correctivo), recolectar items_secciones
-        if ((!esPauta && !tienePautaEnEdicion) || (esPreventivo && !esPauta && !tienePautaEnEdicion) || tipoMantenimientoNombre.includes('correctivo')) {
-            formData.items_secciones = recolectarItemsSecciones();
+        // En modo edición, SIEMPRE recolectar items_secciones si hay items de secciones manuales en el DOM
+        // Esto asegura que las secciones no se eliminen cuando solo se cambia el estado
+        const itemsSeccionesManuales = document.querySelectorAll('.item-seccion');
+        if (window.esEdicion && itemsSeccionesManuales.length > 0) {
+            // Verificar si realmente hay secciones manuales (no de pauta)
+            // Las secciones de pauta tienen la clase 'estado-pauta-select', las manuales tienen 'estado-seccion-select'
+            const tieneSeccionesManuales = Array.from(itemsSeccionesManuales).some(item => {
+                return item.querySelector('.estado-seccion-select') !== null;
+            });
+            
+            if (tieneSeccionesManuales) {
+                formData.items_secciones = recolectarItemsSecciones();
+                console.log('Items de secciones recolectados en edición:', formData.items_secciones);
+            }
+        } else if (!window.esEdicion) {
+            // En modo creación, recolectar según el tipo de mantenimiento
+            const correspondePautaSi = document.getElementById('corresponde_pauta_si');
+            const esPauta = correspondePautaSi && correspondePautaSi.checked;
+            const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');
+            const tipoMantenimientoNombre = tipoMantenimientoSelect ? tipoMantenimientoSelect.options[tipoMantenimientoSelect.selectedIndex]?.textContent?.toLowerCase() || '' : '';
+            const esPreventivo = tipoMantenimientoNombre.includes('preventivo');
+            
+            // Si NO es pauta (preventivo sin pauta o correctivo), recolectar items_secciones
+            if ((!esPauta && esPreventivo) || tipoMantenimientoNombre.includes('correctivo')) {
+                formData.items_secciones = recolectarItemsSecciones();
+            }
         }
         
         // Validar disponibilidad antes de guardar en modo edición

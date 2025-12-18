@@ -4714,8 +4714,12 @@ def api_guardar_orden_trabajo(request):
             # Permitir agregar, modificar y eliminar secciones, pero no si están finalizadas
             items_secciones_nuevos = data.get('items_secciones', None)  # None = no se enviaron, [] = se enviaron vacíos
             
-            # Solo procesar si se enviaron items_secciones (modo edición de secciones manuales)
-            if items_secciones_nuevos is not None:
+            # Solo procesar si se enviaron items_secciones Y tiene elementos (modo edición de secciones manuales)
+            # IMPORTANTE: 
+            # - Si items_secciones_nuevos es None: no se enviaron, no procesar (solo se cambió estado con estados_secciones)
+            # - Si items_secciones_nuevos es []: se enviaron vacíos, no procesar (no eliminar todas las secciones)
+            # - Si items_secciones_nuevos tiene elementos: procesar normalmente (agregar/modificar/eliminar)
+            if items_secciones_nuevos is not None and len(items_secciones_nuevos) > 0:
                 # Obtener estado "Finalizada" para validación
                 estado_finalizada = EstadoOT.objects.filter(nombre__iexact='Finalizada').first()
                 
