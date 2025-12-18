@@ -2024,12 +2024,29 @@ async function guardarOrdenTrabajo(event) {
         const estadosSecciones = [];
         document.querySelectorAll('.estado-seccion-select').forEach(select => {
             if (select.value && select.dataset.seccionId) {
+                const seccionId = parseInt(select.dataset.seccionId);
+                const estadoSeccionId = parseInt(select.value);
+                console.log('Recolectando estado de sección:', {
+                    seccion_id: seccionId,
+                    estado_seccion_id: estadoSeccionId,
+                    data_seccion_id: select.dataset.seccionId,
+                    select_value: select.value
+                });
                 estadosSecciones.push({
-                    seccion_id: parseInt(select.dataset.seccionId),
-                    estado_seccion_id: parseInt(select.value)
+                    seccion_id: seccionId,
+                    estado_seccion_id: estadoSeccionId
+                });
+            } else {
+                console.warn('Select de estado sin seccion_id o value:', {
+                    hasValue: !!select.value,
+                    hasSeccionId: !!select.dataset.seccionId,
+                    seccionId: select.dataset.seccionId,
+                    value: select.value
                 });
             }
         });
+        
+        console.log('Estados de secciones recolectados:', estadosSecciones);
         
         formData.estados_pauta = estadosPauta;
         formData.estados_secciones = estadosSecciones;

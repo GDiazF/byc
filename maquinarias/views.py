@@ -4900,6 +4900,10 @@ def api_guardar_orden_trabajo(request):
                     estado_seccion_id = estado_data.get('estado_seccion_id')
                     if seccion_id and estado_seccion_id:
                         try:
+                            # Convertir a entero si viene como string
+                            seccion_id = int(seccion_id) if isinstance(seccion_id, str) else seccion_id
+                            estado_seccion_id = int(estado_seccion_id) if isinstance(estado_seccion_id, str) else estado_seccion_id
+                            
                             estado_seccion = EstadoOT.objects.get(estadoOT_id=estado_seccion_id)
                             # Actualizar el item de sección específico
                             # Usar seccion_id__seccion_id porque seccion_id es una ForeignKey, no un entero
@@ -4931,7 +4935,16 @@ def api_guardar_orden_trabajo(request):
                                 
                                 item_ot.estado_seccion_id = estado_seccion
                                 item_ot.save()
-                        except EstadoOT.DoesNotExist:
+                            else:
+                                # Si no se encuentra el item, registrar un warning pero no fallar
+                                import logging
+                                logger = logging.getLogger(__name__)
+                                logger.warning(f"No se encontró ItemSeccionOT para seccion_id={seccion_id} en OT {ot.ot_id}")
+                        except (EstadoOT.DoesNotExist, ValueError, TypeError) as e:
+                            # Registrar el error pero continuar con las demás secciones
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.error(f"Error al actualizar estado de sección {seccion_id}: {str(e)}")
                             pass
             
             return JsonResponse({
@@ -5186,9 +5199,15 @@ def api_guardar_orden_trabajo(request):
         })
         
     except Exception as e:
+        import traceback
+        import logging
+        logger = logging.getLogger(__name__)
+        error_traceback = traceback.format_exc()
+        logger.error(f"Error en api_guardar_orden_trabajo: {str(e)}\n{error_traceback}")
         return JsonResponse({
             'success': False,
-            'message': f'Error al guardar orden de trabajo: {str(e)}'
+            'message': f'Error al guardar orden de trabajo: {str(e)}',
+            'error_detail': str(e) if hasattr(e, '__str__') else repr(e)
         }, status=500)
 
 
