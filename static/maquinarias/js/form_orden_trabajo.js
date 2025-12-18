@@ -1609,6 +1609,20 @@ function cargarDatosEdicion() {
                 console.log('Cargando secciones existentes en modo edición:', data.items_secciones.length);
                 
                 data.items_secciones.forEach((item, index) => {
+                    // Obtener el nombre de la sección desde window.secciones
+                    const seccion = window.secciones.find(s => s.seccion_id === item.seccion_id);
+                    const seccionNombre = seccion ? seccion.nombre : `Sección ID: ${item.seccion_id}`;
+                    
+                    // Obtener los nombres de los tipos de reparación desde window.tiposReparacion
+                    const tiposReparacionNombres = [];
+                    if (item.tipos_reparacion_ids && Array.isArray(item.tipos_reparacion_ids)) {
+                        item.tipos_reparacion_ids.forEach(tipoId => {
+                            const tipo = window.tiposReparacion.find(t => t.tipoReparacion_id === tipoId);
+                            if (tipo) {
+                                tiposReparacionNombres.push(tipo.nombre);
+                            }
+                        });
+                    }
                     
                     // Crear elemento para mostrar la sección con selector de estado
                     const itemDiv = document.createElement('div');
