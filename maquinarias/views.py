@@ -4324,17 +4324,31 @@ def api_guardar_orden_trabajo(request):
     Retorna:
         JSON con éxito o error según el resultado de la operación
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         # Paso 1: Parsear los datos JSON recibidos en el cuerpo de la petición
         # Los datos vienen como JSON desde el frontend
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError as e:
+            logger.error(f"Error al parsear JSON en api_guardar_orden_trabajo: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f'Error al parsear los datos JSON: {str(e)}'
+            }, status=400)
+        
         ot_id = data.get('ot_id')  # Si existe, es edición; si no, es creación
+        logger.info(f"api_guardar_orden_trabajo: ot_id={ot_id}, modo={'EDICIÓN' if ot_id else 'CREACIÓN'}")
+        logger.info(f"Datos recibidos: estados_secciones={data.get('estados_secciones', [])}, estados_pauta={data.get('estados_pauta', [])}")
         
         if ot_id:
             # MODO EDICIÓN: Actualizar una orden de trabajo existente
-            # Paso 2: Obtener la orden existente desde la base de datos
-            # Si no existe, se retorna un error 404 automáticamente
-            ot = get_object_or_404(OrdenTrabajo, ot_id=ot_id)
+            try:
+                # Paso 2: Obtener la orden existente desde la base de datos
+                # Si no existe, se retorna un error 404 automáticamente
+                ot = get_object_or_404(OrdenTrabajo, ot_id=ot_id)
             
             # Paso 3: Guardar estados anteriores para comparación y registro en historial
             # Estos valores se usan para detectar cambios y registrar en el historial
@@ -4447,6 +4461,13 @@ def api_guardar_orden_trabajo(request):
             
             # Paso 9: Validar disponibilidad antes de actualizar personal o fechas
             # Esta validación asegura que no se asignen equipos o mecánicos que ya están ocupados
+            # Verificar que el equipo existe antes de acceder a sus propiedades
+            if not ot.equipo_id:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'La orden de trabajo no tiene un equipo asignado'
+                }, status=400)
+            
             equipo_id = ot.equipo_id.equipo_id  # ID del equipo de la OT
             fecha_inicio_ot = ot.fecha_inicio  # Fecha de inicio de la OT
             fecha_fin_nueva = data.get('fecha_fin')  # Nueva fecha de fin (si se proporciona)
@@ -4950,8 +4971,8 @@ def api_guardar_orden_trabajo(request):
                                         )
                                         logger.info("Historial registrado exitosamente")
                                     except Exception as hist_error:
-                                        logger.error(f"Error al registrar historial: {str(hist_error)}")
-                                        raise
+                                        logger.error(f"Error al registrar historial: {str(hist_error)}", exc_info=True)
+                                        # No re-lanzar, continuar con el guardado del estado aunque falle el historial
                                 
                                 logger.info(f"Actualizando estado de ItemSeccionOT {item_ot.itemSeccionOT_id}")
                                 item_ot.estado_seccion_id = estado_seccion
@@ -4966,17 +4987,29 @@ def api_guardar_orden_trabajo(request):
                         except (EstadoOT.DoesNotExist, ValueError, TypeError) as e:
                             # Registrar el error pero continuar con las demás secciones
                             logger.error(f"Error al actualizar estado de sección {seccion_id}: {str(e)}", exc_info=True)
-                            raise  # Re-lanzar para que se capture en el except general
+                            # No re-lanzar, continuar con las demás secciones para no fallar toda la operación
+                            continue
                         except Exception as e:
                             logger.error(f"Error inesperado al actualizar estado de sección {seccion_id}: {str(e)}", exc_info=True)
-                            raise  # Re-lanzar para que se capture en el except general
+                            # No re-lanzar, continuar con las demás secciones para no fallar toda la operación
+                            continue
             
-            return JsonResponse({
-                'success': True,
-                'message': 'Estados actualizados exitosamente',
-                'ot_id': ot.ot_id,
-                'folio': ot.folio
-            })
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Estados actualizados exitosamente',
+                    'ot_id': ot.ot_id,
+                    'folio': ot.folio
+                })
+            except Exception as e:
+                # Capturar cualquier error en modo edición y retornar con traceback completo
+                import traceback
+                error_traceback = traceback.format_exc()
+                logger.error(f"Error en modo edición de OT {ot_id}: {str(e)}")
+                logger.error(f"Traceback completo:\n{error_traceback}")
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Error al actualizar la orden de trabajo: {str(e)}'
+                }, status=500)
         
         # MODO CREACIÓN: Crear una nueva orden de trabajo
         # Paso 11: Validaciones básicas de campos requeridos
