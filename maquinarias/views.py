@@ -3041,11 +3041,27 @@ def calendario_maquinarias(request):
     faena_filter = request.GET.get('faena', '')  # Filtro por nombre de faena o "sin asignar"
     search_query = request.GET.get('search', '')  # Término de búsqueda
     
-    # Paso 5: Obtener datos del calendario con paginación y optimización
-    # Esta función obtiene todos los datos necesarios de forma eficiente
-    calendario_data = obtener_calendario_maquinarias_optimizado(
-        year, month, empresa_filter, tipo_filter, faena_filter, search_query, page, page_size
-    )
+    # Paso 5: Si no hay filtros de búsqueda activos, cargar TODOS los datos sin paginación
+    # Esto permite que el filtro local funcione sobre todos los datos, igual que la tabla de personal
+    # Si hay filtros de búsqueda activos, usar paginación normal
+    if not search_query and not empresa_filter and not tipo_filter and not faena_filter:
+        # Cargar todos los datos sin paginación para filtrado local
+        calendario_data = obtener_calendario_maquinarias_optimizado(
+            year, month, '', '', '', '', 1, 10000  # page_size muy grande para obtener todos
+        )
+        # Actualizar total_equipos y page_size para reflejar que se cargaron todos
+        total_equipos = calendario_data['total_equipos']
+        page_size = total_equipos  # Mostrar todos en una "página"
+        total_pages = 1
+        current_page = 1
+    else:
+        # Usar paginación normal cuando hay filtros activos
+        calendario_data = obtener_calendario_maquinarias_optimizado(
+            year, month, empresa_filter, tipo_filter, faena_filter, search_query, page, page_size
+        )
+        total_equipos = calendario_data['total_equipos']
+        total_pages = (total_equipos + page_size - 1) // page_size if total_equipos > 0 else 1
+        current_page = page
     
     # Paso 6: Obtener rango de fechas del mes para mostrar en el template
     # Se calcula el primer y último día del mes seleccionado
@@ -3121,9 +3137,11 @@ def calendario_maquinarias(request):
                 })
             estados_calculados_json[str(equipo_id)][str(dia)] = estados_serializados  # Asignar estados al día
     
-    # Paso 14: Calcular total de páginas para la paginación
-    # Se calcula dividiendo el total de equipos entre el tamaño de página
-    total_pages = (calendario_data['total_equipos'] + page_size - 1) // page_size if calendario_data['total_equipos'] > 0 else 1
+    # Paso 14: Usar las variables de paginación ya calculadas (o las que se calcularon arriba)
+    # Si no se definieron arriba (caso con filtros), calcularlas ahora
+    if 'total_pages' not in locals():
+        total_pages = (calendario_data['total_equipos'] + page_size - 1) // page_size if calendario_data['total_equipos'] > 0 else 1
+        current_page = page
     
     # Paso 15: Crear rango de páginas para el template
     # Esto permite mostrar los números de página en la interfaz
@@ -3153,7 +3171,7 @@ def calendario_maquinarias(request):
         'fecha_fin_mes': fecha_fin_mes,
         'dias_mes': ultimo_dia,
         'total_equipos': calendario_data['total_equipos'],
-        'current_page': page,
+        'current_page': current_page,
         'page_size': page_size,
         'total_pages': total_pages,
         'page_range': page_range,

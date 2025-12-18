@@ -81,11 +81,27 @@ def calendario_mensual(request):
     empresa_filter = request.GET.get('empresa', '')  # Filtrar por empresa
     search_query = request.GET.get('search', '')  # Búsqueda por nombre o RUT
     
-    # Paso 5: Obtener datos del calendario con paginación
-    # Esta función calcula los estados de cada personal para cada día del mes
-    calendario_data = obtener_calendario_mensual(
-        year, month, faena_filter, cargo_filter, empresa_filter, search_query, page, page_size
-    )
+    # Paso 5: Si no hay filtros de búsqueda activos, cargar TODOS los datos sin paginación
+    # Esto permite que el filtro local funcione sobre todos los datos, igual que la tabla de personal
+    # Si hay filtros de búsqueda activos, usar paginación normal
+    if not search_query and not faena_filter and not cargo_filter and not empresa_filter:
+        # Cargar todos los datos sin paginación para filtrado local
+        calendario_data = obtener_calendario_mensual(
+            year, month, '', '', '', '', 1, 10000  # page_size muy grande para obtener todos
+        )
+        # Actualizar total_personal y page_size para reflejar que se cargaron todos
+        total_personal = calendario_data['total_personal']
+        page_size = total_personal  # Mostrar todos en una "página"
+        total_pages = 1
+        current_page = 1
+    else:
+        # Usar paginación normal cuando hay filtros activos
+        calendario_data = obtener_calendario_mensual(
+            year, month, faena_filter, cargo_filter, empresa_filter, search_query, page, page_size
+        )
+        total_personal = calendario_data['total_personal']
+        total_pages = calendario_data['total_pages']
+        current_page = page
     
     # Obtener rango de fechas del mes para filtrar asignaciones
     _, ultimo_dia = monthrange(year, month)
@@ -226,9 +242,12 @@ def calendario_mensual(request):
         }
     
     
-    # Calcular información de paginación
-    total_personal = calendario_data.get('total_personal', 0)
-    total_pages = (total_personal + page_size - 1) // page_size if total_personal > 0 else 1
+    # Usar las variables de paginación ya calculadas (o las que se calcularon arriba)
+    # Si no se definieron arriba (caso con filtros), calcularlas ahora
+    if 'total_personal' not in locals():
+        total_personal = calendario_data.get('total_personal', 0)
+        total_pages = (total_personal + page_size - 1) // page_size if total_personal > 0 else 1
+        current_page = page
     
     context = {
         'calendario': json.dumps(calendario_json, cls=DjangoJSONEncoder),
@@ -254,13 +273,13 @@ def calendario_mensual(request):
             'month': month + 1 if month < 12 else 1
         }),
         # Información de paginación
-        'current_page': page,
+        'current_page': current_page,
         'page_size': page_size,
         'total_personal': total_personal,
         'total_pages': total_pages,
-        'has_previous': page > 1,
-        'has_next': page < total_pages,
-        'page_range': range(max(1, page - 2), min(total_pages + 1, page + 3)),
+        'has_previous': current_page > 1,
+        'has_next': current_page < total_pages,
+        'page_range': range(max(1, current_page - 2), min(total_pages + 1, current_page + 3)),
     }
     
     # Agregar todos los estados disponibles al calendario JSON

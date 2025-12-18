@@ -87,24 +87,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const empresaFilterMaquinarias = document.getElementById('empresaFilterMaquinarias');  // Filtro de empresa
     const faenaFilterMaquinarias = document.getElementById('faenaFilterMaquinarias');  // Filtro de faena
     
-    // Paso 2.1: Filtro de búsqueda: usar debounce y recargar página para filtrar en todas las páginas
-    // Esto permite buscar en todos los equipos, no solo en la página actual
+    // Paso 2.1: Filtro de búsqueda: filtrar localmente sin recargar página (como tabla de personal)
+    // Filtrado instantáneo sin bloqueos
     if (searchInputMaquinarias) {
-        let searchTimeout;
         searchInputMaquinarias.addEventListener('input', function() {
-            // Limpiar timeout anterior si existe
-            clearTimeout(searchTimeout);
-            // Esperar 500ms después de que el usuario deje de escribir
-            searchTimeout = setTimeout(function() {
-                aplicarFiltrosMaquinarias();
-            }, 500);
-        });
-        // También aplicar filtros al presionar Enter
-        searchInputMaquinarias.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                clearTimeout(searchTimeout);
-                aplicarFiltrosMaquinarias();
-            }
+            filtrarEquiposLocalmente();
         });
     }
     
