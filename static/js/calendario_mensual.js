@@ -855,8 +855,8 @@ function generarTablaExamenes(examenes) {
 
 /**
  * Configura los event listeners para los filtros del calendario.
- * El filtro de búsqueda funciona localmente (sin recargar página).
- * Los filtros de faena, cargo y empresa recargan la página para usar caché del backend.
+ * Todos los filtros recargan la página para filtrar en el backend antes de paginar.
+ * El filtro de búsqueda usa debounce para evitar recargas excesivas mientras el usuario escribe.
  */
 function setupFilters() {
     const searchInput = document.getElementById('searchInput');
@@ -864,9 +864,24 @@ function setupFilters() {
     const cargoFilter = document.getElementById('cargoFilter');
     const empresaFilter = document.getElementById('empresaFilter');
     
-    // Filtro de búsqueda: filtrar localmente sin recargar página (como maquinarias)
+    // Filtro de búsqueda: usar debounce y recargar página para filtrar en todas las páginas
     if (searchInput) {
-        searchInput.addEventListener('input', filtrarPersonalLocalmente);
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            // Limpiar timeout anterior si existe
+            clearTimeout(searchTimeout);
+            // Esperar 500ms después de que el usuario deje de escribir
+            searchTimeout = setTimeout(function() {
+                applyFiltersWithReload();
+            }, 500);
+        });
+        // También aplicar filtros al presionar Enter
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                applyFiltersWithReload();
+            }
+        });
     }
     
     // Filtros de faena, cargo y empresa: recargar página (requieren consulta al backend)

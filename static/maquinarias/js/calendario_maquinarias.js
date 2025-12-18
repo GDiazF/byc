@@ -87,10 +87,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const empresaFilterMaquinarias = document.getElementById('empresaFilterMaquinarias');  // Filtro de empresa
     const faenaFilterMaquinarias = document.getElementById('faenaFilterMaquinarias');  // Filtro de faena
     
-    // Paso 2.1: Filtro de búsqueda: filtrar localmente sin recargar página
-    // Similar a la tabla de personal, filtra los equipos ya cargados en memoria
+    // Paso 2.1: Filtro de búsqueda: usar debounce y recargar página para filtrar en todas las páginas
+    // Esto permite buscar en todos los equipos, no solo en la página actual
     if (searchInputMaquinarias) {
-        searchInputMaquinarias.addEventListener('input', filtrarEquiposLocalmente);  // Filtrar mientras el usuario escribe
+        let searchTimeout;
+        searchInputMaquinarias.addEventListener('input', function() {
+            // Limpiar timeout anterior si existe
+            clearTimeout(searchTimeout);
+            // Esperar 500ms después de que el usuario deje de escribir
+            searchTimeout = setTimeout(function() {
+                aplicarFiltrosMaquinarias();
+            }, 500);
+        });
+        // También aplicar filtros al presionar Enter
+        searchInputMaquinarias.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                aplicarFiltrosMaquinarias();
+            }
+        });
     }
     
     // Paso 2.2: Filtros de empresa y faena: recargar página
@@ -440,8 +455,14 @@ function aplicarFiltrosMaquinarias() {
     // Paso 3: Mantener parámetros de fecha y paginación existentes
     const year = url.searchParams.get('year') || window.currentYear;  // Año actual o de la URL
     const month = url.searchParams.get('month') || window.currentMonth;  // Mes actual o de la URL
-    const page = url.searchParams.get('page') || '1';  // Página actual o 1 por defecto
     const pageSize = url.searchParams.get('page_size') || window.pageSize || '25';  // Tamaño de página
+    
+    // Limpiar y reconstruir todos los parámetros (resetear página a 1 al aplicar filtros)
+    url.search = '';
+    url.searchParams.set('year', year);
+    url.searchParams.set('month', month);
+    url.searchParams.set('page', '1');  // Resetear a página 1 al aplicar filtros
+    url.searchParams.set('page_size', pageSize);
     
     // Paso 4: Agregar o eliminar filtros de la URL según sus valores
     if (search) {
@@ -461,12 +482,6 @@ function aplicarFiltrosMaquinarias() {
     } else {
         url.searchParams.delete('faena');  // Eliminar filtro si está vacío
     }
-    
-    // Paso 5: Mantener fecha y paginación en la URL
-    url.searchParams.set('year', year);  // Mantener año
-    url.searchParams.set('month', month);  // Mantener mes
-    url.searchParams.set('page', '1');  // Resetear a página 1 al filtrar
-    url.searchParams.set('page_size', pageSize);  // Mantener tamaño de página
     
     // Paso 6: Recargar página con los nuevos filtros
     // Esto hace que el backend recargue los equipos con los filtros aplicados
