@@ -1243,9 +1243,32 @@ function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], est
         const seccionSelect = itemAgregado.querySelector('.seccion-select');
         seccionSelect.value = seccionIdInicial;
         
+        console.log('Agregando item con sección inicial:', {
+            seccionIdInicial: seccionIdInicial,
+            tiposIdsIniciales: tiposIdsIniciales,
+            estadoInicial: estadoInicial
+        });
+        
         // Cargar tipos de reparación y pre-seleccionar
         const tiposContainer = itemAgregado.querySelector('.tipos-reparacion-list');
         cargarTiposReparacionParaSeccion(seccionIdInicial, tiposContainer, tiposIdsIniciales);
+        
+        // Verificar después de un pequeño delay que los checkboxes se marcaron correctamente
+        setTimeout(() => {
+            const checkboxesMarcados = tiposContainer.querySelectorAll('.tipo-reparacion-checkbox:checked');
+            console.log(`Verificación post-carga para sección ${seccionIdInicial}:`, {
+                checkboxesEsperados: tiposIdsIniciales.length,
+                checkboxesMarcados: checkboxesMarcados.length,
+                tiposIdsIniciales: tiposIdsIniciales
+            });
+            
+            if (checkboxesMarcados.length !== tiposIdsIniciales.length) {
+                console.error('ERROR: No todos los checkboxes se marcaron correctamente', {
+                    esperados: tiposIdsIniciales,
+                    marcados: Array.from(checkboxesMarcados).map(cb => parseInt(cb.value))
+                });
+            }
+        }, 200);
     }
     
     // Actualizar disponibilidad de secciones en todos los selects
@@ -1959,14 +1982,31 @@ async function guardarOrdenTrabajo(event) {
             
             if (tieneSeccionesManuales) {
                 formData.items_secciones = recolectarItemsSecciones();
-                console.log('Items de secciones recolectados en edición:', formData.items_secciones);
                 
-                // Mostrar información de depuración antes de enviar
+                // Mostrar información detallada en consola
                 const totalItemsEnDOM = document.querySelectorAll('.item-seccion').length;
                 const totalItemsRecolectados = formData.items_secciones.length;
                 
+                console.log('=== RESUMEN DE RECOLECCIÓN DE SECCIONES ===');
+                console.log('Total items en DOM:', totalItemsEnDOM);
+                console.log('Total items recolectados:', totalItemsRecolectados);
+                console.log('Items recolectados (detalle):', JSON.stringify(formData.items_secciones, null, 2));
+                
+                // Verificar cada item en el DOM
+                document.querySelectorAll('.item-seccion').forEach((itemDiv, index) => {
+                    const seccionSelect = itemDiv.querySelector('.seccion-select');
+                    const checkboxes = itemDiv.querySelectorAll('.tipo-reparacion-checkbox:checked');
+                    const seccionNombre = seccionSelect ? seccionSelect.options[seccionSelect.selectedIndex]?.text : 'SIN SECCIÓN';
+                    console.log(`Item ${index + 1} en DOM:`, {
+                        seccion: seccionNombre,
+                        seccion_id: seccionSelect ? seccionSelect.value : 'NO',
+                        checkboxes_marcados: checkboxes.length,
+                        incluido_en_recoleccion: formData.items_secciones.some(item => item.seccion_id == (seccionSelect ? seccionSelect.value : null))
+                    });
+                });
+                
                 if (totalItemsRecolectados === 0) {
-                    alert(`ADVERTENCIA: No se recolectaron items de secciones.\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nLas secciones existentes podrían eliminarse.`);
+                    alert(`ADVERTENCIA: No se recolectaron items de secciones.\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nLas secciones existentes podrían eliminarse.\n\nRevisa la consola para más detalles.`);
                     return; // Detener el guardado para evitar pérdida de datos
                 } else if (totalItemsEnDOM !== totalItemsRecolectados) {
                     const seccionesNombres = formData.items_secciones.map(item => {
@@ -1976,8 +2016,20 @@ async function guardarOrdenTrabajo(event) {
                         return nombre;
                     }).join(', ');
                     
-                    alert(`ADVERTENCIA: No todas las secciones se recolectaron correctamente.\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nSecciones que se enviarán: ${seccionesNombres}\n\n¿Desea continuar?`);
-                    // No detener, pero advertir al usuario
+                    const seccionesNoIncluidas = [];
+                    document.querySelectorAll('.item-seccion').forEach((itemDiv) => {
+                        const seccionSelect = itemDiv.querySelector('.seccion-select');
+                        if (seccionSelect && seccionSelect.value) {
+                            const seccionId = parseInt(seccionSelect.value);
+                            if (!formData.items_secciones.some(item => item.seccion_id === seccionId)) {
+                                const nombre = seccionSelect.options[seccionSelect.selectedIndex]?.text;
+                                seccionesNoIncluidas.push(nombre);
+                            }
+                        }
+                    });
+                    
+                    alert(`ADVERTENCIA: No todas las secciones se recolectaron correctamente.\n\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nSecciones que se enviarán: ${seccionesNombres}\n\nSecciones NO incluidas: ${seccionesNoIncluidas.join(', ') || 'Ninguna'}\n\nRevisa la consola para más detalles.\n\n¿Desea continuar de todas formas?`);
+                    // No detener automáticamente, pero advertir al usuario
                 }
             }
         } else if (!window.esEdicion) {

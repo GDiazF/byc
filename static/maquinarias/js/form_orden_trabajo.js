@@ -1243,9 +1243,32 @@ function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], est
         const seccionSelect = itemAgregado.querySelector('.seccion-select');
         seccionSelect.value = seccionIdInicial;
         
+        console.log('Agregando item con sección inicial:', {
+            seccionIdInicial: seccionIdInicial,
+            tiposIdsIniciales: tiposIdsIniciales,
+            estadoInicial: estadoInicial
+        });
+        
         // Cargar tipos de reparación y pre-seleccionar
         const tiposContainer = itemAgregado.querySelector('.tipos-reparacion-list');
         cargarTiposReparacionParaSeccion(seccionIdInicial, tiposContainer, tiposIdsIniciales);
+        
+        // Verificar después de un pequeño delay que los checkboxes se marcaron correctamente
+        setTimeout(() => {
+            const checkboxesMarcados = tiposContainer.querySelectorAll('.tipo-reparacion-checkbox:checked');
+            console.log(`Verificación post-carga para sección ${seccionIdInicial}:`, {
+                checkboxesEsperados: tiposIdsIniciales.length,
+                checkboxesMarcados: checkboxesMarcados.length,
+                tiposIdsIniciales: tiposIdsIniciales
+            });
+            
+            if (checkboxesMarcados.length !== tiposIdsIniciales.length) {
+                console.error('ERROR: No todos los checkboxes se marcaron correctamente', {
+                    esperados: tiposIdsIniciales,
+                    marcados: Array.from(checkboxesMarcados).map(cb => parseInt(cb.value))
+                });
+            }
+        }, 200);
     }
     
     // Actualizar disponibilidad de secciones en todos los selects
@@ -1275,8 +1298,25 @@ function cargarTiposReparacionParaSeccion(seccionId, container, tiposIdsPreselec
         return;
     }
     
+    // Convertir todos los IDs a números para comparación correcta
+    const tiposIdsPreseleccionadosNumeros = tiposIdsPreseleccionados.map(id => parseInt(id));
+    
+    console.log('Cargando tipos de reparación para sección:', {
+        seccionId: seccionId,
+        tiposIdsPreseleccionados: tiposIdsPreseleccionados,
+        tiposIdsPreseleccionadosNumeros: tiposIdsPreseleccionadosNumeros,
+        tiposFiltrados: tiposFiltrados.length
+    });
+    
     container.innerHTML = '<div class="row g-2">' + tiposFiltrados.map(tipo => {
-        const checked = tiposIdsPreseleccionados.includes(tipo.tipoReparacion_id) ? 'checked' : '';
+        // Comparar como números para evitar problemas de tipo
+        const tipoIdNumero = parseInt(tipo.tipoReparacion_id);
+        const checked = tiposIdsPreseleccionadosNumeros.includes(tipoIdNumero) ? 'checked' : '';
+        
+        if (checked) {
+            console.log(`Marcando checkbox para tipo: ${tipo.nombre} (ID: ${tipoIdNumero})`);
+        }
+        
         return `
             <div class="col-md-6">
                 <div class="form-check">
@@ -1289,6 +1329,18 @@ function cargarTiposReparacionParaSeccion(seccionId, container, tiposIdsPreselec
             </div>
         `;
     }).join('') + '</div>';
+    
+    // Verificar que los checkboxes se marcaron correctamente
+    setTimeout(() => {
+        const checkboxesMarcados = container.querySelectorAll('.tipo-reparacion-checkbox:checked');
+        console.log(`Checkboxes marcados después de cargar: ${checkboxesMarcados.length} de ${tiposFiltrados.length}`);
+        if (checkboxesMarcados.length !== tiposIdsPreseleccionadosNumeros.length) {
+            console.warn('ADVERTENCIA: No todos los checkboxes se marcaron correctamente', {
+                esperados: tiposIdsPreseleccionadosNumeros.length,
+                marcados: checkboxesMarcados.length
+            });
+        }
+    }, 100);
 }
 
 // Eliminar item de sección
@@ -1510,28 +1562,18 @@ function cargarDatosEdicion() {
             }
             cargarSeccionesPauta(data.pauta_id);
         } else if (data.items_secciones && data.items_secciones.length > 0) {
-            // Cargar items de secciones manuales
+            // Cargar items de secciones manuales usando el template para permitir edición
             const container = document.getElementById('itemsSeccionesContainer');
+            const noItemsMessage = document.getElementById('noItemsMessage');
             if (container) {
                 container.innerHTML = '';
+                if (noItemsMessage) {
+                    noItemsMessage.style.display = 'none';
+                }
+                
+                console.log('Cargando secciones existentes en modo edición:', data.items_secciones.length);
+                
                 data.items_secciones.forEach((item, index) => {
-                    // Buscar nombre de sección
-                    let seccionNombre = 'Sección';
-                    if (window.secciones && window.secciones.length > 0) {
-                        const seccion = window.secciones.find(s => s.seccion_id == item.seccion_id);
-                        if (seccion) {
-                            seccionNombre = seccion.nombre;
-                        }
-                    }
-                    
-                    // Buscar nombres de tipos de reparación
-                    let tiposReparacionNombres = [];
-                    if (window.tiposReparacion && window.tiposReparacion.length > 0 && item.tipos_reparacion_ids) {
-                        tiposReparacionNombres = item.tipos_reparacion_ids.map(id => {
-                            const tipo = window.tiposReparacion.find(t => t.tipoReparacion_id == id);
-                            return tipo ? tipo.nombre : '';
-                        }).filter(n => n);
-                    }
                     
                     // Crear elemento para mostrar la sección con selector de estado
                     const itemDiv = document.createElement('div');
@@ -1950,18 +1992,80 @@ async function guardarOrdenTrabajo(event) {
             formData.corresponde_pauta = true;
         }
         
-        // En modo edición, SIEMPRE recolectar items_secciones si hay items agregados manualmente
-        // Esto permite agregar/modificar/eliminar secciones incluso si la OT tiene pauta
-        // Buscar items de secciones en cualquier contenedor (puede estar oculto si hay pauta)
-        const itemsSecciones = document.querySelectorAll('.item-seccion');
-        if (itemsSecciones.length > 0) {
-            // Hay items de secciones manuales, recolectarlos
-            formData.items_secciones = recolectarItemsSecciones();
-            console.log('Items de secciones recolectados en edición:', formData.items_secciones);
-        } else {
-            // Si no hay items de secciones manuales, enviar array vacío para que el backend procese correctamente
-            // Esto es importante para distinguir entre "no se enviaron" (None) y "se enviaron vacíos" ([])
-            formData.items_secciones = [];
+        // En modo edición, SIEMPRE recolectar items_secciones si hay items de secciones manuales en el DOM
+        // Esto asegura que las secciones no se eliminen cuando solo se cambia el estado
+        const itemsSeccionesManuales = document.querySelectorAll('.item-seccion');
+        if (window.esEdicion && itemsSeccionesManuales.length > 0) {
+            // Verificar si realmente hay secciones manuales (no de pauta)
+            // Las secciones de pauta tienen la clase 'estado-pauta-select', las manuales tienen 'estado-seccion-select'
+            const tieneSeccionesManuales = Array.from(itemsSeccionesManuales).some(item => {
+                return item.querySelector('.estado-seccion-select') !== null;
+            });
+            
+            if (tieneSeccionesManuales) {
+                formData.items_secciones = recolectarItemsSecciones();
+                
+                // Mostrar información detallada en consola
+                const totalItemsEnDOM = document.querySelectorAll('.item-seccion').length;
+                const totalItemsRecolectados = formData.items_secciones.length;
+                
+                console.log('=== RESUMEN DE RECOLECCIÓN DE SECCIONES ===');
+                console.log('Total items en DOM:', totalItemsEnDOM);
+                console.log('Total items recolectados:', totalItemsRecolectados);
+                console.log('Items recolectados (detalle):', JSON.stringify(formData.items_secciones, null, 2));
+                
+                // Verificar cada item en el DOM
+                document.querySelectorAll('.item-seccion').forEach((itemDiv, index) => {
+                    const seccionSelect = itemDiv.querySelector('.seccion-select');
+                    const checkboxes = itemDiv.querySelectorAll('.tipo-reparacion-checkbox:checked');
+                    const seccionNombre = seccionSelect ? seccionSelect.options[seccionSelect.selectedIndex]?.text : 'SIN SECCIÓN';
+                    console.log(`Item ${index + 1} en DOM:`, {
+                        seccion: seccionNombre,
+                        seccion_id: seccionSelect ? seccionSelect.value : 'NO',
+                        checkboxes_marcados: checkboxes.length,
+                        incluido_en_recoleccion: formData.items_secciones.some(item => item.seccion_id == (seccionSelect ? seccionSelect.value : null))
+                    });
+                });
+                
+                if (totalItemsRecolectados === 0) {
+                    alert(`ADVERTENCIA: No se recolectaron items de secciones.\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nLas secciones existentes podrían eliminarse.\n\nRevisa la consola para más detalles.`);
+                    return; // Detener el guardado para evitar pérdida de datos
+                } else if (totalItemsEnDOM !== totalItemsRecolectados) {
+                    const seccionesNombres = formData.items_secciones.map(item => {
+                        // Buscar el select que tiene este valor seleccionado
+                        const seccionSelect = Array.from(document.querySelectorAll('.seccion-select')).find(sel => sel.value == item.seccion_id);
+                        const nombre = seccionSelect ? seccionSelect.options[seccionSelect.selectedIndex]?.text : `ID: ${item.seccion_id}`;
+                        return nombre;
+                    }).join(', ');
+                    
+                    const seccionesNoIncluidas = [];
+                    document.querySelectorAll('.item-seccion').forEach((itemDiv) => {
+                        const seccionSelect = itemDiv.querySelector('.seccion-select');
+                        if (seccionSelect && seccionSelect.value) {
+                            const seccionId = parseInt(seccionSelect.value);
+                            if (!formData.items_secciones.some(item => item.seccion_id === seccionId)) {
+                                const nombre = seccionSelect.options[seccionSelect.selectedIndex]?.text;
+                                seccionesNoIncluidas.push(nombre);
+                            }
+                        }
+                    });
+                    
+                    alert(`ADVERTENCIA: No todas las secciones se recolectaron correctamente.\n\nTotal items en DOM: ${totalItemsEnDOM}\nTotal items recolectados: ${totalItemsRecolectados}\n\nSecciones que se enviarán: ${seccionesNombres}\n\nSecciones NO incluidas: ${seccionesNoIncluidas.join(', ') || 'Ninguna'}\n\nRevisa la consola para más detalles.\n\n¿Desea continuar de todas formas?`);
+                    // No detener automáticamente, pero advertir al usuario
+                }
+            }
+        } else if (!window.esEdicion) {
+            // En modo creación, recolectar según el tipo de mantenimiento
+            const correspondePautaSi = document.getElementById('corresponde_pauta_si');
+            const esPauta = correspondePautaSi && correspondePautaSi.checked;
+            const tipoMantenimientoSelect = document.getElementById('tipo_mantenimiento_id');
+            const tipoMantenimientoNombre = tipoMantenimientoSelect ? tipoMantenimientoSelect.options[tipoMantenimientoSelect.selectedIndex]?.textContent?.toLowerCase() || '' : '';
+            const esPreventivo = tipoMantenimientoNombre.includes('preventivo');
+            
+            // Si NO es pauta (preventivo sin pauta o correctivo), recolectar items_secciones
+            if ((!esPauta && esPreventivo) || tipoMantenimientoNombre.includes('correctivo')) {
+                formData.items_secciones = recolectarItemsSecciones();
+            }
         }
         
         // Validar disponibilidad antes de guardar en modo edición
@@ -2303,30 +2407,55 @@ function recolectarItemsSecciones() {
     const items = [];
     const itemsSecciones = document.querySelectorAll('.item-seccion');
     
+    console.log('Recolectando items de secciones. Total encontrados:', itemsSecciones.length);
+    
     // Obtener estado PENDIENTE por defecto (para creación)
     const estadoPendiente = window.estadosOT.find(e => e.nombre.toLowerCase() === 'pendiente');
     const estadoPendienteId = estadoPendiente ? estadoPendiente.estadoOT_id : null;
     
-    itemsSecciones.forEach(itemDiv => {
+    itemsSecciones.forEach((itemDiv, index) => {
         const seccionSelect = itemDiv.querySelector('.seccion-select');
         const checkboxes = itemDiv.querySelectorAll('.tipo-reparacion-checkbox:checked');
-        const estadoSelect = itemDiv.querySelector('.estado-seccion-select'); // Get the state select
+        const estadoSelect = itemDiv.querySelector('.estado-seccion-select');
         
-        if (seccionSelect.value && checkboxes.length > 0) {
-            let estadoSeccionId = estadoPendienteId;
-            // En modo edición, usar el estado seleccionado si existe
-            if (window.esEdicion && estadoSelect && estadoSelect.value) {
-                estadoSeccionId = parseInt(estadoSelect.value);
-            }
-            
-            items.push({
-                seccion_id: parseInt(seccionSelect.value),
-                tipos_reparacion_ids: Array.from(checkboxes).map(cb => parseInt(cb.value)),
-                estado_seccion_id: estadoSeccionId
-            });
+        console.log(`Item ${index + 1}:`, {
+            seccion_id: seccionSelect ? seccionSelect.value : 'NO SELECT',
+            checkboxes_count: checkboxes.length,
+            estado: estadoSelect ? estadoSelect.value : 'NO SELECT'
+        });
+        
+        // Validar que tenga sección seleccionada
+        if (!seccionSelect || !seccionSelect.value) {
+            console.warn(`Item ${index + 1} NO incluido: No tiene sección seleccionada`);
+            return; // Continuar con el siguiente item
         }
+        
+        // Validar que tenga al menos un tipo de reparación marcado
+        if (checkboxes.length === 0) {
+            console.warn(`Item ${index + 1} NO incluido: Sección "${seccionSelect.options[seccionSelect.selectedIndex]?.text}" no tiene tipos de reparación marcados`);
+            return; // Continuar con el siguiente item
+        }
+        
+        // En edición, usar el estado seleccionado; en creación, usar Pendiente
+        let estadoSeccionId = estadoPendienteId;
+        if (window.esEdicion && estadoSelect && estadoSelect.value) {
+            estadoSeccionId = parseInt(estadoSelect.value);
+        }
+        
+        items.push({
+            seccion_id: parseInt(seccionSelect.value),
+            tipos_reparacion_ids: Array.from(checkboxes).map(cb => parseInt(cb.value)),
+            estado_seccion_id: estadoSeccionId
+        });
+        
+        console.log(`Item ${index + 1} incluido correctamente:`, {
+            seccion_id: parseInt(seccionSelect.value),
+            tipos_count: checkboxes.length,
+            estado_id: estadoSeccionId
+        });
     });
     
+    console.log('Items recolectados:', items);
     return items;
 }
 
