@@ -4902,7 +4902,8 @@ def api_guardar_orden_trabajo(request):
                         try:
                             estado_seccion = EstadoOT.objects.get(estadoOT_id=estado_seccion_id)
                             # Actualizar el item de sección específico
-                            item_ot = items_secciones_ot.filter(seccion_id=seccion_id).first()
+                            # Usar seccion_id__seccion_id porque seccion_id es una ForeignKey, no un entero
+                            item_ot = items_secciones_ot.filter(seccion_id__seccion_id=seccion_id).first()
                             if item_ot:
                                 # Obtener estado anterior para comparar
                                 estado_seccion_anterior = item_ot.estado_seccion_id

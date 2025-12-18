@@ -1195,7 +1195,7 @@ function quitarPersonalSeleccionado(personalId) {
 function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], estadoInicial = null) {
     // En modo edición, solo permitir cargar secciones existentes, NO agregar nuevas
     if (window.esEdicion && !seccionIdInicial) {
-        alert('No se pueden agregar nuevas secciones en modo edición. Solo puede cambiar el estado de las secciones existentes.');
+        // No mostrar alert, simplemente retornar sin hacer nada
         return;
     }
     const container = document.getElementById('itemsSeccionesContainer');
@@ -1232,6 +1232,11 @@ function agregarItemSeccion(seccionIdInicial = null, tiposIdsIniciales = [], est
     // Preseleccionar estado "Pendiente" por defecto si no se proporciona uno inicial
     const estadoSelect = itemAgregado.querySelector('.estado-seccion-select');
     if (estadoSelect && window.estadosOT) {
+        // Establecer data-seccion-id en el select de estado para poder recolectarlo después
+        if (seccionIdInicial) {
+            estadoSelect.dataset.seccionId = seccionIdInicial;
+        }
+        
         if (estadoInicial) {
             // Si se proporciona un estado inicial, usarlo
             estadoSelect.value = estadoInicial;
