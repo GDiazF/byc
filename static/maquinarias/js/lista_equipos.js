@@ -111,6 +111,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('No se encontró el campo buscarEquiposModal');
             }
         });
+        
+        // Limpiar búsqueda y selección cuando se cierra el modal
+        modalSeleccionarEquipos.addEventListener('hidden.bs.modal', function() {
+            // Limpiar campo de búsqueda
+            const buscarEquiposModal = document.getElementById('buscarEquiposModal');
+            if (buscarEquiposModal) {
+                buscarEquiposModal.value = '';
+            }
+            // Limpiar resultados de búsqueda
+            const resultadosDiv = document.getElementById('resultadosBusquedaEquipos');
+            if (resultadosDiv) {
+                resultadosDiv.innerHTML = '<p class="text-muted text-center mb-0">Ingrese un término de búsqueda...</p>';
+            }
+            // Limpiar selección
+            equiposSeleccionados = [];
+            actualizarVistaSeleccionadosEquipos();
+        });
     }
     
     // Botón limpiar selección

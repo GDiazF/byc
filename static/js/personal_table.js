@@ -149,15 +149,35 @@ function inicializarEventListeners() {
     
     // Inicializar modal de selección de personal para descarga
     const btnSeleccionarPersonal = document.getElementById('btnSeleccionarPersonal');
+    const modalSeleccionarPersonal = document.getElementById('modalSeleccionarPersonal');
+    
     if (btnSeleccionarPersonal) {
         btnSeleccionarPersonal.addEventListener('click', function() {
-            const modalElement = document.getElementById('modalSeleccionarPersonal');
-            if (modalElement) {
-                const modal = new bootstrap.Modal(modalElement);
+            if (modalSeleccionarPersonal) {
+                const modal = new bootstrap.Modal(modalSeleccionarPersonal);
                 modal.show();
                 personalSeleccionado = [];
                 actualizarVistaSeleccionados();
             }
+        });
+    }
+    
+    // Limpiar búsqueda y selección cuando se cierra el modal
+    if (modalSeleccionarPersonal) {
+        modalSeleccionarPersonal.addEventListener('hidden.bs.modal', function() {
+            // Limpiar campo de búsqueda
+            const buscarPersonalModal = document.getElementById('buscarPersonalModal');
+            if (buscarPersonalModal) {
+                buscarPersonalModal.value = '';
+            }
+            // Limpiar resultados de búsqueda
+            const resultadosDiv = document.getElementById('resultadosBusquedaPersonal');
+            if (resultadosDiv) {
+                resultadosDiv.innerHTML = '<p class="text-muted text-center mb-0">Ingrese un término de búsqueda...</p>';
+            }
+            // Limpiar selección
+            personalSeleccionado = [];
+            actualizarVistaSeleccionados();
         });
     }
     
