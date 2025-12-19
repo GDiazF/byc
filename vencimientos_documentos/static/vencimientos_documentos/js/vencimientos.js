@@ -435,13 +435,26 @@ function mostrarError(mensaje) {
  * y crear notificaciones automáticamente. Muestra un diálogo de confirmación antes
  * de ejecutar y deshabilita el botón durante el procesamiento.
  */
-function ejecutarProcesamientoVencimientos() {
+function ejecutarProcesamientoVencimientos(event) {
     if (!confirm('¿Está seguro de ejecutar el procesamiento de vencimientos? Esto creará notificaciones para todos los documentos próximos a vencer.')) {
         return;
     }
     
-    // Deshabilitar el botón mientras se procesa
-    const boton = event.target.closest('button');
+    // Obtener el botón desde el evento o buscarlo directamente
+    let boton;
+    if (event && event.target) {
+        boton = event.target.closest('button');
+    } else {
+        // Si no hay evento, buscar el botón por su contenido
+        const botones = document.querySelectorAll('button');
+        boton = Array.from(botones).find(btn => btn.textContent.includes('Ejecutar Procesamiento'));
+    }
+    
+    if (!boton) {
+        alert('✗ Error: No se pudo encontrar el botón');
+        return;
+    }
+    
     const textoOriginal = boton.innerHTML;
     boton.disabled = true;
     boton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Procesando...';
@@ -453,13 +466,22 @@ function ejecutarProcesamientoVencimientos() {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         boton.disabled = false;
         boton.innerHTML = textoOriginal;
         
         if (data.success) {
             alert('✓ ' + data.message);
+            // Recargar la página para mostrar las nuevas notificaciones
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
         } else {
             alert('✗ Error: ' + (data.error || 'Error desconocido'));
         }
