@@ -1715,7 +1715,7 @@ def api_dashboard_gerencia(request):
             personal_no_disponible_detalle.append({
                 'nombre': nombre_personal,
                 'tipo': 'Ausentismo',
-                'tipo_ausentismo': ausentismo.tipoausen_id.tipoAusentismo if ausentismo.tipoausen_id else 'N/A',
+                'tipo_ausentismo': ausentismo.tipoausen_id.tipo if ausentismo.tipoausen_id else 'N/A',
                 'fecha_fin': ausentismo.fechafin.strftime('%d/%m/%Y') if ausentismo.fechafin else 'N/A'
             })
         
