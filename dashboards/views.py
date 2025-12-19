@@ -115,9 +115,10 @@ def api_dashboard_rrhh(request):
         
         personal_con_licencia_count = len(personal_con_licencia_ids)
         
-        # Personal con ausentismo activo
+        # Personal con ausentismo activo (solo los que están ausentes HOY)
         personal_con_ausentismo_ids = Ausentismo.objects.filter(
             personal_id__activo=True,
+            fechaini__lte=hoy,
             fechafin__gte=hoy
         ).values_list('personal_id', flat=True).distinct()
         
@@ -251,19 +252,46 @@ def api_dashboard_rrhh(request):
             accion__icontains='DESACTIVADO'
         ).count()
         
-        # Tipos de ausentismo con conteo de personal activo
+        # Tipos de ausentismo con conteo de personal activo HOY y detalles de personas
         tipos_ausentismo_detalle = []
-        for tipo_ausentismo in TipoAusentismo.objects.all():
-            count = Ausentismo.objects.filter(
-                tipoausen_id=tipo_ausentismo,
-                personal_id__activo=True,
-                fechafin__gte=hoy
-            ).values('personal_id').distinct().count()
-            if count > 0:
-                tipos_ausentismo_detalle.append({
-                    'tipo': tipo_ausentismo.tipo,
-                    'cantidad': count
-                })
+        personal_con_ausentismo_detalle = []
+        
+        ausentismos_activos = Ausentismo.objects.filter(
+            personal_id__activo=True,
+            fechaini__lte=hoy,
+            fechafin__gte=hoy
+        ).select_related('personal_id', 'tipoausen_id').order_by('tipoausen_id', 'personal_id__apepat', 'personal_id__apemat', 'personal_id__nombre')
+        
+        # Agrupar por tipo de ausentismo
+        ausentismos_por_tipo = {}
+        for ausentismo in ausentismos_activos:
+            tipo_nombre = ausentismo.tipoausen_id.tipo
+            if tipo_nombre not in ausentismos_por_tipo:
+                ausentismos_por_tipo[tipo_nombre] = []
+            
+            nombre_personal = f"{ausentismo.personal_id.nombre} {ausentismo.personal_id.apepat}"
+            if ausentismo.personal_id.apemat:
+                nombre_personal += f" {ausentismo.personal_id.apemat}"
+            
+            personal_con_ausentismo_detalle.append({
+                'nombre': nombre_personal,
+                'rut': f"{ausentismo.personal_id.rut}-{ausentismo.personal_id.dvrut}",
+                'tipo_ausentismo': tipo_nombre,
+                'fecha_inicio': ausentismo.fechaini.strftime('%d/%m/%Y') if ausentismo.fechaini else 'N/A',
+                'fecha_fin': ausentismo.fechafin.strftime('%d/%m/%Y') if ausentismo.fechafin else 'N/A',
+                'dias': ausentismo.dias_ausentismo
+            })
+            
+            ausentismos_por_tipo[tipo_nombre].append(ausentismo.personal_id)
+        
+        # Crear resumen por tipo
+        for tipo_nombre, personal_list in ausentismos_por_tipo.items():
+            # Contar personal único por tipo
+            personal_unicos = set(p.id for p in personal_list)
+            tipos_ausentismo_detalle.append({
+                'tipo': tipo_nombre,
+                'cantidad': len(personal_unicos)
+            })
         
         # Tipos de licencia medica con conteo de personal activo
         tipos_licencia_detalle = []
@@ -334,6 +362,7 @@ def api_dashboard_rrhh(request):
                 'personal_con_licencia': personal_con_licencia_count,
                 'personal_con_ausentismo': personal_con_ausentismo_count,
                 'tipos_ausentismo': tipos_ausentismo_detalle,
+                'personal_con_ausentismo_detalle': personal_con_ausentismo_detalle,
                 'tipos_licencia_medica': tipos_licencia_detalle,
                 'faenas_con_personal': faenas_con_personal,
                 'documentos_por_vencer': documentos_por_vencer[:20],  # Limitar a 20 mas urgentes
@@ -410,9 +439,10 @@ def api_dashboard_operaciones(request):
         
         personal_con_licencia_count = len(personal_con_licencia_ids)
         
-        # Personal con ausentismo activo
+        # Personal con ausentismo activo (solo los que están ausentes HOY)
         personal_con_ausentismo_ids = Ausentismo.objects.filter(
             personal_id__activo=True,
+            fechaini__lte=hoy,
             fechafin__gte=hoy
         ).values_list('personal_id', flat=True).distinct()
         
@@ -905,19 +935,46 @@ def api_dashboard_operaciones(request):
         # Ordenar por dias restantes
         documentos_maquinarias_por_vencer.sort(key=lambda x: x['dias_restantes'])
         
-        # Tipos de ausentismo con conteo de personal activo (para modal)
+        # Tipos de ausentismo con conteo de personal activo HOY y detalles de personas (para modal)
         tipos_ausentismo_detalle = []
-        for tipo_ausentismo in TipoAusentismo.objects.all():
-            count = Ausentismo.objects.filter(
-                tipoausen_id=tipo_ausentismo,
-                personal_id__activo=True,
-                fechafin__gte=hoy
-            ).values('personal_id').distinct().count()
-            if count > 0:
-                tipos_ausentismo_detalle.append({
-                    'tipo': tipo_ausentismo.tipo,
-                    'cantidad': count
-                })
+        personal_con_ausentismo_detalle = []
+        
+        ausentismos_activos = Ausentismo.objects.filter(
+            personal_id__activo=True,
+            fechaini__lte=hoy,
+            fechafin__gte=hoy
+        ).select_related('personal_id', 'tipoausen_id').order_by('tipoausen_id', 'personal_id__apepat', 'personal_id__apemat', 'personal_id__nombre')
+        
+        # Agrupar por tipo de ausentismo
+        ausentismos_por_tipo = {}
+        for ausentismo in ausentismos_activos:
+            tipo_nombre = ausentismo.tipoausen_id.tipo
+            if tipo_nombre not in ausentismos_por_tipo:
+                ausentismos_por_tipo[tipo_nombre] = []
+            
+            nombre_personal = f"{ausentismo.personal_id.nombre} {ausentismo.personal_id.apepat}"
+            if ausentismo.personal_id.apemat:
+                nombre_personal += f" {ausentismo.personal_id.apemat}"
+            
+            personal_con_ausentismo_detalle.append({
+                'nombre': nombre_personal,
+                'rut': f"{ausentismo.personal_id.rut}-{ausentismo.personal_id.dvrut}",
+                'tipo_ausentismo': tipo_nombre,
+                'fecha_inicio': ausentismo.fechaini.strftime('%d/%m/%Y') if ausentismo.fechaini else 'N/A',
+                'fecha_fin': ausentismo.fechafin.strftime('%d/%m/%Y') if ausentismo.fechafin else 'N/A',
+                'dias': ausentismo.dias_ausentismo
+            })
+            
+            ausentismos_por_tipo[tipo_nombre].append(ausentismo.personal_id)
+        
+        # Crear resumen por tipo
+        for tipo_nombre, personal_list in ausentismos_por_tipo.items():
+            # Contar personal único por tipo
+            personal_unicos = set(p.id for p in personal_list)
+            tipos_ausentismo_detalle.append({
+                'tipo': tipo_nombre,
+                'cantidad': len(personal_unicos)
+            })
         
         # Tipos de licencia medica con conteo de personal activo (para modal)
         tipos_licencia_detalle = []
@@ -1007,6 +1064,7 @@ def api_dashboard_operaciones(request):
                 'personal_con_licencia': personal_con_licencia_count,
                 'personal_con_ausentismo': personal_con_ausentismo_count,
                 'tipos_ausentismo': tipos_ausentismo_detalle,
+                'personal_con_ausentismo_detalle': personal_con_ausentismo_detalle,
                 'tipos_licencia_medica': tipos_licencia_detalle,
                 'faenas_con_personal': faenas_con_personal,
                 # Datos de equipos

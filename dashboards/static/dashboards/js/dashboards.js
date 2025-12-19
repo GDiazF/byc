@@ -485,45 +485,82 @@ function mostrarDetallesDistribucion(tipo, data) {
     let modalHTML = '';
     
     if (tipo === 'Con Ausentismo') {
-        const detalles = data.tipos_ausentismo || [];
-        if (detalles.length === 0) {
+        const resumenTipos = data.tipos_ausentismo || [];
+        const detallesPersonas = data.personal_con_ausentismo_detalle || [];
+        
+        if (resumenTipos.length === 0 && detallesPersonas.length === 0) {
             alert(`No hay detalles disponibles para ${tipo}`);
             return;
         }
         
         titulo = 'Detalles de Ausentismos';
+        
+        // Agrupar personas por tipo de ausentismo
+        const personasPorTipo = {};
+        detallesPersonas.forEach(persona => {
+            const tipo = persona.tipo_ausentismo;
+            if (!personasPorTipo[tipo]) {
+                personasPorTipo[tipo] = [];
+            }
+            personasPorTipo[tipo].push(persona);
+        });
+        
         modalHTML = `
             <div class="modal fade" id="modalDetallesDistribucion" tabindex="-1" aria-labelledby="modalDetallesDistribucionLabel" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
+                <div class="modal-dialog modal-xl">
                     <div class="modal-content">
                         <div class="modal-header bg-dark text-white">
                             <h5 class="modal-title" id="modalDetallesDistribucionLabel">${titulo}</h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Tipo</th>
-                                            <th class="text-end">Cantidad de Personas</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${detalles.map(d => `
-                                            <tr>
-                                                <td>${d.tipo}</td>
-                                                <td class="text-end"><strong>${d.cantidad}</strong></td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="table-info">
-                                            <th>Total</th>
-                                            <th class="text-end">${detalles.reduce((sum, d) => sum + d.cantidad, 0)}</th>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                            <div class="accordion" id="accordionAusentismos">
+                                ${resumenTipos.map((tipo, index) => {
+                                    const personas = personasPorTipo[tipo.tipo] || [];
+                                    const tipoId = tipo.tipo.replace(/\s+/g, '_').toLowerCase();
+                                    return `
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="heading${tipoId}">
+                                                <button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${tipoId}" aria-expanded="${index === 0 ? 'true' : 'false'}" aria-controls="collapse${tipoId}">
+                                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                                        <div>
+                                                            <strong>${tipo.tipo}</strong>
+                                                        </div>
+                                                        <span class="badge bg-danger">${tipo.cantidad} persona${tipo.cantidad !== 1 ? 's' : ''}</span>
+                                                    </div>
+                                                </button>
+                                            </h2>
+                                            <div id="collapse${tipoId}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="heading${tipoId}" data-bs-parent="#accordionAusentismos">
+                                                <div class="accordion-body">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-hover">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Nombre</th>
+                                                                    <th>RUT</th>
+                                                                    <th>Fecha Inicio</th>
+                                                                    <th>Fecha Fin</th>
+                                                                    <th class="text-end">Días</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                ${personas.map(p => `
+                                                                    <tr>
+                                                                        <td>${p.nombre}</td>
+                                                                        <td>${p.rut}</td>
+                                                                        <td>${p.fecha_inicio}</td>
+                                                                        <td>${p.fecha_fin}</td>
+                                                                        <td class="text-end">${p.dias}</td>
+                                                                    </tr>
+                                                                `).join('')}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
                         <div class="modal-footer">
