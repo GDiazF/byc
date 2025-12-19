@@ -42,8 +42,18 @@ function convertirFechaChilenoAISO(fechaChilena) {
 function convertirADatePickerChile(inputOriginal) {
     // Verificar si ya fue convertido
     if (inputOriginal.getAttribute('data-picker-initialized') === 'true') {
+        console.log('DatePicker ya inicializado para:', inputOriginal.id);
         return null;
     }
+    
+    // Verificar si está dentro de un wrapper ya creado
+    const wrapperExistente = inputOriginal.closest('[data-datepicker-chile-wrapper]');
+    if (wrapperExistente) {
+        console.log('DatePicker ya tiene wrapper para:', inputOriginal.id);
+        return null;
+    }
+    
+    console.log('Convirtiendo input a DatePicker:', inputOriginal.id);
     
     // Guardar atributos del input original
     const id = inputOriginal.id;
@@ -237,28 +247,29 @@ function convertirADatePickerChile(inputOriginal) {
     
     // Formatear automáticamente mientras se escribe
     inputDisplay.addEventListener('input', function(e) {
-        let valor = this.value.replace(/[^\d\/-]/g, ''); // Solo números, guiones y barras
+        let valor = this.value;
+        
+        // Permitir solo números, guiones y barras
+        valor = valor.replace(/[^\d\/-]/g, '');
         
         // Si se está escribiendo sin separadores, formatear automáticamente
-        if (/^\d+$/.test(valor) && valor.length <= 8) {
-            // Si tiene 2 dígitos, agregar /
-            if (valor.length === 2) {
-                valor = valor + '/';
+        const soloNumeros = valor.replace(/[^0-9]/g, '');
+        
+        if (soloNumeros.length > 0 && soloNumeros.length <= 8) {
+            // Si tiene 2 dígitos y no hay separador después, agregar /
+            if (soloNumeros.length === 2 && valor.length === 2) {
+                valor = soloNumeros + '/';
             }
-            // Si tiene 5 dígitos (DD/MM), agregar /
-            else if (valor.length === 5) {
-                valor = valor.substring(0, 2) + '/' + valor.substring(2, 5) + '/';
+            // Si tiene 4 dígitos y no hay segundo separador, agregar /
+            else if (soloNumeros.length === 4 && valor.replace(/[^\/-]/g, '').length === 1) {
+                valor = soloNumeros.substring(0, 2) + '/' + soloNumeros.substring(2, 4) + '/';
             }
-            // Si tiene más de 5 dígitos, formatear correctamente
-            else if (valor.length > 5) {
-                const soloNumeros = valor.replace(/[^0-9]/g, '');
-                if (soloNumeros.length <= 2) {
-                    valor = soloNumeros;
-                } else if (soloNumeros.length <= 4) {
-                    valor = soloNumeros.substring(0, 2) + '/' + soloNumeros.substring(2);
-                } else {
-                    valor = soloNumeros.substring(0, 2) + '/' + soloNumeros.substring(2, 4) + '/' + soloNumeros.substring(4, 8);
-                }
+            // Si tiene más de 4 dígitos, formatear correctamente
+            else if (soloNumeros.length > 4) {
+                const dia = soloNumeros.substring(0, 2);
+                const mes = soloNumeros.substring(2, 4);
+                const anio = soloNumeros.substring(4, 8);
+                valor = dia + '/' + mes + '/' + anio;
             }
         }
         
@@ -267,7 +278,28 @@ function convertirADatePickerChile(inputOriginal) {
             valor = valor.substring(0, 10);
         }
         
-        this.value = valor;
+        // Solo actualizar si el valor cambió para evitar loops infinitos
+        if (this.value !== valor) {
+            this.value = valor;
+        }
+    });
+    
+    // Permitir escribir guiones y barras con keydown para asegurar que se acepten
+    inputDisplay.addEventListener('keydown', function(e) {
+        // Permitir teclas especiales (backspace, delete, tab, arrow keys, etc.)
+        if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' || 
+            e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
+            e.ctrlKey || e.metaKey) {
+            return;
+        }
+        
+        // Permitir números, guiones y barras
+        if (/[\d\/-]/.test(e.key)) {
+            return;
+        }
+        
+        // Bloquear cualquier otro carácter
+        e.preventDefault();
     });
     
     // Construir la estructura
