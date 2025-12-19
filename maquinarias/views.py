@@ -410,6 +410,27 @@ def api_guardar_equipo(request):
                     'error': f'El campo {field} es requerido'
                 }, status=400)
         
+        # Paso 2.1: Validar que el código interno sea numérico
+        codigo_interno = data['codigoInterno'].strip()
+        if not codigo_interno.isdigit():
+            return JsonResponse({
+                'success': False,
+                'error': 'El código interno debe contener solo números'
+            }, status=400)
+        
+        # Paso 2.2: Validar que la patente sea única (si se proporciona)
+        patente = data.get('patente', '').strip().upper() if data.get('patente') else None
+        if patente:
+            patente_query = Equipo.objects.filter(patente=patente)
+            if equipo_id:
+                patente_query = patente_query.exclude(equipo_id=equipo_id)
+            if patente_query.exists():
+                equipo_existente = patente_query.first()
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Ya existe un equipo con la patente {patente} ({equipo_existente.nombreEquipo})'
+                }, status=400)
+        
         # Paso 3: Determinar si es edición o creación y procesar según corresponda
         if equipo_id:
             # MODO EDICIÓN: Actualizar un equipo existente
@@ -419,24 +440,35 @@ def api_guardar_equipo(request):
                 
                 # Paso 3.2: Verificar unicidad del código interno por modelo
                 # El código interno debe ser único dentro del mismo modelo, pero puede repetirse en otros modelos
+                # IMPORTANTE: Solo considerar equipos ACTIVOS. Si hay un equipo desactivado con esa combinación,
+                # no puede haber otro equipo (activo o desactivado) con la misma combinación
                 # Excluimos el equipo actual para permitir que mantenga su código si no cambió
-                if Equipo.objects.filter(
+                equipo_duplicado = Equipo.objects.filter(
                     modeloEquipo_id=data['modeloEquipo_id'],
-                    codigoInterno=data['codigoInterno']
-                ).exclude(equipo_id=equipo_id).exists():
-                    # Si ya existe otro equipo con ese código en ese modelo, retornar error
+                    codigoInterno=codigo_interno
+                ).exclude(equipo_id=equipo_id).first()
+                
+                if equipo_duplicado:
+                    # Si existe otro equipo con esa combinación, verificar si está activo
                     modelo = ModeloEquipo.objects.get(modeloEquipo_id=data['modeloEquipo_id'])
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'Ya existe otro equipo del modelo {modelo.modeloEquipo} con el código interno {data["codigoInterno"]}'
-                    }, status=400)
+                    if equipo_duplicado.activo:
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Ya existe un equipo activo del modelo {modelo.modeloEquipo} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo})'
+                        }, status=400)
+                    else:
+                        # Si está desactivado, no puede haber otro equipo con esa combinación
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Ya existe un equipo desactivado del modelo {modelo.modeloEquipo} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo}). No se puede crear otro equipo con la misma combinación.'
+                        }, status=400)
                 
                 # Paso 3.3: Actualizar los campos del equipo con los nuevos valores
                 # Los valores se normalizan (strip y uppercase) para mantener consistencia
                 equipo.empresa_id_id = data['empresa_id']  # Asignar empresa
                 equipo.modeloEquipo_id_id = data['modeloEquipo_id']  # Asignar modelo
-                equipo.codigoInterno = data['codigoInterno'].strip().upper()  # Normalizar código interno
-                equipo.patente = data.get('patente', '').strip().upper() if data.get('patente') else None  # Normalizar patente o None
+                equipo.codigoInterno = codigo_interno  # Código interno ya validado como numérico
+                equipo.patente = patente  # Patente ya validada como única
                 equipo.horometro = data.get('horometro')  # Horas de uso actuales
                 equipo.odometro = data.get('odometro')  # Kilómetros actuales
                 equipo.horometroSuperEstructural = data.get('horometroSuperEstructural')  # Horas de superestructura
@@ -460,25 +492,35 @@ def api_guardar_equipo(request):
         else:
             # MODO CREACIÓN: Crear un nuevo equipo
             # Paso 4.1: Verificar que no exista ya un equipo con el mismo código interno en el mismo modelo
-            # Esta validación previene duplicados al crear
-            if Equipo.objects.filter(
+            # IMPORTANTE: Solo considerar equipos ACTIVOS. Si hay un equipo desactivado con esa combinación,
+            # no puede haber otro equipo (activo o desactivado) con la misma combinación
+            equipo_duplicado = Equipo.objects.filter(
                 modeloEquipo_id=data['modeloEquipo_id'],
-                codigoInterno=data['codigoInterno']
-            ).exists():
-                # Si ya existe, retornar error con información del modelo
+                codigoInterno=codigo_interno
+            ).first()
+            
+            if equipo_duplicado:
+                # Si existe otro equipo con esa combinación, verificar si está activo
                 modelo = ModeloEquipo.objects.get(modeloEquipo_id=data['modeloEquipo_id'])
-                return JsonResponse({
-                    'success': False,
-                    'error': f'Ya existe un equipo del modelo {modelo.modeloEquipo} con el código interno {data["codigoInterno"]}'
-                }, status=400)
+                if equipo_duplicado.activo:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Ya existe un equipo activo del modelo {modelo.modeloEquipo} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo})'
+                    }, status=400)
+                else:
+                    # Si está desactivado, no puede haber otro equipo con esa combinación
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Ya existe un equipo desactivado del modelo {modelo.modeloEquipo} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo}). No se puede crear otro equipo con la misma combinación.'
+                    }, status=400)
             
             # Paso 4.2: Crear nueva instancia del modelo Equipo con los datos proporcionados
             # El nombreEquipo se genera automáticamente en el método save() del modelo
             equipo = Equipo(
                 empresa_id_id=data['empresa_id'],  # Asignar empresa
                 modeloEquipo_id_id=data['modeloEquipo_id'],  # Asignar modelo
-                codigoInterno=data['codigoInterno'].strip().upper(),  # Normalizar código interno
-                patente=data.get('patente', '').strip().upper() if data.get('patente') else None,  # Normalizar patente
+                codigoInterno=codigo_interno,  # Código interno ya validado como numérico
+                patente=patente,  # Patente ya validada como única
                 horometro=data.get('horometro'),  # Horas iniciales de uso
                 odometro=data.get('odometro'),  # Kilómetros iniciales
                 horometroSuperEstructural=data.get('horometroSuperEstructural'),  # Horas iniciales de superestructura

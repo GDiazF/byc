@@ -98,9 +98,11 @@
                             <label for="codigoInterno" class="form-label">Código Interno <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="codigoInterno" 
                                    required placeholder="Ej: 01, 02, 03..." 
-                                   oninput="actualizarNombrePreview()"
+                                   pattern="[0-9]+" 
+                                   oninput="this.value = this.value.replace(/[^0-9]/g, ''); actualizarNombrePreview();"
+                                   onkeypress="return (event.charCode >= 48 && event.charCode <= 57)"
                                    {% if es_edicion %}value="{{ equipo.codigoInterno }}"{% endif %}>
-                            <small class="form-text">Único por modelo de equipo</small>
+                            <small class="form-text">Solo números. Único por modelo de equipo (solo entre equipos activos)</small>
                         </div>
                         
                         <div class="col-md-4">

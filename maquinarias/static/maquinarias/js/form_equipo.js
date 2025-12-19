@@ -288,7 +288,7 @@ function guardarEquipo(event) {
         equipo_id: equipoId || null,  // ID del equipo (null si es creación, número si es edición)
         empresa_id: parseInt(empresaId),  // ID de la empresa (convertido a número)
         modeloEquipo_id: parseInt(modeloId),  // ID del modelo (convertido a número)
-        codigoInterno: codigo.trim().toUpperCase(),  // Código interno en mayúsculas y sin espacios
+        codigoInterno: codigo.trim(),  // Código interno numérico (sin espacios)
         patente: document.getElementById('patente').value.trim().toUpperCase(),  // Patente en mayúsculas (opcional)
         horometro: horometroVal,  // Horas de uso (null si está vacío)
         odometro: odometroVal,  // Kilómetros recorridos (null si está vacío)
