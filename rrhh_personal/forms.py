@@ -59,6 +59,9 @@ class PersonalCreationForm(forms.ModelForm):
         self.instance_id = kwargs.pop('instance_id', None)
         super().__init__(*args, **kwargs)
         
+        # Hacer que apemat no sea obligatorio
+        self.fields['apemat'].required = False
+        
         # Establecer fecha máxima (hoy) para fecha de nacimiento en el widget HTML
         if 'fechanac' in self.fields:
             self.fields['fechanac'].widget.attrs['max'] = date.today().isoformat()

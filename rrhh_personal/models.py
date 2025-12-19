@@ -262,7 +262,7 @@ class Personal(models.Model):
     # Información personal
     nombre = models.CharField(max_length=100, null=False, blank=False)
     apepat = models.CharField(max_length=50, null=False, blank=False)
-    apemat = models.CharField(max_length=50)
+    apemat = models.CharField(max_length=50, null=True, blank=True)
     fechanac = models.DateField(null=True, blank=True)
     
     # Información de contacto
@@ -348,7 +348,10 @@ class Personal(models.Model):
 
     def __str__(self):
         """Representación en string del personal: nombre completo"""
-        return self.nombre + " " + self.apepat + " " + self.apemat
+        nombre_completo = self.nombre + " " + self.apepat
+        if self.apemat:
+            nombre_completo += " " + self.apemat
+        return nombre_completo
     
     def get_licencias_activas_count(self):
         """
@@ -400,7 +403,7 @@ class Personal(models.Model):
         self.dvrut = self.dvrut.upper()
         self.nombre = self.nombre.upper()
         self.apepat = self.apepat.upper()
-        self.apemat = self.apemat.upper()
+        self.apemat = self.apemat.upper() if self.apemat else None
         self.correo = self.correo.upper()
         self.direccion = self.direccion.upper() if self.direccion else None
         super().save(*args, **kwargs)
@@ -551,7 +554,8 @@ class Ausentismo(models.Model):
         return self.fechafin >= date.today() if self.fechafin else False
 
     def __str__(self):
-        trabajador = f"{self.personal_id.nombre} {self.personal_id.apepat} {self.personal_id.apemat}"
+        apemat_str = f" {self.personal_id.apemat}" if self.personal_id.apemat else ""
+        trabajador = f"{self.personal_id.nombre} {self.personal_id.apepat}{apemat_str}"
         return f"{self.tipoausen_id} - {trabajador} ({self.fechaini} a {self.fechafin})"
 
 

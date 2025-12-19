@@ -314,7 +314,7 @@ class PersonalListView(PermissionRequiredMixin, ListView, LoginRequiredMixin):
             personal_data.append({
                 'id': persona.personal_id,
                 'rut': f"{persona.rut}-{persona.dvrut}",
-                'nombre': f"{persona.nombre} {persona.apepat} {persona.apemat}",
+                'nombre': f"{persona.nombre} {persona.apepat} {persona.apemat or ''}".strip(),
                 'cargo': info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'No disponible',
                 'departamento': info_laboral.depto_id.depto if info_laboral and info_laboral.depto_id else 'No disponible',
                 'empresa': info_laboral.empresa_id.nomFantasia if info_laboral and info_laboral.empresa_id else 'No disponible',
@@ -2522,7 +2522,7 @@ class PersonalDesactivadoListView(PermissionRequiredMixin, ListView, LoginRequir
             personal_data.append({
                 'id': persona.personal_id,
                 'rut': f"{persona.rut}-{persona.dvrut}",
-                'nombre': f"{persona.nombre} {persona.apepat} {persona.apemat}",
+                'nombre': f"{persona.nombre} {persona.apepat} {persona.apemat or ''}".strip(),
                 'cargo': info_laboral.cargo_id.cargo if info_laboral and info_laboral.cargo_id else 'No disponible',
                 'departamento': info_laboral.depto_id.depto if info_laboral and info_laboral.depto_id else 'No disponible',
                 'empresa': info_laboral.empresa_id.nomFantasia if info_laboral and info_laboral.empresa_id else 'No disponible',
@@ -2737,7 +2737,7 @@ def api_obtener_info_personal(request, personal_id):
             'nombre': personal.nombre,
             'apepat': personal.apepat,
             'apemat': personal.apemat or '',
-            'nombre_completo': f"{personal.nombre} {personal.apepat} {personal.apemat}".strip(),
+            'nombre_completo': f"{personal.nombre} {personal.apepat} {personal.apemat or ''}".strip(),
             'fecha_nacimiento': personal.fechanac.strftime('%d/%m/%Y') if personal.fechanac else 'No disponible',
             'correo': personal.correo,
             'direccion': personal.direccion or 'No disponible',

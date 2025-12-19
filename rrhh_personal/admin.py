@@ -85,7 +85,8 @@ class PersonalAdmin(admin.ModelAdmin):
         Returns:
             str: Nombre completo "Nombre ApellidoPaterno ApellidoMaterno"
         """
-        return f"{obj.nombre} {obj.apepat} {obj.apemat}"
+        apemat_str = f" {obj.apemat}" if obj.apemat else ""
+        return f"{obj.nombre} {obj.apepat}{apemat_str}"
     nombre_completo.short_description = "Nombre Completo"
     nombre_completo.admin_order_field = 'nombre'
     
@@ -771,7 +772,8 @@ class LicenciaInternaPorPersonalAdmin(admin.ModelAdmin):
     )
     
     def personal_nombre(self, obj):
-        return f"{obj.personal_id.nombre} {obj.personal_id.apepat} {obj.personal_id.apemat}"
+        apemat_str = f" {obj.personal_id.apemat}" if obj.personal_id.apemat else ""
+        return f"{obj.personal_id.nombre} {obj.personal_id.apepat}{apemat_str}"
     personal_nombre.short_description = "Personal"
     personal_nombre.admin_order_field = 'personal_id__apepat'
     
