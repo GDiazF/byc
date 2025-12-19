@@ -204,22 +204,29 @@
     }
     
     /**
-     * Inicia polling espaciado (cada 60 segundos) solo del contador.
+     * Inicia polling del contador para detectar nuevas notificaciones.
+     * Actualiza cada 30 segundos (coincide con el caché del backend de 30s).
+     * Esto es eficiente porque la mayoría de requests serán desde caché (< 5ms).
      */
     function iniciarPolling() {
-        // Polling cada 60 segundos (mucho menos agresivo)
+        // Polling cada 30 segundos (coincide con caché del backend)
+        // La mayoría de requests serán desde caché, así que es muy rápido
         pollingInterval = setInterval(function() {
             actualizarContadorDesdeServidor().then(function(count) {
-                // Si cambió el contador y el dropdown está cerrado, solo actualizar el badge
-                // Si está abierto, recargar notificaciones
-                const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
-                const isOpen = dropdownMenu && dropdownMenu.classList.contains('show');
-                
-                if (isOpen && count !== ultimoContador) {
-                    cargarNotificaciones();
+                // Si cambió el contador (nueva notificación), actualizar badge y recargar si el dropdown está abierto
+                if (count !== ultimoContador && ultimoContador !== null) {
+                    // Hay una nueva notificación
+                    const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
+                    const isOpen = dropdownMenu && dropdownMenu.classList.contains('show');
+                    
+                    // Si el dropdown está abierto, recargar notificaciones para mostrar la nueva
+                    if (isOpen) {
+                        cargarNotificaciones();
+                    }
+                    // El badge ya se actualiza en actualizarBadge()
                 }
             });
-        }, 60000); // 60 segundos
+        }, 30000); // 30 segundos - coincide con caché del backend, mayoría de requests desde caché (< 5ms)
     }
     
     /**
@@ -242,10 +249,19 @@
             });
         }
         
-        // Iniciar polling espaciado
+        // Iniciar polling del contador
         iniciarPolling();
         
-        console.log('✅ Sistema de notificaciones optimizado iniciado (sin SSE, polling cada 60s)');
+        // Listener para cuando se abre el dropdown - recargar notificaciones si hay nuevas
+        const dropdownToggle = document.getElementById('notificationsDropdown');
+        if (dropdownToggle) {
+            dropdownToggle.addEventListener('click', function() {
+                // Recargar notificaciones cuando se abre el dropdown para mostrar las más recientes
+                cargarNotificaciones();
+            });
+        }
+        
+        console.log('✅ Sistema de notificaciones optimizado iniciado (polling cada 30s, usa caché del backend)');
     }
     
     // Inicializar cuando el DOM esté listo

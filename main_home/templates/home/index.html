@@ -43,7 +43,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link position-relative notifications-link" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-bell text-white notifications-icon"></i>
-                        <span class="position-absolute badge rounded-pill bg-danger d-flex align-items-center justify-content-center notifications-badge-position" id="notificationsBadge" style="min-width: 1.3rem; height: 1.3rem; display: none !important; visibility: hidden;">
+                        <span class="position-absolute badge rounded-pill bg-danger d-flex align-items-center justify-content-center notifications-badge-position" id="notificationsBadge" style="min-width: 1.3rem; height: 1.3rem; display: none;">
                             0
                         </span>
                     </a>
@@ -347,10 +347,8 @@
           <!-- Date Picker Chileno - Global -->
           <script src="{% static 'js/datePickerChile.js' %}"></script>
           
-          <!-- ⚠️ NOTIFICACIONES DESACTIVADAS TEMPORALMENTE -->
-          <!-- La campanita está visible pero sin funcionalidad hasta hacer deployment correcto -->
-          <!-- Para activar: descomentar la línea de abajo después de hacer collectstatic -->
-          <!-- <script src="{% static 'notificaciones/js/notificaciones_optimized.js' %}"></script> -->
+          <!-- Sistema de Notificaciones -->
+          <script src="{% static 'notificaciones/js/notificaciones_optimized.js' %}"></script>
            
            {% block extrajs %}{% endblock %}
 </body>
