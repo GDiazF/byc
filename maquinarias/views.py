@@ -1245,56 +1245,52 @@ def api_historial_documentos_equipo(request, equipo_id):
             
             # Paso 3.1: Intentar obtener URL del archivo desde el campo archivo del historial
             # Primero se intenta obtener desde el campo archivo del modelo HistorialDocumentoMaquinaria
+            # Usamos default_storage.url() como en el historial de personal (funciona mejor con S3)
             if item.archivo:
                 try:
                     from django.core.files.storage import default_storage
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    
+                    # Obtener la ruta del archivo (sin el prefijo media/ si lo tiene)
+                    archivo_ruta = item.archivo.name
                     
                     # Verificar si el archivo existe usando el storage (funciona con S3 y sistema de archivos local)
-                    if default_storage.exists(item.archivo.name):
-                        # Obtener la URL del archivo usando el método .url del FileField
+                    # Primero intentar con la ruta exacta
+                    if default_storage.exists(archivo_ruta):
                         try:
-                            archivo_url = item.archivo.url
-                            
-                            # Para S3, la URL puede venir sin el prefijo /media/ en la ruta
-                            # Necesitamos agregarlo si falta
-                            if archivo_url:
-                                # Si es una URL de S3 (contiene .s3. o amazonaws.com) pero no tiene /media/ en la ruta
-                                if ('s3.' in archivo_url or 'amazonaws.com' in archivo_url) and '/media/' not in archivo_url:
-                                    # Extraer el dominio y la ruta
-                                    # Ejemplo: https://bucket.s3.region.amazonaws.com/Documentacion_Maquinarias/...
-                                    # Debe ser: https://bucket.s3.region.amazonaws.com/media/Documentacion_Maquinarias/...
-                                    from urllib.parse import urlparse, urlunparse
-                                    parsed = urlparse(archivo_url)
-                                    # Reconstruir la URL con /media/ antes de la ruta
-                                    path = parsed.path.lstrip('/')
-                                    # Solo agregar /media/ si no está ya presente
-                                    if not path.startswith('media/'):
-                                        path = f"media/{path}"
-                                    # Reconstruir la URL completa
-                                    archivo_url = urlunparse((
-                                        parsed.scheme,
-                                        parsed.netloc,
-                                        '/' + path,
-                                        parsed.params,
-                                        parsed.query,
-                                        parsed.fragment
-                                    ))
-                                # Si es una URL relativa sin /media/, agregarlo
-                                elif archivo_url.startswith('/') and not archivo_url.startswith('/media/'):
-                                    archivo_url = f"/media{archivo_url}"
-                                # Si no empieza con / ni http, agregar /media/
-                                elif not archivo_url.startswith('/') and not archivo_url.startswith('http'):
-                                    archivo_url = f"/media/{archivo_url}"
+                            # Usar default_storage.url() como en el historial de personal (funciona mejor con S3)
+                            archivo_url = default_storage.url(archivo_ruta)
+                            logger.info(f"URL generada para archivo del historial (ruta exacta): {archivo_url}")
+                            archivo_nombre = archivo_ruta.split('/')[-1]  # Nombre del archivo (sin ruta)
                         except Exception as e:
-                            # Si .url falla, construir la URL manualmente usando MEDIA_URL
-                            import logging
-                            logger = logging.getLogger(__name__)
-                            logger.warning(f"Error al obtener URL con .url: {str(e)}")
-                            media_url = settings.MEDIA_URL.rstrip('/')
-                            archivo_name = item.archivo.name.lstrip('/')
-                            archivo_url = f"{media_url}/{archivo_name}".replace('//', '/')
+                            logger.warning(f"Error al generar URL con ruta exacta: {str(e)}")
+                            archivo_url = None
+                    
+                    # Si no existe con la ruta exacta, intentar agregar el prefijo 'media/' si no lo tiene
+                    # Esto es necesario porque MediaS3Storage espera rutas relativas sin 'media/'
+                    # pero el método url() debería agregarlo automáticamente
+                    if not archivo_url:
+                        ruta_con_media = f"media/{archivo_ruta}" if not archivo_ruta.startswith('media/') else archivo_ruta
+                        if default_storage.exists(ruta_con_media):
+                            try:
+                                archivo_url = default_storage.url(ruta_con_media)
+                                logger.info(f"URL generada para archivo del historial (con media/): {archivo_url}")
+                                archivo_nombre = archivo_ruta.split('/')[-1]  # Nombre del archivo (sin ruta)
+                            except Exception as e:
+                                logger.warning(f"Error al generar URL con media/: {str(e)}")
+                                archivo_url = None
+                    
+                    # Fallback: construir URL manualmente usando MEDIA_URL
+                    # Esto asegura que siempre tengamos una URL válida
+                    if not archivo_url:
+                        url_relativa = archivo_ruta.replace('\\', '/')
+                        if not url_relativa.startswith('media/'):
+                            url_relativa = f"media/{url_relativa}"
+                        archivo_url = f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}".replace('//', '/')
+                        logger.info(f"URL construida manualmente para archivo del historial: {archivo_url}")
+                        archivo_nombre = archivo_ruta.split('/')[-1]  # Nombre del archivo (sin ruta)
                         
-                        archivo_nombre = item.archivo.name.split('/')[-1]  # Nombre del archivo (sin ruta)
                 except Exception as e:
                     # Si falla al obtener la URL del archivo del historial, continuar sin archivo
                     import logging
