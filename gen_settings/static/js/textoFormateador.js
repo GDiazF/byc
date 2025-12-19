@@ -34,13 +34,32 @@ function formatearTexto(texto, aplicarTrim = false) {
  * @param {HTMLElement} elemento - El elemento de entrada a formatear
  */
 function aplicarFormateo(elemento) {
+    // Verificar si ya tiene listeners (evitar duplicados)
+    if (elemento.hasAttribute('data-formateador-aplicado')) {
+        return; // Ya tiene el formateo aplicado
+    }
+    
+    // Marcar como procesado
+    elemento.setAttribute('data-formateador-aplicado', 'true');
+    
     // Aplicar formateo al perder el foco (CON trim)
     elemento.addEventListener('blur', function() {
+        // Verificar nuevamente que no sea un campo de fecha
+        if (this.classList.contains('fecha-chile-picker') || 
+            this.closest('[data-datepicker-chile-wrapper]')) {
+            return;
+        }
         this.value = formatearTexto(this.value, true);
     });
     
     // Aplicar formateo mientras se escribe (SIN trim para permitir espacios)
     elemento.addEventListener('input', function() {
+        // Verificar nuevamente que no sea un campo de fecha
+        if (this.classList.contains('fecha-chile-picker') || 
+            this.closest('[data-datepicker-chile-wrapper]')) {
+            return;
+        }
+        
         // Guardar la posición del cursor
         const posicionCursor = this.selectionStart;
         
@@ -62,8 +81,15 @@ function aplicarFormateoATodosLosCampos() {
     // Seleccionar todos los campos de texto en formularios
     const camposTexto = document.querySelectorAll('input[type="text"], textarea');
     
-    // Aplicar formateo a cada campo
+    // Aplicar formateo a cada campo, EXCLUYENDO los datepickers chilenos
     camposTexto.forEach(campo => {
+        // Excluir campos de fecha (datepicker chileno)
+        if (campo.classList.contains('fecha-chile-picker') || 
+            campo.closest('[data-datepicker-chile-wrapper]') ||
+            campo.hasAttribute('data-picker-initialized')) {
+            return; // Saltar este campo
+        }
+        
         aplicarFormateo(campo);
     });
 }
