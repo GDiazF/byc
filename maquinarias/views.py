@@ -1112,8 +1112,24 @@ def api_eliminar_documento_maquinaria(request, documento_id):
         
         # Paso 4: Crear registro en el historial con los datos del documento eliminado
         # El historial mantiene un registro de todos los documentos eliminados
-        # IMPORTANTE: El modelo HistorialDocumentoMaquinaria requiere un archivo (null=False, blank=False)
-        # Por lo tanto, debemos copiar el archivo ANTES de guardar el historial
+        # IMPORTANTE: Guardamos la ruta del archivo eliminado en observaciones para poder accederlo después
+        # Igual que en el historial de personal, usamos la ruta del archivo eliminado con default_storage.url()
+        
+        # Preparar observaciones con la ruta del archivo eliminado
+        observaciones_texto = documento.observaciones or ''
+        if archivo_ruta_eliminado:
+            # Guardar la ruta del archivo eliminado en observaciones para poder accederlo después
+            # Formato: [ARCHIVO_ELIMINADO_RUTA: ruta_del_archivo]
+            if observaciones_texto:
+                observaciones_texto += f"\n[ARCHIVO_ELIMINADO_RUTA: {archivo_ruta_eliminado}]"
+            else:
+                observaciones_texto = f"[ARCHIVO_ELIMINADO_RUTA: {archivo_ruta_eliminado}]"
+        elif archivo_ruta_original:
+            # Si no se pudo mover a eliminados, guardar la ruta original
+            if observaciones_texto:
+                observaciones_texto += f"\n[ARCHIVO_ORIGINAL_RUTA: {archivo_ruta_original}]"
+            else:
+                observaciones_texto = f"[ARCHIVO_ORIGINAL_RUTA: {archivo_ruta_original}]"
         
         historial = HistorialDocumentoMaquinaria(
             equipo_id=documento.equipo_id,  # Equipo al que pertenecía el documento
@@ -1121,70 +1137,18 @@ def api_eliminar_documento_maquinaria(request, documento_id):
             tipo_documento_nombre=documento.tipo_documento_id.nombre,  # Nombre del tipo (por si se elimina el tipo)
             fecha_vencimiento=documento.fecha_vencimiento,  # Fecha de vencimiento original
             fecha_subida_original=documento.fecha_subida,  # Cuándo se subió originalmente
-            observaciones=documento.observaciones  # Observaciones originales
+            observaciones=observaciones_texto  # Observaciones con la ruta del archivo eliminado
         )
         
-        # Paso 5: Copiar el archivo al historial ANTES de guardar
-        # El modelo requiere un archivo, así que debemos copiarlo desde el documento original o desde eliminados
-        archivo_copiado_exitosamente = False
-        
-        # Paso 5.1: Intentar copiar desde el archivo original del documento (antes de eliminarlo)
-        if documento.archivo and documento.archivo.name:
-            try:
-                from django.core.files.storage import default_storage
-                
-                # Leer el archivo original antes de que se elimine
-                if default_storage.exists(documento.archivo.name):
-                    with default_storage.open(documento.archivo.name, 'rb') as source_file:
-                        nombre_archivo = documento.archivo.name.split('/')[-1]  # Extraer solo el nombre del archivo
-                        historial.archivo.save(nombre_archivo, source_file, save=False)  # Guardar sin commit aún
-                        archivo_copiado_exitosamente = True
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f"No se pudo copiar desde archivo original: {str(e)}")
-        
-        # Paso 5.2: Si no se pudo copiar desde el original, intentar desde la carpeta de eliminados
-        if not archivo_copiado_exitosamente and archivo_ruta_eliminado:
-            try:
-                from django.core.files.storage import default_storage
-                
-                if default_storage.exists(archivo_ruta_eliminado):
-                    with default_storage.open(archivo_ruta_eliminado, 'rb') as source_file:
-                        nombre_archivo = archivo_ruta_eliminado.split('/')[-1]  # Extraer solo el nombre del archivo
-                        historial.archivo.save(nombre_archivo, source_file, save=False)  # Guardar sin commit aún
-                        archivo_copiado_exitosamente = True
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f"No se pudo copiar desde carpeta eliminados: {str(e)}")
-        
-        # Paso 5.3: Si aún no se pudo copiar, crear un archivo dummy temporal
-        # Esto es necesario porque el modelo requiere un archivo obligatorio
-        if not archivo_copiado_exitosamente:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"No se pudo copiar archivo al historial. Creando archivo dummy.")
-            
-            # Crear un archivo temporal vacío con el nombre del tipo de documento
-            from django.core.files.base import ContentFile
-            nombre_dummy = f"{documento.tipo_documento_id.nombre.replace(' ', '_')}_eliminado.txt"
-            contenido_dummy = ContentFile(
-                f"Archivo eliminado el {date.today().strftime('%d/%m/%Y')}. "
-                f"El archivo original no pudo ser copiado al historial.\n"
-                f"Ruta original: {archivo_ruta_original if archivo_ruta_original else 'N/A'}\n"
-                f"Ruta eliminados: {archivo_ruta_eliminado if archivo_ruta_eliminado else 'N/A'}"
-            )
-            historial.archivo.save(nombre_dummy, contenido_dummy, save=False)
-            
-            # Agregar información a observaciones
-            if historial.observaciones:
-                historial.observaciones += f"\n[ADVERTENCIA: Archivo original no pudo ser copiado al historial. Ruta original: {archivo_ruta_original}]"
-            else:
-                historial.observaciones = f"[ADVERTENCIA: Archivo original no pudo ser copiado al historial. Ruta original: {archivo_ruta_original}]"
-        
-        # Paso 5.4: Guardar el historial con el archivo (ya sea copiado o dummy)
-        historial.save()
+        # Paso 5: El modelo requiere un archivo, así que creamos un archivo dummy mínimo
+        # La URL real se obtendrá desde la ruta guardada en observaciones usando default_storage.url()
+        from django.core.files.base import ContentFile
+        nombre_dummy = f"{documento.tipo_documento_id.nombre.replace(' ', '_')}_eliminado.txt"
+        contenido_dummy = ContentFile(
+            f"Documento eliminado el {date.today().strftime('%d/%m/%Y')}.\n"
+            f"El archivo original está en: {archivo_ruta_eliminado if archivo_ruta_eliminado else archivo_ruta_original}"
+        )
+        historial.archivo.save(nombre_dummy, contenido_dummy, save=True)
         
         # Paso 7: Eliminar el documento de la base de datos
         # El archivo físico ya fue movido, así que esto solo elimina el registro en la BD
@@ -1237,96 +1201,74 @@ def api_historial_documentos_equipo(request, equipo_id):
         ).order_by('-fecha_reemplazo')  # Ordenar por fecha de reemplazo (más reciente primero)
         
         # Paso 3: Serializar los registros del historial y localizar archivos
+        # Usamos la misma lógica que en el historial de personal: extraer la ruta de observaciones
+        # y usar default_storage.url() para obtener la URL correcta
         historial_data = []
         for item in historial:
             # Inicializar variables para URL y nombre del archivo
             archivo_url = None
             archivo_nombre = None
             
-            # Paso 3.1: Intentar obtener URL del archivo desde el campo archivo del historial
-            # Primero se intenta obtener desde el campo archivo del modelo HistorialDocumentoMaquinaria
-            # Usamos default_storage.url() como en el historial de personal (funciona mejor con S3)
-            if item.archivo:
+            # Paso 3.1: Extraer la ruta del archivo eliminado desde observaciones
+            # Formato: [ARCHIVO_ELIMINADO_RUTA: ruta] o [ARCHIVO_ORIGINAL_RUTA: ruta]
+            archivo_ruta_eliminado = None
+            if item.observaciones:
+                import re
+                # Buscar el patrón [ARCHIVO_ELIMINADO_RUTA: ruta] o [ARCHIVO_ORIGINAL_RUTA: ruta]
+                match_eliminado = re.search(r'\[ARCHIVO_ELIMINADO_RUTA:\s*(.+?)\]', item.observaciones)
+                match_original = re.search(r'\[ARCHIVO_ORIGINAL_RUTA:\s*(.+?)\]', item.observaciones)
+                
+                if match_eliminado:
+                    archivo_ruta_eliminado = match_eliminado.group(1).strip()
+                elif match_original:
+                    archivo_ruta_eliminado = match_original.group(1).strip()
+            
+            # Paso 3.2: Obtener URL usando default_storage.url() con la ruta extraída
+            # Igual que en el historial de personal
+            if archivo_ruta_eliminado:
                 try:
                     from django.core.files.storage import default_storage
                     import logging
                     logger = logging.getLogger(__name__)
                     
-                    # Obtener la ruta del archivo (sin el prefijo media/ si lo tiene)
-                    archivo_ruta = item.archivo.name
-                    
-                    # Verificar si el archivo existe usando el storage (funciona con S3 y sistema de archivos local)
+                    # Verificar que el archivo existe en el storage (S3 o local)
                     # Primero intentar con la ruta exacta
-                    if default_storage.exists(archivo_ruta):
+                    if default_storage.exists(archivo_ruta_eliminado):
                         try:
                             # Usar default_storage.url() como en el historial de personal (funciona mejor con S3)
-                            archivo_url = default_storage.url(archivo_ruta)
-                            logger.info(f"URL generada para archivo del historial (ruta exacta): {archivo_url}")
-                            archivo_nombre = archivo_ruta.split('/')[-1]  # Nombre del archivo (sin ruta)
+                            archivo_url = default_storage.url(archivo_ruta_eliminado)
+                            logger.info(f"URL generada para archivo eliminado (ruta exacta): {archivo_url}")
+                            archivo_nombre = archivo_ruta_eliminado.split('/')[-1]  # Nombre del archivo (sin ruta)
                         except Exception as e:
                             logger.warning(f"Error al generar URL con ruta exacta: {str(e)}")
                             archivo_url = None
                     
                     # Si no existe con la ruta exacta, intentar agregar el prefijo 'media/' si no lo tiene
-                    # Esto es necesario porque MediaS3Storage espera rutas relativas sin 'media/'
-                    # pero el método url() debería agregarlo automáticamente
                     if not archivo_url:
-                        ruta_con_media = f"media/{archivo_ruta}" if not archivo_ruta.startswith('media/') else archivo_ruta
+                        ruta_con_media = f"media/{archivo_ruta_eliminado}" if not archivo_ruta_eliminado.startswith('media/') else archivo_ruta_eliminado
                         if default_storage.exists(ruta_con_media):
                             try:
                                 archivo_url = default_storage.url(ruta_con_media)
-                                logger.info(f"URL generada para archivo del historial (con media/): {archivo_url}")
-                                archivo_nombre = archivo_ruta.split('/')[-1]  # Nombre del archivo (sin ruta)
+                                logger.info(f"URL generada para archivo eliminado (con media/): {archivo_url}")
+                                archivo_nombre = archivo_ruta_eliminado.split('/')[-1]  # Nombre del archivo (sin ruta)
                             except Exception as e:
                                 logger.warning(f"Error al generar URL con media/: {str(e)}")
                                 archivo_url = None
                     
                     # Fallback: construir URL manualmente usando MEDIA_URL
-                    # Esto asegura que siempre tengamos una URL válida
                     if not archivo_url:
-                        url_relativa = archivo_ruta.replace('\\', '/')
+                        url_relativa = archivo_ruta_eliminado.replace('\\', '/')
                         if not url_relativa.startswith('media/'):
                             url_relativa = f"media/{url_relativa}"
                         archivo_url = f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}".replace('//', '/')
-                        logger.info(f"URL construida manualmente para archivo del historial: {archivo_url}")
-                        archivo_nombre = archivo_ruta.split('/')[-1]  # Nombre del archivo (sin ruta)
+                        logger.info(f"URL construida manualmente para archivo eliminado: {archivo_url}")
+                        archivo_nombre = archivo_ruta_eliminado.split('/')[-1]  # Nombre del archivo (sin ruta)
                         
                 except Exception as e:
-                    # Si falla al obtener la URL del archivo del historial, continuar sin archivo
+                    # Si falla al obtener la URL del archivo eliminado, continuar sin archivo
                     import logging
                     logger = logging.getLogger(__name__)
-                    logger.warning(f"Error al obtener URL del archivo del historial: {str(e)}")
-                    pass
-            
-            # Paso 3.2: Si no se encontró el archivo en el historial, buscar en la carpeta de eliminados
-            # Esto es un fallback para casos donde el archivo no se copió al historial pero sí se movió a eliminados
-            if not archivo_url:
-                try:
-                    # Construir ruta de la carpeta de eliminados para este equipo
-                    carpeta_eliminados = os.path.join(
-                        settings.MEDIA_ROOT,  # Directorio base de archivos media
-                        'Documentacion_Eliminada_Maquinarias',  # Carpeta de documentos eliminados
-                        str(equipo_id)  # Subcarpeta por equipo
-                    )
-                    
-                    # Verificar si existe la carpeta de eliminados para este equipo
-                    if os.path.exists(carpeta_eliminados):
-                        # Buscar archivo que coincida con el tipo de documento
-                        # El nombre del archivo sigue el patrón: EQUIPO_ID_tipo_documento.pdf
-                        nombre_buscar = f"{equipo_id}_{item.tipo_documento_nombre.lower().replace(' ', '_')}"
-                        
-                        # Buscar archivos en la carpeta que coincidan con el patrón
-                        for archivo in os.listdir(carpeta_eliminados):
-                            if archivo.startswith(nombre_buscar):
-                                # Construir ruta relativa y URL del archivo encontrado
-                                ruta_relativa = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), archivo).replace('\\', '/')
-                                # Construir URL usando MEDIA_URL para asegurar el prefijo correcto
-                                media_url = settings.MEDIA_URL.rstrip('/')
-                                archivo_url = f"{media_url}/{ruta_relativa}".replace('//', '/')
-                                archivo_nombre = archivo
-                                break  # Salir del loop una vez encontrado
-                except Exception:
-                    # Si falla la búsqueda en carpeta de eliminados, continuar sin archivo
+                    logger.warning(f"Error al obtener URL del archivo eliminado: {str(e)}")
                     pass
             
             historial_data.append({
