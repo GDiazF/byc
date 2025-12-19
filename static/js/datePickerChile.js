@@ -99,17 +99,35 @@ function convertirADatePickerChile(inputOriginal) {
     
     // Si hay un valor inicial, configurarlo
     if (value) {
-        // Si el valor está en formato ISO
+        // Si el valor está en formato ISO (YYYY-MM-DD)
         if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
             inputHidden.value = value;
             inputDisplay.value = convertirFechaISOAChileno(value);
             inputReal.value = value;
         }
-        // Si el valor está en formato chileno
+        // Si el valor está en formato chileno con guiones (DD-MM-YYYY)
         else if (value.match(/^\d{2}-\d{2}-\d{4}$/)) {
             const iso = convertirFechaChilenoAISO(value);
             inputHidden.value = iso;
-            inputDisplay.value = value;
+            inputDisplay.value = convertirFechaISOAChileno(iso);
+            inputReal.value = iso;
+        }
+        // Si el valor está en formato chileno con barras (DD/MM/YYYY)
+        else if (value.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+            const iso = convertirFechaChilenoAISO(value);
+            inputHidden.value = iso;
+            inputDisplay.value = convertirFechaISOAChileno(iso);
+            inputReal.value = iso;
+        }
+        // Si el valor está en formato sin separadores (DDMMYYYY)
+        else if (value.match(/^\d{8}$/)) {
+            const dia = value.substring(0, 2);
+            const mes = value.substring(2, 4);
+            const anio = value.substring(4, 8);
+            const fechaChilena = `${dia}/${mes}/${anio}`;
+            const iso = convertirFechaChilenoAISO(fechaChilena);
+            inputHidden.value = iso;
+            inputDisplay.value = convertirFechaISOAChileno(iso);
             inputReal.value = iso;
         }
     }
@@ -142,7 +160,7 @@ function convertirADatePickerChile(inputOriginal) {
     
     // Evento: validar entrada manual en el display
     inputDisplay.addEventListener('blur', function() {
-        const valor = this.value.trim();
+        let valor = this.value.trim();
         
         // Si está vacío, limpiar todo
         if (!valor) {
@@ -151,11 +169,19 @@ function convertirADatePickerChile(inputOriginal) {
             return;
         }
         
+        // Si el valor es solo números (sin separadores), intentar formatearlo
+        if (/^\d{8}$/.test(valor)) {
+            const dia = valor.substring(0, 2);
+            const mes = valor.substring(2, 4);
+            const anio = valor.substring(4, 8);
+            valor = `${dia}/${mes}/${anio}`;
+        }
+        
         // Validar formato DD-MM-YYYY o DD/MM/YYYY
         const formatoValido = /^(\d{2})[-/](\d{2})[-/](\d{4})$/.test(valor);
         
         if (formatoValido) {
-            // Normalizar separador a guión
+            // Normalizar separador a guión para procesamiento
             const valorNormalizado = valor.replace(/\//g, '-');
             const partes = valorNormalizado.split('-');
             const dia = parseInt(partes[0], 10);
@@ -171,36 +197,77 @@ function convertirADatePickerChile(inputOriginal) {
                 const fecha = new Date(fechaISO + 'T00:00:00');
                 if (fecha.getFullYear() === anio && fecha.getMonth() + 1 === mes && fecha.getDate() === dia) {
                     inputHidden.value = fechaISO;
-                    inputDisplay.value = convertirFechaISOAChileno(fechaISO);
+                    inputDisplay.value = convertirFechaISOAChileno(fechaISO); // Usar formato con barras
                     inputReal.value = fechaISO;
                     
                     // Disparar evento change
                     const event = new Event('change', { bubbles: true });
                     inputReal.dispatchEvent(event);
                 } else {
-                    // Fecha inválida, restaurar valor anterior
+                    // Fecha inválida, restaurar valor anterior o limpiar
                     if (inputReal.value) {
                         inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
+                    } else {
+                        this.value = '';
+                        inputHidden.value = '';
+                        inputReal.value = '';
                     }
                 }
             } else {
-                // Valores fuera de rango, restaurar valor anterior
+                // Valores fuera de rango, restaurar valor anterior o limpiar
                 if (inputReal.value) {
                     inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
+                } else {
+                    this.value = '';
+                    inputHidden.value = '';
+                    inputReal.value = '';
                 }
             }
         } else {
-            // Formato inválido, restaurar valor anterior
+            // Formato inválido, restaurar valor anterior o limpiar
             if (inputReal.value) {
                 inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
+            } else {
+                this.value = '';
+                inputHidden.value = '';
+                inputReal.value = '';
             }
         }
     });
     
-    // Permitir solo números y guiones/barras mientras se escribe
+    // Formatear automáticamente mientras se escribe
     inputDisplay.addEventListener('input', function(e) {
-        // Permitir solo números, guiones y barras
-        this.value = this.value.replace(/[^\d\/-]/g, '');
+        let valor = this.value.replace(/[^\d\/-]/g, ''); // Solo números, guiones y barras
+        
+        // Si se está escribiendo sin separadores, formatear automáticamente
+        if (/^\d+$/.test(valor) && valor.length <= 8) {
+            // Si tiene 2 dígitos, agregar /
+            if (valor.length === 2) {
+                valor = valor + '/';
+            }
+            // Si tiene 5 dígitos (DD/MM), agregar /
+            else if (valor.length === 5) {
+                valor = valor.substring(0, 2) + '/' + valor.substring(2, 5) + '/';
+            }
+            // Si tiene más de 5 dígitos, formatear correctamente
+            else if (valor.length > 5) {
+                const soloNumeros = valor.replace(/[^0-9]/g, '');
+                if (soloNumeros.length <= 2) {
+                    valor = soloNumeros;
+                } else if (soloNumeros.length <= 4) {
+                    valor = soloNumeros.substring(0, 2) + '/' + soloNumeros.substring(2);
+                } else {
+                    valor = soloNumeros.substring(0, 2) + '/' + soloNumeros.substring(2, 4) + '/' + soloNumeros.substring(4, 8);
+                }
+            }
+        }
+        
+        // Limitar a 10 caracteres (DD/MM/YYYY)
+        if (valor.length > 10) {
+            valor = valor.substring(0, 10);
+        }
+        
+        this.value = valor;
     });
     
     // Construir la estructura

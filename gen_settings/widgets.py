@@ -50,33 +50,55 @@ class DateInputChileno(TextInput):
         if value is None:
             return ''
         
+        # Si es un objeto date o datetime, convertir a ISO directamente
+        if hasattr(value, 'strftime'):
+            try:
+                return value.strftime('%Y-%m-%d')
+            except (ValueError, TypeError):
+                pass
+        
         # Si es un string
         if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return ''
+            
             # Si ya está en formato ISO YYYY-MM-DD, devolverlo tal cual
             if len(value) == 10 and value[4] == '-' and value[7] == '-':
-                return value
-            
-            # Si está en formato chileno DD-MM-YYYY, convertirlo a ISO
-            if len(value) == 10 and value[2] == '-' and value[5] == '-':
                 try:
-                    date_obj = datetime.strptime(value, '%d-%m-%Y').date()
+                    # Validar que sea una fecha válida
+                    datetime.strptime(value, '%Y-%m-%d')
+                    return value
+                except (ValueError, TypeError):
+                    pass
+            
+            # Si está en formato chileno DD-MM-YYYY o DD/MM/YYYY, convertirlo a ISO
+            if len(value) == 10 and (value[2] == '-' or value[2] == '/') and (value[5] == '-' or value[5] == '/'):
+                try:
+                    # Normalizar separador
+                    valor_normalizado = value.replace('/', '-')
+                    date_obj = datetime.strptime(valor_normalizado, '%d-%m-%Y').date()
                     return date_obj.strftime('%Y-%m-%d')
                 except (ValueError, TypeError):
-                    return value
+                    pass
             
-            # Intentar parsear como ISO
+            # Si está en formato sin separadores DDMMYYYY (8 dígitos)
+            if len(value) == 8 and value.isdigit():
+                try:
+                    dia = int(value[0:2])
+                    mes = int(value[2:4])
+                    anio = int(value[4:8])
+                    date_obj = datetime(anio, mes, dia).date()
+                    return date_obj.strftime('%Y-%m-%d')
+                except (ValueError, TypeError):
+                    pass
+            
+            # Intentar parsear como ISO como último recurso
             try:
                 date_obj = datetime.strptime(value, '%Y-%m-%d').date()
                 return date_obj.strftime('%Y-%m-%d')
             except (ValueError, TypeError):
-                return value
-        
-        # Si es un objeto date o datetime, convertir a ISO
-        try:
-            if hasattr(value, 'strftime'):
-                return value.strftime('%Y-%m-%d')
-        except (ValueError, TypeError):
-            pass
+                pass
         
         return str(value)
     
@@ -85,8 +107,9 @@ class DateInputChileno(TextInput):
         Convierte el valor del formulario de formato chileno a formato ISO.
         
         Cuando el usuario envía el formulario, el valor viene en formato
-        chileno (DD-MM-YYYY) y este método lo convierte a formato ISO
-        (YYYY-MM-DD) para que Django lo pueda procesar correctamente.
+        chileno (DD-MM-YYYY o DD/MM/YYYY) o sin separadores (DDMMYYYY)
+        y este método lo convierte a formato ISO (YYYY-MM-DD) para que
+        Django lo pueda procesar correctamente.
         
         Args:
             data: Diccionario con los datos del formulario.
@@ -98,21 +121,42 @@ class DateInputChileno(TextInput):
         """
         value = data.get(name)
         
-        if not value:
+        if not value or not value.strip():
             return None
+        
+        value = value.strip()
         
         # Si ya está en formato ISO, devolverlo
         if len(value) == 10 and value[4] == '-' and value[7] == '-':
-            return value
-        
-        # Si está en formato chileno DD-MM-YYYY, convertirlo a ISO
-        if len(value) == 10 and value[2] == '-' and value[5] == '-':
             try:
-                parts = value.split('-')
+                # Validar que sea una fecha válida
+                datetime.strptime(value, '%Y-%m-%d')
+                return value
+            except (ValueError, TypeError):
+                pass
+        
+        # Si está en formato chileno DD-MM-YYYY o DD/MM/YYYY, convertirlo a ISO
+        if len(value) == 10 and (value[2] == '-' or value[2] == '/') and (value[5] == '-' or value[5] == '/'):
+            try:
+                # Normalizar separador
+                valor_normalizado = value.replace('/', '-')
+                parts = valor_normalizado.split('-')
                 if len(parts) == 3:
                     dia, mes, anio = parts
-                    return f"{anio}-{mes.zfill(2)}-{dia.zfill(2)}"
-            except (ValueError, IndexError):
+                    date_obj = datetime.strptime(f"{dia.zfill(2)}-{mes.zfill(2)}-{anio}", '%d-%m-%Y').date()
+                    return date_obj.strftime('%Y-%m-%d')
+            except (ValueError, IndexError, TypeError):
+                pass
+        
+        # Si está en formato sin separadores DDMMYYYY (8 dígitos)
+        if len(value) == 8 and value.isdigit():
+            try:
+                dia = int(value[0:2])
+                mes = int(value[2:4])
+                anio = int(value[4:8])
+                date_obj = datetime(anio, mes, dia).date()
+                return date_obj.strftime('%Y-%m-%d')
+            except (ValueError, TypeError):
                 pass
         
         return value
