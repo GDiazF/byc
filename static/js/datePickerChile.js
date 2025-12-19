@@ -103,6 +103,7 @@ function convertirADatePickerChile(inputOriginal) {
     inputHidden.type = 'date';
     inputHidden.id = `${id}_hidden`;
     inputHidden.className = 'fecha-chile-hidden';
+    inputHidden.tabIndex = -1; // Excluir de la navegación por teclado (Tab)
     inputHidden.style.cssText = 'position: absolute; opacity: 0; pointer-events: all; left: 0; top: 30px; width: 100%; height: 38px;';
     
     // Input real que se enviará al backend (con el ID y name originales)
