@@ -259,12 +259,17 @@ def api_dashboard_rrhh(request):
         ausentismos_activos = Ausentismo.objects.filter(
             personal_id__activo=True,
             fechaini__lte=hoy,
-            fechafin__gte=hoy
-        ).select_related('personal_id', 'tipoausen_id').order_by('tipoausen_id', 'personal_id__apepat', 'personal_id__apemat', 'personal_id__nombre')
+            fechafin__gte=hoy,
+            tipoausen_id__isnull=False,
+            personal_id__isnull=False
+        ).select_related('personal_id', 'tipoausen_id').order_by('tipoausen_id__tipo', 'personal_id__apepat', 'personal_id__apemat', 'personal_id__nombre')
         
         # Agrupar por tipo de ausentismo
         ausentismos_por_tipo = {}
         for ausentismo in ausentismos_activos:
+            if not ausentismo.tipoausen_id or not ausentismo.personal_id:
+                continue
+                
             tipo_nombre = ausentismo.tipoausen_id.tipo
             if tipo_nombre not in ausentismos_por_tipo:
                 ausentismos_por_tipo[tipo_nombre] = []
@@ -287,7 +292,7 @@ def api_dashboard_rrhh(request):
         # Crear resumen por tipo
         for tipo_nombre, personal_list in ausentismos_por_tipo.items():
             # Contar personal único por tipo
-            personal_unicos = set(p.id for p in personal_list)
+            personal_unicos = set(p.personal_id for p in personal_list)
             tipos_ausentismo_detalle.append({
                 'tipo': tipo_nombre,
                 'cantidad': len(personal_unicos)
@@ -942,12 +947,17 @@ def api_dashboard_operaciones(request):
         ausentismos_activos = Ausentismo.objects.filter(
             personal_id__activo=True,
             fechaini__lte=hoy,
-            fechafin__gte=hoy
-        ).select_related('personal_id', 'tipoausen_id').order_by('tipoausen_id', 'personal_id__apepat', 'personal_id__apemat', 'personal_id__nombre')
+            fechafin__gte=hoy,
+            tipoausen_id__isnull=False,
+            personal_id__isnull=False
+        ).select_related('personal_id', 'tipoausen_id').order_by('tipoausen_id__tipo', 'personal_id__apepat', 'personal_id__apemat', 'personal_id__nombre')
         
         # Agrupar por tipo de ausentismo
         ausentismos_por_tipo = {}
         for ausentismo in ausentismos_activos:
+            if not ausentismo.tipoausen_id or not ausentismo.personal_id:
+                continue
+                
             tipo_nombre = ausentismo.tipoausen_id.tipo
             if tipo_nombre not in ausentismos_por_tipo:
                 ausentismos_por_tipo[tipo_nombre] = []
@@ -970,7 +980,7 @@ def api_dashboard_operaciones(request):
         # Crear resumen por tipo
         for tipo_nombre, personal_list in ausentismos_por_tipo.items():
             # Contar personal único por tipo
-            personal_unicos = set(p.id for p in personal_list)
+            personal_unicos = set(p.personal_id for p in personal_list)
             tipos_ausentismo_detalle.append({
                 'tipo': tipo_nombre,
                 'cantidad': len(personal_unicos)
