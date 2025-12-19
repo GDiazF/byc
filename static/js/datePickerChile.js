@@ -230,7 +230,11 @@ function convertirADatePickerChile(inputOriginal) {
     });
     
     // Formatear automáticamente mientras se escribe
+    // Usar capture: true para que se ejecute ANTES que otros listeners
     inputDisplay.addEventListener('input', function(e) {
+        // Prevenir que otros scripts interfieran
+        e.stopImmediatePropagation();
+        
         let valor = this.value;
         
         // Permitir solo números, guiones y barras
@@ -265,11 +269,16 @@ function convertirADatePickerChile(inputOriginal) {
         // Solo actualizar si el valor cambió para evitar loops infinitos
         if (this.value !== valor) {
             this.value = valor;
+            this.setAttribute('data-previous-value', valor);
         }
-    });
+    }, { capture: true }); // Usar capture para ejecutarse primero
     
     // Permitir escribir guiones y barras con keydown para asegurar que se acepten
+    // Usar capture: true para que se ejecute ANTES que otros listeners
     inputDisplay.addEventListener('keydown', function(e) {
+        // Prevenir que otros scripts interfieran
+        e.stopImmediatePropagation();
+        
         // Permitir teclas especiales (backspace, delete, tab, arrow keys, etc.)
         if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' || 
             e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
@@ -284,7 +293,7 @@ function convertirADatePickerChile(inputOriginal) {
         
         // Bloquear cualquier otro carácter
         e.preventDefault();
-    });
+    }, { capture: true }); // Usar capture para ejecutarse primero
     
     // Construir la estructura
     contenedor.appendChild(inputDisplay);

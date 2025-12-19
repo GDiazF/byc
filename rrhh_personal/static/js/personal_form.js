@@ -12,17 +12,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Inicializar date pickers chilenos - esperar más tiempo para asegurar que Django haya renderizado los inputs
+    // Y que textoFormateador haya terminado de procesar los campos
     if (typeof DatePickerChile !== 'undefined') {
         // Esperar más tiempo para asegurar que todos los inputs estén completamente renderizados
+        // y que textoFormateador haya terminado de procesar
         setTimeout(function() {
             console.log('Inicializando date pickers desde personal_form.js');
+            
+            // Marcar los campos de fecha ANTES de inicializar para que textoFormateador los ignore
+            const fechaInputs = document.querySelectorAll('input.fecha-chile-picker');
+            fechaInputs.forEach(input => {
+                input.setAttribute('data-picker-initialized', 'true');
+            });
+            
             DatePickerChile.inicializar();
             
             // Reinicializar después de un pequeño delay adicional por si acaso
             setTimeout(function() {
+                // Volver a marcar los campos
+                fechaInputs.forEach(input => {
+                    input.setAttribute('data-picker-initialized', 'true');
+                });
                 DatePickerChile.inicializar();
             }, 200);
-        }, 300);
+        }, 500); // Aumentado a 500ms para dar más tiempo
     }
     
     // Asegurar que el RUT nunca se formatee con puntos

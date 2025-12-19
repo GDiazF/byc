@@ -103,7 +103,10 @@ document.addEventListener('DOMContentLoaded', function() {
 const observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
         if (mutation.addedNodes.length) {
-            aplicarFormateoATodosLosCampos();
+            // Esperar un poco para que el datepicker se inicialice primero si es necesario
+            setTimeout(function() {
+                aplicarFormateoATodosLosCampos();
+            }, 100);
         }
     });
 });
