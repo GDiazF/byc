@@ -44,3 +44,48 @@
     line-height: 1.6;
 }
 
+/* Estilos para el dropdown de notificaciones */
+.dropdown-menu-notifications {
+    max-width: 400px;
+    min-width: 350px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.dropdown-menu-notifications .notification-item {
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.dropdown-menu-notifications .notification-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-menu-notifications .notification-item.no-leida {
+    background-color: #f0f7ff;
+    border-left: 3px solid #0d6efd;
+}
+
+.dropdown-menu-notifications .notification-item.no-leida:hover {
+    background-color: #e0efff;
+}
+
+.dropdown-menu-notifications .notification-item.leida:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-menu-notifications .ver-detalle-btn {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.dropdown-menu-notifications .ver-detalle-btn:hover {
+    opacity: 1;
+    color: #0d6efd !important;
+}
+
+.dropdown-menu-notifications .dropdown-item {
+    white-space: normal;
+    word-wrap: break-word;
+}
+

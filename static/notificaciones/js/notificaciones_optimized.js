@@ -107,24 +107,50 @@
         notificaciones.forEach(notif => {
             const item = document.createElement('li');
             item.className = `dropdown-item notification-item ${notif.leida ? 'leida' : 'no-leida'}`;
-            item.style.cursor = 'pointer';
+            item.style.cssText = 'padding: 0.75rem 1rem; border-bottom: 1px solid #e9ecef;';
+            
+            // Truncar mensaje si es muy largo
+            const mensajeTruncado = notif.mensaje.length > 80 
+                ? notif.mensaje.substring(0, 80) + '...' 
+                : notif.mensaje;
             
             item.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                        <strong>${escapeHtml(notif.titulo)}</strong>
-                        <p class="mb-1 small">${escapeHtml(notif.mensaje)}</p>
-                        <small class="text-muted">${notif.fecha_creacion}</small>
+                <div class="d-flex align-items-start gap-2">
+                    <div class="flex-grow-1" style="min-width: 0;">
+                        <div class="d-flex align-items-start justify-content-between mb-1">
+                            <strong class="text-dark" style="font-size: 0.875rem; line-height: 1.3;">${escapeHtml(notif.titulo)}</strong>
+                            ${!notif.leida ? '<span class="badge bg-primary ms-2" style="font-size: 0.65rem;">Nueva</span>' : ''}
+                        </div>
+                        <p class="mb-1 small text-muted" style="font-size: 0.8rem; line-height: 1.4; word-wrap: break-word;">${escapeHtml(mensajeTruncado)}</p>
+                        <small class="text-muted" style="font-size: 0.75rem;">
+                            <i class="bi bi-clock me-1"></i>${notif.fecha_creacion}
+                        </small>
                     </div>
-                    ${!notif.leida ? '<span class="badge bg-primary ms-2">Nueva</span>' : ''}
+                    <button class="btn btn-sm btn-link p-0 text-primary ver-detalle-btn" 
+                            data-notificacion-id="${notif.id}"
+                            style="flex-shrink: 0; padding: 0.25rem !important; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;"
+                            title="Ver detalles">
+                        <i class="bi bi-eye" style="font-size: 1rem;"></i>
+                    </button>
                 </div>
             `;
             
-            // Marcar como leída al hacer clic
-            item.addEventListener('click', function() {
+            // Marcar como leída al hacer clic en el contenido (no en el botón de ojo)
+            const contenido = item.querySelector('.flex-grow-1');
+            contenido.style.cursor = 'pointer';
+            contenido.addEventListener('click', function(e) {
+                e.stopPropagation();
                 if (!notif.leida) {
                     marcarComoLeida(notif.id);
                 }
+            });
+            
+            // Botón de ver detalles - abrir modal
+            const btnVerDetalle = item.querySelector('.ver-detalle-btn');
+            btnVerDetalle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                mostrarDetalleNotificacion(notif);
             });
             
             dropdownMenu.appendChild(item);
@@ -152,6 +178,42 @@
         .catch(error => {
             console.error('Error al marcar como leída:', error);
         });
+    }
+    
+    /**
+     * Muestra los detalles completos de una notificación en un modal.
+     */
+    function mostrarDetalleNotificacion(notif) {
+        const modal = document.getElementById('modalDetalleNotificacion');
+        const modalBody = document.getElementById('modalDetalleNotificacionBody');
+        const modalTitle = document.getElementById('modalDetalleNotificacionLabel');
+        
+        if (!modal || !modalBody) return;
+        
+        // Actualizar título
+        if (modalTitle) {
+            modalTitle.textContent = 'Detalle de Notificación';
+        }
+        
+        // Construir el contenido del modal
+        let contenido = `
+            <div class="mb-3">
+                <h6 class="fw-bold mb-3">${escapeHtml(notif.titulo)}</h6>
+                <div class="bg-light p-3 rounded" style="white-space: pre-wrap; line-height: 1.6;">
+                    <p class="mb-0">${escapeHtml(notif.mensaje)}</p>
+                </div>
+            </div>
+            <div class="text-muted small">
+                <i class="bi bi-clock me-1"></i>${notif.fecha_creacion}
+            </div>
+        `;
+        
+        // Actualizar contenido del modal
+        modalBody.innerHTML = contenido;
+        
+        // Mostrar el modal usando Bootstrap 5
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
     }
     
     /**
