@@ -319,11 +319,11 @@ def api_listar_equipos(request):
                 # Ordenar por el campo especificado, manteniendo activos primero
                 equipos = equipos.order_by('-activo', campo_ordenamiento)
             else:
-                # Si el campo no existe en el mapeo, usar ordenamiento por defecto
-                equipos = equipos.order_by('-activo', 'modeloEquipo_id__tipoEquipo_id__tipoEquipo', 'codigoInterno')
+                # Si el campo no existe en el mapeo, usar ordenamiento por defecto (más nuevo primero)
+                equipos = equipos.order_by('-activo', '-equipo_id')
         else:
-            # Ordenamiento por defecto: primero por estado activo (activos primero), luego por tipo y código interno
-            equipos = equipos.order_by('-activo', 'modeloEquipo_id__tipoEquipo_id__tipoEquipo', 'codigoInterno')
+            # Ordenamiento por defecto: primero por estado activo (activos primero), luego por equipo_id descendente (más nuevo primero)
+            equipos = equipos.order_by('-activo', '-equipo_id')
         
         # Paso 8: Aplicar paginación a los resultados filtrados
         # Dividir los resultados en páginas según el tamaño de página solicitado
@@ -3519,6 +3519,8 @@ def api_listar_ordenes_trabajo(request):
         search = request.GET.get('search', '').strip()  # Término de búsqueda (sin espacios)
         page = int(request.GET.get('page', 1))  # Número de página actual (por defecto 1)
         per_page = int(request.GET.get('per_page', 10))  # Cantidad de registros por página (por defecto 10)
+        ordering = request.GET.get('ordering', '')  # Columna por la cual ordenar
+        order_direction = request.GET.get('order_direction', 'asc')  # Dirección del ordenamiento ('asc' o 'desc')
         
         # Paso 3: Construir la consulta base con optimización
         # select_related evita consultas N+1 al traer todas las relaciones en una sola consulta SQL
@@ -3589,9 +3591,36 @@ def api_listar_ordenes_trabajo(request):
                 Q(observaciones__icontains=search)  # Buscar en observaciones de la OT
             )
         
-        # Paso 7: Ordenar los resultados por fecha de creación descendente
-        # Las órdenes más recientes aparecen primero
-        queryset = queryset.order_by('-fecha_creacion')
+        # Paso 7: Ordenar los resultados
+        # Si se especifica un ordenamiento personalizado, usarlo; si no, usar el ordenamiento por defecto
+        if ordering:
+            # Mapeo de nombres de columnas del frontend a campos del modelo Django
+            ordenamiento_map = {
+                'folio': 'folio',
+                'equipo': 'equipo_id__nombreEquipo',
+                'empresa': 'empresa_id__nomFantasia',
+                'tipo_mantenimiento': 'tipo_mantenimiento_id__nombre',
+                'estado_ot': 'estado_ot_id__nombre',
+                'estado_equipo': 'estado_equipo_id__nombre',
+                'fecha_fin': 'fecha_fin',
+                'fecha_creacion': 'fecha_creacion'
+            }
+            
+            # Obtener el campo real del modelo
+            campo_ordenamiento = ordenamiento_map.get(ordering)
+            
+            if campo_ordenamiento:
+                # Aplicar prefijo '-' para orden descendente si es necesario
+                if order_direction == 'desc':
+                    campo_ordenamiento = '-' + campo_ordenamiento
+                # Ordenar por el campo especificado
+                queryset = queryset.order_by(campo_ordenamiento)
+            else:
+                # Si el campo no existe en el mapeo, usar ordenamiento por defecto (más nuevo primero)
+                queryset = queryset.order_by('-fecha_creacion')
+        else:
+            # Ordenamiento por defecto: por fecha de creación descendente (más nuevo primero)
+            queryset = queryset.order_by('-fecha_creacion')
         
         # Paso 8: Aplicar paginación a los resultados filtrados
         # Dividir los resultados en páginas según el tamaño de página solicitado

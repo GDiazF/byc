@@ -10,6 +10,8 @@
 let paginaActual = 1;  // Página actual de la paginación (empieza en 1)
 let tamanoPagina = 25;  // Cantidad de registros a mostrar por página (por defecto 25)
 let tabActual = 'activas';  // Tab actualmente activo: 'activas' o 'finalizadas'
+let ordenActual = null;  // Columna actual por la cual se está ordenando
+let direccionOrden = 'asc';  // Dirección del ordenamiento ('asc' o 'desc')
 
 // Inicialización cuando el DOM está completamente cargado
 // Este evento asegura que todos los elementos HTML estén disponibles antes de ejecutar el código
@@ -92,6 +94,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (pageSizeSelect) {
         pageSizeSelect.addEventListener('change', cambiarTamanoPagina);
     }
+    
+    // Paso 7: Configurar event listeners para ordenamiento por columnas
+    // Los headers con clase 'sortable' permiten ordenar la tabla haciendo clic
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const columna = this.getAttribute('data-column');  // Obtener nombre de la columna desde atributo data
+            ordenarPor(columna, this);  // Ordenar por la columna seleccionada
+        });
+    });
 });
 
 // Función debounce para optimizar búsquedas
@@ -157,6 +168,12 @@ function cargarOrdenes() {
         page: paginaActual,  // Página actual a cargar
         per_page: tamanoPagina  // Cantidad de registros por página
     });
+    
+    // Agregar parámetros de ordenamiento si hay una columna seleccionada
+    if (ordenActual) {
+        params.append('ordering', ordenActual);  // Columna por la cual ordenar
+        params.append('order_direction', direccionOrden);  // Dirección del ordenamiento
+    }
     
     // Paso 4: Realizar petición GET al endpoint de la API
     // window.apiListarOrdenes se define en el template HTML con la URL base
@@ -510,6 +527,41 @@ function irAPagina(pagina) {
     window.scrollTo({ top: 0, behavior: 'smooth' });  // Hacer scroll suave hacia arriba para ver la tabla
 }
 
+// Función para ordenar la tabla por una columna específica
+// Alterna entre orden ascendente y descendente si se hace clic en la misma columna
+// Actualiza los iconos visuales en los headers para indicar el ordenamiento actual
+// Parámetros:
+//   columna: Nombre de la columna por la cual ordenar
+//   headerElement: Elemento DOM del header que fue clickeado
+function ordenarPor(columna, headerElement) {
+    // Paso 1: Determinar la dirección del ordenamiento
+    // Si es la misma columna, cambiar dirección (asc <-> desc)
+    if (ordenActual === columna) {
+        direccionOrden = direccionOrden === 'asc' ? 'desc' : 'asc';  // Alternar dirección
+    } else {
+        // Si es una columna diferente, establecer como nueva columna y empezar con ascendente
+        ordenActual = columna;  // Actualizar columna actual
+        direccionOrden = 'asc';  // Empezar con orden ascendente
+    }
+    
+    // Paso 2: Actualizar iconos en todos los headers ordenables
+    // Resetear todos los iconos a estado neutro (flecha bidireccional)
+    document.querySelectorAll('.sortable i').forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up ms-1';  // Icono neutro
+    });
+    
+    // Paso 3: Actualizar icono del header clickeado según la dirección del ordenamiento
+    const icon = headerElement.querySelector('i');
+    if (icon) {
+        // Mostrar flecha hacia arriba para ascendente, hacia abajo para descendente
+        icon.className = direccionOrden === 'asc' ? 'bi bi-arrow-up ms-1' : 'bi bi-arrow-down ms-1';
+    }
+    
+    // Paso 4: Volver a la primera página y recargar órdenes con el nuevo ordenamiento
+    paginaActual = 1;  // Volver a la primera página
+    cargarOrdenes();  // Recargar órdenes con el ordenamiento aplicado
+}
+
 // Función para cambiar el tamaño de página (cantidad de registros por página)
 // Se ejecuta cuando el usuario cambia el valor del select de tamaño de página
 function cambiarTamanoPagina() {
@@ -557,6 +609,12 @@ function limpiarFiltros() {
     document.getElementById('tipoMantenimientoFilter').value = '';  // Limpiar filtro de tipo de mantenimiento
     paginaActual = 1;  // Volver a la primera página
     tabActual = 'activas';  // Asegurar que el tab esté en activas
+    ordenActual = null;  // Resetear ordenamiento
+    direccionOrden = 'asc';  // Resetear dirección de ordenamiento
+    // Resetear iconos de ordenamiento
+    document.querySelectorAll('.sortable i').forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up ms-1';
+    });
     cargarOrdenes();  // Recargar órdenes sin filtros
 }
 
@@ -570,6 +628,12 @@ function limpiarFiltrosFinalizadas() {
     document.getElementById('tipoMantenimientoFilterFinalizadas').value = '';  // Limpiar filtro de tipo de mantenimiento
     paginaActual = 1;  // Volver a la primera página
     tabActual = 'finalizadas';  // Asegurar que el tab esté en finalizadas
+    ordenActual = null;  // Resetear ordenamiento
+    direccionOrden = 'asc';  // Resetear dirección de ordenamiento
+    // Resetear iconos de ordenamiento
+    document.querySelectorAll('.sortable i').forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up ms-1';
+    });
     cargarOrdenes();  // Recargar órdenes sin filtros
 }
 
