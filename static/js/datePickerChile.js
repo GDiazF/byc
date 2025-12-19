@@ -179,26 +179,26 @@ function convertirADatePickerChile(inputOriginal) {
             return;
         }
         
-        // Si el valor es solo números (sin separadores), intentar formatearlo
-        if (/^\d{8}$/.test(valor)) {
-            const dia = valor.substring(0, 2);
-            const mes = valor.substring(2, 4);
-            const anio = valor.substring(4, 8);
+        // Extraer solo números del valor
+        const soloNumeros = valor.replace(/[^0-9]/g, '');
+        
+        // Si tiene 8 dígitos, formatear como DD/MM/YYYY
+        if (soloNumeros.length === 8) {
+            const dia = soloNumeros.substring(0, 2);
+            const mes = soloNumeros.substring(2, 4);
+            const anio = soloNumeros.substring(4, 8);
             valor = `${dia}/${mes}/${anio}`;
         }
         
-        // Validar formato DD-MM-YYYY o DD/MM/YYYY
-        const formatoValido = /^(\d{2})[-/](\d{2})[-/](\d{4})$/.test(valor);
+        // Intentar parsear el valor (acepta DD/MM/YYYY o DD-MM-YYYY)
+        const match = valor.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
         
-        if (formatoValido) {
-            // Normalizar separador a guión para procesamiento
-            const valorNormalizado = valor.replace(/\//g, '-');
-            const partes = valorNormalizado.split('-');
-            const dia = parseInt(partes[0], 10);
-            const mes = parseInt(partes[1], 10);
-            const anio = parseInt(partes[2], 10);
+        if (match) {
+            let dia = parseInt(match[1], 10);
+            let mes = parseInt(match[2], 10);
+            const anio = parseInt(match[3], 10);
             
-            // Validar rango de fechas
+            // Validar rango básico
             if (dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12 && anio >= 1900 && anio <= 2100) {
                 // Convertir a ISO
                 const fechaISO = `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
@@ -207,42 +207,26 @@ function convertirADatePickerChile(inputOriginal) {
                 const fecha = new Date(fechaISO + 'T00:00:00');
                 if (fecha.getFullYear() === anio && fecha.getMonth() + 1 === mes && fecha.getDate() === dia) {
                     inputHidden.value = fechaISO;
-                    inputDisplay.value = convertirFechaISOAChileno(fechaISO); // Usar formato con barras
+                    inputDisplay.value = convertirFechaISOAChileno(fechaISO);
                     inputReal.value = fechaISO;
                     
                     // Disparar evento change
                     const event = new Event('change', { bubbles: true });
                     inputReal.dispatchEvent(event);
-                } else {
-                    // Fecha inválida, restaurar valor anterior o limpiar
-                    if (inputReal.value) {
-                        inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
-                    } else {
-                        this.value = '';
-                        inputHidden.value = '';
-                        inputReal.value = '';
-                    }
+                    return;
                 }
-            } else {
-                // Valores fuera de rango, restaurar valor anterior o limpiar
-                if (inputReal.value) {
-                    inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
-                } else {
-                    this.value = '';
-                    inputHidden.value = '';
-                    inputReal.value = '';
-                }
-            }
-        } else {
-            // Formato inválido, restaurar valor anterior o limpiar
-            if (inputReal.value) {
-                inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
-            } else {
-                this.value = '';
-                inputHidden.value = '';
-                inputReal.value = '';
             }
         }
+        
+        // Si llegamos aquí y el formato es inválido, NO borrar el contenido
+        // Solo no guardar en el inputReal si no hay valor previo válido
+        // Esto permite que el usuario siga escribiendo sin que se borre
+        if (inputReal.value) {
+            // Si hay un valor previo válido, restaurarlo
+            inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
+        }
+        // Si no hay valor previo válido, dejar lo que el usuario escribió
+        // (no borrar, solo no guardar en el inputReal hasta que sea válido)
     });
     
     // Formatear automáticamente mientras se escribe
@@ -391,10 +375,13 @@ function inicializarDatePickersChile() {
 
 // Auto-inicializar cuando el DOM esté listo
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inicializarDatePickersChile);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Esperar un poco para asegurar que todos los inputs estén renderizados
+        setTimeout(inicializarDatePickersChile, 100);
+    });
 } else {
-    // DOM ya está listo
-    inicializarDatePickersChile();
+    // DOM ya está listo, pero esperar un poco por si acaso
+    setTimeout(inicializarDatePickersChile, 100);
 }
 
 // Exportar funciones para uso global

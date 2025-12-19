@@ -11,12 +11,18 @@ document.addEventListener('DOMContentLoaded', function() {
         setupRegionComunaHandlers();
     }
     
-    // Inicializar date pickers chilenos
+    // Inicializar date pickers chilenos - esperar más tiempo para asegurar que Django haya renderizado los inputs
     if (typeof DatePickerChile !== 'undefined') {
-        // Esperar un poco para asegurar que todos los inputs estén renderizados
+        // Esperar más tiempo para asegurar que todos los inputs estén completamente renderizados
         setTimeout(function() {
+            console.log('Inicializando date pickers desde personal_form.js');
             DatePickerChile.inicializar();
-        }, 100);
+            
+            // Reinicializar después de un pequeño delay adicional por si acaso
+            setTimeout(function() {
+                DatePickerChile.inicializar();
+            }, 200);
+        }, 300);
     }
     
     // Asegurar que el RUT nunca se formatee con puntos
