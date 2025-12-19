@@ -78,27 +78,28 @@
      * Actualiza el dropdown con las notificaciones.
      */
     function actualizarDropdown(notificaciones) {
-        const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
+        const dropdownMenu = document.querySelector('.dropdown-menu-notifications');
         if (!dropdownMenu) return;
         
-        // Buscar el contenedor de notificaciones
-        let container = dropdownMenu.querySelector('.notifications-list');
-        if (!container) {
-            const emptyMessage = dropdownMenu.querySelector('.dropdown-text-muted')?.parentElement;
-            if (emptyMessage) {
-                container = document.createElement('div');
-                container.className = 'notifications-list';
-                emptyMessage.replaceWith(container);
-            }
+        // Encontrar el divider después del header
+        const divider = dropdownMenu.querySelector('.dropdown-divider');
+        if (!divider) return;
+        
+        // Encontrar todos los <li> después del divider (notificaciones existentes o mensaje vacío)
+        const allItems = Array.from(dropdownMenu.querySelectorAll('li'));
+        const dividerIndex = allItems.indexOf(divider.parentElement);
+        
+        // Eliminar todos los <li> después del divider
+        for (let i = dividerIndex + 1; i < allItems.length; i++) {
+            allItems[i].remove();
         }
         
-        if (!container) return;
-        
-        // Limpiar contenedor
-        container.innerHTML = '';
-        
+        // Si no hay notificaciones, mostrar mensaje vacío
         if (notificaciones.length === 0) {
-            container.innerHTML = '<li class="px-3 py-2 text-center text-muted dropdown-text-muted">No hay notificaciones</li>';
+            const emptyLi = document.createElement('li');
+            emptyLi.className = 'px-3 py-2 text-center text-muted dropdown-text-muted';
+            emptyLi.textContent = 'No hay notificaciones';
+            dropdownMenu.appendChild(emptyLi);
             return;
         }
         
@@ -126,7 +127,7 @@
                 }
             });
             
-            container.appendChild(item);
+            dropdownMenu.appendChild(item);
         });
     }
     
@@ -216,7 +217,7 @@
                 // Si cambió el contador (nueva notificación), actualizar badge y recargar si el dropdown está abierto
                 if (count !== ultimoContador && ultimoContador !== null) {
                     // Hay una nueva notificación
-                    const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
+                    const dropdownMenu = document.querySelector('.dropdown-menu-notifications');
                     const isOpen = dropdownMenu && dropdownMenu.classList.contains('show');
                     
                     // Si el dropdown está abierto, recargar notificaciones para mostrar la nueva
