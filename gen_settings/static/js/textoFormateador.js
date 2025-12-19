@@ -46,7 +46,9 @@ function aplicarFormateo(elemento) {
     elemento.addEventListener('blur', function() {
         // Verificar nuevamente que no sea un campo de fecha
         if (this.classList.contains('fecha-chile-picker') || 
-            this.closest('[data-datepicker-chile-wrapper]')) {
+            this.closest('[data-datepicker-chile-wrapper]') ||
+            this.hasAttribute('data-datepicker-field') ||
+            this.hasAttribute('data-picker-initialized')) {
             return;
         }
         this.value = formatearTexto(this.value, true);
@@ -56,7 +58,9 @@ function aplicarFormateo(elemento) {
     elemento.addEventListener('input', function() {
         // Verificar nuevamente que no sea un campo de fecha
         if (this.classList.contains('fecha-chile-picker') || 
-            this.closest('[data-datepicker-chile-wrapper]')) {
+            this.closest('[data-datepicker-chile-wrapper]') ||
+            this.hasAttribute('data-datepicker-field') ||
+            this.hasAttribute('data-picker-initialized')) {
             return;
         }
         
@@ -86,7 +90,8 @@ function aplicarFormateoATodosLosCampos() {
         // Excluir campos de fecha (datepicker chileno)
         if (campo.classList.contains('fecha-chile-picker') || 
             campo.closest('[data-datepicker-chile-wrapper]') ||
-            campo.hasAttribute('data-picker-initialized')) {
+            campo.hasAttribute('data-picker-initialized') ||
+            campo.hasAttribute('data-datepicker-field')) {
             return; // Saltar este campo
         }
         

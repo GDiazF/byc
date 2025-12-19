@@ -84,6 +84,10 @@ function convertirADatePickerChile(inputOriginal) {
     inputDisplay.required = required;
     inputDisplay.readOnly = false; // Permitir entrada manual
     
+    // Marcar explícitamente como campo de datepicker para que textoFormateador lo ignore
+    inputDisplay.setAttribute('data-datepicker-field', 'true');
+    inputDisplay.setAttribute('data-picker-initialized', 'true');
+    
     // Botón de calendario con el tamaño apropiado
     const botonCalendario = document.createElement('button');
     let btnClass = 'btn btn-outline-secondary';
@@ -218,15 +222,10 @@ function convertirADatePickerChile(inputOriginal) {
             }
         }
         
-        // Si llegamos aquí y el formato es inválido, NO borrar el contenido
-        // Solo no guardar en el inputReal si no hay valor previo válido
-        // Esto permite que el usuario siga escribiendo sin que se borre
+        // Si llegamos aquí y el formato es inválido, restaurar valor previo válido si existe
         if (inputReal.value) {
-            // Si hay un valor previo válido, restaurarlo
             inputDisplay.value = convertirFechaISOAChileno(inputReal.value);
         }
-        // Si no hay valor previo válido, dejar lo que el usuario escribió
-        // (no borrar, solo no guardar en el inputReal hasta que sea válido)
     });
     
     // Formatear automáticamente mientras se escribe
