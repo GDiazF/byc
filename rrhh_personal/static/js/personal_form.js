@@ -11,6 +11,14 @@ document.addEventListener('DOMContentLoaded', function() {
         setupRegionComunaHandlers();
     }
     
+    // Inicializar date pickers chilenos
+    if (typeof DatePickerChile !== 'undefined') {
+        // Esperar un poco para asegurar que todos los inputs estén renderizados
+        setTimeout(function() {
+            DatePickerChile.inicializar();
+        }, 100);
+    }
+    
     // Asegurar que el RUT nunca se formatee con puntos
     const rutInput = document.getElementById('id_rut');
     if (rutInput) {

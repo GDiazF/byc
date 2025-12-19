@@ -25,7 +25,7 @@ class DateInputChileno(TextInput):
     def __init__(self, attrs=None, format=None):
         default_attrs = {
             'class': 'form-control fecha-chile-picker',
-            'placeholder': 'DD-MM-YYYY',
+            'placeholder': 'DD/MM/YYYY',
             'type': 'text'
         }
         if attrs:

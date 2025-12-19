@@ -5,6 +5,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof setupDepartmentCargoHandlers === 'function') {
         setupDepartmentCargoHandlers();
     }
+    
+    // Inicializar date pickers chilenos
+    if (typeof DatePickerChile !== 'undefined') {
+        // Esperar un poco para asegurar que todos los inputs estén renderizados
+        setTimeout(function() {
+            DatePickerChile.inicializar();
+        }, 100);
+    }
 
     // Mantener la pestaña activa después de enviar el formulario
     const urlParams = new URLSearchParams(window.location.search);
@@ -22,6 +30,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const newUrl = new URL(window.location.href);
             newUrl.searchParams.set('tab', tabId);
             window.history.pushState({}, '', newUrl);
+            
+            // Reinicializar date pickers cuando se cambia de tab (por si hay nuevos inputs)
+            if (typeof DatePickerChile !== 'undefined') {
+                setTimeout(function() {
+                    DatePickerChile.inicializar();
+                }, 100);
+            }
         });
     });
 });
