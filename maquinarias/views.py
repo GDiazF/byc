@@ -438,30 +438,45 @@ def api_guardar_equipo(request):
                 # Paso 3.1: Obtener el equipo existente de la base de datos
                 equipo = Equipo.objects.get(equipo_id=equipo_id)
                 
-                # Paso 3.2: Verificar unicidad del código interno por modelo
-                # El código interno debe ser único dentro del mismo modelo, pero puede repetirse en otros modelos
+                # Paso 3.2: Verificar unicidad del código interno por TIPO de equipo
+                # El código interno debe ser único dentro del mismo TIPO de equipo (ej: GT, EX, CM)
+                # pero puede repetirse en otros tipos (ej: GT01 y CM01 pueden coexistir)
                 # IMPORTANTE: Solo considerar equipos ACTIVOS. Si hay un equipo desactivado con esa combinación,
                 # no puede haber otro equipo (activo o desactivado) con la misma combinación
                 # Excluimos el equipo actual para permitir que mantenga su código si no cambió
-                equipo_duplicado = Equipo.objects.filter(
-                    modeloEquipo_id=data['modeloEquipo_id'],
-                    codigoInterno=codigo_interno
-                ).exclude(equipo_id=equipo_id).first()
                 
-                if equipo_duplicado:
-                    # Si existe otro equipo con esa combinación, verificar si está activo
-                    modelo = ModeloEquipo.objects.get(modeloEquipo_id=data['modeloEquipo_id'])
-                    if equipo_duplicado.activo:
-                        return JsonResponse({
-                            'success': False,
-                            'error': f'Ya existe un equipo activo del modelo {modelo.modeloEquipo} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo})'
-                        }, status=400)
-                    else:
-                        # Si está desactivado, no puede haber otro equipo con esa combinación
-                        return JsonResponse({
-                            'success': False,
-                            'error': f'Ya existe un equipo desactivado del modelo {modelo.modeloEquipo} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo}). No se puede crear otro equipo con la misma combinación.'
-                        }, status=400)
+                # Obtener el tipoEquipo_id del modelo seleccionado
+                modelo = ModeloEquipo.objects.get(modeloEquipo_id=data['modeloEquipo_id'])
+                tipo_equipo_id = modelo.tipoEquipo_id.tipoEquipo_id if modelo.tipoEquipo_id else None
+                
+                if tipo_equipo_id:
+                    # Buscar equipos con el mismo tipo y código interno
+                    # Obtener todos los equipos del mismo tipo y comparar códigos normalizados
+                    equipos_mismo_tipo = Equipo.objects.filter(
+                        modeloEquipo_id__tipoEquipo_id=tipo_equipo_id
+                    ).exclude(equipo_id=equipo_id).select_related('modeloEquipo_id__tipoEquipo_id')
+                    
+                    # Comparar códigos normalizados (sin espacios)
+                    equipo_duplicado = None
+                    for eq in equipos_mismo_tipo:
+                        if eq.codigoInterno and eq.codigoInterno.strip() == codigo_interno:
+                            equipo_duplicado = eq
+                            break
+                    
+                    if equipo_duplicado:
+                        # Si existe otro equipo con esa combinación, verificar si está activo
+                        tipo_nombre = modelo.tipoEquipo_id.tipoEquipo if modelo.tipoEquipo_id else 'desconocido'
+                        if equipo_duplicado.activo:
+                            return JsonResponse({
+                                'success': False,
+                                'error': f'No se puede cambiar el código interno a {codigo_interno}. Ya existe un equipo activo del tipo {tipo_nombre} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo})'
+                            }, status=400)
+                        else:
+                            # Si está desactivado, no puede haber otro equipo con esa combinación
+                            return JsonResponse({
+                                'success': False,
+                                'error': f'No se puede cambiar el código interno a {codigo_interno}. Ya existe un equipo desactivado del tipo {tipo_nombre} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo}). No se puede tener otro equipo con la misma combinación.'
+                            }, status=400)
                 
                 # Paso 3.3: Actualizar los campos del equipo con los nuevos valores
                 # Los valores se normalizan (strip y uppercase) para mantener consistencia
@@ -491,28 +506,44 @@ def api_guardar_equipo(request):
         
         else:
             # MODO CREACIÓN: Crear un nuevo equipo
-            # Paso 4.1: Verificar que no exista ya un equipo con el mismo código interno en el mismo modelo
-            # IMPORTANTE: Solo considerar equipos ACTIVOS. Si hay un equipo desactivado con esa combinación,
+            # Paso 4.1: Verificar que no exista ya un equipo con el mismo código interno en el mismo TIPO
+            # IMPORTANTE: La validación es por TIPO de equipo (ej: GT, EX, CM) + código interno,
+            # no por modelo. Esto significa que GT01 y CM01 pueden coexistir, pero no dos GT01.
+            # Solo considerar equipos ACTIVOS. Si hay un equipo desactivado con esa combinación,
             # no puede haber otro equipo (activo o desactivado) con la misma combinación
-            equipo_duplicado = Equipo.objects.filter(
-                modeloEquipo_id=data['modeloEquipo_id'],
-                codigoInterno=codigo_interno
-            ).first()
             
-            if equipo_duplicado:
-                # Si existe otro equipo con esa combinación, verificar si está activo
-                modelo = ModeloEquipo.objects.get(modeloEquipo_id=data['modeloEquipo_id'])
-                if equipo_duplicado.activo:
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'Ya existe un equipo activo del modelo {modelo.modeloEquipo} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo})'
-                    }, status=400)
-                else:
-                    # Si está desactivado, no puede haber otro equipo con esa combinación
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'Ya existe un equipo desactivado del modelo {modelo.modeloEquipo} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo}). No se puede crear otro equipo con la misma combinación.'
-                    }, status=400)
+            # Obtener el tipoEquipo_id del modelo seleccionado
+            modelo = ModeloEquipo.objects.get(modeloEquipo_id=data['modeloEquipo_id'])
+            tipo_equipo_id = modelo.tipoEquipo_id.tipoEquipo_id if modelo.tipoEquipo_id else None
+            
+            if tipo_equipo_id:
+                # Buscar equipos con el mismo tipo y código interno
+                # Obtener todos los equipos del mismo tipo y comparar códigos normalizados
+                equipos_mismo_tipo = Equipo.objects.filter(
+                    modeloEquipo_id__tipoEquipo_id=tipo_equipo_id
+                ).select_related('modeloEquipo_id__tipoEquipo_id')
+                
+                # Comparar códigos normalizados (sin espacios)
+                equipo_duplicado = None
+                for eq in equipos_mismo_tipo:
+                    if eq.codigoInterno and eq.codigoInterno.strip() == codigo_interno:
+                        equipo_duplicado = eq
+                        break
+                
+                if equipo_duplicado:
+                    # Si existe otro equipo con esa combinación, verificar si está activo
+                    tipo_nombre = modelo.tipoEquipo_id.tipoEquipo if modelo.tipoEquipo_id else 'desconocido'
+                    if equipo_duplicado.activo:
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Ya existe un equipo activo del tipo {tipo_nombre} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo})'
+                        }, status=400)
+                    else:
+                        # Si está desactivado, no puede haber otro equipo con esa combinación
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Ya existe un equipo desactivado del tipo {tipo_nombre} con el código interno {codigo_interno} ({equipo_duplicado.nombreEquipo}). No se puede crear otro equipo con la misma combinación.'
+                        }, status=400)
             
             # Paso 4.2: Crear nueva instancia del modelo Equipo con los datos proporcionados
             # El nombreEquipo se genera automáticamente en el método save() del modelo
