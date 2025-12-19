@@ -1112,6 +1112,9 @@ def api_eliminar_documento_maquinaria(request, documento_id):
         
         # Paso 4: Crear registro en el historial con los datos del documento eliminado
         # El historial mantiene un registro de todos los documentos eliminados
+        # IMPORTANTE: El modelo HistorialDocumentoMaquinaria requiere un archivo (null=False, blank=False)
+        # Por lo tanto, debemos copiar el archivo ANTES de guardar el historial
+        
         historial = HistorialDocumentoMaquinaria(
             equipo_id=documento.equipo_id,  # Equipo al que pertenecía el documento
             tipo_documento_id=documento.tipo_documento_id,  # Tipo de documento
@@ -1121,44 +1124,67 @@ def api_eliminar_documento_maquinaria(request, documento_id):
             observaciones=documento.observaciones  # Observaciones originales
         )
         
-        # Paso 5: Si el archivo fue movido exitosamente, copiarlo también al historial
-        # El modelo HistorialDocumentoMaquinaria requiere un archivo, así que copiamos desde la carpeta de eliminados
-        if archivo_ruta_eliminado:
+        # Paso 5: Copiar el archivo al historial ANTES de guardar
+        # El modelo requiere un archivo, así que debemos copiarlo desde el documento original o desde eliminados
+        archivo_copiado_exitosamente = False
+        
+        # Paso 5.1: Intentar copiar desde el archivo original del documento (antes de eliminarlo)
+        if documento.archivo and documento.archivo.name:
             try:
                 from django.core.files.storage import default_storage
                 
-                # Paso 5.1: Guardar el historial primero para tener la instancia
-                historial.save()
-                
-                # Paso 5.2: Copiar el archivo desde la carpeta de eliminados al historial usando el storage
-                # Esto funciona tanto con S3 como con sistema de archivos local
-                if default_storage.exists(archivo_ruta_eliminado):
-                    # Leer el archivo desde el storage (S3 o local)
-                    with default_storage.open(archivo_ruta_eliminado, 'rb') as source_file:
-                        nombre_archivo = archivo_ruta_eliminado.split('/')[-1]  # Extraer solo el nombre del archivo
-                        historial.archivo.save(nombre_archivo, source_file, save=True)  # Guardar copia en historial
-                else:
-                    # Si no existe el archivo eliminado, guardar historial sin archivo pero con la ruta en observaciones
-                    if historial.observaciones:
-                        historial.observaciones += f"\n[Archivo eliminado no encontrado: {archivo_ruta_eliminado}]"
-                    else:
-                        historial.observaciones = f"[Archivo eliminado no encontrado: {archivo_ruta_eliminado}]"
-                    historial.save()
+                # Leer el archivo original antes de que se elimine
+                if default_storage.exists(documento.archivo.name):
+                    with default_storage.open(documento.archivo.name, 'rb') as source_file:
+                        nombre_archivo = documento.archivo.name.split('/')[-1]  # Extraer solo el nombre del archivo
+                        historial.archivo.save(nombre_archivo, source_file, save=False)  # Guardar sin commit aún
+                        archivo_copiado_exitosamente = True
             except Exception as e:
-                # Paso 5.3: Si falla la copia, crear historial sin archivo pero con la ruta en observaciones
-                # Esto permite rastrear dónde está el archivo aunque no se pueda copiar
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.error(f"Error al copiar archivo al historial: {str(e)}")
+                logger.warning(f"No se pudo copiar desde archivo original: {str(e)}")
+        
+        # Paso 5.2: Si no se pudo copiar desde el original, intentar desde la carpeta de eliminados
+        if not archivo_copiado_exitosamente and archivo_ruta_eliminado:
+            try:
+                from django.core.files.storage import default_storage
                 
-                if historial.observaciones:
-                    historial.observaciones += f"\n[Error al copiar archivo eliminado: {archivo_ruta_eliminado} - {str(e)}]"
-                else:
-                    historial.observaciones = f"[Error al copiar archivo eliminado: {archivo_ruta_eliminado} - {str(e)}]"
-                historial.save()
-        else:
-            # Paso 6: Si no había archivo o no se pudo mover, crear historial sin archivo
-            historial.save()
+                if default_storage.exists(archivo_ruta_eliminado):
+                    with default_storage.open(archivo_ruta_eliminado, 'rb') as source_file:
+                        nombre_archivo = archivo_ruta_eliminado.split('/')[-1]  # Extraer solo el nombre del archivo
+                        historial.archivo.save(nombre_archivo, source_file, save=False)  # Guardar sin commit aún
+                        archivo_copiado_exitosamente = True
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"No se pudo copiar desde carpeta eliminados: {str(e)}")
+        
+        # Paso 5.3: Si aún no se pudo copiar, crear un archivo dummy temporal
+        # Esto es necesario porque el modelo requiere un archivo obligatorio
+        if not archivo_copiado_exitosamente:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"No se pudo copiar archivo al historial. Creando archivo dummy.")
+            
+            # Crear un archivo temporal vacío con el nombre del tipo de documento
+            from django.core.files.base import ContentFile
+            nombre_dummy = f"{documento.tipo_documento_id.nombre.replace(' ', '_')}_eliminado.txt"
+            contenido_dummy = ContentFile(
+                f"Archivo eliminado el {date.today().strftime('%d/%m/%Y')}. "
+                f"El archivo original no pudo ser copiado al historial.\n"
+                f"Ruta original: {archivo_ruta_original if archivo_ruta_original else 'N/A'}\n"
+                f"Ruta eliminados: {archivo_ruta_eliminado if archivo_ruta_eliminado else 'N/A'}"
+            )
+            historial.archivo.save(nombre_dummy, contenido_dummy, save=False)
+            
+            # Agregar información a observaciones
+            if historial.observaciones:
+                historial.observaciones += f"\n[ADVERTENCIA: Archivo original no pudo ser copiado al historial. Ruta original: {archivo_ruta_original}]"
+            else:
+                historial.observaciones = f"[ADVERTENCIA: Archivo original no pudo ser copiado al historial. Ruta original: {archivo_ruta_original}]"
+        
+        # Paso 5.4: Guardar el historial con el archivo (ya sea copiado o dummy)
+        historial.save()
         
         # Paso 7: Eliminar el documento de la base de datos
         # El archivo físico ya fue movido, así que esto solo elimina el registro en la BD
@@ -1221,12 +1247,17 @@ def api_historial_documentos_equipo(request, equipo_id):
             # Primero se intenta obtener desde el campo archivo del modelo HistorialDocumentoMaquinaria
             if item.archivo:
                 try:
-                    # Verificar si el archivo existe físicamente en la ubicación del historial
-                    if os.path.exists(item.archivo.path):
+                    from django.core.files.storage import default_storage
+                    
+                    # Verificar si el archivo existe usando el storage (funciona con S3 y sistema de archivos local)
+                    if default_storage.exists(item.archivo.name):
                         archivo_url = item.archivo.url  # URL para descargar el archivo
                         archivo_nombre = item.archivo.name.split('/')[-1]  # Nombre del archivo (sin ruta)
-                except Exception:
+                except Exception as e:
                     # Si falla al obtener la URL del archivo del historial, continuar sin archivo
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Error al obtener URL del archivo del historial: {str(e)}")
                     pass
             
             # Paso 3.2: Si no se encontró el archivo en el historial, buscar en la carpeta de eliminados
