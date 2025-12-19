@@ -1201,8 +1201,7 @@ def api_historial_documentos_equipo(request, equipo_id):
         ).order_by('-fecha_reemplazo')  # Ordenar por fecha de reemplazo (más reciente primero)
         
         # Paso 3: Serializar los registros del historial y localizar archivos
-        # Usamos la misma lógica que en el historial de personal: extraer la ruta de observaciones
-        # y usar default_storage.url() para obtener la URL correcta
+        # Usamos EXACTAMENTE la misma lógica que en el historial de personal
         historial_data = []
         for item in historial:
             # Inicializar variables para URL y nombre del archivo
@@ -1211,7 +1210,7 @@ def api_historial_documentos_equipo(request, equipo_id):
             
             # Paso 3.1: Extraer la ruta del archivo eliminado desde observaciones
             # Formato: [ARCHIVO_ELIMINADO_RUTA: ruta] o [ARCHIVO_ORIGINAL_RUTA: ruta]
-            archivo_ruta_eliminado = None
+            archivo_ruta = None
             if item.observaciones:
                 import re
                 # Buscar el patrón [ARCHIVO_ELIMINADO_RUTA: ruta] o [ARCHIVO_ORIGINAL_RUTA: ruta]
@@ -1219,56 +1218,87 @@ def api_historial_documentos_equipo(request, equipo_id):
                 match_original = re.search(r'\[ARCHIVO_ORIGINAL_RUTA:\s*(.+?)\]', item.observaciones)
                 
                 if match_eliminado:
-                    archivo_ruta_eliminado = match_eliminado.group(1).strip()
+                    archivo_ruta = match_eliminado.group(1).strip()
                 elif match_original:
-                    archivo_ruta_eliminado = match_original.group(1).strip()
+                    archivo_ruta = match_original.group(1).strip()
             
-            # Paso 3.2: Obtener URL usando default_storage.url() con la ruta extraída
-            # Igual que en el historial de personal
-            if archivo_ruta_eliminado:
+            # Paso 3.2: Obtener URL usando EXACTAMENTE la misma lógica que en obtener_url_archivo_historial de personal
+            if archivo_ruta:
                 try:
                     from django.core.files.storage import default_storage
                     import logging
                     logger = logging.getLogger(__name__)
                     
-                    # Verificar que el archivo existe en el storage (S3 o local)
-                    # Primero intentar con la ruta exacta
-                    if default_storage.exists(archivo_ruta_eliminado):
-                        try:
-                            # Usar default_storage.url() como en el historial de personal (funciona mejor con S3)
-                            archivo_url = default_storage.url(archivo_ruta_eliminado)
-                            logger.info(f"URL generada para archivo eliminado (ruta exacta): {archivo_url}")
-                            archivo_nombre = archivo_ruta_eliminado.split('/')[-1]  # Nombre del archivo (sin ruta)
-                        except Exception as e:
-                            logger.warning(f"Error al generar URL con ruta exacta: {str(e)}")
-                            archivo_url = None
-                    
-                    # Si no existe con la ruta exacta, intentar agregar el prefijo 'media/' si no lo tiene
-                    if not archivo_url:
-                        ruta_con_media = f"media/{archivo_ruta_eliminado}" if not archivo_ruta_eliminado.startswith('media/') else archivo_ruta_eliminado
-                        if default_storage.exists(ruta_con_media):
+                    # Si el archivo está en la carpeta de eliminados, construir URL usando default_storage (funciona con S3 y local)
+                    if archivo_ruta.startswith('Documentacion_Eliminada_Maquinarias/'):
+                        # Verificar que el archivo existe en el storage (S3 o local)
+                        # Primero intentar con la ruta exacta
+                        if default_storage.exists(archivo_ruta):
                             try:
-                                archivo_url = default_storage.url(ruta_con_media)
-                                logger.info(f"URL generada para archivo eliminado (con media/): {archivo_url}")
-                                archivo_nombre = archivo_ruta_eliminado.split('/')[-1]  # Nombre del archivo (sin ruta)
+                                # Usar el método url() del storage (funciona tanto con S3 como con local)
+                                archivo_url = default_storage.url(archivo_ruta)
+                                logger.info(f"URL generada para archivo eliminado (ruta exacta): {archivo_url}")
+                                archivo_nombre = archivo_ruta.split('/')[-1]
                             except Exception as e:
-                                logger.warning(f"Error al generar URL con media/: {str(e)}")
-                                archivo_url = None
+                                logger.error(f"Error al generar URL con ruta exacta: {str(e)}", exc_info=True)
+                        
+                        # Si no existe con la ruta exacta, intentar agregar el prefijo 'media/' si no lo tiene
+                        if not archivo_url:
+                            ruta_con_media = f"media/{archivo_ruta}" if not archivo_ruta.startswith('media/') else archivo_ruta
+                            if default_storage.exists(ruta_con_media):
+                                try:
+                                    archivo_url = default_storage.url(ruta_con_media)
+                                    logger.info(f"URL generada para archivo eliminado (con media/): {archivo_url}")
+                                    archivo_nombre = archivo_ruta.split('/')[-1]
+                                except Exception as e:
+                                    logger.error(f"Error al generar URL con media/: {str(e)}", exc_info=True)
+                        
+                        # Fallback: construir URL manualmente usando MEDIA_URL
+                        if not archivo_url:
+                            url_relativa = archivo_ruta.replace('\\', '/')
+                            if not url_relativa.startswith('media/'):
+                                url_relativa = f"media/{url_relativa}"
+                            archivo_url = f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}"
+                            logger.info(f"URL construida manualmente para archivo eliminado: {archivo_url}")
+                            archivo_nombre = archivo_ruta.split('/')[-1]
                     
-                    # Fallback: construir URL manualmente usando MEDIA_URL
-                    if not archivo_url:
-                        url_relativa = archivo_ruta_eliminado.replace('\\', '/')
-                        if not url_relativa.startswith('media/'):
-                            url_relativa = f"media/{url_relativa}"
-                        archivo_url = f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}".replace('//', '/')
-                        logger.info(f"URL construida manualmente para archivo eliminado: {archivo_url}")
-                        archivo_nombre = archivo_ruta_eliminado.split('/')[-1]  # Nombre del archivo (sin ruta)
+                    # Si el archivo_ruta no empieza con Documentacion_Eliminada_Maquinarias/, intentar construir URL desde la ruta original
+                    else:
+                        # Intentar obtener URL usando default_storage (funciona con S3 y local)
+                        # Primero verificar si el archivo existe en el storage con la ruta exacta
+                        if default_storage.exists(archivo_ruta):
+                            try:
+                                archivo_url = default_storage.url(archivo_ruta)
+                                logger.info(f"URL generada para {archivo_ruta}: {archivo_url}")
+                                archivo_nombre = archivo_ruta.split('/')[-1]
+                            except Exception as e:
+                                logger.error(f"Error al generar URL: {str(e)}", exc_info=True)
+                        
+                        # Si no existe, puede ser que la ruta no incluya el prefijo 'media/'
+                        if not archivo_url and not archivo_ruta.startswith('media/'):
+                            ruta_con_media = f"media/{archivo_ruta}"
+                            if default_storage.exists(ruta_con_media):
+                                try:
+                                    archivo_url = default_storage.url(ruta_con_media)
+                                    logger.info(f"URL generada para {ruta_con_media}: {archivo_url}")
+                                    archivo_nombre = archivo_ruta.split('/')[-1]
+                                except Exception as e:
+                                    logger.error(f"Error al generar URL con media/: {str(e)}", exc_info=True)
+                        
+                        # Si aún no existe, intentar construir URL manualmente usando MEDIA_URL
+                        if not archivo_url:
+                            url_relativa = archivo_ruta.replace('\\', '/')
+                            if not url_relativa.startswith('media/'):
+                                url_relativa = f"media/{url_relativa}"
+                            archivo_url = f"{settings.MEDIA_URL.rstrip('/')}/{url_relativa}"
+                            logger.info(f"URL construida manualmente para {archivo_ruta}: {archivo_url}")
+                            archivo_nombre = archivo_ruta.split('/')[-1]
                         
                 except Exception as e:
                     # Si falla al obtener la URL del archivo eliminado, continuar sin archivo
                     import logging
                     logger = logging.getLogger(__name__)
-                    logger.warning(f"Error al obtener URL del archivo eliminado: {str(e)}")
+                    logger.error(f"Error al obtener URL del archivo eliminado: {str(e)}", exc_info=True)
                     pass
             
             historial_data.append({
