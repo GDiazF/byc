@@ -1252,17 +1252,44 @@ def api_historial_documentos_equipo(request, equipo_id):
                     # Verificar si el archivo existe usando el storage (funciona con S3 y sistema de archivos local)
                     if default_storage.exists(item.archivo.name):
                         # Obtener la URL del archivo usando el método .url del FileField
-                        # Si esto no funciona correctamente, construir la URL manualmente
                         try:
                             archivo_url = item.archivo.url
-                            # Si la URL no tiene el prefijo /media/ o http/https, construirla manualmente
-                            if archivo_url and not archivo_url.startswith('http') and not archivo_url.startswith('/media/'):
-                                # Construir la URL usando MEDIA_URL
-                                media_url = settings.MEDIA_URL.rstrip('/')
-                                archivo_name = item.archivo.name.lstrip('/')
-                                archivo_url = f"{media_url}/{archivo_name}".replace('//', '/')
-                        except Exception:
+                            
+                            # Para S3, la URL puede venir sin el prefijo /media/ en la ruta
+                            # Necesitamos agregarlo si falta
+                            if archivo_url:
+                                # Si es una URL de S3 (contiene .s3. o amazonaws.com) pero no tiene /media/ en la ruta
+                                if ('s3.' in archivo_url or 'amazonaws.com' in archivo_url) and '/media/' not in archivo_url:
+                                    # Extraer el dominio y la ruta
+                                    # Ejemplo: https://bucket.s3.region.amazonaws.com/Documentacion_Maquinarias/...
+                                    # Debe ser: https://bucket.s3.region.amazonaws.com/media/Documentacion_Maquinarias/...
+                                    from urllib.parse import urlparse, urlunparse
+                                    parsed = urlparse(archivo_url)
+                                    # Reconstruir la URL con /media/ antes de la ruta
+                                    path = parsed.path.lstrip('/')
+                                    # Solo agregar /media/ si no está ya presente
+                                    if not path.startswith('media/'):
+                                        path = f"media/{path}"
+                                    # Reconstruir la URL completa
+                                    archivo_url = urlunparse((
+                                        parsed.scheme,
+                                        parsed.netloc,
+                                        '/' + path,
+                                        parsed.params,
+                                        parsed.query,
+                                        parsed.fragment
+                                    ))
+                                # Si es una URL relativa sin /media/, agregarlo
+                                elif archivo_url.startswith('/') and not archivo_url.startswith('/media/'):
+                                    archivo_url = f"/media{archivo_url}"
+                                # Si no empieza con / ni http, agregar /media/
+                                elif not archivo_url.startswith('/') and not archivo_url.startswith('http'):
+                                    archivo_url = f"/media/{archivo_url}"
+                        except Exception as e:
                             # Si .url falla, construir la URL manualmente usando MEDIA_URL
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.warning(f"Error al obtener URL con .url: {str(e)}")
                             media_url = settings.MEDIA_URL.rstrip('/')
                             archivo_name = item.archivo.name.lstrip('/')
                             archivo_url = f"{media_url}/{archivo_name}".replace('//', '/')
