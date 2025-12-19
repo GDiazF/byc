@@ -36,6 +36,7 @@
     
     /**
      * Actualiza el badge del contador de notificaciones.
+     * Solo muestra el badge si hay notificaciones (count > 0).
      */
     function actualizarBadge(count) {
         const badge = document.getElementById('notificationsBadge');
@@ -47,8 +48,10 @@
                 badge.style.display = 'flex';
                 badge.style.visibility = 'visible';
             } else {
+                // Ocultar badge completamente cuando no hay notificaciones
                 badge.style.display = 'none';
                 badge.style.visibility = 'hidden';
+                badge.textContent = ''; // Limpiar el texto para evitar que muestre "0"
             }
         }
     }
@@ -296,6 +299,14 @@
      * Inicialización al cargar la página.
      */
     function inicializar() {
+        // Asegurarse de que el badge esté oculto inicialmente
+        const badge = document.getElementById('notificationsBadge');
+        if (badge) {
+            badge.style.display = 'none';
+            badge.style.visibility = 'hidden';
+            badge.textContent = '';
+        }
+        
         // Cargar contador Y notificaciones al inicio (sin lazy loading)
         actualizarContadorDesdeServidor();
         cargarNotificaciones();
