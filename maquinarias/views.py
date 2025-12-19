@@ -1251,7 +1251,22 @@ def api_historial_documentos_equipo(request, equipo_id):
                     
                     # Verificar si el archivo existe usando el storage (funciona con S3 y sistema de archivos local)
                     if default_storage.exists(item.archivo.name):
-                        archivo_url = item.archivo.url  # URL para descargar el archivo
+                        # Obtener la URL del archivo usando el método .url del FileField
+                        # Si esto no funciona correctamente, construir la URL manualmente
+                        try:
+                            archivo_url = item.archivo.url
+                            # Si la URL no tiene el prefijo /media/ o http/https, construirla manualmente
+                            if archivo_url and not archivo_url.startswith('http') and not archivo_url.startswith('/media/'):
+                                # Construir la URL usando MEDIA_URL
+                                media_url = settings.MEDIA_URL.rstrip('/')
+                                archivo_name = item.archivo.name.lstrip('/')
+                                archivo_url = f"{media_url}/{archivo_name}".replace('//', '/')
+                        except Exception:
+                            # Si .url falla, construir la URL manualmente usando MEDIA_URL
+                            media_url = settings.MEDIA_URL.rstrip('/')
+                            archivo_name = item.archivo.name.lstrip('/')
+                            archivo_url = f"{media_url}/{archivo_name}".replace('//', '/')
+                        
                         archivo_nombre = item.archivo.name.split('/')[-1]  # Nombre del archivo (sin ruta)
                 except Exception as e:
                     # Si falla al obtener la URL del archivo del historial, continuar sin archivo
@@ -1281,8 +1296,10 @@ def api_historial_documentos_equipo(request, equipo_id):
                         for archivo in os.listdir(carpeta_eliminados):
                             if archivo.startswith(nombre_buscar):
                                 # Construir ruta relativa y URL del archivo encontrado
-                                ruta_relativa = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), archivo)
-                                archivo_url = os.path.join(settings.MEDIA_URL.rstrip('/'), ruta_relativa).replace('\\', '/')
+                                ruta_relativa = os.path.join('Documentacion_Eliminada_Maquinarias', str(equipo_id), archivo).replace('\\', '/')
+                                # Construir URL usando MEDIA_URL para asegurar el prefijo correcto
+                                media_url = settings.MEDIA_URL.rstrip('/')
+                                archivo_url = f"{media_url}/{ruta_relativa}".replace('//', '/')
                                 archivo_nombre = archivo
                                 break  # Salir del loop una vez encontrado
                 except Exception:
