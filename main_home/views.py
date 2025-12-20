@@ -17,7 +17,7 @@ from django.views import View
 from .forms import PasswordChangeForm
 
 
-class HomeView(TemplateView, LoginRequiredMixin):
+class HomeView(LoginRequiredMixin, TemplateView):
     """
     Vista principal del dashboard de la aplicación.
     
