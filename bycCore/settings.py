@@ -343,3 +343,12 @@ SCHEDULER_AUTOSTART = True  # Iniciar automaticamente cuando Django arranca
 SCHEDULER_API_ENABLED = True  # Habilitar API REST para gestionar trabajos (opcional)
 
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
+
+
+# 15 minutos * 60 segundos = 900 segundos
+#SESSION_COOKIE_AGE = 15 * 60
+SESSION_COOKIE_AGE = 10
+# 2. Reiniciar el reloj con cada petición
+SESSION_SAVE_EVERY_REQUEST = True
+# Cierra la sesión si el usuario cierra el navegador
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
