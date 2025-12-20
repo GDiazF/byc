@@ -345,9 +345,8 @@ SCHEDULER_API_ENABLED = True  # Habilitar API REST para gestionar trabajos (opci
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
 
 
-# 15 minutos * 60 segundos = 900 segundos
-#SESSION_COOKIE_AGE = 15 * 60
-SESSION_COOKIE_AGE = 10
+# 20 minutos * 60 segundos = 1200 segundos
+SESSION_COOKIE_AGE = 20 * 60
 # 2. Reiniciar el reloj con cada petición
 SESSION_SAVE_EVERY_REQUEST = True
 # Cierra la sesión si el usuario cierra el navegador
