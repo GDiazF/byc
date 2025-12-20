@@ -264,21 +264,42 @@ class FaenaAdmin(admin.ModelAdmin):
         from django.contrib.admin.utils import NestedObjects
         from django.db import router
         
-        # Usar el collector de Django para obtener objetos relacionados
-        collector = NestedObjects(using=router.db_for_write(objs[0]))
-        collector.collect(objs)
-        
-        # Si el usuario es superusuario, permitir eliminar todos los objetos relacionados
-        # sin verificar permisos individuales
-        if request.user.is_superuser:
-            # Retornar los objetos a eliminar sin verificar permisos
-            to_delete = collector.nested()
-            protected = []
-            model_count = {model._meta.verbose_name_plural: len(objs) for model, objs in collector.model_objs.items()}
-            return to_delete, model_count, protected, collector.perms_lacking
-        
-        # Para usuarios no superusuarios, usar el comportamiento por defecto
-        return super().get_deleted_objects(objs, request)
+        try:
+            if not objs:
+                return super().get_deleted_objects(objs, request)
+            
+            # Usar el collector de Django para obtener objetos relacionados
+            collector = NestedObjects(using=router.db_for_write(objs[0]))
+            collector.collect(objs)
+            
+            # Si el usuario es superusuario, limpiar la lista de permisos faltantes
+            if request.user.is_superuser:
+                collector.perms_lacking = set()
+            
+            # Retornar usando el método del padre
+            return super().get_deleted_objects(objs, request)
+        except Exception as e:
+            # Si hay algún error, usar el comportamiento por defecto
+            # Esto puede ocurrir si hay problemas con las relaciones o permisos
+            return super().get_deleted_objects(objs, request)
+    
+    def delete_model(self, request, obj):
+        """
+        Método personalizado para eliminar una faena y sus objetos relacionados.
+        Establece el usuario actual para las señales de historial.
+        """
+        # Pasar usuario a la señal para registrar en historial
+        obj._current_user = request.user
+        obj.delete()
+    
+    def delete_queryset(self, request, queryset):
+        """
+        Método personalizado para eliminar múltiples faenas y sus objetos relacionados.
+        Establece el usuario actual para las señales de historial.
+        """
+        for obj in queryset:
+            obj._current_user = request.user
+        queryset.delete()
     
     def descripcion_short(self, obj):
         """
