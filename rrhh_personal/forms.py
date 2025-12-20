@@ -92,6 +92,11 @@ class PersonalCreationForm(forms.ModelForm):
             'certificado_estudios', 'certificado_residencia', 'fotocopia_carnet',
             'fotocopia_finiquito', 'comprobante_banco'
         ]
+        error_messages = {
+            'rut': {
+                'unique': 'Ya existe un personal con este RUT.',
+            },
+        }
         widgets = {
             'rut': forms.TextInput(attrs={'type': 'text', 'class': 'form-control'}),
             'dvrut': forms.TextInput(attrs={'type': 'text', 'class': 'form-control', 'id': 'id_dvrut', 'readonly': 'readonly'}),
