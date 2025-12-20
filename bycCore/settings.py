@@ -343,3 +343,10 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'https://webapp.gruasbyc.cl',
 ]
+
+# 20 minutos * 60 segundos = 1200 segundos
+SESSION_COOKIE_AGE = 20 * 60
+# 2. Reiniciar el reloj con cada petición
+SESSION_SAVE_EVERY_REQUEST = True
+# Cierra la sesión si el usuario cierra el navegador
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
