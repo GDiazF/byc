@@ -256,6 +256,30 @@ class FaenaAdmin(admin.ModelAdmin):
         }),
     )
     
+    def get_deleted_objects(self, objs, request):
+        """
+        Sobrescribe el método para permitir eliminación en cascada sin verificar permisos
+        para objetos relacionados cuando el usuario es superusuario.
+        """
+        from django.contrib.admin.utils import NestedObjects
+        from django.db import router
+        
+        # Usar el collector de Django para obtener objetos relacionados
+        collector = NestedObjects(using=router.db_for_write(objs[0]))
+        collector.collect(objs)
+        
+        # Si el usuario es superusuario, permitir eliminar todos los objetos relacionados
+        # sin verificar permisos individuales
+        if request.user.is_superuser:
+            # Retornar los objetos a eliminar sin verificar permisos
+            to_delete = collector.nested()
+            protected = []
+            model_count = {model._meta.verbose_name_plural: len(objs) for model, objs in collector.model_objs.items()}
+            return to_delete, model_count, protected, collector.perms_lacking
+        
+        # Para usuarios no superusuarios, usar el comportamiento por defecto
+        return super().get_deleted_objects(objs, request)
+    
     def descripcion_short(self, obj):
         """
         Muestra una versión corta de la descripción de la faena (máximo 50 caracteres).
@@ -550,9 +574,9 @@ class HistorialFaenaAdmin(admin.ModelAdmin):
         """
         return False
     
-    def has_delete_permission(self, request, obj=None):
+    def has_change_permission(self, request, obj=None):
         """
-        No permite eliminar registros del historial.
+        No permite modificar registros del historial.
         El historial es de solo lectura para mantener la integridad de la auditoría.
         
         Parámetros:
@@ -560,9 +584,23 @@ class HistorialFaenaAdmin(admin.ModelAdmin):
             obj: Instancia de HistorialFaena (opcional)
         
         Retorna:
-            bool: Siempre False (no permitir eliminación)
+            bool: Siempre False (no permitir modificación)
         """
         return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """
+        Permite eliminar registros del historial solo para superusuarios.
+        Esto es necesario para permitir la eliminación en cascada cuando se elimina una Faena.
+        
+        Parámetros:
+            request: HttpRequest
+            obj: Instancia de HistorialFaena (opcional)
+        
+        Retorna:
+            bool: True si el usuario es superusuario, False en caso contrario
+        """
+        return request.user.is_superuser
     
     def get_queryset(self, request):
         """
