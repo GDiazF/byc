@@ -249,7 +249,10 @@ class FaenaAdmin(admin.ModelAdmin):
     # Agrupación de campos en el formulario de edición
     fieldsets = (
         ('Información de la Faena', {
-            'fields': ('nombre', 'ubicacion', 'descripcion', 'activo')
+            'fields': ('codigo', 'nombre', 'ubicacion', 'descripcion', 'activo')
+        }),
+        ('Fechas', {
+            'fields': ('fecha_inicio', 'fecha_fin')
         }),
     )
     
@@ -279,13 +282,19 @@ class FaenaAdmin(admin.ModelAdmin):
         Retorna:
             str: HTML con badge mostrando la cantidad de asignaciones activas
         """
-        count = obj.asignaciones_faena.filter(activo=True).count()
-        color = '#27ae60' if count > 0 else '#95a5a6'  # Verde si hay asignaciones, gris si no
-        return format_html(
-            '<span style="background-color: {}; color: white; padding: 2px 8px; '
-            'border-radius: 3px; font-weight: bold;">{} asignación{}</span>',
-            color, count, 'es' if count != 1 else ''
-        )
+        try:
+            if obj.pk:
+                # Usar el related_name correcto: 'asignaciones' según el modelo AsignacionFaena
+                count = obj.asignaciones.filter(activo=True).count()
+                color = '#27ae60' if count > 0 else '#95a5a6'  # Verde si hay asignaciones, gris si no
+                return format_html(
+                    '<span style="background-color: {}; color: white; padding: 2px 8px; '
+                    'border-radius: 3px; font-weight: bold;">{} asignación{}</span>',
+                    color, count, 'es' if count != 1 else ''
+                )
+            return format_html('<span style="color: #95a5a6;">-</span>')
+        except Exception as e:
+            return format_html('<span style="color: red;">Error</span>')
     asignaciones_count.short_description = "Asignaciones Activas"
 
 @admin.register(AsignacionFaena)
