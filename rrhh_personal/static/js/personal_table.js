@@ -1007,7 +1007,12 @@ function renderizarDocumentacionPersonal(data, container) {
         <!-- Nav tabs para documentación -->
         <ul class="nav nav-tabs mb-3" id="docModalTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="lic-conducir-tab" data-bs-toggle="tab" data-bs-target="#lic-conducir" type="button">
+                <button class="nav-link active" id="documentos-personales-tab" data-bs-toggle="tab" data-bs-target="#documentos-personales" type="button">
+                    <i class="bi bi-file-earmark-text me-1"></i>Documentos Personales
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="lic-conducir-tab" data-bs-toggle="tab" data-bs-target="#lic-conducir" type="button">
                     <i class="bi bi-card-text me-1"></i>Licencias Conducir
                 </button>
             </li>
@@ -1024,11 +1029,6 @@ function renderizarDocumentacionPersonal(data, container) {
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="examenes-tab" data-bs-toggle="tab" data-bs-target="#examenes" type="button">
                     <i class="bi bi-clipboard2-pulse me-1"></i>Exámenes
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="documentos-personales-tab" data-bs-toggle="tab" data-bs-target="#documentos-personales" type="button">
-                    <i class="bi bi-file-earmark-text me-1"></i>Documentos Personales
                 </button>
             </li>
         </ul>
