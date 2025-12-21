@@ -260,11 +260,15 @@ function renderizarEquipos(equipos) {
     tbody.innerHTML = equipos.map(equipo => `
         <tr>
             <td>
-                <strong style="cursor: pointer; color: #0d6efd; text-decoration: underline;" 
-                        onclick="mostrarDetalleEquipo(${equipo.equipo_id})" 
-                        title="Click para ver información del equipo y documentación">
+                <a href="javascript:void(0);" 
+                   class="text-primary text-decoration-none fw-bold" 
+                   onclick="mostrarDetalleEquipo(${equipo.equipo_id}); return false;" 
+                   style="cursor: pointer;"
+                   onmouseover="this.style.textDecoration='underline';" 
+                   onmouseout="this.style.textDecoration='none';"
+                   title="Click para ver información del equipo y documentación">
                     ${equipo.nombreEquipo}
-                </strong>
+                </a>
             </td>
             <td>
                 <span class="badge bg-secondary">${equipo.tipoEquipo.sigla}</span>

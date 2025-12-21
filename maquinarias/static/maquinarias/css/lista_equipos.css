@@ -98,6 +98,17 @@ tr.equipo-inactivo {
     background-color: #f8f9fa;
 }
 
+/* Estilo para nombres de equipos clickeables */
+.table td a.text-primary {
+    color: #0d6efd !important;
+    transition: all 0.2s ease;
+}
+
+.table td a.text-primary:hover {
+    color: #0a58ca !important;
+    text-decoration: underline !important;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .table th, .table td {
