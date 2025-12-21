@@ -363,10 +363,11 @@ function validarConflictoEquipoEnFechas(equipoId) {
     
     const asignacionesConflictivas = [];
     
-    // Buscar asignaciones del equipo que se solapen con las fechas seleccionadas
-    // Excluir asignaciones de la faena actual (puede haber múltiples asignaciones del mismo equipo a la misma faena)
+    // Buscar TODAS las asignaciones del equipo que se solapen con las fechas seleccionadas
+    // Esto incluye tanto asignaciones a otras faenas como OTs
+    // Excluir asignaciones de la faena actual (las OTs tienen faena_id: null, así que pasan el filtro)
     const asignacionesEquipo = todasAsignacionesEquipos.filter(asig => 
-        asig.equipo_id === equipoId && asig.faena_id !== faena.id
+        asig.equipo_id === equipoId && (asig.faena_id === null || asig.faena_id !== faena.id)
     );
     
     for (const asignacion of asignacionesEquipo) {
@@ -404,45 +405,6 @@ function validarConflictoEquipoEnFechas(equipoId) {
         
         if (haySolapamiento) {
             asignacionesConflictivas.push(asignacion);
-        }
-    }
-    
-    // También verificar conflictos con OTs del equipo
-    const equipo = equipos.find(eq => eq.id === equipoId);
-    if (equipo && equipo.asignacion_actual && equipo.asignacion_actual.tipo === 'ot') {
-        const otInfo = equipo.asignacion_actual;
-        const otInicio = otInfo.fecha_inicio;
-        const otFin = otInfo.fecha_fin;
-        
-        // Verificar solapamiento con OT
-        let haySolapamientoOT = false;
-        
-        if (fechaFin) {
-            if (otFin) {
-                if (otInicio <= fechaFin && otFin >= fechaInicio) {
-                    haySolapamientoOT = true;
-                }
-            } else {
-                if (otInicio <= fechaFin) {
-                    haySolapamientoOT = true;
-                }
-            }
-        } else {
-            if (otFin) {
-                if (otFin >= fechaInicio) {
-                    haySolapamientoOT = true;
-                }
-            } else {
-                haySolapamientoOT = true;
-            }
-        }
-        
-        if (haySolapamientoOT) {
-            asignacionesConflictivas.push({ 
-                faena_nombre: `OT: ${otInfo.folio}`, 
-                fecha_inicio: otInicio, 
-                fecha_fin: otFin 
-            });
         }
     }
     

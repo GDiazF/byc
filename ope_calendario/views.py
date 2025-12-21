@@ -2203,7 +2203,27 @@ def asignar_equipos_faena(request, faena_id):
             'faena_id': asig.faena.id,
             'faena_nombre': asig.faena.nombre,
             'fecha_inicio': asig.fecha_inicio.isoformat(),
-            'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None
+            'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None,
+            'tipo': 'faena'
+        })
+    
+    # También incluir OTs activas para validación
+    ots_activas = OrdenTrabajo.objects.filter(
+        fecha_inicio__isnull=False
+    ).exclude(
+        estado_ot_id__nombre__iexact='FINALIZADA'
+    ).exclude(
+        estado_ot_id__nombre__iexact='CANCELADA'
+    ).select_related('equipo_id').order_by('equipo_id', 'fecha_inicio')
+
+    for ot in ots_activas:
+        todas_asignaciones_data.append({
+            'equipo_id': ot.equipo_id.equipo_id,
+            'faena_id': None,  # No aplica para OT
+            'faena_nombre': f"OT: {ot.folio}",
+            'fecha_inicio': ot.fecha_inicio.isoformat(),
+            'fecha_fin': ot.fecha_fin.isoformat() if ot.fecha_fin else None,
+            'tipo': 'ot'
         })
     
     # Preparar datos de la faena
