@@ -66,6 +66,41 @@ function initDataEquipos(equiposData, faenaData, fechaInicio, fechaFin, asignaci
     }
     document.getElementById('filtroTipo').addEventListener('change', renderizarTablaEquipos);  // Filtro por tipo
     document.getElementById('filtroEmpresa').addEventListener('change', renderizarTablaEquipos);  // Filtro por empresa
+    
+    // Paso 6: Event listeners para validación dinámica cuando cambien las fechas
+    const fechaInicioInput = document.getElementById('fecha_inicio');
+    const fechaFinInput = document.getElementById('fecha_fin');
+    if (fechaInicioInput) {
+        fechaInicioInput.addEventListener('change', function() {
+            setTimeout(renderizarTablaEquipos, 100); // Pequeño delay para que DatePickerChile sincronice
+        });
+        fechaInicioInput.addEventListener('blur', function() {
+            setTimeout(renderizarTablaEquipos, 100);
+        });
+    }
+    if (fechaFinInput) {
+        fechaFinInput.addEventListener('change', function() {
+            setTimeout(renderizarTablaEquipos, 100);
+        });
+        fechaFinInput.addEventListener('blur', function() {
+            setTimeout(renderizarTablaEquipos, 100);
+        });
+    }
+    
+    // También escuchar cambios del DatePickerChile si está disponible
+    if (window.DatePickerChile) {
+        // Esperar a que DatePickerChile esté completamente inicializado
+        setTimeout(() => {
+            if (typeof window.DatePickerChile.onChange === 'function') {
+                window.DatePickerChile.onChange('fecha_inicio', function() {
+                    setTimeout(renderizarTablaEquipos, 100);
+                });
+                window.DatePickerChile.onChange('fecha_fin', function() {
+                    setTimeout(renderizarTablaEquipos, 100);
+                });
+            }
+        }, 500);
+    }
 }
 
 // ============================================================================
@@ -224,8 +259,12 @@ function renderizarTablaEquipos() {
             // Validar si el equipo tiene asignación conflictiva en las fechas seleccionadas
             const tieneConflictoEnFechas = validarConflictoEquipoEnFechas(eq.id);
             // Debug: verificar que se encuentren todos los conflictos
-            if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 1) {
-                console.log(`Equipo ${eq.nombre} (ID: ${eq.id}) tiene ${tieneConflictoEnFechas.asignaciones.length} conflictos:`, tieneConflictoEnFechas.asignaciones);
+            if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones) {
+                if (tieneConflictoEnFechas.asignaciones.length > 1) {
+                    console.log(`[TABLA] Equipo ${eq.nombre} (ID: ${eq.id}) tiene ${tieneConflictoEnFechas.asignaciones.length} conflictos:`, tieneConflictoEnFechas.asignaciones);
+                } else if (tieneConflictoEnFechas.asignaciones.length === 1) {
+                    console.log(`[TABLA] Equipo ${eq.nombre} (ID: ${eq.id}) tiene 1 conflicto:`, tieneConflictoEnFechas.asignaciones[0]);
+                }
             }
             const tieneAsignacionFinal = tieneAsignacion || tieneConflictoEnFechas.conflicto;
             
@@ -318,11 +357,11 @@ function validarConflictoEquipoEnFechas(equipoId) {
     if (window.DatePickerChile && typeof window.DatePickerChile.getValor === 'function') {
         fechaInicio = window.DatePickerChile.getValor('fecha_inicio');
         fechaFin = window.DatePickerChile.getValor('fecha_fin');
-    } else {
-        // Fallback: obtener del input hidden o del input original
+    }
+    
+    // Fallback: obtener del input hidden o del input original
+    if (!fechaInicio) {
         const fechaInicioHidden = document.getElementById('fecha_inicio_hidden');
-        const fechaFinHidden = document.getElementById('fecha_fin_hidden');
-        
         if (fechaInicioHidden && fechaInicioHidden.value) {
             fechaInicio = fechaInicioHidden.value;
         } else {
@@ -336,7 +375,10 @@ function validarConflictoEquipoEnFechas(equipoId) {
                 }
             }
         }
-        
+    }
+    
+    if (!fechaFin) {
+        const fechaFinHidden = document.getElementById('fecha_fin_hidden');
         if (fechaFinHidden && fechaFinHidden.value) {
             fechaFin = fechaFinHidden.value;
         } else {
@@ -352,7 +394,15 @@ function validarConflictoEquipoEnFechas(equipoId) {
         }
     }
     
-    // Si no hay fecha de inicio seleccionada, no hay conflicto
+    // Si no hay fecha de inicio seleccionada, usar fechas de la faena como fallback
+    if (!fechaInicio && faenaFechaInicio) {
+        fechaInicio = faenaFechaInicio;
+    }
+    if (!fechaFin && faenaFechaFin) {
+        fechaFin = faenaFechaFin;
+    }
+    
+    // Si aún no hay fecha de inicio, no hay conflicto
     if (!fechaInicio) {
         return { conflicto: false, asignaciones: [] };
     }

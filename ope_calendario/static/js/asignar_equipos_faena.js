@@ -236,8 +236,12 @@ function renderizarTablaEquipos() {
             // Validar si el equipo tiene asignación conflictiva en las fechas seleccionadas
             const tieneConflictoEnFechas = validarConflictoEquipoEnFechas(eq.id);
             // Debug: verificar que se encuentren todos los conflictos
-            if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 1) {
-                console.log(`Equipo ${eq.nombre} (ID: ${eq.id}) tiene ${tieneConflictoEnFechas.asignaciones.length} conflictos:`, tieneConflictoEnFechas.asignaciones);
+            if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones) {
+                if (tieneConflictoEnFechas.asignaciones.length > 1) {
+                    console.log(`[TABLA] Equipo ${eq.nombre} (ID: ${eq.id}) tiene ${tieneConflictoEnFechas.asignaciones.length} conflictos:`, tieneConflictoEnFechas.asignaciones);
+                } else if (tieneConflictoEnFechas.asignaciones.length === 1) {
+                    console.log(`[TABLA] Equipo ${eq.nombre} (ID: ${eq.id}) tiene 1 conflicto:`, tieneConflictoEnFechas.asignaciones[0]);
+                }
             }
             const tieneAsignacionFinal = tieneAsignacion || tieneConflictoEnFechas.conflicto;
             
@@ -249,17 +253,27 @@ function renderizarTablaEquipos() {
             let asignacionActualHTML = '-';
             if (tieneAsignacionFinal) {
                 // SIEMPRE priorizar mostrar los conflictos encontrados en las fechas seleccionadas
-                if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 0) {
+                if (tieneConflictoEnFechas && tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 0) {
                     // Mostrar TODAS las asignaciones conflictivas en fechas seleccionadas
                     asignacionActualHTML = tieneConflictoEnFechas.asignaciones.map(asig => {
                         return asig.faena_nombre || '-';
                     }).join(', ');
+                    // Debug: verificar que se muestren todas
+                    if (tieneConflictoEnFechas.asignaciones.length > 1) {
+                        console.log(`[RENDER] Equipo ${eq.nombre}: Mostrando ${tieneConflictoEnFechas.asignaciones.length} asignaciones: ${asignacionActualHTML}`);
+                    }
                 } else if (asignacionInfo) {
                     // Si no hay conflictos en fechas seleccionadas, mostrar la asignación general
                     if (asignacionInfo.tipo === 'ot') {
                         asignacionActualHTML = `OT: ${asignacionInfo.folio}`;
                     } else {
                         asignacionActualHTML = asignacionInfo.faena || '-';
+                    }
+                    // Debug: verificar por qué no se muestran los conflictos
+                    if (tieneConflictoEnFechas && tieneConflictoEnFechas.conflicto === false) {
+                        console.log(`[RENDER] Equipo ${eq.nombre}: No hay conflictos en fechas seleccionadas, usando asignacionInfo:`, asignacionInfo);
+                    } else if (!tieneConflictoEnFechas || !tieneConflictoEnFechas.asignaciones || tieneConflictoEnFechas.asignaciones.length === 0) {
+                        console.log(`[RENDER] Equipo ${eq.nombre}: tieneConflictoEnFechas:`, tieneConflictoEnFechas);
                     }
                 }
             }
@@ -330,11 +344,11 @@ function validarConflictoEquipoEnFechas(equipoId) {
     if (window.DatePickerChile && typeof window.DatePickerChile.getValor === 'function') {
         fechaInicio = window.DatePickerChile.getValor('fecha_inicio');
         fechaFin = window.DatePickerChile.getValor('fecha_fin');
-    } else {
-        // Fallback: obtener del input hidden o del input original
+    }
+    
+    // Fallback: obtener del input hidden o del input original
+    if (!fechaInicio) {
         const fechaInicioHidden = document.getElementById('fecha_inicio_hidden');
-        const fechaFinHidden = document.getElementById('fecha_fin_hidden');
-        
         if (fechaInicioHidden && fechaInicioHidden.value) {
             fechaInicio = fechaInicioHidden.value;
         } else {
@@ -348,7 +362,10 @@ function validarConflictoEquipoEnFechas(equipoId) {
                 }
             }
         }
-        
+    }
+    
+    if (!fechaFin) {
+        const fechaFinHidden = document.getElementById('fecha_fin_hidden');
         if (fechaFinHidden && fechaFinHidden.value) {
             fechaFin = fechaFinHidden.value;
         } else {
@@ -364,7 +381,15 @@ function validarConflictoEquipoEnFechas(equipoId) {
         }
     }
     
-    // Si no hay fecha de inicio seleccionada, no hay conflicto
+    // Si no hay fecha de inicio seleccionada, usar fechas de la faena como fallback
+    if (!fechaInicio && faenaFechaInicio) {
+        fechaInicio = faenaFechaInicio;
+    }
+    if (!fechaFin && faenaFechaFin) {
+        fechaFin = faenaFechaFin;
+    }
+    
+    // Si aún no hay fecha de inicio, no hay conflicto
     if (!fechaInicio) {
         return { conflicto: false, asignaciones: [] };
     }
