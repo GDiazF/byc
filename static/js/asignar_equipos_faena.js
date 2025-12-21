@@ -292,11 +292,11 @@ function renderizarTablaEquipos() {
     actualizarBotonAsignar();
 }
 
-// Función para validar si un equipo tiene conflicto en las fechas seleccionadas
+// Función para validar si un equipo tiene conflictos en las fechas seleccionadas
 // Parámetros:
 //   equipoId: Number - ID del equipo a validar
 // Retorna:
-//   Object - { conflicto: boolean, asignacion: Object|null }
+//   Object - { conflicto: boolean, asignaciones: Array } - Array con todas las asignaciones que conflictan
 function validarConflictoEquipoEnFechas(equipoId) {
     // Obtener fechas seleccionadas del formulario
     let fechaInicio = null;
@@ -342,8 +342,10 @@ function validarConflictoEquipoEnFechas(equipoId) {
     
     // Si no hay fecha de inicio seleccionada, no hay conflicto
     if (!fechaInicio) {
-        return { conflicto: false, asignacion: null };
+        return { conflicto: false, asignaciones: [] };
     }
+    
+    const asignacionesConflictivas = [];
     
     // Buscar asignaciones del equipo que se solapen con las fechas seleccionadas
     // Excluir asignaciones de la faena actual (puede haber múltiples asignaciones del mismo equipo a la misma faena)
@@ -356,17 +358,19 @@ function validarConflictoEquipoEnFechas(equipoId) {
         const asigFin = asignacion.fecha_fin;
         
         // Verificar solapamiento: dos rangos se solapan si inicio1 <= fin2 AND inicio2 <= fin1
+        let haySolapamiento = false;
+        
         if (fechaFin) {
             // Rango con fecha fin: verificar solapamiento
             if (asigFin) {
                 // Ambas tienen fecha fin: se solapan si inicio1 <= fin2 AND inicio2 <= fin1
                 if (asigInicio <= fechaFin && asigFin >= fechaInicio) {
-                    return { conflicto: true, asignacion: asignacion };
+                    haySolapamiento = true;
                 }
             } else {
                 // La asignación no tiene fecha fin: se solapa si comienza antes o en la fecha fin seleccionada
                 if (asigInicio <= fechaFin) {
-                    return { conflicto: true, asignacion: asignacion };
+                    haySolapamiento = true;
                 }
             }
         } else {
@@ -374,12 +378,16 @@ function validarConflictoEquipoEnFechas(equipoId) {
             if (asigFin) {
                 // La asignación tiene fecha fin: se solapa si termina después o en la fecha inicio seleccionada
                 if (asigFin >= fechaInicio) {
-                    return { conflicto: true, asignacion: asignacion };
+                    haySolapamiento = true;
                 }
             } else {
                 // Ninguna tiene fecha fin: siempre hay conflicto si hay asignación
-                return { conflicto: true, asignacion: asignacion };
+                haySolapamiento = true;
             }
+        }
+        
+        if (haySolapamiento) {
+            asignacionesConflictivas.push(asignacion);
         }
     }
     
@@ -391,28 +399,41 @@ function validarConflictoEquipoEnFechas(equipoId) {
         const otFin = otInfo.fecha_fin;
         
         // Verificar solapamiento con OT
+        let haySolapamientoOT = false;
+        
         if (fechaFin) {
             if (otFin) {
                 if (otInicio <= fechaFin && otFin >= fechaInicio) {
-                    return { conflicto: true, asignacion: { faena_nombre: `OT: ${otInfo.folio}`, fecha_inicio: otInicio, fecha_fin: otFin } };
+                    haySolapamientoOT = true;
                 }
             } else {
                 if (otInicio <= fechaFin) {
-                    return { conflicto: true, asignacion: { faena_nombre: `OT: ${otInfo.folio}`, fecha_inicio: otInicio, fecha_fin: otFin } };
+                    haySolapamientoOT = true;
                 }
             }
         } else {
             if (otFin) {
                 if (otFin >= fechaInicio) {
-                    return { conflicto: true, asignacion: { faena_nombre: `OT: ${otInfo.folio}`, fecha_inicio: otInicio, fecha_fin: otFin } };
+                    haySolapamientoOT = true;
                 }
             } else {
-                return { conflicto: true, asignacion: { faena_nombre: `OT: ${otInfo.folio}`, fecha_inicio: otInicio, fecha_fin: otFin } };
+                haySolapamientoOT = true;
             }
+        }
+        
+        if (haySolapamientoOT) {
+            asignacionesConflictivas.push({ 
+                faena_nombre: `OT: ${otInfo.folio}`, 
+                fecha_inicio: otInicio, 
+                fecha_fin: otFin 
+            });
         }
     }
     
-    return { conflicto: false, asignacion: null };
+    return { 
+        conflicto: asignacionesConflictivas.length > 0, 
+        asignaciones: asignacionesConflictivas 
+    };
 }
 
 // Función para validar y actualizar la tabla de equipos cuando cambien las fechas
@@ -646,17 +667,23 @@ async function asignarEquiposMasivo() {
     const equiposConConflicto = [];
     for (const equipoId of equiposSeleccionados) {
         const validacion = validarConflictoEquipoEnFechas(equipoId);
-        if (validacion.conflicto && validacion.asignacion) {
+        if (validacion.conflicto && validacion.asignaciones && validacion.asignaciones.length > 0) {
             const equipo = equipos.find(eq => eq.id === equipoId);
             const nombreEquipo = equipo ? equipo.nombre : `Equipo ID ${equipoId}`;
-            const fechaInicioConflicto = formatearFechaChilena(validacion.asignacion.fecha_inicio);
-            const fechaFinConflicto = validacion.asignacion.fecha_fin ? formatearFechaChilena(validacion.asignacion.fecha_fin) : 'Indefinida';
-            equiposConConflicto.push({
-                nombre: nombreEquipo,
-                faena: validacion.asignacion.faena_nombre,
-                fechaInicio: fechaInicioConflicto,
-                fechaFin: fechaFinConflicto
+            
+            // Agregar todas las asignaciones conflictivas para este equipo
+            const conflictosEquipo = validacion.asignaciones.map(asignacion => {
+                const fechaInicioConflicto = formatearFechaChilena(asignacion.fecha_inicio);
+                const fechaFinConflicto = asignacion.fecha_fin ? formatearFechaChilena(asignacion.fecha_fin) : 'Indefinida';
+                return {
+                    nombre: nombreEquipo,
+                    faena: asignacion.faena_nombre,
+                    fechaInicio: fechaInicioConflicto,
+                    fechaFin: fechaFinConflicto
+                };
             });
+            
+            equiposConConflicto.push(...conflictosEquipo);
         }
     }
     
