@@ -221,36 +221,52 @@ function renderizarTablaEquipos() {
             const tieneAsignacion = eq.tiene_asignacion;
             const asignacionInfo = eq.asignacion_actual;
             
+            // Validar si el equipo tiene asignación conflictiva en las fechas seleccionadas
+            const tieneConflictoEnFechas = validarConflictoEquipoEnFechas(eq.id);
+            const tieneAsignacionFinal = tieneAsignacion || tieneConflictoEnFechas.conflicto;
+            
             // Estado: Disponible o Asignado
-            const estadoClass = tieneAsignacion ? 'bg-warning' : 'bg-success';
-            const estadoText = tieneAsignacion ? 'Asignado' : 'Disponible';
+            const estadoClass = tieneAsignacionFinal ? 'bg-warning' : 'bg-success';
+            const estadoText = tieneAsignacionFinal ? 'Asignado' : 'Disponible';
             
             // Asignación Actual: solo el nombre de la faena o OT
             let asignacionActualHTML = '-';
-            if (tieneAsignacion && asignacionInfo) {
-                if (asignacionInfo.tipo === 'ot') {
-                    asignacionActualHTML = `OT: ${asignacionInfo.folio}`;
-                } else {
-                    asignacionActualHTML = asignacionInfo.faena || '-';
+            if (tieneAsignacionFinal) {
+                if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignacion) {
+                    // Priorizar conflicto en fechas seleccionadas
+                    asignacionActualHTML = tieneConflictoEnFechas.asignacion.faena_nombre || '-';
+                } else if (asignacionInfo) {
+                    if (asignacionInfo.tipo === 'ot') {
+                        asignacionActualHTML = `OT: ${asignacionInfo.folio}`;
+                    } else {
+                        asignacionActualHTML = asignacionInfo.faena || '-';
+                    }
                 }
             }
             
             // Fecha Asignación: las fechas de la asignación actual
             let fechaAsignacionHTML = '-';
-            if (asignacionInfo && asignacionInfo.fecha_inicio) {
-                const fechaInicio = formatearFechaChilena(asignacionInfo.fecha_inicio);
-                const fechaFin = asignacionInfo.fecha_fin ? formatearFechaChilena(asignacionInfo.fecha_fin) : 'Indefinida';
-                fechaAsignacionHTML = `${fechaInicio} → ${fechaFin}`;
+            if (tieneAsignacionFinal) {
+                if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignacion) {
+                    // Mostrar fechas del conflicto en fechas seleccionadas
+                    const fechaInicio = formatearFechaChilena(tieneConflictoEnFechas.asignacion.fecha_inicio);
+                    const fechaFin = tieneConflictoEnFechas.asignacion.fecha_fin ? formatearFechaChilena(tieneConflictoEnFechas.asignacion.fecha_fin) : 'Indefinida';
+                    fechaAsignacionHTML = `${fechaInicio} → ${fechaFin}`;
+                } else if (asignacionInfo && asignacionInfo.fecha_inicio) {
+                    const fechaInicio = formatearFechaChilena(asignacionInfo.fecha_inicio);
+                    const fechaFin = asignacionInfo.fecha_fin ? formatearFechaChilena(asignacionInfo.fecha_fin) : 'Indefinida';
+                    fechaAsignacionHTML = `${fechaInicio} → ${fechaFin}`;
+                }
             }
             
             return `
-                <tr class="${tieneAsignacion ? 'table-secondary' : ''}">
+                <tr class="${tieneAsignacionFinal ? 'table-secondary' : ''}">
                     <td class="text-center">
                         <input class="form-check-input" type="checkbox" 
-                               ${tieneAsignacion ? 'disabled title="No se puede asignar: Tiene asignación conflictiva"' : ''}
                                ${estaSeleccionado ? 'checked' : ''}
                                onchange="toggleEquipoSeleccionado(${eq.id})"
-                               id="equipo_${eq.id}">
+                               id="equipo_${eq.id}"
+                               ${tieneAsignacionFinal ? `title="Equipo asignado a ${asignacionActualHTML !== '-' ? asignacionActualHTML : 'otra faena/OT'} en ${fechaAsignacionHTML !== '-' ? fechaAsignacionHTML : 'fechas específicas'}"` : ''}>
                     </td>
                     <td>${eq.nombre}</td>
                     <td>${eq.patente || '-'}</td>
@@ -274,6 +290,105 @@ function renderizarTablaEquipos() {
     
     // Actualizar estado del botón
     actualizarBotonAsignar();
+}
+
+// Función para validar si un equipo tiene conflicto en las fechas seleccionadas
+// Parámetros:
+//   equipoId: Number - ID del equipo a validar
+// Retorna:
+//   Object - { conflicto: boolean, asignacion: Object|null }
+function validarConflictoEquipoEnFechas(equipoId) {
+    // Obtener fechas seleccionadas del formulario
+    let fechaInicio = null;
+    let fechaFin = null;
+    
+    // Intentar obtener fechas usando DatePickerChile si está disponible
+    if (window.DatePickerChile && typeof window.DatePickerChile.getValor === 'function') {
+        fechaInicio = window.DatePickerChile.getValor('fecha_inicio');
+        fechaFin = window.DatePickerChile.getValor('fecha_fin');
+    } else {
+        // Fallback: obtener del input hidden o del input original
+        const fechaInicioHidden = document.getElementById('fecha_inicio_hidden');
+        const fechaFinHidden = document.getElementById('fecha_fin_hidden');
+        
+        if (fechaInicioHidden && fechaInicioHidden.value) {
+            fechaInicio = fechaInicioHidden.value;
+        } else {
+            const fechaInicioInput = document.getElementById('fecha_inicio');
+            if (fechaInicioInput && fechaInicioInput.value) {
+                const fechaValue = fechaInicioInput.value;
+                if (fechaValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    fechaInicio = fechaValue;
+                } else {
+                    fechaInicio = fechaChilenaToISO(fechaValue);
+                }
+            }
+        }
+        
+        if (fechaFinHidden && fechaFinHidden.value) {
+            fechaFin = fechaFinHidden.value;
+        } else {
+            const fechaFinInput = document.getElementById('fecha_fin');
+            if (fechaFinInput && fechaFinInput.value) {
+                const fechaValue = fechaFinInput.value;
+                if (fechaValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    fechaFin = fechaValue;
+                } else {
+                    fechaFin = fechaChilenaToISO(fechaValue);
+                }
+            }
+        }
+    }
+    
+    // Si no hay fecha de inicio seleccionada, no hay conflicto
+    if (!fechaInicio) {
+        return { conflicto: false, asignacion: null };
+    }
+    
+    // Buscar asignaciones del equipo que se solapen con las fechas seleccionadas
+    const asignacionesEquipo = todasAsignacionesEquipos.filter(asig => asig.equipo_id === equipoId);
+    
+    for (const asignacion of asignacionesEquipo) {
+        const asigInicio = asignacion.fecha_inicio;
+        const asigFin = asignacion.fecha_fin;
+        
+        // Verificar solapamiento
+        if (fechaFin) {
+            // Rango con fecha fin: verificar solapamiento
+            if (asigFin) {
+                // Ambas tienen fecha fin: se solapan si inicio1 <= fin2 AND inicio2 <= fin1
+                if (asigInicio <= fechaFin && asigFin >= fechaInicio) {
+                    return { conflicto: true, asignacion: asignacion };
+                }
+            } else {
+                // La asignación no tiene fecha fin: se solapa si comienza antes o en la fecha fin seleccionada
+                if (asigInicio <= fechaFin) {
+                    return { conflicto: true, asignacion: asignacion };
+                }
+            }
+        } else {
+            // Rango sin fecha fin: se solapa si la asignación comienza antes o en la fecha inicio seleccionada
+            if (asigFin) {
+                // La asignación tiene fecha fin: se solapa si termina después o en la fecha inicio seleccionada
+                if (asigFin >= fechaInicio) {
+                    return { conflicto: true, asignacion: asignacion };
+                }
+            } else {
+                // Ninguna tiene fecha fin: siempre hay conflicto si hay asignación
+                return { conflicto: true, asignacion: asignacion };
+            }
+        }
+    }
+    
+    return { conflicto: false, asignacion: null };
+}
+
+// Función para validar y actualizar la tabla de equipos cuando cambien las fechas
+function validarYActualizarTablaEquipos() {
+    // Pequeño delay para asegurar que las fechas se hayan actualizado
+    setTimeout(() => {
+        renderizarTablaEquipos();
+    }, 100);
 }
 
 // Renderizar paginación
@@ -344,9 +459,6 @@ function cambiarRegistrosPorPaginaEquipos() {
 function toggleEquipoSeleccionado(equipoId) {
     // Paso 1: Obtener referencia al checkbox del equipo
     const checkbox = document.getElementById(`equipo_${equipoId}`);
-    
-    // Paso 2: Si el checkbox está deshabilitado (equipo con asignación conflictiva), no hacer nada
-    if (checkbox.disabled) return;
     
     // Paso 3: Agregar o eliminar el equipo del array de seleccionados según el estado del checkbox
     if (checkbox.checked) {
@@ -496,6 +608,35 @@ async function asignarEquiposMasivo() {
     if (equiposSeleccionados.length === 0) {
         mostrarAlerta('Debe seleccionar al menos un equipo', 'error');
         return;  // Detener ejecución si no hay equipos seleccionados
+    }
+    
+    // Paso 3.1: Validar conflictos de fechas para cada equipo seleccionado
+    const equiposConConflicto = [];
+    for (const equipoId of equiposSeleccionados) {
+        const validacion = validarConflictoEquipoEnFechas(equipoId);
+        if (validacion.conflicto && validacion.asignacion) {
+            const equipo = equipos.find(eq => eq.id === equipoId);
+            const nombreEquipo = equipo ? equipo.nombre : `Equipo ID ${equipoId}`;
+            const fechaInicioConflicto = formatearFechaChilena(validacion.asignacion.fecha_inicio);
+            const fechaFinConflicto = validacion.asignacion.fecha_fin ? formatearFechaChilena(validacion.asignacion.fecha_fin) : 'Indefinida';
+            equiposConConflicto.push({
+                nombre: nombreEquipo,
+                faena: validacion.asignacion.faena_nombre,
+                fechaInicio: fechaInicioConflicto,
+                fechaFin: fechaFinConflicto
+            });
+        }
+    }
+    
+    // Si hay equipos con conflicto, mostrar error y detener ejecución
+    if (equiposConConflicto.length > 0) {
+        let mensajeError = 'Los siguientes equipos tienen asignaciones conflictivas en las fechas seleccionadas:\n\n';
+        equiposConConflicto.forEach(conflicto => {
+            mensajeError += `• ${conflicto.nombre}: Asignado a "${conflicto.faena}" (${conflicto.fechaInicio} → ${conflicto.fechaFin})\n`;
+        });
+        mensajeError += '\nPor favor, seleccione otras fechas o deseleccione estos equipos.';
+        mostrarAlerta(mensajeError, 'error');
+        return;  // Detener ejecución si hay conflictos
     }
     
     // Paso 4: Construir objeto con los datos a enviar a la API

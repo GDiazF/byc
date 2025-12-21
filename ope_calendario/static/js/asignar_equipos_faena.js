@@ -275,10 +275,10 @@ function renderizarTablaEquipos() {
                 <tr class="${tieneAsignacionFinal ? 'table-secondary' : ''}">
                     <td class="text-center">
                         <input class="form-check-input" type="checkbox" 
-                               ${tieneAsignacionFinal ? 'disabled title="No se puede asignar: Tiene asignación conflictiva"' : ''}
                                ${estaSeleccionado ? 'checked' : ''}
                                onchange="toggleEquipoSeleccionado(${eq.id})"
-                               id="equipo_${eq.id}">
+                               id="equipo_${eq.id}"
+                               ${tieneAsignacionFinal ? `title="Equipo asignado a ${asignacionActualHTML !== '-' ? asignacionActualHTML : 'otra faena/OT'} en ${fechaAsignacionHTML !== '-' ? fechaAsignacionHTML : 'fechas específicas'}"` : ''}>
                     </td>
                     <td>${eq.nombre}</td>
                     <td>${eq.patente || '-'}</td>
