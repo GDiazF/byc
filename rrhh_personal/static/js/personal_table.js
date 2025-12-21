@@ -690,15 +690,25 @@ function mostrarInfoPersonal(personalId) {
     // Mostrar modal
     modal.show();
     
-    // Cargar datos del personal
-    fetch(`/users/api/personal/${personalId}/info/`)
-        .then(async response => {
-            const data = await handleAjaxResponse(response);
-            
-            if (data.success) {
-                const personal = data.data.personal;
-                const laboral = data.data.laboral_actual;
-                const historial = data.data.historial_laboral || [];
+    // Cargar datos del personal (usar API del calendario que incluye documentación)
+    Promise.all([
+        fetch(`/users/api/personal/${personalId}/info/`).then(r => handleAjaxResponse(r)),
+        fetch(`/calendario/api/personal/${personalId}/info/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            }
+        }).then(r => r.json())
+    ])
+        .then(([dataPersonal, dataDocumentacion]) => {
+            if (dataPersonal.success) {
+                const personal = dataPersonal.data.personal;
+                const laboral = dataPersonal.data.laboral_actual;
+                const historial = dataPersonal.data.historial_laboral || [];
+                
+                // Guardar datos de documentación para usar cuando se active el tab
+                window.personalDocumentacionData = dataDocumentacion.status === 'success' ? dataDocumentacion.data : null;
                 
                 // Construir HTML con pestañas
                 let html = `
@@ -712,6 +722,11 @@ function mostrarInfoPersonal(personalId) {
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="laboral-tab" data-bs-toggle="tab" data-bs-target="#laboral-pane" type="button" role="tab" aria-controls="laboral-pane" aria-selected="false">
                                 <i class="bi bi-briefcase me-1"></i>Información Laboral
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="documentacion-tab" data-bs-toggle="tab" data-bs-target="#documentacion-pane" type="button" role="tab" aria-controls="documentacion-pane" aria-selected="false">
+                                <i class="bi bi-folder me-1"></i>Documentación
                             </button>
                         </li>
                     </ul>
@@ -898,16 +913,36 @@ function mostrarInfoPersonal(personalId) {
                 
                 html += `
                         </div>
+                        
+                        <!-- Tab: Documentación -->
+                        <div class="tab-pane fade" id="documentacion-pane" role="tabpanel" aria-labelledby="documentacion-tab">
+                            <div id="documentacionContainer">
+                                <div class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Cargando documentación...</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
                 
                 modalBody.innerHTML = html;
                 modalTitle.innerHTML = `<i class="bi bi-person-circle me-2"></i>${personal.nombre_completo}`;
+                
+                // Cargar documentación cuando se active el tab
+                const documentacionTab = document.getElementById('documentacion-tab');
+                if (documentacionTab) {
+                    documentacionTab.addEventListener('shown.bs.tab', function() {
+                        cargarDocumentacionPersonal(personalId);
+                    });
+                }
             } else {
                 modalBody.innerHTML = `
                     <div class="alert alert-danger">
                         <i class="bi bi-exclamation-triangle me-2"></i>
-                        Error al cargar la información: ${data.error || 'Error desconocido'}
+                        Error al cargar la información: ${dataPersonal.error || 'Error desconocido'}
                     </div>
                 `;
             }
@@ -921,6 +956,240 @@ function mostrarInfoPersonal(personalId) {
                 </div>
             `;
         });
+}
+
+// Función para cargar documentación del personal
+function cargarDocumentacionPersonal(personalId) {
+    const container = document.getElementById('documentacionContainer');
+    if (!container) return;
+    
+    // Usar datos ya cargados si están disponibles
+    if (window.personalDocumentacionData) {
+        renderizarDocumentacionPersonal(window.personalDocumentacionData, container);
+        return;
+    }
+    
+    // Si no están disponibles, cargar desde la API
+    fetch(`/calendario/api/personal/${personalId}/info/`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            renderizarDocumentacionPersonal(result.data, container);
+        } else {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No se pudo cargar la documentación.
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error al cargar documentación:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Error al cargar la documentación.
+            </div>
+        `;
+    });
+}
+
+// Función para renderizar documentación del personal
+function renderizarDocumentacionPersonal(data, container) {
+    let html = `
+        <!-- Nav tabs para documentación -->
+        <ul class="nav nav-tabs mb-3" id="docModalTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="lic-conducir-tab" data-bs-toggle="tab" data-bs-target="#lic-conducir" type="button">
+                    <i class="bi bi-card-text me-1"></i>Licencias Conducir
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="lic-internas-tab" data-bs-toggle="tab" data-bs-target="#lic-internas" type="button">
+                    <i class="bi bi-award me-1"></i>Licencias Internas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="certificaciones-tab" data-bs-toggle="tab" data-bs-target="#certificaciones" type="button">
+                    <i class="bi bi-patch-check me-1"></i>Certificaciones
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="examenes-tab" data-bs-toggle="tab" data-bs-target="#examenes" type="button">
+                    <i class="bi bi-clipboard2-pulse me-1"></i>Exámenes
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content">
+            <!-- Licencias de Conducir -->
+            <div class="tab-pane fade show active" id="lic-conducir">
+                ${generarTablaLicenciasConducir(data.licencias_conducir || [])}
+            </div>
+            
+            <!-- Licencias Internas -->
+            <div class="tab-pane fade" id="lic-internas">
+                ${generarTablaLicenciasInternas(data.licencias_internas || [])}
+            </div>
+            
+            <!-- Certificaciones -->
+            <div class="tab-pane fade" id="certificaciones">
+                ${generarTablaCertificaciones(data.certificaciones || [])}
+            </div>
+            
+            <!-- Exámenes -->
+            <div class="tab-pane fade" id="examenes">
+                ${generarTablaExamenes(data.examenes || [])}
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// Funciones helper para generar tablas de documentación
+function generarTablaLicenciasConducir(licencias) {
+    if (licencias.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin licencias de conducir registradas</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Clases</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${licencias.map(lic => `
+                    <tr>
+                        <td>${lic.clases || 'N/A'}</td>
+                        <td class="text-center">${lic.fecha_vencimiento}</td>
+                        <td class="text-center">
+                            ${lic.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function generarTablaLicenciasInternas(licencias) {
+    if (licencias.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin licencias internas registradas</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Tipo</th>
+                    <th>N° Licencia</th>
+                    <th>Empresa</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${licencias.map(lic => `
+                    <tr>
+                        <td>${lic.tipo}</td>
+                        <td class="text-center">${lic.numero}</td>
+                        <td>${lic.empresa}</td>
+                        <td class="text-center">${lic.fecha_vencimiento}</td>
+                        <td class="text-center">
+                            ${lic.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function generarTablaCertificaciones(certificaciones) {
+    if (certificaciones.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin certificaciones registradas</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Tipo</th>
+                    <th>Proveedor</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${certificaciones.map(cert => `
+                    <tr>
+                        <td>${cert.tipo}</td>
+                        <td>${cert.proveedor}</td>
+                        <td class="text-center">${cert.fecha_vencimiento}</td>
+                        <td class="text-center">
+                            ${cert.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function generarTablaExamenes(examenes) {
+    if (examenes.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin exámenes registrados</div>';
+    }
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Tipo</th>
+                    <th class="text-center">Resultado</th>
+                    <th>Proveedor</th>
+                    <th class="text-center">Fecha Vencimiento</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${examenes.map(exam => {
+                    let resultadoBadge = 'bg-secondary';
+                    if (exam.resultado && exam.resultado.toLowerCase().includes('aprobado')) {
+                        resultadoBadge = 'bg-success';
+                    } else if (exam.resultado && exam.resultado.toLowerCase().includes('reprobado')) {
+                        resultadoBadge = 'bg-danger';
+                    }
+                    
+                    return `
+                        <tr>
+                            <td>${exam.tipo}</td>
+                            <td class="text-center">
+                                ${exam.resultado && exam.resultado !== '-' ? `<span class="badge ${resultadoBadge} text-white">${exam.resultado}</span>` : '-'}
+                            </td>
+                            <td>${exam.proveedor}</td>
+                            <td class="text-center">${exam.fecha_vencimiento}</td>
+                            <td class="text-center">
+                                ${exam.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
 // ============================================================================
