@@ -1152,7 +1152,8 @@ def obtener_info_personal(request, personal_id):
             'fecha_emision': lic.fechaEmision.strftime('%d/%m/%Y'),
             'fecha_vencimiento': lic.fechaVencimiento.strftime('%d/%m/%Y'),
             'vigente': lic.fechaVencimiento >= date.today(),
-            'tiene_documento': bool(lic.rutaDoc)
+            'tiene_documento': bool(lic.rutaDoc),
+            'documento_url': lic.rutaDoc.url if lic.rutaDoc else None
         } for lic in licencias]
         
         # Licencias internas
@@ -1168,7 +1169,8 @@ def obtener_info_personal(request, personal_id):
             'fecha_emision': lic.fechaEmision.strftime('%d/%m/%Y'),
             'fecha_vencimiento': lic.fechaVencimiento.strftime('%d/%m/%Y'),
             'vigente': lic.esta_activa,
-            'tiene_documento': bool(lic.rutaDoc)
+            'tiene_documento': bool(lic.rutaDoc),
+            'documento_url': lic.rutaDoc.url if lic.rutaDoc else None
         } for lic in licencias_internas]
         
         # Certificaciones
@@ -1183,7 +1185,8 @@ def obtener_info_personal(request, personal_id):
             'fecha_emision': cert.fechaEmision.strftime('%d/%m/%Y'),
             'fecha_vencimiento': cert.fechaVencimiento.strftime('%d/%m/%Y'),
             'vigente': cert.fechaVencimiento >= date.today(),
-            'tiene_documento': bool(cert.rutaDoc)
+            'tiene_documento': bool(cert.rutaDoc),
+            'documento_url': cert.rutaDoc.url if cert.rutaDoc else None
         } for cert in certificaciones]
         
         # Exámenes
@@ -1199,7 +1202,8 @@ def obtener_info_personal(request, personal_id):
             'fecha_emision': exam.fechaEmision.strftime('%d/%m/%Y'),
             'fecha_vencimiento': exam.fechaVencimiento.strftime('%d/%m/%Y'),
             'vigente': exam.fechaVencimiento >= date.today(),
-            'tiene_documento': bool(exam.rutaDoc)
+            'tiene_documento': bool(exam.rutaDoc),
+            'documento_url': exam.rutaDoc.url if exam.rutaDoc else None
         } for exam in examenes]
         
         return JsonResponse({

@@ -1067,6 +1067,7 @@ function generarTablaLicenciasConducir(licencias) {
                     <th>Clases</th>
                     <th class="text-center">Fecha Vencimiento</th>
                     <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -1076,6 +1077,13 @@ function generarTablaLicenciasConducir(licencias) {
                         <td class="text-center">${lic.fecha_vencimiento}</td>
                         <td class="text-center">
                             ${lic.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                        <td class="text-center">
+                            ${lic.documento_url ? `
+                                <a href="${lic.documento_url}" target="_blank" class="btn btn-sm btn-primary" title="Ver documento">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            ` : '<span class="text-muted">-</span>'}
                         </td>
                     </tr>
                 `).join('')}
@@ -1098,6 +1106,7 @@ function generarTablaLicenciasInternas(licencias) {
                     <th>Empresa</th>
                     <th class="text-center">Fecha Vencimiento</th>
                     <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -1109,6 +1118,13 @@ function generarTablaLicenciasInternas(licencias) {
                         <td class="text-center">${lic.fecha_vencimiento}</td>
                         <td class="text-center">
                             ${lic.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                        <td class="text-center">
+                            ${lic.documento_url ? `
+                                <a href="${lic.documento_url}" target="_blank" class="btn btn-sm btn-primary" title="Ver documento">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            ` : '<span class="text-muted">-</span>'}
                         </td>
                     </tr>
                 `).join('')}
@@ -1130,6 +1146,7 @@ function generarTablaCertificaciones(certificaciones) {
                     <th>Proveedor</th>
                     <th class="text-center">Fecha Vencimiento</th>
                     <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -1140,6 +1157,13 @@ function generarTablaCertificaciones(certificaciones) {
                         <td class="text-center">${cert.fecha_vencimiento}</td>
                         <td class="text-center">
                             ${cert.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                        </td>
+                        <td class="text-center">
+                            ${cert.documento_url ? `
+                                <a href="${cert.documento_url}" target="_blank" class="btn btn-sm btn-primary" title="Ver documento">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            ` : '<span class="text-muted">-</span>'}
                         </td>
                     </tr>
                 `).join('')}
@@ -1162,6 +1186,7 @@ function generarTablaExamenes(examenes) {
                     <th>Proveedor</th>
                     <th class="text-center">Fecha Vencimiento</th>
                     <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -1183,6 +1208,13 @@ function generarTablaExamenes(examenes) {
                             <td class="text-center">${exam.fecha_vencimiento}</td>
                             <td class="text-center">
                                 ${exam.vigente ? '<span class="badge bg-success text-white">Vigente</span>' : '<span class="badge bg-danger text-white">Vencida</span>'}
+                            </td>
+                            <td class="text-center">
+                                ${exam.documento_url ? `
+                                    <a href="${exam.documento_url}" target="_blank" class="btn btn-sm btn-primary" title="Ver documento">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                ` : '<span class="text-muted">-</span>'}
                             </td>
                         </tr>
                     `;
