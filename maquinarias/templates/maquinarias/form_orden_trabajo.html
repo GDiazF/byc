@@ -670,9 +670,9 @@
         estado_equipo_id: {% if ot.estado_equipo_id %}{{ ot.estado_equipo_id.estadoEquipo_id }}{% else %}null{% endif %},
         fecha_inicio: {% if ot.fecha_inicio %}"{{ ot.fecha_inicio|date:'Y-m-d' }}"{% else %}null{% endif %},
         fecha_fin: {% if ot.fecha_fin %}"{{ ot.fecha_fin|date:'Y-m-d' }}"{% else %}null{% endif %},
-        horometro: {% if ot.equipo_id.horometro %}{{ ot.equipo_id.horometro }}{% else %}null{% endif %},
-        odometro: {% if ot.equipo_id.odometro %}{{ ot.equipo_id.odometro }}{% else %}null{% endif %},
-        horometro_superestructura: {% if ot.equipo_id.horometroSuperEstructural %}{{ ot.equipo_id.horometroSuperEstructural }}{% else %}null{% endif %},
+        horometro: {% if ot.horometro is not None %}{{ ot.horometro }}{% else %}null{% endif %},
+        odometro: {% if ot.odometro is not None %}{{ ot.odometro }}{% else %}null{% endif %},
+        horometro_superestructura: {% if ot.horometro_superestructura is not None %}{{ ot.horometro_superestructura }}{% else %}null{% endif %},
         personal_asignado: [
             {% for p in ot.personal_asignado.all %}
             {{ p.personal_id }}{% if not forloop.last %},{% endif %}
