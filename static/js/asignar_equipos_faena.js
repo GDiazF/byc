@@ -52,6 +52,15 @@ function initDataEquipos(equiposData, faenaData, fechaInicio, fechaFin) {
     // Estos listeners reaccionan a cambios y actualizan la tabla automáticamente
     document.getElementById('searchInput').addEventListener('input', renderizarTablaEquipos);  // Búsqueda por texto
     document.getElementById('filtroEstado').addEventListener('change', renderizarTablaEquipos);  // Filtro por estado
+    
+    // Paso 5: Event listener para cuando se active el tab de "Equipos Asignados"
+    // Re-renderiza la tabla para asegurar que los botones se muestren correctamente
+    const gestionarTab = document.getElementById('gestionar-tab');
+    if (gestionarTab) {
+        gestionarTab.addEventListener('shown.bs.tab', function() {
+            renderizarEquiposAsignados();
+        });
+    }
     document.getElementById('filtroTipo').addEventListener('change', renderizarTablaEquipos);  // Filtro por tipo
     document.getElementById('filtroEmpresa').addEventListener('change', renderizarTablaEquipos);  // Filtro por empresa
 }
@@ -566,12 +575,12 @@ function renderizarEquiposAsignados() {
                 <td>${asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Indefinida'}</td>
                 <td class="text-center">
                     <div class="btn-group btn-group-sm">
-                        ${window.userPermissions && window.userPermissions.canModificarAsignacion ? `
+                        ${(!window.userPermissions || window.userPermissions.canModificarAsignacion || window.userPermissions.canChange) ? `
                         <button class="btn btn-sm btn-primary" onclick="editarAsignacionEquipo(${asig.id})" title="Editar asignación">
                             <i class="bi bi-pencil"></i>
                         </button>
                         ` : ''}
-                        ${window.userPermissions && window.userPermissions.canDelete ? `
+                        ${(!window.userPermissions || window.userPermissions.canDelete) ? `
                         <button class="btn btn-sm btn-danger" onclick="eliminarAsignacionEquipo(${asig.id})" title="Eliminar asignación">
                             <i class="bi bi-trash"></i>
                         </button>
