@@ -2186,6 +2186,26 @@ def asignar_equipos_faena(request, faena_id):
             'observaciones': asig.observaciones or ''
         })
     
+    # Obtener todas las asignaciones activas de equipos a otras faenas (para validación dinámica en frontend)
+    # Esto permite validar conflictos cuando el usuario selecciona fechas específicas
+    todas_asignaciones_equipos = AsignacionEquipoFaena.objects.filter(
+        activo=True,
+        equipo__activo=True
+    ).exclude(
+        faena=faena  # Excluir asignaciones de esta faena
+    ).select_related('equipo', 'faena').order_by('equipo', 'fecha_inicio')
+    
+    # Preparar datos de todas las asignaciones para validación en frontend
+    todas_asignaciones_data = []
+    for asig in todas_asignaciones_equipos:
+        todas_asignaciones_data.append({
+            'equipo_id': asig.equipo.equipo_id,
+            'faena_id': asig.faena.id,
+            'faena_nombre': asig.faena.nombre,
+            'fecha_inicio': asig.fecha_inicio.isoformat(),
+            'fecha_fin': asig.fecha_fin.isoformat() if asig.fecha_fin else None
+        })
+    
     # Preparar datos de la faena
     faena_data = {
         'id': faena.id,
@@ -2213,6 +2233,7 @@ def asignar_equipos_faena(request, faena_id):
         'total_asignados': total_asignados,
         'equipos_json': json.dumps(equipos_data, cls=DjangoJSONEncoder),
         'faena_json': json.dumps(faena_data, cls=DjangoJSONEncoder),
+        'todas_asignaciones_equipos_json': json.dumps(todas_asignaciones_data, cls=DjangoJSONEncoder),
         'empresas_unicas': sorted(empresas_set),
         'tipos_unicos': sorted(tipos_set),
         'otras_faenas': otras_faenas,

@@ -13,7 +13,8 @@ initDataEquipos(
     {{ equipos_json|safe }},
     {{ faena_json|safe }},
     {% if faena_fecha_inicio %}'{{ faena_fecha_inicio|date:"Y-m-d" }}'{% else %}null{% endif %},
-    {% if faena_fecha_fin %}'{{ faena_fecha_fin|date:"Y-m-d" }}'{% else %}null{% endif %}
+    {% if faena_fecha_fin %}'{{ faena_fecha_fin|date:"Y-m-d" }}'{% else %}null{% endif %},
+    {{ todas_asignaciones_equipos_json|safe }}
 );
 
 // Permisos del usuario para validar en JavaScript

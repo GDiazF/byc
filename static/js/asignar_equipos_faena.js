@@ -11,6 +11,7 @@ let faena = {};  // Objeto con información de la faena actual
 let equiposSeleccionados = [];  // Array con IDs de equipos seleccionados para asignar
 let faenaFechaInicio = null;  // Fecha de inicio de la faena (para validaciones)
 let faenaFechaFin = null;  // Fecha de fin de la faena (para validaciones)
+let todasAsignacionesEquipos = [];  // Array con todas las asignaciones de equipos a otras faenas (para validación dinámica)
 
 // Variables de paginación
 let paginaActual = 1;  // Página actual de la tabla de equipos (empieza en 1)
@@ -28,12 +29,14 @@ let equiposFiltrados = [];  // Array con equipos filtrados según búsqueda y fi
 //   faenaData: Object - Objeto con información de la faena
 //   fechaInicio: String - Fecha de inicio de la faena (formato ISO)
 //   fechaFin: String - Fecha de fin de la faena (formato ISO, puede ser null)
-function initDataEquipos(equiposData, faenaData, fechaInicio, fechaFin) {
+//   asignacionesData: Array - Array con todas las asignaciones de equipos a otras faenas
+function initDataEquipos(equiposData, faenaData, fechaInicio, fechaFin, asignacionesData) {
     // Paso 1: Inicializar variables globales con los datos recibidos
     equipos = equiposData || [];  // Array de equipos disponibles
     faena = faenaData || {};  // Información de la faena
     faenaFechaInicio = fechaInicio;  // Fecha de inicio para validaciones
     faenaFechaFin = fechaFin;  // Fecha de fin para validaciones
+    todasAsignacionesEquipos = asignacionesData || [];  // Todas las asignaciones de equipos a otras faenas
     
     // Paso 2: Establecer fechas por defecto en los campos del formulario si están disponibles
     // Las fechas se formatean al formato chileno (DD-MM-YYYY) para mostrar en los inputs
