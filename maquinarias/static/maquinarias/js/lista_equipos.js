@@ -952,11 +952,16 @@ function getCookie(name) {
 
 // Función para mostrar el detalle del equipo en un modal
 // Similar a la función del calendario de equipos
-function mostrarDetalleEquipo(equipoId) {
+// Hacerla disponible globalmente para que pueda ser llamada desde onclick en el HTML
+window.mostrarDetalleEquipo = function(equipoId) {
+    console.log('mostrarDetalleEquipo llamado con equipoId:', equipoId);
+    console.log('equiposCargados:', equiposCargados);
+    
     // Buscar el equipo en los datos cargados
     const equipo = equiposCargados.find(e => e.equipo_id === equipoId);
     if (!equipo) {
-        console.error('Equipo no encontrado:', equipoId);
+        console.error('Equipo no encontrado:', equipoId, 'Total equipos cargados:', equiposCargados.length);
+        alert('Error: No se pudo encontrar la información del equipo. Por favor, recargue la página.');
         return;
     }
     
