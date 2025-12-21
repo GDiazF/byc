@@ -229,12 +229,14 @@ function renderizarTablaEquipos() {
             const estadoClass = tieneAsignacionFinal ? 'bg-warning' : 'bg-success';
             const estadoText = tieneAsignacionFinal ? 'Asignado' : 'Disponible';
             
-            // Asignación Actual: solo el nombre de la faena o OT
+            // Asignación Actual: mostrar todas las asignaciones conflictivas o la asignación general
             let asignacionActualHTML = '-';
             if (tieneAsignacionFinal) {
-                if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignacion) {
-                    // Priorizar conflicto en fechas seleccionadas
-                    asignacionActualHTML = tieneConflictoEnFechas.asignacion.faena_nombre || '-';
+                if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 0) {
+                    // Mostrar todas las asignaciones conflictivas en fechas seleccionadas
+                    asignacionActualHTML = tieneConflictoEnFechas.asignaciones.map(asig => {
+                        return asig.faena_nombre || '-';
+                    }).join(', ');
                 } else if (asignacionInfo) {
                     if (asignacionInfo.tipo === 'ot') {
                         asignacionActualHTML = `OT: ${asignacionInfo.folio}`;
@@ -244,14 +246,16 @@ function renderizarTablaEquipos() {
                 }
             }
             
-            // Fecha Asignación: las fechas de la asignación actual
+            // Fecha Asignación: mostrar todas las fechas de las asignaciones conflictivas
             let fechaAsignacionHTML = '-';
             if (tieneAsignacionFinal) {
-                if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignacion) {
-                    // Mostrar fechas del conflicto en fechas seleccionadas
-                    const fechaInicio = formatearFechaChilena(tieneConflictoEnFechas.asignacion.fecha_inicio);
-                    const fechaFin = tieneConflictoEnFechas.asignacion.fecha_fin ? formatearFechaChilena(tieneConflictoEnFechas.asignacion.fecha_fin) : 'Indefinida';
-                    fechaAsignacionHTML = `${fechaInicio} → ${fechaFin}`;
+                if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 0) {
+                    // Mostrar todas las fechas de los conflictos en fechas seleccionadas
+                    fechaAsignacionHTML = tieneConflictoEnFechas.asignaciones.map(asig => {
+                        const fechaInicio = formatearFechaChilena(asig.fecha_inicio);
+                        const fechaFin = asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Indefinida';
+                        return `${fechaInicio} → ${fechaFin}`;
+                    }).join('<br>');
                 } else if (asignacionInfo && asignacionInfo.fecha_inicio) {
                     const fechaInicio = formatearFechaChilena(asignacionInfo.fecha_inicio);
                     const fechaFin = asignacionInfo.fecha_fin ? formatearFechaChilena(asignacionInfo.fecha_fin) : 'Indefinida';

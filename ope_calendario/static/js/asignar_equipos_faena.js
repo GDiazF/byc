@@ -241,17 +241,14 @@ function renderizarTablaEquipos() {
             const estadoClass = tieneAsignacionFinal ? 'bg-warning' : 'bg-success';
             const estadoText = tieneAsignacionFinal ? 'Asignado' : 'Disponible';
             
-            // Asignación Actual: mostrar la primera asignación conflictiva o la asignación general
+            // Asignación Actual: mostrar todas las asignaciones conflictivas o la asignación general
             let asignacionActualHTML = '-';
             if (tieneAsignacionFinal) {
                 if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 0) {
-                    // Priorizar conflicto en fechas seleccionadas - mostrar la primera
-                    const primeraAsignacion = tieneConflictoEnFechas.asignaciones[0];
-                    asignacionActualHTML = primeraAsignacion.faena_nombre || '-';
-                    // Si hay más de una asignación conflictiva, indicarlo
-                    if (tieneConflictoEnFechas.asignaciones.length > 1) {
-                        asignacionActualHTML += ` (+${tieneConflictoEnFechas.asignaciones.length - 1} más)`;
-                    }
+                    // Mostrar todas las asignaciones conflictivas en fechas seleccionadas
+                    asignacionActualHTML = tieneConflictoEnFechas.asignaciones.map(asig => {
+                        return asig.faena_nombre || '-';
+                    }).join(', ');
                 } else if (asignacionInfo) {
                     if (asignacionInfo.tipo === 'ot') {
                         asignacionActualHTML = `OT: ${asignacionInfo.folio}`;
@@ -261,15 +258,16 @@ function renderizarTablaEquipos() {
                 }
             }
             
-            // Fecha Asignación: las fechas de la asignación actual
+            // Fecha Asignación: mostrar todas las fechas de las asignaciones conflictivas
             let fechaAsignacionHTML = '-';
             if (tieneAsignacionFinal) {
                 if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 0) {
-                    // Mostrar fechas del primer conflicto en fechas seleccionadas
-                    const primeraAsignacion = tieneConflictoEnFechas.asignaciones[0];
-                    const fechaInicio = formatearFechaChilena(primeraAsignacion.fecha_inicio);
-                    const fechaFin = primeraAsignacion.fecha_fin ? formatearFechaChilena(primeraAsignacion.fecha_fin) : 'Indefinida';
-                    fechaAsignacionHTML = `${fechaInicio} → ${fechaFin}`;
+                    // Mostrar todas las fechas de los conflictos en fechas seleccionadas
+                    fechaAsignacionHTML = tieneConflictoEnFechas.asignaciones.map(asig => {
+                        const fechaInicio = formatearFechaChilena(asig.fecha_inicio);
+                        const fechaFin = asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Indefinida';
+                        return `${fechaInicio} → ${fechaFin}`;
+                    }).join('<br>');
                 } else if (asignacionInfo && asignacionInfo.fecha_inicio) {
                     const fechaInicio = formatearFechaChilena(asignacionInfo.fecha_inicio);
                     const fechaFin = asignacionInfo.fecha_fin ? formatearFechaChilena(asignacionInfo.fecha_fin) : 'Indefinida';
