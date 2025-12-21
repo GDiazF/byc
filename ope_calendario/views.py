@@ -2488,7 +2488,8 @@ def actualizar_asignacion_equipo(request):
         from django.db.models import Q
         
         # Buscar asignaciones que se solapen (excluyendo la que estamos editando)
-        solapamiento_query = Q(equipo=asignacion.equipo, activo=True) & ~Q(id=asignacion.id)
+        # Usar equipo_id en lugar de equipo para evitar joins innecesarios que causan confusión con el campo 'activo'
+        solapamiento_query = Q(equipo_id=asignacion.equipo.equipo_id) & Q(activo=True) & ~Q(id=asignacion.id)
         
         if fecha_fin_obj:
             # Rango con fecha fin: buscar solapamientos
@@ -2515,32 +2516,6 @@ def actualizar_asignacion_equipo(request):
             
             return JsonResponse({
                 'error': f'El equipo ya está asignado a otra faena en ese período: {", ".join(conflictos)}'
-            }, status=400)
-        
-        # Verificar conflictos con OTs
-        from maquinarias.models import OrdenTrabajo
-        ot_query = Q(equipo=asignacion.equipo, activo=True)
-        
-        if fecha_fin_obj:
-            ot_query &= (
-                Q(fecha_inicio__lte=fecha_fin_obj, fecha_fin__gte=fecha_inicio_obj) |
-                Q(fecha_inicio__lte=fecha_fin_obj, fecha_fin__isnull=True)
-            )
-        else:
-            ot_query &= Q(fecha_inicio__lte=fecha_inicio_obj) & (
-                Q(fecha_fin__gte=fecha_inicio_obj) | Q(fecha_fin__isnull=True)
-            )
-        
-        ots_conflicto = OrdenTrabajo.objects.filter(ot_query)
-        
-        if ots_conflicto.exists():
-            conflictos_ot = []
-            for ot in ots_conflicto:
-                ffin_str = ot.fecha_fin.strftime('%d/%m/%Y') if ot.fecha_fin else 'Indefinida'
-                conflictos_ot.append(f"OT-{ot.folio} ({ot.fecha_inicio.strftime('%d/%m/%Y')} → {ffin_str})")
-            
-            return JsonResponse({
-                'error': f'El equipo tiene OT asignada en ese período: {", ".join(conflictos_ot)}'
             }, status=400)
         
         # Guardar datos anteriores para historial
