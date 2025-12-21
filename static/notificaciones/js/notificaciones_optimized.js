@@ -221,8 +221,20 @@
     
     /**
      * Marca todas las notificaciones como leídas.
+     * Usa una bandera para prevenir múltiples ejecuciones simultáneas.
      */
+    let marcandoTodasComoLeidas = false;
+    
     function marcarTodasComoLeidas() {
+        // Prevenir múltiples ejecuciones simultáneas
+        if (marcandoTodasComoLeidas) {
+            console.log('Ya se está procesando la solicitud de marcar todas como leídas...');
+            return;
+        }
+        
+        marcandoTodasComoLeidas = true;
+        console.log('Marcando todas las notificaciones como leídas...');
+        
         fetch('/notificaciones/api/marcar-todas-leidas/', {
             method: 'POST',
             headers: {
@@ -230,15 +242,37 @@
                 'Content-Type': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                actualizarBadge(0);
-                cargarNotificaciones(); // Recargar lista
+                console.log('Todas las notificaciones marcadas como leídas. Nuevo contador:', data.count);
+                
+                // Actualizar el contador
+                if (data.count !== undefined) {
+                    ultimoContador = data.count;
+                    actualizarBadge(data.count);
+                } else {
+                    actualizarBadge(0);
+                }
+                
+                // Recargar notificaciones para actualizar el estado visual
+                setTimeout(() => {
+                    cargarNotificaciones();
+                    marcandoTodasComoLeidas = false;
+                }, 200);
+            } else {
+                console.error('Error al marcar todas como leídas:', data.error || 'Error desconocido');
+                marcandoTodasComoLeidas = false;
             }
         })
         .catch(error => {
             console.error('Error al marcar todas como leídas:', error);
+            marcandoTodasComoLeidas = false;
         });
     }
     
@@ -314,14 +348,17 @@
         // Marcar como cargadas
         notificacionesCargadas = true;
         
-        // Botón de marcar todas como leídas
-        const btnMarcarTodas = document.getElementById('btnMarcarTodasLeidasDropdown');
-        if (btnMarcarTodas) {
-            btnMarcarTodas.addEventListener('click', function(e) {
+        // Botón de marcar todas como leídas - usar event delegation para que funcione incluso cuando el botón se recrea
+        // Usar capture phase para asegurar que se ejecute antes que otros listeners
+        document.addEventListener('click', function(e) {
+            const btnMarcarTodas = e.target.closest('#btnMarcarTodasLeidasDropdown');
+            if (btnMarcarTodas) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 marcarTodasComoLeidas();
-            });
-        }
+            }
+        }, true);
         
         // Iniciar polling del contador
         iniciarPolling();

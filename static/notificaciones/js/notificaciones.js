@@ -812,147 +812,86 @@
     }
     
     /**
+     * Función para marcar todas las notificaciones como leídas.
+     * Usa una bandera para prevenir múltiples ejecuciones simultáneas.
+     */
+    let marcandoTodasComoLeidas = false;
+    
+    function marcarTodasComoLeidas() {
+        // Prevenir múltiples ejecuciones simultáneas
+        if (marcandoTodasComoLeidas) {
+            console.log('Ya se está procesando la solicitud de marcar todas como leídas...');
+            return;
+        }
+        
+        marcandoTodasComoLeidas = true;
+        console.log('Marcando todas las notificaciones como leídas...');
+        
+        fetch('/notificaciones/api/marcar-todas-leidas/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                console.log('Todas las notificaciones marcadas como leídas. Nuevo contador:', data.count);
+                
+                // Actualizar el contador
+                if (data.count !== undefined) {
+                    ultimoContador = data.count;
+                    actualizarBadge(data.count);
+                } else {
+                    // Si no viene el contador, consultarlo
+                    actualizarContadorDesdeServidor();
+                }
+                
+                // Recargar notificaciones para actualizar el estado visual
+                setTimeout(() => {
+                    cargarNotificaciones();
+                    marcandoTodasComoLeidas = false;
+                }, 200);
+            } else {
+                console.error('Error al marcar todas como leídas:', data.error || 'Error desconocido');
+                marcandoTodasComoLeidas = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error al marcar todas como leídas:', error);
+            marcandoTodasComoLeidas = false;
+        });
+    }
+    
+    /**
      * Configura el event listener del botón "Marcar todas como leídas" en el dropdown.
-     * 
-     * Clona el botón para remover listeners anteriores y agrega un nuevo listener
-     * que marca todas las notificaciones como leídas y actualiza el contador.
+     * Usa event delegation para que funcione incluso cuando el botón se recrea dinámicamente.
      */
     function configurarBotonMarcarTodas() {
-        const dropdownMenu = document.querySelector('#notificationsDropdown + .dropdown-menu');
-        if (!dropdownMenu) return;
-        
-        const nuevoBoton = dropdownMenu.querySelector('#btnMarcarTodasLeidasDropdown');
-        if (!nuevoBoton) return;
-        
-        // Si el botón ya tiene el atributo, significa que ya tiene un listener configurado
-        // pero como el botón puede haber sido recreado, siempre reconfiguramos
-        // Clonar el botón para remover todos los listeners anteriores
-        const nuevoBotonClon = nuevoBoton.cloneNode(true);
-        nuevoBoton.parentNode.replaceChild(nuevoBotonClon, nuevoBoton);
-        
-        // Agregar el listener al nuevo botón
-        nuevoBotonClon.addEventListener('click', function(e) {
+        // No necesitamos hacer nada aquí, el event delegation se encarga de todo
+        // Esta función se mantiene por compatibilidad pero no hace nada
+    }
+    
+    // Event delegation robusto que funciona incluso cuando el botón se recrea
+    // Usar capture phase para asegurar que se ejecute antes que otros listeners
+    document.addEventListener('click', function(e) {
+        // Verificar si el click fue en el botón o en un elemento dentro del botón
+        const btnMarcarTodas = e.target.closest('#btnMarcarTodasLeidasDropdown');
+        if (btnMarcarTodas) {
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
             
-            // Marcar como manejado para evitar que el event delegation lo maneje también
-            this.setAttribute('data-handled', 'true');
-            
-            console.log('Marcando todas las notificaciones como leídas...');
-            
-            fetch('/notificaciones/api/marcar-todas-leidas/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    console.log('Todas las notificaciones marcadas como leídas. Nuevo contador:', data.count);
-                    
-                    // Actualizar el contador
-                    if (data.count !== undefined) {
-                        ultimoContador = data.count;
-                        actualizarBadge(data.count);
-                    } else {
-                        // Si no viene el contador, consultarlo
-                        actualizarContadorDesdeServidor();
-                    }
-                    
-                    // Recargar notificaciones para actualizar el estado visual
-                    setTimeout(() => {
-                        cargarNotificaciones();
-                        // Remover el atributo para permitir futuros clicks
-                        this.removeAttribute('data-handled');
-                    }, 200);
-                } else {
-                    console.error('Error al marcar todas como leídas:', data.error || 'Error desconocido');
-                    this.removeAttribute('data-handled');
-                }
-            })
-            .catch(error => {
-                console.error('Error al marcar todas como leídas:', error);
-                this.removeAttribute('data-handled');
-            });
-            
-            return false;
-        }, false); // Usar bubble phase para que no interfiera con el event delegation
-    }
-    
-    // Configurar el botón cuando se carga la página
-    configurarBotonMarcarTodas();
-    
-    // También configurar cuando se abre el dropdown (por si se recrea dinámicamente)
-    const dropdownToggleMarcarTodas = document.querySelector('#notificationsDropdown');
-    if (dropdownToggleMarcarTodas) {
-        dropdownToggleMarcarTodas.addEventListener('shown.bs.dropdown', function() {
-            setTimeout(configurarBotonMarcarTodas, 50);
-        });
-    }
-    
-    // Event delegation como respaldo (solo se ejecuta si el listener directo no funciona)
-    // Usar bubble phase y verificar que no haya sido manejado por el listener directo
-    document.addEventListener('click', function(e) {
-        const btnMarcarTodas = e.target.closest('#btnMarcarTodasLeidasDropdown');
-        if (btnMarcarTodas && !btnMarcarTodas.hasAttribute('data-handled')) {
-            // Marcar como manejado para evitar múltiples ejecuciones
-            btnMarcarTodas.setAttribute('data-handled', 'true');
-            
-            e.preventDefault();
-            e.stopPropagation();
-            
-            console.log('Marcando todas las notificaciones como leídas (event delegation)...');
-            
-            fetch('/notificaciones/api/marcar-todas-leidas/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    console.log('Todas las notificaciones marcadas como leídas. Nuevo contador:', data.count);
-                    
-                    // Actualizar el contador
-                    if (data.count !== undefined) {
-                        ultimoContador = data.count;
-                        actualizarBadge(data.count);
-                    } else {
-                        actualizarContadorDesdeServidor();
-                    }
-                    
-                    // Recargar notificaciones para actualizar el estado visual
-                    setTimeout(() => {
-                        cargarNotificaciones();
-                        // Remover el atributo para permitir futuros clicks
-                        btnMarcarTodas.removeAttribute('data-handled');
-                    }, 200);
-                } else {
-                    console.error('Error al marcar todas como leídas:', data.error || 'Error desconocido');
-                    btnMarcarTodas.removeAttribute('data-handled');
-                }
-            })
-            .catch(error => {
-                console.error('Error al marcar todas como leídas:', error);
-                btnMarcarTodas.removeAttribute('data-handled');
-            });
+            // Llamar a la función que maneja la lógica
+            marcarTodasComoLeidas();
         }
-    }, false); // Bubble phase - se ejecuta después del listener directo
+    }, true); // Usar capture phase para ejecutarse antes que otros listeners
     
 })();
 
