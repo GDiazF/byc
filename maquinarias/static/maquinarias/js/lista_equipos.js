@@ -36,6 +36,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Paso 2.2: Configurar event delegation para los links de nombres de equipos
+    // Usar event delegation porque los elementos se crean dinámicamente
+    document.addEventListener('click', function(e) {
+        const linkEquipo = e.target.closest('.equipo-nombre-link');
+        if (linkEquipo) {
+            e.preventDefault();
+            const equipoId = linkEquipo.getAttribute('data-equipo-id');
+            if (equipoId) {
+                mostrarDetalleEquipo(parseInt(equipoId));
+            }
+        }
+    });
+    
     // Paso 3: Configurar el botón de confirmación del modal de desactivación
     // Cuando el usuario confirma la desactivación, se ejecuta esta función
     document.getElementById('btnConfirmarDesactivar').addEventListener('click', confirmarDesactivacion);
@@ -260,12 +273,9 @@ function renderizarEquipos(equipos) {
     tbody.innerHTML = equipos.map(equipo => `
         <tr>
             <td>
-                <a href="javascript:void(0);" 
-                   class="text-primary text-decoration-none fw-bold" 
-                   onclick="mostrarDetalleEquipo(${equipo.equipo_id}); return false;" 
-                   style="cursor: pointer;"
-                   onmouseover="this.style.textDecoration='underline';" 
-                   onmouseout="this.style.textDecoration='none';"
+                <a href="#" 
+                   class="equipo-nombre-link" 
+                   data-equipo-id="${equipo.equipo_id}"
                    title="Click para ver información del equipo y documentación">
                     ${equipo.nombreEquipo}
                 </a>

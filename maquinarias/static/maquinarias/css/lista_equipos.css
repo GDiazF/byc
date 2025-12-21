@@ -109,6 +109,20 @@ tr.equipo-inactivo {
     text-decoration: underline !important;
 }
 
+/* Estilo para nombres de equipos clickeables */
+.equipo-nombre-link {
+    color: #0d6efd;
+    text-decoration: none;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.equipo-nombre-link:hover {
+    color: #0a58ca;
+    text-decoration: underline;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .table th, .table td {
