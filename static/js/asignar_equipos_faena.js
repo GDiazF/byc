@@ -223,6 +223,10 @@ function renderizarTablaEquipos() {
             
             // Validar si el equipo tiene asignación conflictiva en las fechas seleccionadas
             const tieneConflictoEnFechas = validarConflictoEquipoEnFechas(eq.id);
+            // Debug: verificar que se encuentren todos los conflictos
+            if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 1) {
+                console.log(`Equipo ${eq.nombre} (ID: ${eq.id}) tiene ${tieneConflictoEnFechas.asignaciones.length} conflictos:`, tieneConflictoEnFechas.asignaciones);
+            }
             const tieneAsignacionFinal = tieneAsignacion || tieneConflictoEnFechas.conflicto;
             
             // Estado: Disponible o Asignado
@@ -232,12 +236,14 @@ function renderizarTablaEquipos() {
             // Asignación Actual: mostrar todas las asignaciones conflictivas o la asignación general
             let asignacionActualHTML = '-';
             if (tieneAsignacionFinal) {
+                // SIEMPRE priorizar mostrar los conflictos encontrados en las fechas seleccionadas
                 if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 0) {
-                    // Mostrar todas las asignaciones conflictivas en fechas seleccionadas
+                    // Mostrar TODAS las asignaciones conflictivas en fechas seleccionadas
                     asignacionActualHTML = tieneConflictoEnFechas.asignaciones.map(asig => {
                         return asig.faena_nombre || '-';
                     }).join(', ');
                 } else if (asignacionInfo) {
+                    // Si no hay conflictos en fechas seleccionadas, mostrar la asignación general
                     if (asignacionInfo.tipo === 'ot') {
                         asignacionActualHTML = `OT: ${asignacionInfo.folio}`;
                     } else {
@@ -249,14 +255,16 @@ function renderizarTablaEquipos() {
             // Fecha Asignación: mostrar todas las fechas de las asignaciones conflictivas
             let fechaAsignacionHTML = '-';
             if (tieneAsignacionFinal) {
+                // SIEMPRE priorizar mostrar los conflictos encontrados en las fechas seleccionadas
                 if (tieneConflictoEnFechas.conflicto && tieneConflictoEnFechas.asignaciones && tieneConflictoEnFechas.asignaciones.length > 0) {
-                    // Mostrar todas las fechas de los conflictos en fechas seleccionadas
+                    // Mostrar TODAS las fechas de los conflictos en fechas seleccionadas
                     fechaAsignacionHTML = tieneConflictoEnFechas.asignaciones.map(asig => {
                         const fechaInicio = formatearFechaChilena(asig.fecha_inicio);
                         const fechaFin = asig.fecha_fin ? formatearFechaChilena(asig.fecha_fin) : 'Indefinida';
                         return `${fechaInicio} → ${fechaFin}`;
                     }).join('<br>');
                 } else if (asignacionInfo && asignacionInfo.fecha_inicio) {
+                    // Si no hay conflictos en fechas seleccionadas, mostrar la fecha de la asignación general
                     const fechaInicio = formatearFechaChilena(asignacionInfo.fecha_inicio);
                     const fechaFin = asignacionInfo.fecha_fin ? formatearFechaChilena(asignacionInfo.fecha_fin) : 'Indefinida';
                     fechaAsignacionHTML = `${fechaInicio} → ${fechaFin}`;
