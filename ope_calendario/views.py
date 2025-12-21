@@ -1141,6 +1141,50 @@ def obtener_info_personal(request, personal_id):
             'empresa': personal.infolaboral_set.first().empresa_id.nomFantasia if personal.infolaboral_set.exists() and personal.infolaboral_set.first().empresa_id else 'Sin empresa',
         }
         
+        # Documentos personales
+        documentos_personales = []
+        documentos_campos = {
+            'curriculum': 'Curriculum Vitae',
+            'certificado_antecedentes': 'Certificado de Antecedentes',
+            'hoja_vida_conductor': 'Hoja de Vida del Conductor',
+            'foto_carnet': 'Foto Carnet',
+            'certificado_afp': 'Certificado de Afiliación AFP',
+            'certificado_salud': 'Certificado de Afiliación de Salud',
+            'certificado_estudios': 'Certificado de Estudios',
+            'certificado_residencia': 'Certificado de Residencia',
+            'fotocopia_carnet': 'Fotocopia de Carnet',
+            'fotocopia_finiquito': 'Fotocopia de Último Finiquito',
+            'comprobante_banco': 'Comprobante de Cuenta Bancaria'
+        }
+        
+        for campo, nombre in documentos_campos.items():
+            documento = getattr(personal, campo, None)
+            if documento:
+                try:
+                    documento_url = documento.url
+                    documentos_personales.append({
+                        'campo': campo,
+                        'nombre': nombre,
+                        'url': documento_url,
+                        'tiene_documento': True
+                    })
+                except Exception:
+                    documentos_personales.append({
+                        'campo': campo,
+                        'nombre': nombre,
+                        'url': None,
+                        'tiene_documento': False
+                    })
+            else:
+                documentos_personales.append({
+                    'campo': campo,
+                    'nombre': nombre,
+                    'url': None,
+                    'tiene_documento': False
+                })
+        
+        info['documentos_personales'] = documentos_personales
+        
         # Licencias de conducir
         licencias = LicenciaPorPersonal.objects.filter(
             personal_id=personal

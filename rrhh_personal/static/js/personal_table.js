@@ -1026,11 +1026,21 @@ function renderizarDocumentacionPersonal(data, container) {
                     <i class="bi bi-clipboard2-pulse me-1"></i>Exámenes
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="documentos-personales-tab" data-bs-toggle="tab" data-bs-target="#documentos-personales" type="button">
+                    <i class="bi bi-file-earmark-text me-1"></i>Documentos Personales
+                </button>
+            </li>
         </ul>
         
         <div class="tab-content">
+            <!-- Documentos Personales -->
+            <div class="tab-pane fade show active" id="documentos-personales">
+                ${generarTablaDocumentosPersonales(data.documentos_personales || [])}
+            </div>
+            
             <!-- Licencias de Conducir -->
-            <div class="tab-pane fade show active" id="lic-conducir">
+            <div class="tab-pane fade" id="lic-conducir">
                 ${generarTablaLicenciasConducir(data.licencias_conducir || [])}
             </div>
             
@@ -1212,6 +1222,60 @@ function generarTablaExamenes(examenes) {
                             <td class="text-center">
                                 ${exam.documento_url ? `
                                     <a href="${exam.documento_url}" target="_blank" class="btn btn-sm btn-primary" title="Ver documento">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                ` : '<span class="text-muted">-</span>'}
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// Función para generar tabla de documentos personales
+function generarTablaDocumentosPersonales(documentos) {
+    if (!documentos || documentos.length === 0) {
+        return '<div class="alert alert-light text-center"><i class="bi bi-inbox me-2"></i>Sin documentos personales registrados</div>';
+    }
+    
+    // Iconos para cada tipo de documento
+    const iconos = {
+        'curriculum': 'bi-file-text',
+        'certificado_antecedentes': 'bi-file-check',
+        'hoja_vida_conductor': 'bi-file-earmark-person',
+        'foto_carnet': 'bi-person-badge',
+        'certificado_afp': 'bi-file-earmark-medical',
+        'certificado_salud': 'bi-heart-pulse',
+        'certificado_estudios': 'bi-mortarboard',
+        'certificado_residencia': 'bi-house',
+        'fotocopia_carnet': 'bi-card-image',
+        'fotocopia_finiquito': 'bi-file-earmark-text',
+        'comprobante_banco': 'bi-bank'
+    };
+    
+    return `
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Documento</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${documentos.map(doc => {
+                    const icono = iconos[doc.campo] || 'bi-file-earmark';
+                    return `
+                        <tr>
+                            <td><i class="bi ${icono} me-2"></i>${doc.nombre}</td>
+                            <td class="text-center">
+                                ${doc.tiene_documento ? '<span class="badge bg-success text-white">Cargado</span>' : '<span class="badge bg-secondary text-white">Sin archivo</span>'}
+                            </td>
+                            <td class="text-center">
+                                ${doc.url ? `
+                                    <a href="${doc.url}" target="_blank" class="btn btn-sm btn-primary" title="Ver documento">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                 ` : '<span class="text-muted">-</span>'}
