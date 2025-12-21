@@ -192,10 +192,17 @@ def api_marcar_todas_leidas(request):
             - error (str): Mensaje de error si success=False
     """
     try:
+        from django.core.cache import cache
+        
+        # Marcar todas las notificaciones como leídas
         Notificacion.objects.filter(usuario=request.user, leida=False, archivada=False).update(
             leida=True,
             fecha_leida=timezone.now()
         )
+        
+        # Invalidar el caché del contador para forzar recálculo
+        cache_key = f'notif_count_user_{request.user.id}'
+        cache.delete(cache_key)
         
         # Obtener el nuevo contador después de marcar todas como leídas
         nuevo_contador = contar_notificaciones_no_leidas(request.user)

@@ -768,6 +768,8 @@
                         reproducirSonidoNotificacion();
                     }
                     
+                    // Actualizar el contador global
+                    ultimoContador = count;
                     actualizarBadge(count);
                     
                     // Retornar el contador para el polling adaptativo
@@ -844,19 +846,29 @@
             if (data.success) {
                 console.log('Todas las notificaciones marcadas como leídas. Nuevo contador:', data.count);
                 
-                // Actualizar el contador
+                // Actualizar el contador inmediatamente con el valor del servidor
                 if (data.count !== undefined) {
-                    ultimoContador = data.count;
-                    actualizarBadge(data.count);
+                    ultimoContador = parseInt(data.count) || 0;
+                    actualizarBadge(ultimoContador);
                 } else {
-                    // Si no viene el contador, consultarlo
-                    actualizarContadorDesdeServidor();
+                    // Si no viene el contador, consultarlo desde el servidor
+                    actualizarContadorDesdeServidor().then(count => {
+                        ultimoContador = count;
+                        actualizarBadge(count);
+                    });
                 }
                 
                 // Recargar notificaciones para actualizar el estado visual
                 setTimeout(() => {
                     cargarNotificaciones();
-                    marcandoTodasComoLeidas = false;
+                    // Forzar actualización del contador desde el servidor para asegurar sincronización
+                    actualizarContadorDesdeServidor().then(count => {
+                        ultimoContador = count;
+                        actualizarBadge(count);
+                        marcandoTodasComoLeidas = false;
+                    }).catch(() => {
+                        marcandoTodasComoLeidas = false;
+                    });
                 }, 200);
             } else {
                 console.error('Error al marcar todas como leídas:', data.error || 'Error desconocido');
