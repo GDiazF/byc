@@ -358,13 +358,16 @@ function validarConflictoEquipoEnFechas(equipoId) {
     }
     
     // Buscar asignaciones del equipo que se solapen con las fechas seleccionadas
-    const asignacionesEquipo = todasAsignacionesEquipos.filter(asig => asig.equipo_id === equipoId);
+    // Excluir asignaciones de la faena actual (puede haber múltiples asignaciones del mismo equipo a la misma faena)
+    const asignacionesEquipo = todasAsignacionesEquipos.filter(asig => 
+        asig.equipo_id === equipoId && asig.faena_id !== faena.id
+    );
     
     for (const asignacion of asignacionesEquipo) {
         const asigInicio = asignacion.fecha_inicio;
         const asigFin = asignacion.fecha_fin;
         
-        // Verificar solapamiento
+        // Verificar solapamiento: dos rangos se solapan si inicio1 <= fin2 AND inicio2 <= fin1
         if (fechaFin) {
             // Rango con fecha fin: verificar solapamiento
             if (asigFin) {
@@ -388,6 +391,35 @@ function validarConflictoEquipoEnFechas(equipoId) {
             } else {
                 // Ninguna tiene fecha fin: siempre hay conflicto si hay asignación
                 return { conflicto: true, asignacion: asignacion };
+            }
+        }
+    }
+    
+    // También verificar conflictos con OTs del equipo
+    const equipo = equipos.find(eq => eq.id === equipoId);
+    if (equipo && equipo.asignacion_actual && equipo.asignacion_actual.tipo === 'ot') {
+        const otInfo = equipo.asignacion_actual;
+        const otInicio = otInfo.fecha_inicio;
+        const otFin = otInfo.fecha_fin;
+        
+        // Verificar solapamiento con OT
+        if (fechaFin) {
+            if (otFin) {
+                if (otInicio <= fechaFin && otFin >= fechaInicio) {
+                    return { conflicto: true, asignacion: { faena_nombre: `OT: ${otInfo.folio}`, fecha_inicio: otInicio, fecha_fin: otFin } };
+                }
+            } else {
+                if (otInicio <= fechaFin) {
+                    return { conflicto: true, asignacion: { faena_nombre: `OT: ${otInfo.folio}`, fecha_inicio: otInicio, fecha_fin: otFin } };
+                }
+            }
+        } else {
+            if (otFin) {
+                if (otFin >= fechaInicio) {
+                    return { conflicto: true, asignacion: { faena_nombre: `OT: ${otInfo.folio}`, fecha_inicio: otInicio, fecha_fin: otFin } };
+                }
+            } else {
+                return { conflicto: true, asignacion: { faena_nombre: `OT: ${otInfo.folio}`, fecha_inicio: otInicio, fecha_fin: otFin } };
             }
         }
     }
