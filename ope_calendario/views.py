@@ -1159,6 +1159,14 @@ def obtener_info_personal(request, personal_id):
         
         for campo, nombre in documentos_campos.items():
             documento = getattr(personal, campo, None)
+            fecha_vencimiento = None
+            vigente = None
+            
+            # Solo fotocopia_carnet tiene fecha de vencimiento
+            if campo == 'fotocopia_carnet' and personal.fecha_vencimiento_carnet:
+                fecha_vencimiento = personal.fecha_vencimiento_carnet.strftime('%d/%m/%Y')
+                vigente = personal.fecha_vencimiento_carnet >= date.today()
+            
             if documento:
                 try:
                     documento_url = documento.url
@@ -1166,21 +1174,27 @@ def obtener_info_personal(request, personal_id):
                         'campo': campo,
                         'nombre': nombre,
                         'url': documento_url,
-                        'tiene_documento': True
+                        'tiene_documento': True,
+                        'fecha_vencimiento': fecha_vencimiento,
+                        'vigente': vigente
                     })
                 except Exception:
                     documentos_personales.append({
                         'campo': campo,
                         'nombre': nombre,
                         'url': None,
-                        'tiene_documento': False
+                        'tiene_documento': False,
+                        'fecha_vencimiento': fecha_vencimiento,
+                        'vigente': vigente
                     })
             else:
                 documentos_personales.append({
                     'campo': campo,
                     'nombre': nombre,
                     'url': None,
-                    'tiene_documento': False
+                    'tiene_documento': False,
+                    'fecha_vencimiento': fecha_vencimiento,
+                    'vigente': vigente
                 })
         
         info['documentos_personales'] = documentos_personales

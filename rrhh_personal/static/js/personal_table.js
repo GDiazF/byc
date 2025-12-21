@@ -1261,18 +1261,32 @@ function generarTablaDocumentosPersonales(documentos) {
                 <tr>
                     <th>Documento</th>
                     <th class="text-center">Estado</th>
+                    <th class="text-center">Fecha Vencimiento</th>
                     <th class="text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 ${documentos.map(doc => {
                     const icono = iconos[doc.campo] || 'bi-file-earmark';
+                    let estadoBadge = doc.tiene_documento ? '<span class="badge bg-success text-white">Cargado</span>' : '<span class="badge bg-secondary text-white">Sin archivo</span>';
+                    
+                    // Si tiene fecha de vencimiento, mostrar estado de vigencia
+                    let fechaVencimientoHtml = '<span class="text-muted">-</span>';
+                    if (doc.fecha_vencimiento) {
+                        const estadoVigencia = doc.vigente 
+                            ? '<span class="badge bg-success text-white">Vigente</span>' 
+                            : '<span class="badge bg-danger text-white">Vencido</span>';
+                        fechaVencimientoHtml = `
+                            <div>${doc.fecha_vencimiento}</div>
+                            <div class="mt-1">${estadoVigencia}</div>
+                        `;
+                    }
+                    
                     return `
                         <tr>
                             <td><i class="bi ${icono} me-2"></i>${doc.nombre}</td>
-                            <td class="text-center">
-                                ${doc.tiene_documento ? '<span class="badge bg-success text-white">Cargado</span>' : '<span class="badge bg-secondary text-white">Sin archivo</span>'}
-                            </td>
+                            <td class="text-center">${estadoBadge}</td>
+                            <td class="text-center">${fechaVencimientoHtml}</td>
                             <td class="text-center">
                                 ${doc.url ? `
                                     <a href="${doc.url}" target="_blank" class="btn btn-sm btn-primary" title="Ver documento">
