@@ -752,10 +752,8 @@ async function guardarEdicionAsignacionEquipo(event) {
                 asignacion.observaciones = obs;
             }
             
-            // Recargar página para actualizar datos
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            // Re-renderizar la tabla de equipos asignados
+            renderizarEquiposAsignados();
         } else {
             mostrarAlertaEnModal(result.error || 'Error al actualizar la asignación', 'error', 'alertEditAsignacionEquipo');
         }
@@ -789,46 +787,79 @@ function mostrarAlertaEnModal(mensaje, tipo, containerId) {
     `;
 }
 
+// Variable para guardar el ID de la asignación de equipo a eliminar
+let asignacionEquipoAEliminar = null;
+
 // Función para eliminar una asignación de equipo
-// Muestra confirmación y envía petición DELETE a la API
+// Muestra modal de confirmación antes de eliminar
 // Parámetros:
 //   asignacionId: Number - ID de la asignación a eliminar
-async function eliminarAsignacionEquipo(asignacionId) {
-    // Paso 1: Mostrar confirmación antes de eliminar
-    // Esto previene eliminaciones accidentales
-    if (!confirm('¿Está seguro de eliminar esta asignación?')) {
-        return;  // Si el usuario cancela, salir sin hacer nada
+function eliminarAsignacionEquipo(asignacionId) {
+    const asignacion = faena.asignaciones.find(a => a.id === asignacionId);
+    if (!asignacion) return;
+    
+    // Guardar ID para usar en la confirmación
+    asignacionEquipoAEliminar = asignacionId;
+    
+    // Mostrar nombre del equipo en el modal
+    const nombreEquipo = asignacion.equipo.nombre || 'Equipo';
+    document.getElementById('confirmarEliminarEquipo_nombreEquipo').textContent = nombreEquipo;
+    
+    // Configurar botón de confirmar
+    document.getElementById('btnConfirmarEliminarEquipo').onclick = confirmarEliminacionEquipo;
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalConfirmarEliminarEquipo'));
+    modal.show();
+}
+
+/**
+ * Confirma y ejecuta la eliminación de la asignación de equipo.
+ * Hace una petición AJAX al backend y actualiza la tabla localmente.
+ * Muestra mensaje de éxito/error.
+ */
+async function confirmarEliminacionEquipo() {
+    if (!asignacionEquipoAEliminar) return;
+    
+    // Cerrar modal de confirmación
+    const modalElement = document.getElementById('modalConfirmarEliminarEquipo');
+    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+    if (modalInstance) {
+        modalInstance.hide();
     }
     
-    // Paso 2: Enviar petición a la API para eliminar la asignación
     try {
         const response = await fetch('/calendario/api/eliminar-asignacion-equipo/', {
-            method: 'POST',  // Método HTTP POST (Django no soporta DELETE directamente en algunos casos)
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')  // Token CSRF de Django
+                'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({ asignacion_id: asignacionId })  // ID de la asignación a eliminar
+            body: JSON.stringify({ asignacion_id: asignacionEquipoAEliminar })
         });
         
-        const result = await response.json();  // Convertir respuesta a JSON
+        const result = await response.json();
         
         if (response.ok && result.success) {
-            // CASO ÉXITO: La asignación fue eliminada correctamente
-            mostrarAlerta('Asignación eliminada correctamente', 'success');
+            mostrarAlerta(result.message || 'Asignación eliminada correctamente', 'success');
             
-            // Recargar página después de 1.5 segundos para actualizar datos
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            // Eliminar de los datos locales
+            const index = faena.asignaciones.findIndex(a => a.id === asignacionEquipoAEliminar);
+            if (index !== -1) {
+                faena.asignaciones.splice(index, 1);
+            }
+            
+            // Re-renderizar la tabla dinámicamente
+            renderizarEquiposAsignados();
+            
+            // Limpiar variable
+            asignacionEquipoAEliminar = null;
         } else {
-            // CASO ERROR: El servidor retornó un error
             mostrarAlerta(result.error || 'Error al eliminar asignación', 'error');
         }
     } catch (error) {
-        // CASO EXCEPCIÓN: Error de red o excepción no manejada
         console.error('Error:', error);
-        mostrarAlerta('Error de conexión', 'error');
+        mostrarAlerta('Error de conexión: ' + error.message, 'error');
     }
 }
 
@@ -836,35 +867,45 @@ async function eliminarAsignacionEquipo(asignacionId) {
 // ALERTAS
 // ============================================================================
 
-// Función para mostrar alertas en el contenedor principal de la página
-// Crea un alert de Bootstrap que se cierra automáticamente después de 5 segundos
+// Función para mostrar alertas flotantes en la esquina superior derecha
+// Crea un contenedor de mensajes si no existe y muestra un alert que se cierra automáticamente
 // Parámetros:
 //   mensaje: String - Texto del mensaje a mostrar
 //   tipo: String - Tipo de alerta ('success' para éxito, 'error' para error)
 function mostrarAlerta(mensaje, tipo) {
-    // Paso 1: Obtener referencia al contenedor de alertas
-    const alertContainer = document.getElementById('alertContainer');
+    // Crear contenedor de alertas flotantes si no existe
+    let container = document.querySelector('.messages-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'messages-container';
+        container.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;';
+        document.body.appendChild(container);
+    }
     
-    // Paso 2: Determinar clase CSS e icono según el tipo de alerta
     const alertClass = tipo === 'success' ? 'alert-success' : 'alert-danger';
-    const icon = tipo === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle';
+    const iconClass = tipo === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
     
-    // Paso 3: Crear y mostrar el alert de Bootstrap
-    alertContainer.innerHTML = `
-        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-            <i class="bi ${icon} me-2"></i>${mensaje}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+    alertDiv.setAttribute('role', 'alert');
+    alertDiv.style.marginBottom = '10px';
+    alertDiv.innerHTML = `
+        <i class="bi ${iconClass} me-2"></i>${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
-    // Paso 4: Configurar cierre automático después de 5 segundos
-    // Esto evita que las alertas permanezcan indefinidamente en la pantalla
+    container.appendChild(alertDiv);
+    
+    // Auto-cerrar después de 5 segundos
     setTimeout(() => {
-        const alert = alertContainer.querySelector('.alert');
-        if (alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();  // Cerrar el alert usando la API de Bootstrap
-        }
-    }, 5000);  // Cerrar después de 5 segundos
+        alertDiv.classList.remove('show');
+        setTimeout(() => {
+            alertDiv.remove();
+            // Si no hay más alertas, remover el contenedor
+            if (container.children.length === 0) {
+                container.remove();
+            }
+        }, 150);
+    }, 5000);
 }
 

@@ -339,5 +339,37 @@ window.userPermissions = {
     </div>
 </div>
 
+<!-- Modal Confirmar Eliminación de Equipo -->
+<div class="modal fade" id="modalConfirmarEliminarEquipo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">¿Está seguro que desea eliminar esta asignación de equipo?</p>
+                <p class="mb-0"><strong id="confirmarEliminarEquipo_nombreEquipo"></strong> ya no estará asignado a esta faena.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                {% if user|has_perm:'ope_calendario.delete_asignacionequipofaena' %}
+                <button type="button" class="btn btn-danger" id="btnConfirmarEliminarEquipo">
+                    <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+                {% else %}
+                <button type="button" class="btn btn-danger" disabled title="No tiene permiso para eliminar asignaciones de equipos">
+                    <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
