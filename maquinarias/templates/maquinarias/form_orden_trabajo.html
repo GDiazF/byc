@@ -1,6 +1,7 @@
 {% extends 'home/index.html' %}
 {% load static %}
 {% load permissions_tags %}
+{% load tz %}
 
 {% block title %}{% if es_edicion %}Editar{% else %}Nueva{% endif %} Orden de Trabajo{% endblock %}
 
@@ -437,7 +438,7 @@
                                             <strong class="text-primary">
                                                 <i class="bi bi-file-text me-1"></i>Observación Inicial
                                             </strong>
-                                            <small class="text-muted">{{ ot.fecha_creacion|date:'d/m/Y H:i' }}</small>
+                                            <small class="text-muted">{{ ot.fecha_creacion|localtime|date:'d/m/Y H:i' }}</small>
                                         </div>
                                         <p class="mb-0">{{ ot.observaciones }}</p>
                                     </div>
@@ -446,7 +447,7 @@
                                     <div class="mb-3 pb-3 border-bottom">
                                         <div class="d-flex justify-content-between align-items-start mb-1">
                                             <strong class="text-primary">{{ obs.usuario.username|default:"Sistema" }}</strong>
-                                            <small class="text-muted">{{ obs.fecha|date:'d/m/Y H:i' }}</small>
+                                            <small class="text-muted">{{ obs.fecha|localtime|date:'d/m/Y H:i' }}</small>
                                         </div>
                                         <p class="mb-0">{{ obs.observacion }}</p>
                                     </div>

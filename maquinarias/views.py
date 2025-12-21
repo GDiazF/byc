@@ -5313,10 +5313,13 @@ def api_detalle_ot(request, ot_id):
         
         # Paso 5: Serializar historial de observaciones
         # Las observaciones se ordenan por fecha descendente (más recientes primero)
+        from django.utils import timezone
         historial_observaciones = []
         for obs in HistorialObservacionesOT.objects.filter(ot_id=ot).select_related('usuario').order_by('-fecha'):
+            # Convertir fecha UTC a hora local de Chile
+            fecha_local = timezone.localtime(obs.fecha)
             historial_observaciones.append({
-                'fecha': obs.fecha.strftime('%Y-%m-%d %H:%M:%S'),  # Fecha y hora formateadas
+                'fecha': fecha_local.strftime('%Y-%m-%d %H:%M:%S'),  # Fecha y hora formateadas en hora de Chile
                 'usuario': obs.usuario.username if obs.usuario else 'Sistema',  # Usuario que agregó la observación
                 'observacion': obs.observacion  # Texto de la observación
             })
@@ -5325,8 +5328,10 @@ def api_detalle_ot(request, ot_id):
         # Los cambios se ordenan por fecha descendente (más recientes primero)
         historial_cambios = []
         for cambio in HistorialOT.objects.filter(ot=ot).select_related('usuario').order_by('-fecha_hora'):
+            # Convertir fecha UTC a hora local de Chile
+            fecha_hora_local = timezone.localtime(cambio.fecha_hora)
             historial_cambios.append({
-                'fecha_hora': cambio.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),  # Fecha y hora formateadas
+                'fecha_hora': fecha_hora_local.strftime('%Y-%m-%d %H:%M:%S'),  # Fecha y hora formateadas en hora de Chile
                 'usuario': cambio.usuario.username if cambio.usuario else 'Sistema',  # Usuario que realizó el cambio
                 'accion': cambio.get_accion_display(),  # Nombre legible de la acción
                 'descripcion': cambio.descripcion  # Descripción detallada del cambio
@@ -5433,9 +5438,12 @@ def api_historial_ot(request, ot_id):
                         pass
             
             # Paso 2.2: Agregar datos del cambio al historial
+            # Convertir fecha UTC a hora local de Chile
+            from django.utils import timezone
+            fecha_hora_local = timezone.localtime(cambio.fecha_hora)
             historial_data.append({
-                'fecha_hora': cambio.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),  # Fecha y hora en formato ISO
-                'fecha_hora_formateada': cambio.fecha_hora.strftime('%d/%m/%Y %H:%M'),  # Fecha y hora formateada para mostrar
+                'fecha_hora': fecha_hora_local.strftime('%Y-%m-%d %H:%M:%S'),  # Fecha y hora en formato ISO (hora de Chile)
+                'fecha_hora_formateada': fecha_hora_local.strftime('%d/%m/%Y %H:%M'),  # Fecha y hora formateada para mostrar (hora de Chile)
                 'usuario': cambio.usuario.username if cambio.usuario else 'Sistema',  # Username del usuario
                 'usuario_nombre': obtener_nombre_completo_usuario(cambio.usuario) if cambio.usuario else 'Sistema',  # Nombre completo del usuario
                 'accion': cambio.accion,  # Código de la acción (ej: 'ESTADO_OT_CAMBIADO')
