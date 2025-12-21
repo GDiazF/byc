@@ -8,6 +8,7 @@ let changeConfirmed = false;  // Flag que indica si el cambio fue confirmado
 let equiposSeleccionados = [];  // Array de objetos con información de equipos seleccionados para descarga
 // Formato: [{equipo_id, nombreEquipo, codigoInterno, tipoEquipo, marcaEquipo}, ...]
 let todosLosEquipos = [];  // Almacenar todos los equipos activos para búsqueda en el modal de selección
+let equiposCargados = [];  // Almacenar los equipos de la página actual para acceso rápido
 let ordenActual = null;  // Columna actual por la cual se está ordenando
 let direccionOrden = 'asc';  // Dirección del ordenamiento ('asc' o 'desc')
 
@@ -209,13 +210,16 @@ function cargarEquipos() {
         .then(data => {
             if (data.success) {
                 // CASO ÉXITO: Los equipos se cargaron correctamente
-                // Paso 4.1: Renderizar la tabla con los equipos recibidos
+                // Paso 4.1: Guardar equipos cargados para acceso rápido
+                equiposCargados = data.equipos;
+                
+                // Paso 4.2: Renderizar la tabla con los equipos recibidos
                 renderizarEquipos(data.equipos);
                 
-                // Paso 4.2: Renderizar controles de paginación
+                // Paso 4.3: Renderizar controles de paginación
                 renderizarPaginacion(data.pagination);
                 
-                // Paso 4.3: Actualizar estadísticas (total de registros, etc.)
+                // Paso 4.4: Actualizar estadísticas (total de registros, etc.)
                 actualizarEstadisticas(data.pagination);
             } else {
                 // CASO ERROR: El servidor retornó un error
@@ -255,7 +259,13 @@ function renderizarEquipos(equipos) {
     // Se crea una fila de tabla por cada equipo con toda su información
     tbody.innerHTML = equipos.map(equipo => `
         <tr>
-            <td><strong>${equipo.nombreEquipo}</strong></td>
+            <td>
+                <strong style="cursor: pointer; color: #0d6efd; text-decoration: underline;" 
+                        onclick="mostrarDetalleEquipo(${equipo.equipo_id})" 
+                        title="Click para ver información del equipo y documentación">
+                    ${equipo.nombreEquipo}
+                </strong>
+            </td>
             <td>
                 <span class="badge bg-secondary">${equipo.tipoEquipo.sigla}</span>
                 <span class="ms-1">${equipo.tipoEquipo.nombre}</span>
@@ -938,5 +948,253 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// Función para mostrar el detalle del equipo en un modal
+// Similar a la función del calendario de equipos
+function mostrarDetalleEquipo(equipoId) {
+    // Buscar el equipo en los datos cargados
+    const equipo = equiposCargados.find(e => e.equipo_id === equipoId);
+    if (!equipo) {
+        console.error('Equipo no encontrado:', equipoId);
+        return;
+    }
+    
+    const modalBody = document.getElementById('equipoModalBody');
+    if (!modalBody) return;
+    
+    // Crear estructura con tabs simplificada (estilo del proyecto)
+    modalBody.innerHTML = `
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs mb-3" id="equipoTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info-pane" type="button" role="tab" aria-controls="info-pane" aria-selected="true">
+                    <i class="bi bi-info-circle me-1"></i>Información
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="documentacion-tab" data-bs-toggle="tab" data-bs-target="#documentacion-pane" type="button" role="tab" aria-controls="documentacion-pane" aria-selected="false" data-equipo-id="${equipoId}">
+                    <i class="bi bi-folder me-1"></i>Documentación
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Tab panes -->
+        <div class="tab-content" id="equipoTabContent">
+            <!-- Tab: Información -->
+            <div class="tab-pane fade show active" id="info-pane" role="tabpanel" aria-labelledby="info-tab">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card border">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0 fw-bold"><i class="bi bi-info-circle me-2 text-primary"></i>Información General</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <th style="width: 40%;" class="bg-light">Nombre:</th>
+                                            <td><strong>${equipo.nombreEquipo}</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light">Código Interno:</th>
+                                            <td>${equipo.codigoInterno || 'N/A'}</td>
+                                        </tr>
+                                        ${equipo.patente && equipo.patente !== '-' ? `
+                                        <tr>
+                                            <th class="bg-light">Patente:</th>
+                                            <td>${equipo.patente}</td>
+                                        </tr>
+                                        ` : ''}
+                                        <tr>
+                                            <th class="bg-light">Empresa:</th>
+                                            <td>${equipo.empresa.nombre || 'N/A'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light">Tipo:</th>
+                                            <td>${equipo.tipoEquipo.nombre || 'N/A'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light">Marca:</th>
+                                            <td>${equipo.marcaEquipo.nombre || 'N/A'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light">Modelo:</th>
+                                            <td>${equipo.modeloEquipo.nombre || 'N/A'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0 fw-bold"><i class="bi bi-speedometer2 me-2 text-success"></i>Horómetros y Odómetro</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <th style="width: 40%;" class="bg-light">Horómetro:</th>
+                                            <td>${equipo.horometro ? equipo.horometro.toLocaleString('es-CL') : 'N/A'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light">Odómetro:</th>
+                                            <td>${equipo.odometro ? equipo.odometro.toLocaleString('es-CL') : 'N/A'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light">Horómetro Superestructura:</th>
+                                            <td>${equipo.horometroSuperEstructural ? equipo.horometroSuperEstructural.toLocaleString('es-CL') : 'N/A'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab: Documentación -->
+            <div class="tab-pane fade" id="documentacion-pane" role="tabpanel" aria-labelledby="documentacion-tab">
+                <div id="documentosContainer">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando documentación...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('equipoModal'));
+    modal.show();
+    
+    // Actualizar título del modal
+    const modalTitle = document.getElementById('equipoModalTitle');
+    if (modalTitle) {
+        modalTitle.textContent = `Información del Equipo: ${equipo.nombreEquipo}`;
+    }
+    
+    // Agregar listener para cuando se active el tab de documentación
+    const documentacionTab = document.getElementById('documentacion-tab');
+    if (documentacionTab) {
+        documentacionTab.addEventListener('shown.bs.tab', function (e) {
+            const equipoId = e.target.getAttribute('data-equipo-id');
+            if (equipoId) {
+                cargarDocumentosEquipo(parseInt(equipoId));
+            }
+        });
+    }
+}
+
+// Cargar documentos del equipo
+async function cargarDocumentosEquipo(equipoId) {
+    const container = document.getElementById('documentosContainer');
+    if (!container) return;
+    
+    try {
+        const response = await fetch(`/maquinarias/api/equipos/${equipoId}/documentos/`);
+        const data = await response.json();
+        
+        if (data.success && data.documentos) {
+            renderizarDocumentosEquipo(data.documentos, container);
+        } else {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No hay documentación disponible para este equipo.
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error al cargar documentos:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Error al cargar la documentación. Por favor, intente nuevamente.
+            </div>
+        `;
+    }
+}
+
+// Renderizar documentos del equipo en formato tabla simple (estilo del proyecto)
+function renderizarDocumentosEquipo(documentos, container) {
+    if (!documentos || documentos.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No hay documentación disponible para este equipo.
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-bordered rrhh-table">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Tipo de Documento</th>
+                        <th>Fecha Subida</th>
+                        <th>Fecha Vencimiento</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    documentos.forEach(doc => {
+        const fechaVencimiento = doc.fecha_vencimiento 
+            ? new Date(doc.fecha_vencimiento).toLocaleDateString('es-CL')
+            : 'N/A';
+        const fechaSubida = new Date(doc.fecha_subida).toLocaleDateString('es-CL');
+        
+        let badgeEstado = '';
+        if (doc.estado === 'vencido') {
+            badgeEstado = '<span class="badge bg-danger">Vencido</span>';
+        } else if (doc.estado === 'por_vencer') {
+            badgeEstado = `<span class="badge bg-warning text-dark">Por vencer (${doc.dias_restantes} días)</span>`;
+        } else {
+            badgeEstado = '<span class="badge bg-success text-white">Vigente</span>';
+        }
+        
+        const archivoLink = doc.archivo_url 
+            ? `<a href="${doc.archivo_url}" target="_blank" class="btn btn-sm btn-primary" title="${doc.archivo_nombre || 'Ver documento'}">
+                 <i class="bi bi-eye"></i>
+               </a>`
+            : '<span class="text-muted">N/A</span>';
+        
+        html += `
+            <tr>
+                <td><strong>${doc.tipo_documento_nombre}</strong></td>
+                <td>${fechaSubida}</td>
+                <td>${fechaVencimiento}</td>
+                <td>${badgeEstado}</td>
+                <td class="text-center">${archivoLink}</td>
+            </tr>
+        `;
+        
+        if (doc.observaciones) {
+            html += `
+                <tr>
+                    <td colspan="5" class="small text-muted bg-light">
+                        <strong>Observaciones:</strong> ${doc.observaciones}
+                    </td>
+                </tr>
+            `;
+        }
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
 }
 
