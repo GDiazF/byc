@@ -3157,22 +3157,13 @@ def calendario_maquinarias(request):
     faena_filter = request.GET.get('faena', '')  # Filtro por nombre de faena o "sin asignar"
     search_query = request.GET.get('search', '')  # Término de búsqueda
     
-    # Paso 5: Cargar TODOS los datos para que el filtro local funcione sobre todos los registros
+    # Paso 5: Cargar TODOS los datos UNA SOLA VEZ para que el filtro local funcione sobre todos los registros
     # Igual que la tabla de personal: cargar todos los datos y filtrar localmente en JavaScript
     # PERO mantener la paginación por defecto para mostrar solo 25 por página inicialmente
-    calendario_data_todos = obtener_calendario_maquinarias_optimizado(
+    calendario_data = obtener_calendario_maquinarias_optimizado(
         year, month, empresa_filter, tipo_filter, faena_filter, search_query, 1, 100000  # page_size muy grande para obtener TODOS
     )
-    total_equipos = calendario_data_todos['total_equipos']
-    
-    # Usar paginación normal para mostrar solo la página actual inicialmente
-    calendario_data = obtener_calendario_maquinarias_optimizado(
-        year, month, empresa_filter, tipo_filter, faena_filter, search_query, page, page_size
-    )
-    # Reemplazar los equipos paginados con TODOS los datos para el filtro local
-    calendario_data['equipos'] = calendario_data_todos['equipos']
-    calendario_data['ordenes_trabajo'] = calendario_data_todos['ordenes_trabajo']
-    calendario_data['estados_calculados'] = calendario_data_todos['estados_calculados']
+    total_equipos = calendario_data['total_equipos']
     
     # Calcular total_pages para la paginación inicial
     total_pages = (total_equipos + page_size - 1) // page_size if total_equipos > 0 else 1

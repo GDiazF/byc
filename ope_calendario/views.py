@@ -81,23 +81,13 @@ def calendario_mensual(request):
     empresa_filter = request.GET.get('empresa', '')  # Filtrar por empresa
     search_query = request.GET.get('search', '')  # Búsqueda por nombre o RUT
     
-    # Paso 5: Cargar TODOS los datos para que el filtro local funcione sobre todos los registros
+    # Paso 5: Cargar TODOS los datos UNA SOLA VEZ para que el filtro local funcione sobre todos los registros
     # Igual que la tabla de personal: cargar todos los datos y filtrar localmente en JavaScript
     # PERO mantener la paginación por defecto para mostrar solo 10 por página inicialmente
-    calendario_data_todos = obtener_calendario_mensual(
+    calendario_data = obtener_calendario_mensual(
         year, month, faena_filter, cargo_filter, empresa_filter, search_query, 1, 100000  # page_size muy grande para obtener TODOS
     )
-    total_personal = calendario_data_todos['total_personal']
-    
-    # Usar paginación normal para mostrar solo la página actual inicialmente
-    calendario_data = obtener_calendario_mensual(
-        year, month, faena_filter, cargo_filter, empresa_filter, search_query, page, page_size
-    )
-    # Reemplazar el personal paginado con TODOS los datos para el filtro local
-    calendario_data['personal'] = calendario_data_todos['personal']
-    calendario_data['asignaciones'] = calendario_data_todos['asignaciones']
-    calendario_data['estados_manuales'] = calendario_data_todos['estados_manuales']
-    calendario_data['estados_calculados'] = calendario_data_todos['estados_calculados']
+    total_personal = calendario_data['total_personal']
     
     # Calcular total_pages para la paginación inicial
     total_pages = (total_personal + page_size - 1) // page_size if total_personal > 0 else 1
