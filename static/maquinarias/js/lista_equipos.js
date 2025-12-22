@@ -850,7 +850,15 @@ function actualizarVistaSeleccionadosEquipos() {
     }
     
     if (btnDescargarZipEquipos) {
-        btnDescargarZipEquipos.disabled = equiposSeleccionados.length === 0;
+        // Verificar permisos - igual que personal_table.js
+        const canViewDocumentation = window.userPermissions && (
+            window.userPermissions.canViewDocumentacion === true || 
+            window.userPermissions.canViewDocumentacion === 'true' ||
+            window.userPermissions.canView === true ||
+            window.userPermissions.canView === 'true'
+        );
+        // Deshabilitar si no tiene permisos O si no hay equipos seleccionados
+        btnDescargarZipEquipos.disabled = !canViewDocumentation || equiposSeleccionados.length === 0;
     }
     
     if (equiposSeleccionados.length === 0) {

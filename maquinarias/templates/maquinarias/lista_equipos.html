@@ -35,6 +35,11 @@
                     <i class="bi bi-download me-1"></i>
                     Descargar Documentación
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-primary btn-sm ms-2" disabled title="No tiene permiso para descargar documentación">
+                    <i class="bi bi-download me-1"></i>
+                    Descargar Documentación
+                </button>
                 {% endif %}
             </div>
             <div class="col-md-6 text-end">
@@ -296,9 +301,15 @@
                 <button type="button" class="btn btn-danger" id="btnLimpiarSeleccionEquipos">
                     <i class="bi bi-trash me-1"></i>Limpiar Selección
                 </button>
+                {% if user|has_perm:'maquinarias.view_equipo' %}
                 <button type="button" class="btn btn-success" id="btnDescargarZipEquipos" disabled>
                     <i class="bi bi-download me-1"></i>Descargar ZIP
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-success" id="btnDescargarZipEquipos" disabled title="No tiene permiso para descargar documentación">
+                    <i class="bi bi-download me-1"></i>Descargar ZIP
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
