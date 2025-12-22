@@ -894,7 +894,12 @@ function filtrarPersonalLocalmente() {
         return;
     }
     
-    const search = document.getElementById('searchInput')?.value || '';
+    // Guardar el estado del campo de búsqueda antes de re-renderizar
+    const searchInput = document.getElementById('searchInput');
+    const hadFocus = document.activeElement === searchInput;
+    const cursorPosition = searchInput ? searchInput.selectionStart : null;
+    
+    const search = searchInput?.value || '';
     const faena = document.getElementById('faenaFilter')?.value || '';
     const cargo = document.getElementById('cargoFilter')?.value || '';
     const empresa = document.getElementById('empresaFilter')?.value || '';
@@ -904,6 +909,7 @@ function filtrarPersonalLocalmente() {
     const searchTrimmed = search.trim();
     const searchLower = searchTrimmed.toLowerCase();
     
+    // Filtrar sobre TODOS los datos, no solo los de la página actual
     filteredPersonal = calendarioData.personal.filter(persona => {
         // Búsqueda por nombre completo o RUT
         // Si no hay búsqueda, incluir todos los registros
@@ -937,6 +943,16 @@ function filtrarPersonalLocalmente() {
     
     // Re-renderizar calendario con personal filtrado
     generateCalendar();
+    
+    // Restaurar el foco y la posición del cursor después de re-renderizar
+    if (hadFocus && searchInput) {
+        setTimeout(() => {
+            searchInput.focus();
+            if (cursorPosition !== null) {
+                searchInput.setSelectionRange(cursorPosition, cursorPosition);
+            }
+        }, 0);
+    }
 }
 
 /**

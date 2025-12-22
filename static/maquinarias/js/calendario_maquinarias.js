@@ -360,8 +360,13 @@ function generarCalendarioMaquinarias() {
 // Similar a la tabla de personal, filtra los equipos ya cargados en memoria según criterios de búsqueda
 // Solo funciona con el campo de búsqueda; los filtros de empresa y faena requieren recarga de página
 function filtrarEquiposLocalmente() {
+    // Guardar el estado del campo de búsqueda antes de re-renderizar
+    const searchInput = document.getElementById('searchInputMaquinarias');
+    const hadFocus = document.activeElement === searchInput;
+    const cursorPosition = searchInput ? searchInput.selectionStart : null;
+    
     // Paso 1: Obtener valores de los filtros del formulario
-    const search = document.getElementById('searchInputMaquinarias')?.value || '';  // Término de búsqueda
+    const search = searchInput?.value || '';  // Término de búsqueda
     const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';  // ID de empresa (no se usa en filtro local)
     const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';  // Nombre de faena (no se usa en filtro local)
     
@@ -377,6 +382,7 @@ function filtrarEquiposLocalmente() {
     const searchLower = searchTrimmed.toLowerCase();
     
     // Paso 4: Filtrar equipos según criterios de búsqueda
+    // Filtrar sobre TODOS los equipos, no solo los de la página actual
     equiposFiltrados = window.equipos.filter(equipo => {
         // Paso 4.1: Búsqueda por nombre, código interno o modelo
         // Si no hay búsqueda, incluir todos los equipos
@@ -440,6 +446,16 @@ function filtrarEquiposLocalmente() {
     // Esto actualiza la tabla sin recargar la página
     console.log(`Filtrado: ${equiposFiltrados.length} de ${window.equipos.length} equipos`);  // Debug
     generarCalendarioMaquinarias();
+    
+    // Restaurar el foco y la posición del cursor después de re-renderizar
+    if (hadFocus && searchInput) {
+        setTimeout(() => {
+            searchInput.focus();
+            if (cursorPosition !== null) {
+                searchInput.setSelectionRange(cursorPosition, cursorPosition);
+            }
+        }, 0);
+    }
 }
 
 // Función para aplicar filtros al calendario de maquinarias (recarga página)
