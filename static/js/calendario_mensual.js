@@ -864,27 +864,13 @@ function setupFilters() {
     const cargoFilter = document.getElementById('cargoFilter');
     const empresaFilter = document.getElementById('empresaFilter');
     
-    // Filtro de búsqueda: usar debounce y recargar página con todos los datos cuando hay texto
-    // Esto permite que el filtro funcione sobre todos los registros, no solo los de la página actual
+    // Filtro de búsqueda: filtrar localmente sin recargar página (como tabla de personal)
+    // Usar el mismo patrón que la tabla de personal: solo actualizar el contenido, no perder el foco
     if (searchInput) {
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            const searchValue = this.value.trim();
-            // Limpiar timeout anterior si existe
-            clearTimeout(searchTimeout);
-            // Esperar 500ms después de que el usuario deje de escribir
-            searchTimeout = setTimeout(function() {
-                // Si hay texto, recargar con page_size grande para cargar todos los datos filtrados
-                // Si está vacío, recargar con paginación normal
-                applyFiltersWithReload();
-            }, 500);
-        });
-        // También aplicar filtros al presionar Enter
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                clearTimeout(searchTimeout);
-                applyFiltersWithReload();
-            }
+        searchInput.addEventListener('input', function(e) {
+            // Prevenir cualquier comportamiento que pueda causar pérdida de foco
+            e.stopPropagation();
+            filtrarPersonalLocalmente();
         });
     }
     
@@ -961,16 +947,46 @@ function filtrarPersonalLocalmente() {
     });
     
     // Re-renderizar calendario con personal filtrado
+    // Guardar referencia al input antes de modificar el DOM
+    const inputElement = searchInput;
+    
     generateCalendar();
     
-    // Restaurar el foco y la posición del cursor después de re-renderizar
-    if (hadFocus && searchInput) {
-        setTimeout(() => {
-            searchInput.focus();
-            if (cursorPosition !== null) {
-                searchInput.setSelectionRange(cursorPosition, cursorPosition);
+    // Restaurar el foco inmediatamente después de renderizar
+    // Usar múltiples requestAnimationFrame para asegurar que se ejecute después del renderizado completo
+    if (hadFocus && inputElement) {
+        // Función para restaurar el foco de forma agresiva
+        const restoreFocus = () => {
+            const input = document.getElementById('searchInput');
+            if (input) {
+                // Forzar el foco
+                input.focus();
+                // Restaurar posición del cursor solo si es válida
+                if (cursorPosition !== null && cursorPosition <= input.value.length) {
+                    try {
+                        input.setSelectionRange(cursorPosition, cursorPosition);
+                    } catch (e) {
+                        // Si falla, simplemente poner el cursor al final
+                        input.setSelectionRange(input.value.length, input.value.length);
+                    }
+                }
+                return true;
             }
-        }, 0);
+            return false;
+        };
+        
+        // Intentar restaurar inmediatamente
+        requestAnimationFrame(() => {
+            if (!restoreFocus()) {
+                // Si falla, intentar de nuevo
+                requestAnimationFrame(() => {
+                    if (!restoreFocus()) {
+                        // Último intento
+                        requestAnimationFrame(restoreFocus);
+                    }
+                });
+            }
+        });
     }
 }
 

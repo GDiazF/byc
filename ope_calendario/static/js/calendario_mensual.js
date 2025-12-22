@@ -865,8 +865,13 @@ function setupFilters() {
     const empresaFilter = document.getElementById('empresaFilter');
     
     // Filtro de búsqueda: filtrar localmente sin recargar página (como maquinarias)
+    // Usar el mismo patrón que la tabla de personal: solo actualizar el contenido, no perder el foco
     if (searchInput) {
-        searchInput.addEventListener('input', filtrarPersonalLocalmente);
+        searchInput.addEventListener('input', function(e) {
+            // Prevenir cualquier comportamiento que pueda causar pérdida de foco
+            e.stopPropagation();
+            filtrarPersonalLocalmente();
+        });
     }
     
     // Filtros de faena, cargo y empresa: recargar página (requieren consulta al backend)
@@ -894,12 +899,13 @@ function filtrarPersonalLocalmente() {
         return;
     }
     
-    // Guardar el estado del campo de búsqueda antes de re-renderizar
+    // Guardar el estado del campo de búsqueda ANTES de cualquier cambio
     const searchInput = document.getElementById('searchInput');
     const hadFocus = document.activeElement === searchInput;
     const cursorPosition = searchInput ? searchInput.selectionStart : null;
+    const searchValue = searchInput ? searchInput.value : '';
     
-    const search = searchInput?.value || '';
+    const search = searchValue;
     const faena = document.getElementById('faenaFilter')?.value || '';
     const cargo = document.getElementById('cargoFilter')?.value || '';
     const empresa = document.getElementById('empresaFilter')?.value || '';
@@ -942,16 +948,46 @@ function filtrarPersonalLocalmente() {
     });
     
     // Re-renderizar calendario con personal filtrado
+    // Guardar referencia al input antes de modificar el DOM
+    const inputElement = searchInput;
+    
     generateCalendar();
     
-    // Restaurar el foco y la posición del cursor después de re-renderizar
-    if (hadFocus && searchInput) {
-        setTimeout(() => {
-            searchInput.focus();
-            if (cursorPosition !== null) {
-                searchInput.setSelectionRange(cursorPosition, cursorPosition);
+    // Restaurar el foco inmediatamente después de renderizar
+    // Usar múltiples requestAnimationFrame para asegurar que se ejecute después del renderizado completo
+    if (hadFocus && inputElement) {
+        // Función para restaurar el foco de forma agresiva
+        const restoreFocus = () => {
+            const input = document.getElementById('searchInput');
+            if (input) {
+                // Forzar el foco
+                input.focus();
+                // Restaurar posición del cursor solo si es válida
+                if (cursorPosition !== null && cursorPosition <= input.value.length) {
+                    try {
+                        input.setSelectionRange(cursorPosition, cursorPosition);
+                    } catch (e) {
+                        // Si falla, simplemente poner el cursor al final
+                        input.setSelectionRange(input.value.length, input.value.length);
+                    }
+                }
+                return true;
             }
-        }, 0);
+            return false;
+        };
+        
+        // Intentar restaurar inmediatamente
+        requestAnimationFrame(() => {
+            if (!restoreFocus()) {
+                // Si falla, intentar de nuevo
+                requestAnimationFrame(() => {
+                    if (!restoreFocus()) {
+                        // Último intento
+                        requestAnimationFrame(restoreFocus);
+                    }
+                });
+            }
+        });
     }
 }
 

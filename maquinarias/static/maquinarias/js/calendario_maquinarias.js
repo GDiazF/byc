@@ -90,7 +90,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Paso 2.1: Filtro de búsqueda: filtrar localmente sin recargar página
     // Similar a la tabla de personal, filtra los equipos ya cargados en memoria
     if (searchInputMaquinarias) {
-        searchInputMaquinarias.addEventListener('input', filtrarEquiposLocalmente);  // Filtrar mientras el usuario escribe
+        searchInputMaquinarias.addEventListener('input', function(e) {
+            // Prevenir cualquier comportamiento que pueda causar pérdida de foco
+            e.stopPropagation();
+            filtrarEquiposLocalmente();
+        });
     }
     
     // Paso 2.2: Filtros de empresa y faena: recargar página
@@ -427,16 +431,47 @@ function filtrarEquiposLocalmente() {
     // Paso 5: Re-renderizar calendario con equipos filtrados
     // Esto actualiza la tabla sin recargar la página
     console.log(`Filtrado: ${equiposFiltrados.length} de ${window.equipos.length} equipos`);  // Debug
+    
+    // Guardar referencia al input antes de modificar el DOM
+    const inputElement = searchInput;
+    
     generarCalendarioMaquinarias();
     
-    // Restaurar el foco y la posición del cursor después de re-renderizar
-    if (hadFocus && searchInput) {
-        setTimeout(() => {
-            searchInput.focus();
-            if (cursorPosition !== null) {
-                searchInput.setSelectionRange(cursorPosition, cursorPosition);
+    // Restaurar el foco inmediatamente después de renderizar
+    // Usar múltiples requestAnimationFrame para asegurar que se ejecute después del renderizado completo
+    if (hadFocus && inputElement) {
+        // Función para restaurar el foco de forma agresiva
+        const restoreFocus = () => {
+            const input = document.getElementById('searchInputMaquinarias');
+            if (input) {
+                // Forzar el foco
+                input.focus();
+                // Restaurar posición del cursor solo si es válida
+                if (cursorPosition !== null && cursorPosition <= input.value.length) {
+                    try {
+                        input.setSelectionRange(cursorPosition, cursorPosition);
+                    } catch (e) {
+                        // Si falla, simplemente poner el cursor al final
+                        input.setSelectionRange(input.value.length, input.value.length);
+                    }
+                }
+                return true;
             }
-        }, 0);
+            return false;
+        };
+        
+        // Intentar restaurar inmediatamente
+        requestAnimationFrame(() => {
+            if (!restoreFocus()) {
+                // Si falla, intentar de nuevo
+                requestAnimationFrame(() => {
+                    if (!restoreFocus()) {
+                        // Último intento
+                        requestAnimationFrame(restoreFocus);
+                    }
+                });
+            }
+        });
     }
 }
 
