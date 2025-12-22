@@ -407,6 +407,8 @@
     window.filtros = JSON.parse('{{ filtros|safe }}');
     window.mesAnterior = JSON.parse('{{ mes_anterior|safe }}');
     window.mesSiguiente = JSON.parse('{{ mes_siguiente|safe }}');
+    window.currentPage = parseInt("{{ current_page }}") || 1;
+    window.pageSize = parseInt("{{ page_size }}") || 10;
     // Permisos del usuario para validar en JavaScript
     window.userPermissions = {
         canAdd: {% if user|has_perm:'ope_calendario.add_asignacionfaena' %}true{% else %}false{% endif %},

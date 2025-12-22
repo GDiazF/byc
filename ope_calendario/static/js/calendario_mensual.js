@@ -82,6 +82,8 @@ function formatearFechaChilenaLarga(fecha) {
 // Variables globales
 let currentDate = new Date(currentYear, currentMonth - 1, 1);
 let filteredPersonal = [];
+let paginaActual = window.currentPage || 1;
+let registrosPorPagina = window.pageSize || 10;
 
 /**
  * Calcula el estado de un trabajador en una fecha específica
@@ -370,7 +372,16 @@ function generateCalendar() {
     const tbody = document.getElementById('calendarBody');
     let bodyHTML = '';
     
-    filteredPersonal.forEach(persona => {
+    // Aplicar paginación sobre filteredPersonal - igual que personal_table.js
+    const totalPaginas = Math.ceil(filteredPersonal.length / registrosPorPagina);
+    paginaActual = Math.min(paginaActual, totalPaginas);
+    paginaActual = Math.max(1, paginaActual);
+    
+    const inicio = (paginaActual - 1) * registrosPorPagina;
+    const fin = Math.min(inicio + registrosPorPagina, filteredPersonal.length);
+    const personalPagina = filteredPersonal.slice(inicio, fin);
+    
+    personalPagina.forEach(persona => {
         bodyHTML += '<tr>';
         
         // Columna de nombre (sticky) con botones de acción
@@ -927,6 +938,9 @@ function filtrarYRenderizarCalendario() {
         
         return matchBusqueda && matchFaena && matchCargo && matchEmpresa;
     });
+    
+    // Resetear a página 1 al filtrar - igual que personal_table.js
+    paginaActual = 1;
     
     // Re-renderizar calendario - igual que renderizarTabla() llama a actualizar el tbody
     generateCalendar();

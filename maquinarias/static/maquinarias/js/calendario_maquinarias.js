@@ -9,6 +9,8 @@
 // Estas variables mantienen los datos filtrados y el estado de la aplicación
 let equiposFiltrados = [];  // Array de equipos filtrados según los filtros aplicados
 let ordenesFiltradas = [];  // Array de órdenes de trabajo filtradas (actualmente no se usa para filtrar, solo para mostrar)
+let paginaActualEquipos = window.currentPage || 1;
+let registrosPorPaginaEquipos = window.pageSize || 25;
 
 // Función wrapper para inicializar calendario de operaciones con IDs correctos
 // Esta función adapta el calendario de operaciones para que funcione con IDs específicos del tab
@@ -190,8 +192,17 @@ function generarCalendarioMaquinarias() {
     
     let bodyHTML = '';  // Variable para acumular el HTML de las filas
     
-    // Paso 5.1: Generar una fila para cada equipo filtrado
-    equiposFiltrados.forEach(equipo => {
+    // Aplicar paginación sobre equiposFiltrados - igual que personal_table.js
+    const totalPaginas = Math.ceil(equiposFiltrados.length / registrosPorPaginaEquipos);
+    paginaActualEquipos = Math.min(paginaActualEquipos, totalPaginas);
+    paginaActualEquipos = Math.max(1, paginaActualEquipos);
+    
+    const inicio = (paginaActualEquipos - 1) * registrosPorPaginaEquipos;
+    const fin = Math.min(inicio + registrosPorPaginaEquipos, equiposFiltrados.length);
+    const equiposPagina = equiposFiltrados.slice(inicio, fin);
+    
+    // Paso 5.1: Generar una fila para cada equipo de la página actual
+    equiposPagina.forEach(equipo => {
         bodyHTML += '<tr>';  // Iniciar fila del equipo
         
         // Paso 5.2: Generar columna de nombre del equipo (sticky, siempre visible al hacer scroll horizontal)
@@ -401,6 +412,9 @@ function filtrarYRenderizarEquipos() {
         
         return matchBusqueda && matchEmpresa && matchFaena;
     });
+    
+    // Resetear a página 1 al filtrar - igual que personal_table.js
+    paginaActualEquipos = 1;
     
     // Re-renderizar calendario - igual que renderizarTabla() llama a actualizar el tbody
     generarCalendarioMaquinarias();

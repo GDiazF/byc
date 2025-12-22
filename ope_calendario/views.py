@@ -81,16 +81,27 @@ def calendario_mensual(request):
     empresa_filter = request.GET.get('empresa', '')  # Filtrar por empresa
     search_query = request.GET.get('search', '')  # Búsqueda por nombre o RUT
     
-    # Paso 5: Cargar TODOS los datos sin paginación para que el filtro local funcione sobre todos los registros
+    # Paso 5: Cargar TODOS los datos para que el filtro local funcione sobre todos los registros
     # Igual que la tabla de personal: cargar todos los datos y filtrar localmente en JavaScript
-    calendario_data = obtener_calendario_mensual(
+    # PERO mantener la paginación por defecto para mostrar solo 10 por página inicialmente
+    calendario_data_todos = obtener_calendario_mensual(
         year, month, faena_filter, cargo_filter, empresa_filter, search_query, 1, 100000  # page_size muy grande para obtener TODOS
     )
-    total_personal = calendario_data['total_personal']
-    # Para el frontend, siempre mostrar todos los datos (sin paginación real)
-    total_pages = 1
-    current_page = 1
-    page_size = total_personal if total_personal > 0 else 10
+    total_personal = calendario_data_todos['total_personal']
+    
+    # Usar paginación normal para mostrar solo la página actual inicialmente
+    calendario_data = obtener_calendario_mensual(
+        year, month, faena_filter, cargo_filter, empresa_filter, search_query, page, page_size
+    )
+    # Reemplazar el personal paginado con TODOS los datos para el filtro local
+    calendario_data['personal'] = calendario_data_todos['personal']
+    calendario_data['asignaciones'] = calendario_data_todos['asignaciones']
+    calendario_data['estados_manuales'] = calendario_data_todos['estados_manuales']
+    calendario_data['estados_calculados'] = calendario_data_todos['estados_calculados']
+    
+    # Calcular total_pages para la paginación inicial
+    total_pages = (total_personal + page_size - 1) // page_size if total_personal > 0 else 1
+    current_page = page
     
     # Obtener rango de fechas del mes para filtrar asignaciones
     _, ultimo_dia = monthrange(year, month)
