@@ -67,35 +67,25 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Inicializar modal de selección de equipos para descarga
-    // Solo agregar event listener si el usuario tiene permisos
+    // EXACTAMENTE igual que personal_table.js
     const btnSeleccionarEquipos = document.getElementById('btnSeleccionarEquipos');
-    if (btnSeleccionarEquipos && !btnSeleccionarEquipos.disabled) {
-        // Verificar permisos antes de agregar el listener
-        const canViewDocumentation = window.userPermissions && (
-            window.userPermissions.canViewDocumentacion === true || 
-            window.userPermissions.canViewDocumentacion === 'true' ||
-            window.userPermissions.canView === true ||
-            window.userPermissions.canView === 'true'
-        );
-        
-        if (canViewDocumentation) {
-            btnSeleccionarEquipos.addEventListener('click', function(e) {
-                e.preventDefault();
-                const modalElement = document.getElementById('modalSeleccionarEquipos');
-                if (modalElement) {
-                    const modal = new bootstrap.Modal(modalElement);
-                    modal.show();
-                    equiposSeleccionados = [];
-                    actualizarVistaSeleccionadosEquipos();
-                    // Cargar todos los equipos activos para búsqueda
-                    cargarTodosLosEquipos();
-                }
-            });
-        }
+    const modalSeleccionarEquipos = document.getElementById('modalSeleccionarEquipos');
+    
+    if (btnSeleccionarEquipos) {
+        btnSeleccionarEquipos.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (modalSeleccionarEquipos) {
+                const modal = new bootstrap.Modal(modalSeleccionarEquipos);
+                modal.show();
+                equiposSeleccionados = [];
+                actualizarVistaSeleccionadosEquipos();
+                // Cargar todos los equipos activos para búsqueda
+                cargarTodosLosEquipos();
+            }
+        });
     }
     
     // Configurar búsqueda cuando el modal se muestra
-    const modalSeleccionarEquipos = document.getElementById('modalSeleccionarEquipos');
     if (modalSeleccionarEquipos) {
         modalSeleccionarEquipos.addEventListener('shown.bs.modal', function() {
             console.log('Modal mostrado, configurando buscador...');
