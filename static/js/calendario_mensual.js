@@ -864,13 +864,10 @@ function setupFilters() {
     const cargoFilter = document.getElementById('cargoFilter');
     const empresaFilter = document.getElementById('empresaFilter');
     
-    // Filtro de búsqueda: filtrar localmente sin recargar página (como tabla de personal)
-    // Usar el mismo patrón que la tabla de personal: solo actualizar el contenido, no perder el foco
+    // Búsqueda - EXACTAMENTE igual que tabla de personal
     if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
-            // Prevenir cualquier comportamiento que pueda causar pérdida de foco
-            e.stopPropagation();
-            filtrarPersonalLocalmente();
+        searchInput.addEventListener('input', function() {
+            filtrarYRenderizarCalendario();
         });
     }
     
@@ -887,43 +884,28 @@ function setupFilters() {
 }
 
 /**
- * Filtra el personal localmente basándose en los valores de los filtros.
- * No recarga la página, solo actualiza la visualización del calendario.
- * Filtra por búsqueda (nombre/RUT), faena, cargo y empresa.
- * Re-renderiza el calendario con el personal filtrado.
+ * Filtra y renderiza el calendario - EXACTAMENTE igual que renderizarTabla() en personal_table.js
  */
-function filtrarPersonalLocalmente() {
+function filtrarYRenderizarCalendario() {
+    const busqueda = document.getElementById('searchInput').value.toLowerCase();
+    const faena = document.getElementById('faenaFilter')?.value || '';
+    const cargo = document.getElementById('cargoFilter')?.value || '';
+    const empresa = document.getElementById('empresaFilter')?.value || '';
+    
     // Validar que calendarioData.personal esté disponible
     if (!calendarioData || !calendarioData.personal || !Array.isArray(calendarioData.personal)) {
         console.error('calendarioData.personal no está disponible o no es un array');
         return;
     }
     
-    // Guardar el estado del campo de búsqueda antes de re-renderizar
-    const searchInput = document.getElementById('searchInput');
-    const hadFocus = document.activeElement === searchInput;
-    const cursorPosition = searchInput ? searchInput.selectionStart : null;
-    
-    const search = searchInput?.value || '';
-    const faena = document.getElementById('faenaFilter')?.value || '';
-    const cargo = document.getElementById('cargoFilter')?.value || '';
-    const empresa = document.getElementById('empresaFilter')?.value || '';
-    
-    // Filtrar personal localmente basándose en el texto de búsqueda
-    // Eliminar espacios en blanco y convertir a minúsculas
-    const searchTrimmed = search.trim();
-    const searchLower = searchTrimmed.toLowerCase();
-    
-    // Filtrar sobre TODOS los datos, no solo los de la página actual
+    // Filtrar personal según búsqueda y filtros - EXACTAMENTE igual que personal_table.js
     filteredPersonal = calendarioData.personal.filter(persona => {
-        // Búsqueda por nombre completo o RUT
-        // Si no hay búsqueda, incluir todos los registros
-        let matchBusqueda = true;
-        if (searchLower) {
-            const nombreCompleto = `${persona.nombre || ''} ${persona.apepat || ''} ${persona.apemat || ''}`.toLowerCase();
-            const rut = `${persona.rut || ''}${persona.dvrut || ''}`.toLowerCase();
-            matchBusqueda = nombreCompleto.includes(searchLower) || rut.includes(searchLower);
-        }
+        // Búsqueda global - EXACTAMENTE igual que personal_table.js
+        const matchBusqueda = !busqueda || 
+            (persona.nombre && persona.nombre.toLowerCase().includes(busqueda)) ||
+            (persona.apepat && persona.apepat.toLowerCase().includes(busqueda)) ||
+            (persona.apemat && persona.apemat.toLowerCase().includes(busqueda)) ||
+            (persona.rut && `${persona.rut}${persona.dvrut || ''}`.toLowerCase().includes(busqueda));
         
         // Filtro de faena (si está seleccionado)
         let matchFaena = true;
@@ -946,48 +928,8 @@ function filtrarPersonalLocalmente() {
         return matchBusqueda && matchFaena && matchCargo && matchEmpresa;
     });
     
-    // Re-renderizar calendario con personal filtrado
-    // Guardar referencia al input antes de modificar el DOM
-    const inputElement = searchInput;
-    
+    // Re-renderizar calendario - igual que renderizarTabla() llama a actualizar el tbody
     generateCalendar();
-    
-    // Restaurar el foco inmediatamente después de renderizar
-    // Usar múltiples requestAnimationFrame para asegurar que se ejecute después del renderizado completo
-    if (hadFocus && inputElement) {
-        // Función para restaurar el foco de forma agresiva
-        const restoreFocus = () => {
-            const input = document.getElementById('searchInput');
-            if (input) {
-                // Forzar el foco
-                input.focus();
-                // Restaurar posición del cursor solo si es válida
-                if (cursorPosition !== null && cursorPosition <= input.value.length) {
-                    try {
-                        input.setSelectionRange(cursorPosition, cursorPosition);
-                    } catch (e) {
-                        // Si falla, simplemente poner el cursor al final
-                        input.setSelectionRange(input.value.length, input.value.length);
-                    }
-                }
-                return true;
-            }
-            return false;
-        };
-        
-        // Intentar restaurar inmediatamente
-        requestAnimationFrame(() => {
-            if (!restoreFocus()) {
-                // Si falla, intentar de nuevo
-                requestAnimationFrame(() => {
-                    if (!restoreFocus()) {
-                        // Último intento
-                        requestAnimationFrame(restoreFocus);
-                    }
-                });
-            }
-        });
-    }
 }
 
 /**

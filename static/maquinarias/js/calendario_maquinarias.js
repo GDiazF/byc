@@ -87,13 +87,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const empresaFilterMaquinarias = document.getElementById('empresaFilterMaquinarias');  // Filtro de empresa
     const faenaFilterMaquinarias = document.getElementById('faenaFilterMaquinarias');  // Filtro de faena
     
-    // Paso 2.1: Filtro de búsqueda: filtrar localmente sin recargar página (como tabla de personal)
-    // Similar a la tabla de personal, filtra los equipos ya cargados en memoria
+    // Búsqueda - EXACTAMENTE igual que tabla de personal
     if (searchInputMaquinarias) {
-        searchInputMaquinarias.addEventListener('input', function(e) {
-            // Prevenir cualquier comportamiento que pueda causar pérdida de foco
-            e.stopPropagation();
-            filtrarEquiposLocalmente();
+        searchInputMaquinarias.addEventListener('input', function() {
+            filtrarYRenderizarEquipos();
         });
     }
     
@@ -345,49 +342,34 @@ function generarCalendarioMaquinarias() {
 // Función para filtrar equipos localmente sin recargar la página
 // Similar a la tabla de personal, filtra los equipos ya cargados en memoria según criterios de búsqueda
 // Solo funciona con el campo de búsqueda; los filtros de empresa y faena requieren recarga de página
-function filtrarEquiposLocalmente() {
-    // Guardar el estado del campo de búsqueda antes de re-renderizar
-    const searchInput = document.getElementById('searchInputMaquinarias');
-    const hadFocus = document.activeElement === searchInput;
-    const cursorPosition = searchInput ? searchInput.selectionStart : null;
+/**
+ * Filtra y renderiza el calendario de equipos - EXACTAMENTE igual que renderizarTabla() en personal_table.js
+ */
+function filtrarYRenderizarEquipos() {
+    const busqueda = document.getElementById('searchInputMaquinarias').value.toLowerCase();
+    const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';
+    const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';
     
-    // Paso 1: Obtener valores de los filtros del formulario
-    const search = searchInput?.value || '';  // Término de búsqueda
-    const empresa = document.getElementById('empresaFilterMaquinarias')?.value || '';  // ID de empresa (no se usa en filtro local)
-    const faena = document.getElementById('faenaFilterMaquinarias')?.value || '';  // Nombre de faena (no se usa en filtro local)
-    
-    // Paso 2: Validar que window.equipos esté disponible
+    // Validar que window.equipos esté disponible
     if (!window.equipos || !Array.isArray(window.equipos)) {
         console.error('window.equipos no está disponible o no es un array');
         return;
     }
     
-    // Paso 3: Filtrar equipos localmente basándose en el texto de búsqueda
-    // Convertir término de búsqueda a minúsculas y eliminar espacios en blanco
-    const searchTrimmed = search.trim();
-    const searchLower = searchTrimmed.toLowerCase();
-    
-    // Paso 4: Filtrar equipos según criterios de búsqueda
-    // Filtrar sobre TODOS los equipos, no solo los de la página actual
+    // Filtrar equipos según búsqueda y filtros - EXACTAMENTE igual que personal_table.js
     equiposFiltrados = window.equipos.filter(equipo => {
-        // Paso 4.1: Búsqueda por nombre, código interno o modelo
-        // Si no hay búsqueda, incluir todos los equipos
-        let matchBusqueda = true;
-        if (searchLower) {
-            // Si hay búsqueda, verificar si alguno de los campos contiene el término
-            const nombreMatch = equipo.nombreEquipo ? equipo.nombreEquipo.toLowerCase().includes(searchLower) : false;
-            const codigoMatch = equipo.codigoInterno ? equipo.codigoInterno.toLowerCase().includes(searchLower) : false;
-            const modeloMatch = equipo.modeloEquipo ? equipo.modeloEquipo.toLowerCase().includes(searchLower) : false;
-            matchBusqueda = nombreMatch || codigoMatch || modeloMatch;
-        }
+        // Búsqueda global - EXACTAMENTE igual que personal_table.js
+        const matchBusqueda = !busqueda || 
+            (equipo.nombreEquipo && equipo.nombreEquipo.toLowerCase().includes(busqueda)) ||
+            (equipo.codigoInterno && equipo.codigoInterno.toLowerCase().includes(busqueda)) ||
+            (equipo.modeloEquipo && equipo.modeloEquipo.toLowerCase().includes(busqueda)) ||
+            (equipo.patente && equipo.patente.toLowerCase().includes(busqueda));
         
-        // Paso 4.2: Filtro de empresa (si está seleccionado)
-        // El equipo coincide si no hay filtro de empresa o si su empresa coincide
+        // Filtro de empresa (si está seleccionado)
         const matchEmpresa = !empresa || (equipo.empresa && equipo.empresa === empresa);
         
-        // Paso 4.3: Filtro de faena (si está seleccionado)
-        // Este filtro requiere buscar en las asignaciones a faenas que estén activas en el mes actual
-        let matchFaena = true;  // Por defecto, todos los equipos coinciden
+        // Filtro de faena (si está seleccionado)
+        let matchFaena = true;
         if (faena) {
             // Obtener rango de fechas del mes actual
             const fechaInicioMes = window.fechaInicioMes ? new Date(window.fechaInicioMes) : null;
@@ -395,17 +377,12 @@ function filtrarEquiposLocalmente() {
             
             // Obtener asignaciones del equipo desde window.asignacionesFaena
             const asignacionesEquipo = (window.asignacionesFaena || []).filter(asig => {
-                // Filtrar solo asignaciones de este equipo
                 if (asig.equipo_id !== equipo.equipo_id) return false;
                 
-                // Verificar que la asignación esté activa en el mes actual
                 if (fechaInicioMes && fechaFinMes) {
                     const fechaInicioAsig = asig.fecha_inicio ? new Date(asig.fecha_inicio.split('T')[0]) : null;
                     const fechaFinAsig = asig.fecha_fin ? new Date(asig.fecha_fin.split('T')[0]) : null;
                     
-                    // La asignación está activa si:
-                    // - Comienza antes o en el último día del mes Y
-                    // - Termina después o en el primer día del mes, o no tiene fecha fin
                     if (fechaInicioAsig) {
                         const comienzaAntesDelFin = fechaInicioAsig <= fechaFinMes;
                         const terminaDespuesDelInicio = !fechaFinAsig || fechaFinAsig >= fechaInicioMes;
@@ -416,63 +393,17 @@ function filtrarEquiposLocalmente() {
             });
             
             if (faena === 'Sin asignar') {
-                // CASO: Buscar equipos sin asignaciones activas en el mes actual
-                matchFaena = asignacionesEquipo.length === 0;  // No tiene asignaciones activas
+                matchFaena = asignacionesEquipo.length === 0;
             } else {
-                // CASO: Buscar equipos con asignación activa a la faena específica
-                matchFaena = asignacionesEquipo.some(asig => asig.faena_nombre === faena);  // Tiene asignación activa a esta faena
+                matchFaena = asignacionesEquipo.some(asig => asig.faena_nombre === faena);
             }
         }
         
-        // Paso 4.4: El equipo se incluye si cumple todos los criterios
         return matchBusqueda && matchEmpresa && matchFaena;
     });
     
-    // Paso 5: Re-renderizar calendario con equipos filtrados
-    // Esto actualiza la tabla sin recargar la página
-    console.log(`Filtrado: ${equiposFiltrados.length} de ${window.equipos.length} equipos`);  // Debug
-    
-    // Guardar referencia al input antes de modificar el DOM
-    const inputElement = searchInput;
-    
+    // Re-renderizar calendario - igual que renderizarTabla() llama a actualizar el tbody
     generarCalendarioMaquinarias();
-    
-    // Restaurar el foco inmediatamente después de renderizar
-    // Usar múltiples requestAnimationFrame para asegurar que se ejecute después del renderizado completo
-    if (hadFocus && inputElement) {
-        // Función para restaurar el foco de forma agresiva
-        const restoreFocus = () => {
-            const input = document.getElementById('searchInputMaquinarias');
-            if (input) {
-                // Forzar el foco
-                input.focus();
-                // Restaurar posición del cursor solo si es válida
-                if (cursorPosition !== null && cursorPosition <= input.value.length) {
-                    try {
-                        input.setSelectionRange(cursorPosition, cursorPosition);
-                    } catch (e) {
-                        // Si falla, simplemente poner el cursor al final
-                        input.setSelectionRange(input.value.length, input.value.length);
-                    }
-                }
-                return true;
-            }
-            return false;
-        };
-        
-        // Intentar restaurar inmediatamente
-        requestAnimationFrame(() => {
-            if (!restoreFocus()) {
-                // Si falla, intentar de nuevo
-                requestAnimationFrame(() => {
-                    if (!restoreFocus()) {
-                        // Último intento
-                        requestAnimationFrame(restoreFocus);
-                    }
-                });
-            }
-        });
-    }
 }
 
 // Función para aplicar filtros al calendario de maquinarias (recarga página)
