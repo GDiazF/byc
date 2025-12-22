@@ -3157,27 +3157,16 @@ def calendario_maquinarias(request):
     faena_filter = request.GET.get('faena', '')  # Filtro por nombre de faena o "sin asignar"
     search_query = request.GET.get('search', '')  # Término de búsqueda
     
-    # Paso 5: Si hay filtro de búsqueda activo, cargar TODOS los datos filtrados sin paginación
-    # Esto permite que el filtro local funcione sobre todos los datos filtrados
-    # Si no hay filtro de búsqueda, usar paginación normal (25 registros por defecto)
-    if search_query and search_query.strip():
-        # Cargar todos los datos filtrados por búsqueda sin paginación para filtrado local
-        calendario_data = obtener_calendario_maquinarias_optimizado(
-            year, month, empresa_filter, tipo_filter, faena_filter, search_query, 1, 10000  # page_size muy grande para obtener todos
-        )
-        # Actualizar total_equipos y page_size para reflejar que se cargaron todos
-        total_equipos = calendario_data['total_equipos']
-        page_size = total_equipos if total_equipos > 0 else 25  # Mostrar todos en una "página"
-        total_pages = 1
-        current_page = 1
-    else:
-        # Usar paginación normal cuando no hay filtro de búsqueda
-        calendario_data = obtener_calendario_maquinarias_optimizado(
-            year, month, empresa_filter, tipo_filter, faena_filter, search_query, page, page_size
-        )
-        total_equipos = calendario_data['total_equipos']
-        total_pages = (total_equipos + page_size - 1) // page_size if total_equipos > 0 else 1
-        current_page = page
+    # Paso 5: Cargar TODOS los datos sin paginación para que el filtro local funcione sobre todos los registros
+    # Igual que la tabla de personal: cargar todos los datos y filtrar localmente en JavaScript
+    calendario_data = obtener_calendario_maquinarias_optimizado(
+        year, month, empresa_filter, tipo_filter, faena_filter, search_query, 1, 100000  # page_size muy grande para obtener TODOS
+    )
+    total_equipos = calendario_data['total_equipos']
+    # Para el frontend, siempre mostrar todos los datos (sin paginación real)
+    total_pages = 1
+    current_page = 1
+    page_size = total_equipos if total_equipos > 0 else 25
     
     # Paso 6: Obtener rango de fechas del mes para mostrar en el template
     # Se calcula el primer y último día del mes seleccionado
